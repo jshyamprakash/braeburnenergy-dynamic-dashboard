@@ -5,6 +5,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
+CLAUDE.md
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
@@ -47,8 +48,11 @@ web_modules/
 # TypeScript cache
 *.tsbuildinfo
 
+
 # Optional npm cache directory
 .npm
+.claude
+.turbo
 
 # Optional eslint cache
 .eslintcache

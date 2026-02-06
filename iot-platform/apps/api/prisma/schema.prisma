@@ -1,0 +1,38 @@
+// Prisma schema file
+// Learn more: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Device {
+  id         String   @id @default(uuid()) @db.Uuid
+  deviceId   String   @unique @map("device_id")  // ULID generated in application layer
+  name       String
+  tags       String[]
+  attributes Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  states DeviceState[]
+
+  @@map("devices")
+}
+
+model DeviceState {
+  id        String   @default(uuid()) @db.Uuid
+  deviceId  String   @map("device_id")  // References Device.deviceId (ULID)
+  data      Json
+  timestamp DateTime @default(now())
+
+  device Device @relation(fields: [deviceId], references: [deviceId], onDelete: Cascade)
+
+  @@id([id, timestamp])
+  @@index([deviceId, timestamp])
+  @@map("device_states")
+}

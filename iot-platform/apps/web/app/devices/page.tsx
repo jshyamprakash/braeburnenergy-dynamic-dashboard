@@ -1,0 +1,193 @@
+'use client';
+
+import { useState } from 'react';
+import Link from 'next/link';
+import { useDevices, useDeleteDevice } from '@/lib/hooks/useDevices';
+import { DeviceForm } from '@/components/DeviceForm';
+import type { Device } from '@/lib/types';
+
+export default function DevicesPage() {
+  const { data, isLoading, error, refetch } = useDevices({ limit: 50 });
+  const deleteDevice = useDeleteDevice();
+
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingDevice, setEditingDevice] = useState<Device | null>(null);
+
+  const handleCreateClick = () => {
+    setEditingDevice(null);
+    setIsFormOpen(true);
+  };
+
+  const handleEditClick = (device: Device) => {
+    setEditingDevice(device);
+    setIsFormOpen(true);
+  };
+
+  const handleDeleteClick = async (device: Device) => {
+    if (confirm(`Are you sure you want to delete "${device.name}"?`)) {
+      try {
+        await deleteDevice.mutateAsync(device.deviceId);
+      } catch (error) {
+        alert('Failed to delete device. Please try again.');
+      }
+    }
+  };
+
+  const handleFormSuccess = () => {
+    refetch();
+  };
+
+  if (isLoading) {
+    return (
+      <div className="bg-white shadow sm:rounded-lg p-6">
+        <p className="text-gray-500">Loading devices...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white shadow sm:rounded-lg p-6">
+        <p className="text-red-600">Error: {error.message}</p>
+        <p className="text-sm text-gray-500 mt-2">
+          Make sure the API server is running on http://localhost:3001
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-bold text-gray-900">Devices</h1>
+          <button
+            onClick={handleCreateClick}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
+            + Add Device
+          </button>
+        </div>
+
+        <div className="bg-white shadow sm:rounded-lg">
+          <div className="px-4 py-5 sm:p-6">
+            {data && data.data.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead>
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Device ID
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Name
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Tags
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Created
+                      </th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {data.data.map((device) => (
+                      <tr key={device.deviceId} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
+                          <Link
+                            href={`/devices/${device.deviceId}`}
+                            className="text-blue-600 hover:text-blue-800"
+                          >
+                            {device.deviceId}
+                          </Link>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                          {device.name}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-500">
+                          <div className="flex flex-wrap gap-1">
+                            {device.tags.map((tag) => (
+                              <span
+                                key={tag}
+                                className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {new Date(device.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <button
+                            onClick={() => handleEditClick(device)}
+                            className="text-blue-600 hover:text-blue-900 mr-4"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteClick(device)}
+                            className="text-red-600 hover:text-red-900"
+                            disabled={deleteDevice.isPending}
+                          >
+                            {deleteDevice.isPending ? 'Deleting...' : 'Delete'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <svg
+                  className="mx-auto h-12 w-12 text-gray-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"
+                  />
+                </svg>
+                <h3 className="mt-2 text-sm font-medium text-gray-900">No devices</h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  Get started by creating your first device.
+                </p>
+                <div className="mt-6">
+                  <button
+                    onClick={handleCreateClick}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  >
+                    + Create Device
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {data && data.pagination && (
+              <div className="mt-4 text-sm text-gray-500">
+                Showing {data.data.length} of {data.pagination.total} devices
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Device Form Modal */}
+      <DeviceForm
+        isOpen={isFormOpen}
+        onClose={() => setIsFormOpen(false)}
+        device={editingDevice}
+        onSuccess={handleFormSuccess}
+      />
+    </>
+  );
+}
