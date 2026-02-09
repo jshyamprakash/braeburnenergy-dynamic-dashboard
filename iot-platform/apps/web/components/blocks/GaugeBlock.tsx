@@ -132,11 +132,11 @@ export function GaugeBlock({
   ];
 
   return (
-    <div className={`bg-white rounded-lg shadow border border-gray-200 ${config.containerPadding}`}>
+    <div className={`bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 ${config.containerPadding}`}>
       {/* Header */}
       {label && (
         <div className="mb-2">
-          <h3 className={`font-semibold text-gray-900 ${config.labelSize}`}>{label}</h3>
+          <h3 className={`font-semibold text-gray-900 dark:text-gray-100 ${config.labelSize}`}>{label}</h3>
         </div>
       )}
 
@@ -160,7 +160,7 @@ export function GaugeBlock({
               tick={false}
             />
             <RadialBar
-              background={{ fill: '#e5e7eb' }}
+              background={{ fill: '#374151' }} // gray-700 for dark mode compatibility
               dataKey="value"
               cornerRadius={10}
               fill={gaugeColor}
@@ -173,9 +173,9 @@ export function GaugeBlock({
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <div className={`font-bold ${config.fontSize}`} style={{ color: gaugeColor }}>
               {value.toFixed(1)}
-              <span className={`${config.unitSize} text-gray-500 ml-1`}>{unit}</span>
+              <span className={`${config.unitSize} text-gray-500 dark:text-gray-400 ml-1`}>{unit}</span>
             </div>
-            <div className="text-xs text-gray-500 mt-1">
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               {min} - {max} {unit}
             </div>
           </div>
@@ -188,10 +188,10 @@ export function GaugeBlock({
           <div
             className={`px-2 py-1 rounded-full font-medium ${
               status === 'Critical'
-                ? 'bg-red-100 text-red-700'
+                ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
                 : status === 'Warning'
-                ? 'bg-amber-100 text-amber-700'
-                : 'bg-green-100 text-green-700'
+                ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
+                : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
             }`}
           >
             {status}
@@ -200,7 +200,7 @@ export function GaugeBlock({
 
         {/* Threshold indicators */}
         {(warningThreshold !== undefined || criticalThreshold !== undefined) && (
-          <div className="flex items-center gap-3 text-gray-500">
+          <div className="flex items-center gap-3 text-gray-500 dark:text-gray-400">
             {warningThreshold !== undefined && (
               <div className="flex items-center gap-1">
                 <div className="w-2 h-2 rounded-full bg-amber-500" />

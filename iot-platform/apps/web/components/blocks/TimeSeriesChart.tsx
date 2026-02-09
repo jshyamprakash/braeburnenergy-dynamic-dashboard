@@ -201,8 +201,8 @@ export function TimeSeriesChart({
     if (!active || !payload || !payload.length) return null;
 
     return (
-      <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
-        <p className="text-xs font-medium text-gray-900 mb-2">{label}</p>
+      <div className="bg-white dark:bg-gray-800 p-3 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
+        <p className="text-xs font-medium text-gray-900 dark:text-gray-100 mb-2">{label}</p>
         {payload.map((entry: any, index: number) => {
           const seriesConfig = series.find((s) => s.key === entry.dataKey);
           return (
@@ -212,9 +212,9 @@ export function TimeSeriesChart({
                   className="w-2 h-2 rounded-full"
                   style={{ backgroundColor: entry.color }}
                 />
-                <span className="text-gray-600">{entry.name}:</span>
+                <span className="text-gray-600 dark:text-gray-400">{entry.name}:</span>
               </div>
-              <span className="font-medium text-gray-900">
+              <span className="font-medium text-gray-900 dark:text-gray-100">
                 {typeof entry.value === 'number' ? entry.value.toFixed(2) : entry.value}
                 {seriesConfig?.unit && ` ${seriesConfig.unit}`}
               </span>
@@ -344,11 +344,11 @@ export function TimeSeriesChart({
   };
 
   return (
-    <div ref={containerRef} className="bg-white rounded-lg shadow border border-gray-200 p-4">
+    <div ref={containerRef} className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4">
       {/* Header */}
       {title && (
         <div className="mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
         </div>
       )}
 
@@ -359,7 +359,7 @@ export function TimeSeriesChart({
         </ResponsiveContainer>
       ) : (
         <div
-          className="flex items-center justify-center text-gray-500 text-sm"
+          className="flex items-center justify-center text-gray-500 dark:text-gray-400 text-sm"
           style={{ height }}
         >
           No data available
@@ -367,7 +367,7 @@ export function TimeSeriesChart({
       )}
 
       {/* Footer Info */}
-      <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
+      <div className="mt-3 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
         <div>
           {chartData.length} data point{chartData.length !== 1 ? 's' : ''}
         </div>

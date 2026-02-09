@@ -493,11 +493,33 @@ pnpm run simulate -- --anomalies           # Enable anomaly injection
 **Time:** ~2 hours
 **Verification:** Successfully registered and sent data from 3 devices
 
-### Task #10: Dark Mode (Pending)
-- [ ] Create theme toggle component
-- [ ] Implement dark mode with Tailwind CSS v4
-- [ ] Add theme persistence (localStorage)
-- [ ] Update all components for dark mode
+### Task #10: Dark Mode ✅ COMPLETE
+- [x] Installed next-themes package (v0.4.6)
+- [x] Created ThemeProvider component with next-themes wrapper
+- [x] Created ThemeToggle component with sun/moon icons
+- [x] Updated globals.css with comprehensive dark mode CSS variables
+- [x] Updated layout.tsx with ThemeProvider and suppressHydrationWarning
+- [x] Updated Navigation component with ThemeToggle button
+- [x] Updated all pages for dark mode:
+  - Home page (app/page.tsx)
+- [x] Updated all dashboard blocks for dark mode:
+  - GaugeBlock.tsx (cards, text, status badges, thresholds)
+  - TimeSeriesChart.tsx (tooltips, container, text)
+  - LiveStreamBlock.tsx (rows, header, buttons, footer)
+- [x] Theme persistence via localStorage (next-themes built-in)
+- [x] System theme detection support
+- [x] Smooth color transitions (0.3s ease)
+
+**Features:**
+- Toggle between light, dark, and system themes
+- Persistent theme selection across sessions
+- Hydration-safe implementation (no flash)
+- Comprehensive color scheme across all components
+- Accessible with proper ARIA labels
+
+**Task #10 Status:** ✅ COMPLETE
+**Time:** ~2 hours
+**Verification:** Theme toggle in navigation, smooth transitions, all components support dark mode
 
 ### Task #11: Data Export Features (Pending)
 - [ ] Export device data to CSV
