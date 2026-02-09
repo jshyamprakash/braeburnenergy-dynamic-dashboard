@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { io, type Socket } from 'socket.io-client';
 import type { WebSocketEvent, DeviceState } from '../types';
 import { connectionToasts } from '../utils/toast';
@@ -8,50 +8,86 @@ import { connectionToasts } from '../utils/toast';
 const WEBSOCKET_URL =
   process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'http://localhost:3001';
 
-export function useWebSocket() {
-  const [isConnected, setIsConnected] = useState(false);
-  const socketRef = useRef<Socket | null>(null);
+// Singleton socket instance - shared across all components
+let socketInstance: Socket | null = null;
+let connectionCount = 0;
+let toastShown = false;
 
-  useEffect(() => {
-    // Initialize socket connection
-    const socket = io(WEBSOCKET_URL, {
+function getSocketInstance(): Socket {
+  if (!socketInstance) {
+    socketInstance = io(WEBSOCKET_URL, {
       path: '/ws',
       transports: ['websocket', 'polling'],
       autoConnect: true,
     });
 
-    socketRef.current = socket;
-
-    // Connection event handlers
-    socket.on('connect', () => {
-      console.log('[WebSocket] Connected:', socket.id);
-      setIsConnected(true);
-      connectionToasts.connected();
+    // Connection event handlers (only set once)
+    socketInstance.on('connect', () => {
+      console.log('[WebSocket] Connected:', socketInstance!.id);
+      if (!toastShown) {
+        connectionToasts.connected();
+        toastShown = true;
+      }
     });
 
-    socket.on('disconnect', () => {
+    socketInstance.on('disconnect', () => {
       console.log('[WebSocket] Disconnected');
-      setIsConnected(false);
       connectionToasts.disconnected();
+      toastShown = false;
     });
 
-    socket.on('connect_error', (error) => {
+    socketInstance.on('connect_error', (error) => {
       console.error('[WebSocket] Connection Error:', error);
-      connectionToasts.error(error);
+      if (!toastShown) {
+        connectionToasts.error(error);
+      }
     });
 
-    socket.on('error', (error) => {
+    socketInstance.on('error', (error) => {
       console.error('[WebSocket] Error:', error);
     });
+  }
 
-    // Cleanup on unmount
+  return socketInstance;
+}
+
+export function useWebSocket() {
+  const [isConnected, setIsConnected] = useState(false);
+  const socket = getSocketInstance();
+
+  useEffect(() => {
+    connectionCount++;
+    console.log(`[WebSocket] Component mounted (${connectionCount} active)`);
+
+    // Update connection state
+    setIsConnected(socket.connected);
+
+    // Listen for connection state changes
+    const handleConnect = () => setIsConnected(true);
+    const handleDisconnect = () => setIsConnected(false);
+
+    socket.on('connect', handleConnect);
+    socket.on('disconnect', handleDisconnect);
+
+    // Cleanup on unmount - but DON'T disconnect the shared socket
     return () => {
-      socket.disconnect();
+      connectionCount--;
+      console.log(`[WebSocket] Component unmounted (${connectionCount} remaining)`);
+
+      socket.off('connect', handleConnect);
+      socket.off('disconnect', handleDisconnect);
+
+      // Only disconnect if no components are using the socket
+      if (connectionCount === 0) {
+        console.log('[WebSocket] No active components, keeping connection alive');
+        // Note: We keep the connection alive for better UX
+        // Socket will auto-reconnect if needed
+      }
     };
-  }, []);
+  }, [socket]);
 
   return {
-    socket: socketRef.current,
+    socket,
     isConnected,
   };
 }
