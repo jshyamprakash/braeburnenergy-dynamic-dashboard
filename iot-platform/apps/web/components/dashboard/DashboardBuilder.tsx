@@ -2,13 +2,14 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Responsive as ResponsiveGridLayout, Layout, Layouts } from 'react-grid-layout';
-import { GaugeBlock } from '../blocks/GaugeBlock';
-import { TimeSeriesChart } from '../blocks/TimeSeriesChart';
+import { RealTimeGaugeBlock } from './RealTimeGaugeBlock';
+import { RealTimeChartBlock } from './RealTimeChartBlock';
 import { LiveStreamBlock } from '../blocks/LiveStreamBlock';
 import { BlockPalette } from './BlockPalette';
 import { BlockConfigPanel } from './BlockConfigPanel';
 import { saveDashboardLayout, loadDashboardLayout } from '@/lib/utils/dashboard-storage';
 import { toast } from '@/lib/utils/toast';
+import { useDeviceRealtime, useDeviceStates } from '@/hooks/useDeviceData';
 
 /**
  * Generate mock time-series data for chart blocks
@@ -344,7 +345,9 @@ export function DashboardBuilder({
       switch (block.type) {
         case 'gauge':
           return (
-            <GaugeBlock
+            <RealTimeGaugeBlock
+              deviceId={block.config.deviceId}
+              field={block.config.field}
               value={block.config.value || 75}
               min={block.config.min || 0}
               max={block.config.max || 100}
@@ -358,15 +361,15 @@ export function DashboardBuilder({
 
         case 'chart':
           return (
-            <TimeSeriesChart
+            <RealTimeChartBlock
+              deviceId={block.config.deviceId}
               data={block.config.data || []}
               series={block.config.series || []}
               title={block.config.title || 'Chart'}
-              type={block.config.chartType || 'line'}
+              chartType={block.config.chartType || 'line'}
               showLegend={block.config.showLegend !== false}
               showGrid={block.config.showGrid !== false}
               smooth={block.config.smooth !== false}
-              hideExport={true}
             />
           );
 

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { DashboardBlock } from './DashboardBuilder';
+import { useDevices, useDeviceFields } from '@/hooks/useDeviceData';
 
 interface BlockConfigPanelProps {
   block: DashboardBlock;
@@ -16,6 +17,8 @@ interface BlockConfigPanelProps {
  */
 export function BlockConfigPanel({ block, onUpdate, onClose }: BlockConfigPanelProps) {
   const [config, setConfig] = useState(block.config);
+  const { data: devices = [] } = useDevices();
+  const fields = useDeviceFields(config.deviceId);
 
   const handleChange = (key: string, value: any) => {
     const newConfig = { ...config, [key]: value };
@@ -40,6 +43,48 @@ export function BlockConfigPanel({ block, onUpdate, onClose }: BlockConfigPanelP
                 placeholder="Gauge title"
               />
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Device
+              </label>
+              <select
+                value={config.deviceId || ''}
+                onChange={(e) => {
+                  handleChange('deviceId', e.target.value);
+                  // Reset field when device changes
+                  handleChange('field', '');
+                }}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Select a device</option>
+                {devices.map((device) => (
+                  <option key={device.id} value={device.deviceId}>
+                    {device.name} ({device.deviceId.slice(-6)})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {config.deviceId && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Field
+                </label>
+                <select
+                  value={config.field || ''}
+                  onChange={(e) => handleChange('field', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select a field</option>
+                  {fields.map((field) => (
+                    <option key={field} value={field}>
+                      {field}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -148,6 +193,24 @@ export function BlockConfigPanel({ block, onUpdate, onClose }: BlockConfigPanelP
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Device
+              </label>
+              <select
+                value={config.deviceId || ''}
+                onChange={(e) => handleChange('deviceId', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Use mock data</option>
+                {devices.map((device) => (
+                  <option key={device.id} value={device.deviceId}>
+                    {device.name} ({device.deviceId.slice(-6)})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Chart Type
               </label>
               <select
@@ -193,24 +256,19 @@ export function BlockConfigPanel({ block, onUpdate, onClose }: BlockConfigPanelP
               </label>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Device ID
-              </label>
-              <input
-                type="text"
-                value={config.deviceId || ''}
-                onChange={(e) => handleChange('deviceId', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter device ID"
-              />
-            </div>
-
-            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
-              <p className="text-xs text-amber-800 dark:text-amber-300">
-                <strong>Note:</strong> Connect this chart to a device by entering its ID. The chart will display real-time data from the device.
-              </p>
-            </div>
+            {config.deviceId ? (
+              <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
+                <p className="text-xs text-green-800 dark:text-green-300">
+                  <strong>✓ Connected:</strong> Displaying real-time data from the selected device.
+                </p>
+              </div>
+            ) : (
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                <p className="text-xs text-amber-800 dark:text-amber-300">
+                  <strong>Note:</strong> Select a device above to display real-time data, or leave empty to use mock data.
+                </p>
+              </div>
+            )}
           </>
         );
 
@@ -232,20 +290,25 @@ export function BlockConfigPanel({ block, onUpdate, onClose }: BlockConfigPanelP
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Device ID
+                Device
               </label>
-              <input
-                type="text"
+              <select
                 value={config.deviceId || ''}
                 onChange={(e) => handleChange('deviceId', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter device ID"
-              />
+              >
+                <option value="">All devices</option>
+                {devices.map((device) => (
+                  <option key={device.id} value={device.deviceId}>
+                    {device.name} ({device.deviceId.slice(-6)})
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
               <p className="text-xs text-blue-800 dark:text-blue-300">
-                <strong>Tip:</strong> Leave device ID empty to show data from all devices, or enter a specific device ID to filter.
+                <strong>Tip:</strong> Leave empty to show data from all devices, or select a specific device to filter.
               </p>
             </div>
           </>

@@ -1,0 +1,109 @@
+import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { apiClient } from '@/lib/api-client';
+import { socket } from '@/lib/socket';
+import type { Device, DeviceState } from '@repo/types';
+
+/**
+ * Fetch all devices
+ */
+export function useDevices() {
+  return useQuery<Device[]>({
+    queryKey: ['devices'],
+    queryFn: async () => {
+      const response = await apiClient.get<Device[]>('/devices');
+      return response.data;
+    },
+    refetchInterval: 30000, // Refetch every 30 seconds
+  });
+}
+
+/**
+ * Fetch a single device by ID
+ */
+export function useDevice(deviceId?: string) {
+  return useQuery<Device>({
+    queryKey: ['devices', deviceId],
+    queryFn: async () => {
+      if (!deviceId) throw new Error('Device ID is required');
+      const response = await apiClient.get<Device>(`/devices/${deviceId}`);
+      return response.data;
+    },
+    enabled: !!deviceId,
+  });
+}
+
+/**
+ * Fetch device states (historical data)
+ */
+export function useDeviceStates(deviceId?: string, options?: { limit?: number }) {
+  return useQuery<DeviceState[]>({
+    queryKey: ['device-states', deviceId, options],
+    queryFn: async () => {
+      if (!deviceId) return [];
+      const params = new URLSearchParams();
+      if (options?.limit) params.append('limit', options.limit.toString());
+
+      const response = await apiClient.get<DeviceState[]>(
+        `/devices/${deviceId}/states?${params}`
+      );
+      return response.data;
+    },
+    enabled: !!deviceId,
+    refetchInterval: 5000, // Refetch every 5 seconds
+  });
+}
+
+/**
+ * Real-time device state updates via WebSocket
+ */
+export function useDeviceRealtime(deviceId?: string) {
+  const [latestState, setLatestState] = useState<DeviceState | null>(null);
+
+  useEffect(() => {
+    if (!deviceId) return;
+
+    // Connect to WebSocket
+    socket.connect();
+
+    // Subscribe to device updates
+    socket.emit('subscribe', { deviceId });
+
+    // Listen for state updates
+    const handleStateUpdate = (state: DeviceState) => {
+      if (state.deviceId === deviceId) {
+        setLatestState(state);
+      }
+    };
+
+    socket.on('device:state', handleStateUpdate);
+
+    return () => {
+      socket.off('device:state', handleStateUpdate);
+      socket.emit('unsubscribe', { deviceId });
+    };
+  }, [deviceId]);
+
+  return latestState;
+}
+
+/**
+ * Get available fields from device attributes
+ */
+export function useDeviceFields(deviceId?: string) {
+  const { data: device } = useDevice(deviceId);
+  const { data: states } = useDeviceStates(deviceId, { limit: 1 });
+
+  // Extract fields from device attributes or latest state
+  const fields = new Set<string>();
+
+  if (device?.attributes?.sensors && Array.isArray(device.attributes.sensors)) {
+    device.attributes.sensors.forEach((sensor: string) => fields.add(sensor));
+  }
+
+  if (states && states.length > 0 && states[0].data) {
+    Object.keys(states[0].data).forEach((key) => fields.add(key));
+  }
+
+  return Array.from(fields);
+}
