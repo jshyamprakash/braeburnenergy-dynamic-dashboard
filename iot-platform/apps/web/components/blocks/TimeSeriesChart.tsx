@@ -3,6 +3,12 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { downsampleLTTB, getOptimalThreshold } from '@/lib/utils/downsample';
 import {
+  exportTimeSeriesDataToCSV,
+  exportChartAsPNG,
+  exportChartAsSVG,
+} from '@/lib/utils/export';
+import { toast } from '@/lib/utils/toast';
+import {
   LineChart,
   Line,
   AreaChart,
@@ -127,7 +133,9 @@ export function TimeSeriesChart({
 
   // Track chart container width for optimal downsampling
   const containerRef = useRef<HTMLDivElement>(null);
+  const chartRef = useRef<HTMLDivElement>(null);
   const [chartWidth, setChartWidth] = useState(800); // Default width
+  const [showExportMenu, setShowExportMenu] = useState(false);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -140,6 +148,59 @@ export function TimeSeriesChart({
     observer.observe(containerRef.current);
     return () => observer.disconnect();
   }, []);
+
+  // Export handlers
+  const handleExportCSV = () => {
+    try {
+      exportTimeSeriesDataToCSV(data, title);
+      toast.success('CSV exported successfully');
+      setShowExportMenu(false);
+    } catch (error) {
+      toast.error(error, 'Failed to export CSV');
+    }
+  };
+
+  const handleExportPNG = async () => {
+    try {
+      const svgElement = chartRef.current?.querySelector('svg');
+      if (!svgElement) {
+        throw new Error('Chart not found');
+      }
+
+      const dateStr = new Date().toISOString().split('T')[0];
+      const titleSlug = title
+        ? title.toLowerCase().replace(/\s+/g, '_')
+        : 'chart';
+      const filename = `${titleSlug}_${dateStr}.png`;
+
+      await exportChartAsPNG(svgElement, filename);
+      toast.success('Chart exported as PNG');
+      setShowExportMenu(false);
+    } catch (error) {
+      toast.error(error, 'Failed to export PNG');
+    }
+  };
+
+  const handleExportSVG = () => {
+    try {
+      const svgElement = chartRef.current?.querySelector('svg');
+      if (!svgElement) {
+        throw new Error('Chart not found');
+      }
+
+      const dateStr = new Date().toISOString().split('T')[0];
+      const titleSlug = title
+        ? title.toLowerCase().replace(/\s+/g, '_')
+        : 'chart';
+      const filename = `${titleSlug}_${dateStr}.svg`;
+
+      exportChartAsSVG(svgElement, filename);
+      toast.success('Chart exported as SVG');
+      setShowExportMenu(false);
+    } catch (error) {
+      toast.error(error, 'Failed to export SVG');
+    }
+  };
 
   // Process data for chart with intelligent downsampling
   const chartData = useMemo(() => {
@@ -346,17 +407,64 @@ export function TimeSeriesChart({
   return (
     <div ref={containerRef} className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4">
       {/* Header */}
-      {title && (
-        <div className="mb-4">
+      <div className="mb-4 flex items-center justify-between">
+        {title && (
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
-        </div>
-      )}
+        )}
+
+        {/* Export Button with Dropdown */}
+        {chartData.length > 0 && (
+          <div className="relative">
+            <button
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              className="px-3 py-1.5 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center gap-2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+              </svg>
+              Export
+            </button>
+
+            {/* Dropdown Menu */}
+            {showExportMenu && (
+              <>
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setShowExportMenu(false)}
+                />
+                <div className="absolute right-0 mt-2 w-40 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-20">
+                  <button
+                    onClick={handleExportCSV}
+                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    Export as CSV
+                  </button>
+                  <button
+                    onClick={handleExportPNG}
+                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    Export as PNG
+                  </button>
+                  <button
+                    onClick={handleExportSVG}
+                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    Export as SVG
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Chart */}
       {chartData.length > 0 ? (
-        <ResponsiveContainer width="100%" height={height}>
-          {renderChart()}
-        </ResponsiveContainer>
+        <div ref={chartRef}>
+          <ResponsiveContainer width="100%" height={height}>
+            {renderChart()}
+          </ResponsiveContainer>
+        </div>
       ) : (
         <div
           className="flex items-center justify-center text-gray-500 dark:text-gray-400 text-sm"

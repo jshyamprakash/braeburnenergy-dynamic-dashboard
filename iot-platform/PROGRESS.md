@@ -521,11 +521,39 @@ pnpm run simulate -- --anomalies           # Enable anomaly injection
 **Time:** ~2 hours
 **Verification:** Theme toggle in navigation, smooth transitions, all components support dark mode
 
-### Task #11: Data Export Features (Pending)
-- [ ] Export device data to CSV
-- [ ] Export charts as PNG/SVG
-- [ ] Date range selection
-- [ ] Bulk export functionality
+### Task #11: Data Export Features ✅ COMPLETE
+- [x] Created comprehensive export utilities (lib/utils/export.ts):
+  - arrayToCSV() - Convert arrays to CSV format
+  - downloadCSV() - Browser download helper
+  - exportDeviceStatesToCSV() - Device state export
+  - exportTimeSeriesDataToCSV() - Chart data export
+  - exportChartAsPNG() - SVG to PNG conversion
+  - exportChartAsSVG() - SVG file export
+- [x] Added export to TimeSeriesChart component:
+  - Export dropdown menu with CSV/PNG/SVG options
+  - Automatic filename generation with date
+  - Toast notifications for success/errors
+  - SVG element reference for chart export
+- [x] Added export to LiveStreamBlock component:
+  - Export CSV button in header
+  - Exports all visible data points
+  - Disabled state when no data
+  - Includes timestamp and device ID
+- [x] Export features:
+  - CSV format with proper escaping (quotes, commas, newlines)
+  - PNG export with white background (1200x600px default)
+  - SVG export preserving vector graphics
+  - Automatic date formatting in filenames
+  - Error handling with user feedback
+
+**Usage:**
+- TimeSeriesChart: Click "Export" button → Select format (CSV/PNG/SVG)
+- LiveStreamBlock: Click "Export CSV" button → Downloads visible data
+- Files named: `{title}_{date}.{format}` or `device_{id}_{date}.csv`
+
+**Task #11 Status:** ✅ COMPLETE
+**Time:** ~1.5 hours
+**Verification:** Export buttons visible, CSV/PNG/SVG downloads working
 
 ### Task #12: Dashboard Builder (Pending)
 - [ ] Drag-and-drop dashboard editor

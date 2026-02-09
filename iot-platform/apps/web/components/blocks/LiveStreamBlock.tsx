@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { List, type ListImperativeAPI } from 'react-window';
 import type { DeviceState } from '@/lib/types';
+import { exportDeviceStatesToCSV } from '@/lib/utils/export';
+import { toast } from '@/lib/utils/toast';
 
 interface LiveStreamBlockProps {
   /**
@@ -219,6 +221,34 @@ export function LiveStreamBlock({
             className="px-3 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
           >
             Clear
+          </button>
+          <button
+            onClick={() => {
+              if (updates.length === 0) {
+                toast.error('No data to export');
+                return;
+              }
+              try {
+                // Convert updates to export format
+                const exportData = updates.map((update) => ({
+                  timestamp: new Date(update.timestamp).toISOString(),
+                  deviceId: deviceId || 'unknown',
+                  ...update.data,
+                }));
+                exportDeviceStatesToCSV(exportData, deviceId);
+                toast.success(`Exported ${updates.length} data points to CSV`);
+              } catch (error) {
+                toast.error(error, 'Failed to export CSV');
+              }
+            }}
+            disabled={updates.length === 0}
+            className="px-3 py-1 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded hover:bg-blue-200 dark:hover:bg-blue-900/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+            title="Export visible data to CSV"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+            </svg>
+            Export CSV
           </button>
         </div>
       </div>
