@@ -1,0 +1,14 @@
+{
+  "name": "@iot-platform/scripts",
+  "version": "1.0.0",
+  "description": "Utility scripts for IoT Platform",
+  "private": true,
+  "scripts": {
+    "simulate": "tsx device-simulator.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.10",
+    "tsx": "^4.21.0",
+    "ulid": "^2.4.0"
+  }
+}

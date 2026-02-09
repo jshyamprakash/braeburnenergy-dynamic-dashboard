@@ -1,85 +1,37 @@
-# IoT Platform - Helper Scripts
+# Device Simulator
 
-Convenient scripts to manage the development environment.
+Generate realistic IoT device data for testing and demonstrations.
 
-## Available Scripts
-
-### 🚀 `start.sh`
-Start the entire application (backend + frontend)
+## Quick Start
 
 ```bash
-./scripts/start.sh
+# From project root
+pnpm run simulate
+
+# Or from scripts directory  
+cd scripts
+pnpm run simulate
 ```
 
-**What it does:**
-- Stops any running instances
-- Starts both backend and frontend with Turborepo
-- Shows service URLs
-
-### 🛑 `stop.sh`
-Stop all running services
+## Usage Examples
 
 ```bash
-./scripts/stop.sh
+# Default: 3 devices, 2 second interval
+pnpm run simulate
+
+# 5 devices with 1 second updates
+pnpm run simulate -- --devices 5 --interval 1s
+
+# 10 devices with anomalies enabled
+pnpm run simulate -- --devices 10 --interval 500ms --anomalies
 ```
 
-**What it does:**
-- Gracefully stops the backend API
-- Gracefully stops the frontend dev server
+## Device Profiles
 
-### 🔍 `status.sh`
-Check service health and status
+- **Temperature Sensor**: temperature, humidity
+- **Pressure Sensor**: pressure, temperature
+- **Air Quality Sensor**: co2, pm25, voc
+- **Energy Meter**: power, voltage, current
+- **Vibration Sensor**: vibration_x/y/z, temperature
 
-```bash
-./scripts/status.sh
-```
-
-**What it shows:**
-- Backend API status (port 3001)
-- Frontend status (port 3000)
-- Database connectivity
-- Process IDs
-- Health check results
-
-## Quick Reference
-
-```bash
-# Start everything
-./scripts/start.sh
-
-# Check status
-./scripts/status.sh
-
-# Stop everything
-./scripts/stop.sh
-```
-
-## Manual Commands
-
-If you prefer to run services manually:
-
-### Start with Turbo (Recommended)
-```bash
-pnpm dev
-```
-
-### Start Backend Only
-```bash
-cd apps/api
-pnpm dev
-```
-
-### Start Frontend Only
-```bash
-cd apps/web
-pnpm dev
-```
-
-## Ports
-
-| Service | Port | URL |
-|---------|------|-----|
-| Frontend | 3000 | http://localhost:3000 |
-| Backend API | 3001 | http://localhost:3001 |
-| API Docs | 3001 | http://localhost:3001/docs |
-| Database | 5432 | postgresql://localhost:5432/iot_platform |
+Generates realistic data with drift, noise, and optional anomalies.

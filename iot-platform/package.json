@@ -11,7 +11,8 @@
     "clean": "turbo run clean && rm -rf node_modules",
     "start": "./scripts/start.sh",
     "stop": "./scripts/stop.sh",
-    "status": "./scripts/status.sh"
+    "status": "./scripts/status.sh",
+    "simulate": "cd scripts && pnpm run simulate"
   },
   "devDependencies": {
     "turbo": "^1.11.3"

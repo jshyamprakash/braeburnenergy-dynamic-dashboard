@@ -149,6 +149,18 @@ importers:
         specifier: ^5.3.3
         version: 5.9.3
 
+  scripts:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.19.10
+        version: 22.19.10
+      tsx:
+        specifier: ^4.21.0
+        version: 4.21.0
+      ulid:
+        specifier: ^2.4.0
+        version: 2.4.0
+
 packages:
 
   /@alloc/quick-lru@5.2.0:
@@ -1409,6 +1421,12 @@ packages:
     resolution: {integrity: sha512-5jsi0wpncvTD33Sh1UCgacK37FFwDn+EG7wCmEvs62fCvBL+n8/76cAYDok21NF6+jaVWIqKwCZyX7Vbu8eB3A==}
     dependencies:
       undici-types: 6.21.0
+
+  /@types/node@22.19.10:
+    resolution: {integrity: sha512-tF5VOugLS/EuDlTBijk0MqABfP8UxgYazTLo3uIn3b4yJgg26QRbVYJYsDtHrjdDUIRfP70+VfhTTc+CE1yskw==}
+    dependencies:
+      undici-types: 6.21.0
+    dev: true
 
   /@types/react-dom@19.2.3(@types/react@19.2.13):
     resolution: {integrity: sha512-jp2L/eY6fn+KgVVQAOqYItbF0VY/YApe5Mz2F0aykSO8gx31bYCZyvSeYxCHKvzHG5eZjc+zyaS5BrBWya2+kQ==}
@@ -5375,6 +5393,11 @@ packages:
   /typescript@5.9.3:
     resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
     engines: {node: '>=14.17'}
+    hasBin: true
+    dev: true
+
+  /ulid@2.4.0:
+    resolution: {integrity: sha512-fIRiVTJNcSRmXKPZtGzFQv9WRrZ3M9eoptl/teFJvjOzmpU+/K/JH6HZ8deBfb5vMEpicJcLn7JmvdknlMq7Zg==}
     hasBin: true
     dev: true
 
