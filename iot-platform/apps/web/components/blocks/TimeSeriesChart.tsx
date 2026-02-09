@@ -210,12 +210,6 @@ export function TimeSeriesChart({
 
   // Process data for chart with intelligent downsampling
   const chartData = useMemo(() => {
-    console.log('[TimeSeriesChart] Input data:', data.length, 'points');
-    console.log('[TimeSeriesChart] Series config:', series);
-    if (data.length > 0) {
-      console.log('[TimeSeriesChart] Sample data point:', data[0]);
-    }
-
     // Convert to chart format
     const formattedData = data.map((point) => {
       const timestamp = new Date(point.timestamp);

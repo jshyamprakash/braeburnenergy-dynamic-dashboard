@@ -100,13 +100,21 @@ export function BlockPalette({ onAddBlock, onClose }: BlockPaletteProps) {
         <h4 className="text-sm font-medium text-blue-900 dark:text-blue-300 mb-2">
           How to use:
         </h4>
-        <ul className="text-xs text-blue-700 dark:text-blue-400 space-y-1">
+        <ul className="text-xs text-blue-700 dark:text-blue-400 space-y-1 mb-3">
           <li>• Click a block type to add it to your dashboard</li>
           <li>• Drag blocks to reposition them</li>
           <li>• Resize blocks by dragging corners or edges</li>
           <li>• Click the settings icon (⋮) to open block options</li>
-          <li>• Select "Edit Settings" to configure block properties</li>
-          <li>• Select "Delete Block" to remove a block</li>
+          <li>• Select "Edit Settings" to configure properties</li>
+          <li>• Select "Duplicate Block" to create a copy</li>
+        </ul>
+        <h4 className="text-sm font-medium text-blue-900 dark:text-blue-300 mb-2">
+          Keyboard shortcuts:
+        </h4>
+        <ul className="text-xs text-blue-700 dark:text-blue-400 space-y-1">
+          <li>• <kbd className="px-1 bg-blue-100 dark:bg-blue-900/40 rounded">Delete</kbd> - Remove selected block</li>
+          <li>• <kbd className="px-1 bg-blue-100 dark:bg-blue-900/40 rounded">Ctrl+D</kbd> - Duplicate selected block</li>
+          <li>• <kbd className="px-1 bg-blue-100 dark:bg-blue-900/40 rounded">Esc</kbd> - Close config panel</li>
         </ul>
       </div>
     </div>

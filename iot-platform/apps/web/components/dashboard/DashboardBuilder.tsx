@@ -105,6 +105,42 @@ export function DashboardBuilder({
     }
   }, [dashboardId, initialBlocks.length]);
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    if (!isEditMode) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Delete/Backspace - Remove selected block
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedBlockId) {
+        // Don't delete if user is typing in an input
+        if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') {
+          return;
+        }
+        e.preventDefault();
+        handleRemoveBlock(selectedBlockId);
+      }
+
+      // Escape - Close config panel or deselect
+      if (e.key === 'Escape') {
+        if (selectedBlockId) {
+          setSelectedBlockId(null);
+        }
+        if (blockMenuOpen) {
+          setBlockMenuOpen(null);
+        }
+      }
+
+      // Ctrl/Cmd+D - Duplicate selected block
+      if ((e.ctrlKey || e.metaKey) && e.key === 'd' && selectedBlockId) {
+        e.preventDefault();
+        handleDuplicateBlock(selectedBlockId);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isEditMode, selectedBlockId, blockMenuOpen]);
+
   // Measure container width for responsive grid
   useEffect(() => {
     if (!gridContainerRef.current) return;
@@ -193,19 +229,13 @@ export function DashboardBuilder({
 
     // Add mock data for chart blocks
     if (type === 'chart') {
-      const mockData = generateMockChartData(24);
-      console.log('[DashboardBuilder] Generated mock data:', mockData.length, 'points');
-      console.log('[DashboardBuilder] Sample point:', mockData[0]);
-
-      defaultConfig.data = mockData;
+      defaultConfig.data = generateMockChartData(24);
       defaultConfig.series = [
         { key: 'temperature', label: 'Temperature', color: '#ef4444', unit: '°C' },
         { key: 'humidity', label: 'Humidity', color: '#3b82f6', unit: '%' },
         { key: 'pressure', label: 'Pressure', color: '#10b981', unit: 'hPa' },
       ];
       defaultConfig.chartType = 'line';
-
-      console.log('[DashboardBuilder] Created chart config:', defaultConfig);
     }
 
     const newBlock: DashboardBlock = {
@@ -262,6 +292,30 @@ export function DashboardBuilder({
     toast.success('Block removed');
   };
 
+  const handleDuplicateBlock = (blockId: string) => {
+    const blockToDuplicate = blocks.find((b) => b.id === blockId);
+    if (!blockToDuplicate) return;
+
+    const newId = `block_${Date.now()}`;
+    const duplicatedBlock: DashboardBlock = {
+      ...blockToDuplicate,
+      id: newId,
+      layouts: {
+        lg: { ...blockToDuplicate.layouts.lg, i: newId, x: (blockToDuplicate.layouts.lg.x + 3) % 12, y: Infinity },
+        md: { ...blockToDuplicate.layouts.md, i: newId, x: (blockToDuplicate.layouts.md.x + 3) % 10, y: Infinity },
+        sm: { ...blockToDuplicate.layouts.sm, i: newId, x: 0, y: Infinity },
+      },
+      config: {
+        ...blockToDuplicate.config,
+        title: `${blockToDuplicate.config.title || 'Block'} (Copy)`,
+      },
+    };
+
+    setBlocks([...blocks, duplicatedBlock]);
+    setSelectedBlockId(newId);
+    toast.success('Block duplicated');
+  };
+
   const handleUpdateBlockConfig = (blockId: string, config: DashboardBlock['config']) => {
     setBlocks((prevBlocks) =>
       prevBlocks.map((block) =>
@@ -303,15 +357,15 @@ export function DashboardBuilder({
           );
 
         case 'chart':
-          console.log('[DashboardBuilder] Rendering chart block:', block.id);
-          console.log('[DashboardBuilder] Chart data length:', block.config.data?.length || 0);
-          console.log('[DashboardBuilder] Chart series:', block.config.series);
           return (
             <TimeSeriesChart
               data={block.config.data || []}
               series={block.config.series || []}
               title={block.config.title || 'Chart'}
               type={block.config.chartType || 'line'}
+              showLegend={block.config.showLegend !== false}
+              showGrid={block.config.showGrid !== false}
+              smooth={block.config.smooth !== false}
               hideExport={true}
             />
           );
@@ -379,6 +433,19 @@ export function DashboardBuilder({
                         <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
                       Edit Settings
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDuplicateBlock(block.id);
+                        setBlockMenuOpen(null);
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-2"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75" />
+                      </svg>
+                      Duplicate Block
                     </button>
                     <button
                       onClick={(e) => {
