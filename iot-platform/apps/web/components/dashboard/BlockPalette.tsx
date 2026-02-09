@@ -103,9 +103,10 @@ export function BlockPalette({ onAddBlock, onClose }: BlockPaletteProps) {
         <ul className="text-xs text-blue-700 dark:text-blue-400 space-y-1">
           <li>• Click a block type to add it to your dashboard</li>
           <li>• Drag blocks to reposition them</li>
-          <li>• Resize blocks by dragging corners</li>
-          <li>• Click the gear icon to configure</li>
-          <li>• Click the X to remove a block</li>
+          <li>• Resize blocks by dragging corners or edges</li>
+          <li>• Click the settings icon (⋮) to open block options</li>
+          <li>• Select "Edit Settings" to configure block properties</li>
+          <li>• Select "Delete Block" to remove a block</li>
         </ul>
       </div>
     </div>

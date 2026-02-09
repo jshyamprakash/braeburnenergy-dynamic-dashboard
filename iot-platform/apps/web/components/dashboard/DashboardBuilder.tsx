@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Responsive as ResponsiveGridLayout, Layout, Layouts } from 'react-grid-layout';
 import { GaugeBlock } from '../blocks/GaugeBlock';
 import { TimeSeriesChart } from '../blocks/TimeSeriesChart';
@@ -9,6 +9,26 @@ import { BlockPalette } from './BlockPalette';
 import { BlockConfigPanel } from './BlockConfigPanel';
 import { saveDashboardLayout, loadDashboardLayout } from '@/lib/utils/dashboard-storage';
 import { toast } from '@/lib/utils/toast';
+
+/**
+ * Generate mock time-series data for chart blocks
+ */
+function generateMockChartData(points: number = 24) {
+  const now = Date.now();
+  const data = [];
+
+  for (let i = 0; i < points; i++) {
+    const timestamp = new Date(now - (points - i) * 3600 * 1000); // Hourly data
+    data.push({
+      timestamp: timestamp.toISOString(),
+      temperature: 20 + Math.random() * 15 + Math.sin(i / 3) * 5, // 20-35°C with wave pattern
+      humidity: 40 + Math.random() * 30 + Math.cos(i / 4) * 10, // 30-70% with wave pattern
+      pressure: 1000 + Math.random() * 30 + Math.sin(i / 6) * 5, // 995-1030 hPa
+    });
+  }
+
+  return data;
+}
 
 export interface DashboardBlock {
   id: string;
@@ -63,20 +83,46 @@ export function DashboardBuilder({
   isEditMode: externalEditMode,
   onEditModeChange,
 }: DashboardBuilderProps) {
-  const [blocks, setBlocks] = useState<DashboardBlock[]>(() => {
-    if (initialBlocks.length > 0) return initialBlocks;
-    // Try to load from localStorage
-    const saved = loadDashboardLayout(dashboardId);
-    return saved || [];
-  });
-
+  const [blocks, setBlocks] = useState<DashboardBlock[]>(initialBlocks);
   const [internalEditMode, setInternalEditMode] = useState(false);
   const isEditMode = externalEditMode !== undefined ? externalEditMode : internalEditMode;
 
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [showPalette, setShowPalette] = useState(false);
+  const [containerWidth, setContainerWidth] = useState(1200);
+  const [blockMenuOpen, setBlockMenuOpen] = useState<string | null>(null);
+  const gridContainerRef = useRef<HTMLDivElement>(null);
 
   const selectedBlock = blocks.find((b) => b.id === selectedBlockId);
+
+  // Load from localStorage on client mount (avoid hydration mismatch)
+  useEffect(() => {
+    if (initialBlocks.length === 0 && typeof window !== 'undefined') {
+      const saved = loadDashboardLayout(dashboardId);
+      if (saved) {
+        setBlocks(saved);
+      }
+    }
+  }, [dashboardId, initialBlocks.length]);
+
+  // Measure container width for responsive grid
+  useEffect(() => {
+    if (!gridContainerRef.current) return;
+
+    const observer = new ResizeObserver((entries) => {
+      if (entries[0]) {
+        const width = entries[0].contentRect.width;
+        setContainerWidth(width);
+      }
+    });
+
+    observer.observe(gridContainerRef.current);
+
+    // Set initial width
+    setContainerWidth(gridContainerRef.current.offsetWidth);
+
+    return () => observer.disconnect();
+  }, []);
 
   const handleEditModeToggle = () => {
     const newMode = !isEditMode;
@@ -89,6 +135,7 @@ export function DashboardBuilder({
     if (!newMode) {
       setSelectedBlockId(null);
       setShowPalette(false);
+      setBlockMenuOpen(null);
     }
   };
 
@@ -117,27 +164,49 @@ export function DashboardBuilder({
   const handleAddBlock = (type: DashboardBlock['type']) => {
     const newId = `block_${Date.now()}`;
 
-    // Define default sizes per breakpoint
+    // Define default sizes and constraints per breakpoint
     const defaultSizes = {
       gauge: {
-        lg: { w: 3, h: 5 },
-        md: { w: 5, h: 5 },
-        sm: { w: 6, h: 5 },
+        lg: { w: 3, h: 5, minW: 2, maxW: 4, minH: 4, maxH: 8 },
+        md: { w: 5, h: 5, minW: 3, maxW: 6, minH: 4, maxH: 8 },
+        sm: { w: 6, h: 5, minW: 4, maxW: 6, minH: 4, maxH: 8 },
       },
       chart: {
-        lg: { w: 6, h: 6 },
-        md: { w: 10, h: 6 },
-        sm: { w: 6, h: 6 },
+        lg: { w: 6, h: 6, minW: 4, maxW: 12, minH: 4, maxH: 12 },
+        md: { w: 10, h: 6, minW: 5, maxW: 10, minH: 4, maxH: 12 },
+        sm: { w: 6, h: 6, minW: 4, maxW: 6, minH: 4, maxH: 12 },
       },
       liveStream: {
-        lg: { w: 6, h: 7 },
-        md: { w: 10, h: 7 },
-        sm: { w: 6, h: 7 },
+        lg: { w: 6, h: 7, minW: 4, maxW: 12, minH: 5, maxH: 15 },
+        md: { w: 10, h: 7, minW: 5, maxW: 10, minH: 5, maxH: 15 },
+        sm: { w: 6, h: 7, minW: 4, maxW: 6, minH: 5, maxH: 15 },
       },
     };
 
     const sizes = defaultSizes[type];
     const baseX = (blocks.length * 2) % 12;
+
+    // Generate default config based on block type
+    const defaultConfig: DashboardBlock['config'] = {
+      title: `New ${type === 'gauge' ? 'Gauge' : type === 'chart' ? 'Chart' : 'Live Stream'}`,
+    };
+
+    // Add mock data for chart blocks
+    if (type === 'chart') {
+      const mockData = generateMockChartData(24);
+      console.log('[DashboardBuilder] Generated mock data:', mockData.length, 'points');
+      console.log('[DashboardBuilder] Sample point:', mockData[0]);
+
+      defaultConfig.data = mockData;
+      defaultConfig.series = [
+        { key: 'temperature', label: 'Temperature', color: '#ef4444', unit: '°C' },
+        { key: 'humidity', label: 'Humidity', color: '#3b82f6', unit: '%' },
+        { key: 'pressure', label: 'Pressure', color: '#10b981', unit: 'hPa' },
+      ];
+      defaultConfig.chartType = 'line';
+
+      console.log('[DashboardBuilder] Created chart config:', defaultConfig);
+    }
 
     const newBlock: DashboardBlock = {
       id: newId,
@@ -149,6 +218,10 @@ export function DashboardBuilder({
           y: Infinity,
           w: sizes.lg.w,
           h: sizes.lg.h,
+          minW: sizes.lg.minW,
+          maxW: sizes.lg.maxW,
+          minH: sizes.lg.minH,
+          maxH: sizes.lg.maxH,
         },
         md: {
           i: newId,
@@ -156,6 +229,10 @@ export function DashboardBuilder({
           y: Infinity,
           w: sizes.md.w,
           h: sizes.md.h,
+          minW: sizes.md.minW,
+          maxW: sizes.md.maxW,
+          minH: sizes.md.minH,
+          maxH: sizes.md.maxH,
         },
         sm: {
           i: newId,
@@ -163,11 +240,13 @@ export function DashboardBuilder({
           y: Infinity,
           w: sizes.sm.w,
           h: sizes.sm.h,
+          minW: sizes.sm.minW,
+          maxW: sizes.sm.maxW,
+          minH: sizes.sm.minH,
+          maxH: sizes.sm.maxH,
         },
       },
-      config: {
-        title: `New ${type === 'gauge' ? 'Gauge' : type === 'chart' ? 'Chart' : 'Live Stream'}`,
-      },
+      config: defaultConfig,
     };
 
     setBlocks([...blocks, newBlock]);
@@ -224,13 +303,16 @@ export function DashboardBuilder({
           );
 
         case 'chart':
+          console.log('[DashboardBuilder] Rendering chart block:', block.id);
+          console.log('[DashboardBuilder] Chart data length:', block.config.data?.length || 0);
+          console.log('[DashboardBuilder] Chart series:', block.config.series);
           return (
             <TimeSeriesChart
               data={block.config.data || []}
               series={block.config.series || []}
               title={block.config.title || 'Chart'}
               type={block.config.chartType || 'line'}
-              height={250}
+              hideExport={true}
             />
           );
 
@@ -258,41 +340,63 @@ export function DashboardBuilder({
             ? 'border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800'
             : 'bg-transparent'
         } ${isSelected ? 'ring-2 ring-blue-500' : ''}`}
-        onClick={(e) => {
-          if (isEditMode) {
-            e.stopPropagation();
-            setSelectedBlockId(block.id);
-          }
-        }}
       >
         {/* Edit mode controls */}
         {isEditMode && (
-          <div className="absolute top-2 right-2 z-10 flex gap-2">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelectedBlockId(block.id);
-              }}
-              className="p-1.5 bg-white dark:bg-gray-800 rounded shadow-sm hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600"
-              title="Configure"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-gray-700 dark:text-gray-300">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleRemoveBlock(block.id);
-              }}
-              className="p-1.5 bg-red-50 dark:bg-red-900/30 rounded shadow-sm hover:bg-red-100 dark:hover:bg-red-900/50 border border-red-200 dark:border-red-800"
-              title="Remove"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-red-600 dark:text-red-400">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+          <div className="absolute top-2 right-2 z-10">
+            <div className="relative">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setBlockMenuOpen(blockMenuOpen === block.id ? null : block.id);
+                }}
+                className="p-1.5 bg-white dark:bg-gray-800 rounded shadow-sm hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600"
+                title="Settings"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-gray-700 dark:text-gray-300">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" />
+                </svg>
+              </button>
+
+              {/* Dropdown Menu */}
+              {blockMenuOpen === block.id && (
+                <>
+                  <div
+                    className="fixed inset-0 z-10"
+                    onClick={() => setBlockMenuOpen(null)}
+                  />
+                  <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-20">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedBlockId(block.id);
+                        setBlockMenuOpen(null);
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-2"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      Edit Settings
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveBlock(block.id);
+                        setBlockMenuOpen(null);
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors flex items-center gap-2"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                      </svg>
+                      Delete Block
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         )}
 
@@ -302,9 +406,9 @@ export function DashboardBuilder({
   };
 
   return (
-    <div className="flex h-screen">
-      {/* Main Dashboard Area */}
-      <div className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900 p-4">
+    <div className="relative h-screen">
+      {/* Main Dashboard Area - Full width */}
+      <div className="w-full h-full overflow-auto bg-gray-50 dark:bg-gray-900 p-4">
         {/* Toolbar */}
         <div className="mb-4 flex items-center justify-between bg-white dark:bg-gray-800 rounded-lg shadow p-4">
           <div className="flex items-center gap-4">
@@ -353,6 +457,7 @@ export function DashboardBuilder({
         </div>
 
         {/* Grid Layout */}
+        <div ref={gridContainerRef} className="w-full">
         {blocks.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-96 bg-white dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor" className="w-16 h-16 text-gray-400 mb-4">
@@ -378,6 +483,7 @@ export function DashboardBuilder({
             breakpoints={{ lg: 1200, md: 996, sm: 768 }}
             cols={{ lg: 12, md: 10, sm: 6 }}
             rowHeight={60}
+            width={containerWidth}
             onLayoutChange={handleLayoutChange}
             isDraggable={isEditMode}
             isResizable={isEditMode}
@@ -385,27 +491,33 @@ export function DashboardBuilder({
             preventCollision={false}
             containerPadding={[0, 0]}
             margin={[16, 16]}
+            useCSSTransforms={true}
           >
             {blocks.map(renderBlock)}
           </ResponsiveGridLayout>
         )}
+        </div>
       </div>
 
-      {/* Block Palette Sidebar */}
+      {/* Block Palette Sidebar - Floating Overlay */}
       {isEditMode && showPalette && (
-        <BlockPalette
-          onAddBlock={handleAddBlock}
-          onClose={() => setShowPalette(false)}
-        />
+        <div className="fixed left-4 sm:left-6 lg:left-8 top-0 h-full z-20 shadow-xl">
+          <BlockPalette
+            onAddBlock={handleAddBlock}
+            onClose={() => setShowPalette(false)}
+          />
+        </div>
       )}
 
-      {/* Block Configuration Panel */}
+      {/* Block Configuration Panel - Floating Overlay */}
       {isEditMode && selectedBlock && (
-        <BlockConfigPanel
-          block={selectedBlock}
-          onUpdate={(config) => handleUpdateBlockConfig(selectedBlock.id, config)}
-          onClose={() => setSelectedBlockId(null)}
-        />
+        <div className="fixed right-4 sm:right-6 lg:right-8 top-0 h-full z-20 shadow-xl">
+          <BlockConfigPanel
+            block={selectedBlock}
+            onUpdate={(config) => handleUpdateBlockConfig(selectedBlock.id, config)}
+            onClose={() => setSelectedBlockId(null)}
+          />
+        </div>
       )}
     </div>
   );

@@ -16,6 +16,28 @@ const OLD_STORAGE_PREFIX = 'dashboard_layout_';
  */
 function migrateOldLayout(oldBlock: any): DashboardBlock {
   const oldLayout = oldBlock.layout;
+  const blockType = oldBlock.type;
+
+  // Define default constraints based on block type
+  const constraints = {
+    gauge: {
+      lg: { minW: 2, maxW: 4, minH: 4, maxH: 8 },
+      md: { minW: 3, maxW: 6, minH: 4, maxH: 8 },
+      sm: { minW: 4, maxW: 6, minH: 4, maxH: 8 },
+    },
+    chart: {
+      lg: { minW: 4, maxW: 12, minH: 4, maxH: 12 },
+      md: { minW: 5, maxW: 10, minH: 4, maxH: 12 },
+      sm: { minW: 4, maxW: 6, minH: 4, maxH: 12 },
+    },
+    liveStream: {
+      lg: { minW: 4, maxW: 12, minH: 5, maxH: 15 },
+      md: { minW: 5, maxW: 10, minH: 5, maxH: 15 },
+      sm: { minW: 4, maxW: 6, minH: 5, maxH: 15 },
+    },
+  };
+
+  const typeConstraints = constraints[blockType as keyof typeof constraints] || constraints.chart;
 
   // Create responsive layouts from old single layout
   const lgLayout: Layout = {
@@ -24,6 +46,7 @@ function migrateOldLayout(oldBlock: any): DashboardBlock {
     y: oldLayout.y,
     w: oldLayout.w,
     h: oldLayout.h,
+    ...typeConstraints.lg,
   };
 
   // Adjust for medium screens (10 cols)
@@ -33,6 +56,7 @@ function migrateOldLayout(oldBlock: any): DashboardBlock {
     y: oldLayout.y,
     w: Math.min(Math.ceil((oldLayout.w * 10) / 12), 10),
     h: oldLayout.h,
+    ...typeConstraints.md,
   };
 
   // Adjust for small screens (6 cols, full width)
@@ -42,6 +66,7 @@ function migrateOldLayout(oldBlock: any): DashboardBlock {
     y: oldLayout.y,
     w: 6,
     h: oldLayout.h,
+    ...typeConstraints.sm,
   };
 
   return {

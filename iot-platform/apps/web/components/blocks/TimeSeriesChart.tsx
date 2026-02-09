@@ -83,6 +83,11 @@ interface TimeSeriesChartProps {
    * Enable smooth curves (for line/area charts)
    */
   smooth?: boolean;
+
+  /**
+   * Hide export button
+   */
+  hideExport?: boolean;
 }
 
 /**
@@ -120,6 +125,7 @@ export function TimeSeriesChart({
   timeFormat = 'time',
   yAxisLabel,
   smooth = true,
+  hideExport = false,
 }: TimeSeriesChartProps) {
   // Default colors for series
   const defaultColors = [
@@ -204,6 +210,12 @@ export function TimeSeriesChart({
 
   // Process data for chart with intelligent downsampling
   const chartData = useMemo(() => {
+    console.log('[TimeSeriesChart] Input data:', data.length, 'points');
+    console.log('[TimeSeriesChart] Series config:', series);
+    if (data.length > 0) {
+      console.log('[TimeSeriesChart] Sample data point:', data[0]);
+    }
+
     // Convert to chart format
     const formattedData = data.map((point) => {
       const timestamp = new Date(point.timestamp);
@@ -405,15 +417,19 @@ export function TimeSeriesChart({
   };
 
   return (
-    <div ref={containerRef} className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4">
+    <div
+      ref={containerRef}
+      className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4 h-full flex flex-col"
+      style={{ minHeight: height ? `${height}px` : '300px' }}
+    >
       {/* Header */}
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex items-center justify-between flex-shrink-0">
         {title && (
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
         )}
 
         {/* Export Button with Dropdown */}
-        {chartData.length > 0 && (
+        {!hideExport && chartData.length > 0 && (
           <div className="relative">
             <button
               onClick={() => setShowExportMenu(!showExportMenu)}
@@ -458,24 +474,21 @@ export function TimeSeriesChart({
         )}
       </div>
 
-      {/* Chart */}
+      {/* Chart - grows to fill available space */}
       {chartData.length > 0 ? (
-        <div ref={chartRef}>
-          <ResponsiveContainer width="100%" height={height}>
+        <div ref={chartRef} className="flex-1 min-h-[200px]">
+          <ResponsiveContainer width="100%" height="100%">
             {renderChart()}
           </ResponsiveContainer>
         </div>
       ) : (
-        <div
-          className="flex items-center justify-center text-gray-500 dark:text-gray-400 text-sm"
-          style={{ height }}
-        >
+        <div className="flex-1 min-h-[200px] flex items-center justify-center text-gray-500 dark:text-gray-400 text-sm">
           No data available
         </div>
       )}
 
       {/* Footer Info */}
-      <div className="mt-3 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+      <div className="mt-3 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
         <div>
           {chartData.length} data point{chartData.length !== 1 ? 's' : ''}
         </div>

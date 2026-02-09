@@ -113,11 +113,11 @@ export function GaugeBlock({
     return 'Normal';
   }, [value, warningThreshold, criticalThreshold]);
 
-  // Size configurations - use 'auto' for responsive height
+  // Size configurations with min heights for standalone usage
   const sizeConfig = {
-    sm: { height: 'auto' as const, fontSize: 'text-xl', unitSize: 'text-xs', labelSize: 'text-xs', containerPadding: 'p-2' },
-    md: { height: 'auto' as const, fontSize: 'text-2xl', unitSize: 'text-sm', labelSize: 'text-sm', containerPadding: 'p-3' },
-    lg: { height: 'auto' as const, fontSize: 'text-3xl', unitSize: 'text-sm', labelSize: 'text-sm', containerPadding: 'p-4' },
+    sm: { minHeight: '180px', fontSize: 'text-xl', unitSize: 'text-xs', labelSize: 'text-xs', containerPadding: 'p-2' },
+    md: { minHeight: '240px', fontSize: 'text-2xl', unitSize: 'text-sm', labelSize: 'text-sm', containerPadding: 'p-3' },
+    lg: { minHeight: '300px', fontSize: 'text-3xl', unitSize: 'text-sm', labelSize: 'text-sm', containerPadding: 'p-4' },
   };
 
   const config = sizeConfig[size];
@@ -132,7 +132,10 @@ export function GaugeBlock({
   ];
 
   return (
-    <div className={`bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 h-full flex flex-col ${config.containerPadding}`}>
+    <div
+      className={`bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 h-full flex flex-col ${config.containerPadding}`}
+      style={{ minHeight: config.minHeight }}
+    >
       {/* Header */}
       {label && (
         <div className="mb-2 flex-shrink-0">
@@ -141,7 +144,7 @@ export function GaugeBlock({
       )}
 
       {/* Gauge Chart - grows to fill available space */}
-      <div className="relative flex-1 min-h-0">
+      <div className="relative flex-1 min-h-[100px]">
         <ResponsiveContainer width="100%" height="100%">
           <RadialBarChart
             cx="50%"
