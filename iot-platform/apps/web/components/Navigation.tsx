@@ -9,8 +9,9 @@ export function Navigation() {
   const links = [
     { href: '/', label: 'Home' },
     { href: '/devices', label: 'Devices' },
-    { href: '/dashboard-demo', label: 'Dashboard Demo' },
-    { href: '/websocket-test', label: 'WebSocket Test' },
+    { href: '/dashboard', label: 'Dashboard' },
+    { href: '/dashboard-demo', label: 'Demo' },
+    { href: '/websocket-test', label: 'WebSocket' },
   ];
 
   return (

@@ -115,9 +115,9 @@ export function GaugeBlock({
 
   // Size configurations
   const sizeConfig = {
-    sm: { height: 120, fontSize: 'text-xl', labelSize: 'text-xs', containerPadding: 'p-3' },
-    md: { height: 180, fontSize: 'text-3xl', labelSize: 'text-sm', containerPadding: 'p-4' },
-    lg: { height: 240, fontSize: 'text-4xl', labelSize: 'text-base', containerPadding: 'p-6' },
+    sm: { height: 120, fontSize: 'text-xl', unitSize: 'text-xs', labelSize: 'text-xs', containerPadding: 'p-3' },
+    md: { height: 180, fontSize: 'text-3xl', unitSize: 'text-sm', labelSize: 'text-sm', containerPadding: 'p-4' },
+    lg: { height: 240, fontSize: 'text-4xl', unitSize: 'text-base', labelSize: 'text-base', containerPadding: 'p-6' },
   };
 
   const config = sizeConfig[size];
@@ -173,7 +173,7 @@ export function GaugeBlock({
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <div className={`font-bold ${config.fontSize}`} style={{ color: gaugeColor }}>
               {value.toFixed(1)}
-              <span className="text-gray-500 ml-1">{unit}</span>
+              <span className={`${config.unitSize} text-gray-500 ml-1`}>{unit}</span>
             </div>
             <div className="text-xs text-gray-500 mt-1">
               {min} - {max} {unit}

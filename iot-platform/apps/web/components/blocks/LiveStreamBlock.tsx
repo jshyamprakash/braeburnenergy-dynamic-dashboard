@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { List, type ListImperativeAPI } from 'react-window';
 import type { DeviceState } from '@/lib/types';
 
 interface LiveStreamBlockProps {
@@ -73,12 +74,12 @@ export function LiveStreamBlock({
   const [updates, setUpdates] = useState<DeviceState[]>([]);
   const [updateCount, setUpdateCount] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
-  const streamRef = useRef<HTMLDivElement>(null);
+  const streamRef = useRef<ListImperativeAPI>(null);
 
   // Handle manual data injection (for demo)
   useEffect(() => {
     if (manualData && manualData.length > 0) {
-      const latestData = manualData[manualData.length - 1];
+      const latestData = manualData[0]; // Get first item (newest data)
       if (!isPaused) {
         setUpdates((prev) => {
           const updated = [latestData, ...prev];
@@ -89,12 +90,12 @@ export function LiveStreamBlock({
     }
   }, [manualData, maxUpdates, isPaused]);
 
-  // Auto-scroll to top when new data arrives
+  // Auto-scroll to top when new data arrives (for virtualized list)
   useEffect(() => {
-    if (autoScroll && streamRef.current && !isPaused) {
-      streamRef.current.scrollTop = 0;
+    if (autoScroll && streamRef.current && !isPaused && updates.length > 0) {
+      streamRef.current.scrollToRow({ index: 0, align: 'start' });
     }
-  }, [updates, autoScroll, isPaused]);
+  }, [updates.length, autoScroll, isPaused]);
 
   // Format timestamp
   const formatTime = (timestamp: string | Date) => {
@@ -119,6 +120,67 @@ export function LiveStreamBlock({
 
   // Get fields to display
   const displayFields = fields || (updates.length > 0 ? Object.keys(updates[0].data) : []);
+
+  // Row component for virtual list
+  const Row = ({
+    index,
+    style,
+    ariaAttributes
+  }: {
+    index: number;
+    style: React.CSSProperties;
+    ariaAttributes: {
+      'aria-posinset': number;
+      'aria-setsize': number;
+      role: 'listitem';
+    };
+  }) => {
+    const update = updates[index];
+    return (
+      <div
+        style={style}
+        {...ariaAttributes}
+        className={`px-4 py-3 hover:bg-white transition-colors border-b border-gray-200 ${
+          index === 0 ? 'bg-blue-50' : 'bg-gray-50'
+        }`}
+      >
+        {/* Timestamp */}
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-mono text-gray-500">
+            {formatTime(update.timestamp)}
+          </span>
+          {index === 0 && (
+            <span className="text-xs font-medium text-blue-600">New</span>
+          )}
+        </div>
+
+        {/* Field Values */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+          {displayFields.map((field) => (
+            <div
+              key={field}
+              className="bg-white px-2 py-1.5 rounded border border-gray-200"
+            >
+              <div className="text-xs text-gray-500 truncate">{field}</div>
+              <div className="text-sm font-medium text-gray-900 truncate">
+                {formatFieldValue(update.data, field)}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Raw JSON (collapsible) */}
+        <details className="mt-2">
+          <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-700">
+            View Raw JSON
+          </summary>
+          <pre className="mt-2 p-2 bg-gray-900 text-green-400 rounded text-xs overflow-x-auto">
+            {JSON.stringify(update.data, null, 2)}
+          </pre>
+        </details>
+      </div>
+    );
+  };
 
   return (
     <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
@@ -161,12 +223,8 @@ export function LiveStreamBlock({
         </div>
       </div>
 
-      {/* Stream Container */}
-      <div
-        ref={streamRef}
-        className="overflow-y-auto bg-gray-50"
-        style={{ height }}
-      >
+      {/* Stream Container with Virtual Scrolling */}
+      <div className="bg-gray-50" style={{ height }}>
         {updates.length === 0 ? (
           <div className="flex items-center justify-center h-full text-gray-500 text-sm">
             <div className="text-center">
@@ -178,51 +236,15 @@ export function LiveStreamBlock({
             </div>
           </div>
         ) : (
-          <div className="divide-y divide-gray-200">
-            {updates.map((update, index) => (
-              <div
-                key={`${update.id || update.timestamp}-${index}`}
-                className={`px-4 py-3 hover:bg-white transition-colors ${
-                  index === 0 ? 'bg-blue-50' : ''
-                }`}
-              >
-                {/* Timestamp */}
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-mono text-gray-500">
-                    {formatTime(update.timestamp)}
-                  </span>
-                  {index === 0 && (
-                    <span className="text-xs font-medium text-blue-600">New</span>
-                  )}
-                </div>
-
-                {/* Field Values */}
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                  {displayFields.map((field) => (
-                    <div
-                      key={field}
-                      className="bg-white px-2 py-1.5 rounded border border-gray-200"
-                    >
-                      <div className="text-xs text-gray-500 truncate">{field}</div>
-                      <div className="text-sm font-medium text-gray-900 truncate">
-                        {formatFieldValue(update.data, field)}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Raw JSON (collapsible) */}
-                <details className="mt-2">
-                  <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-700">
-                    View Raw JSON
-                  </summary>
-                  <pre className="mt-2 p-2 bg-gray-900 text-green-400 rounded text-xs overflow-x-auto">
-                    {JSON.stringify(update.data, null, 2)}
-                  </pre>
-                </details>
-              </div>
-            ))}
-          </div>
+          <List
+            listRef={streamRef}
+            rowCount={updates.length}
+            rowHeight={180}
+            defaultHeight={height}
+            className="scrollbar-thin"
+            rowComponent={Row}
+            rowProps={{}}
+          />
         )}
       </div>
 

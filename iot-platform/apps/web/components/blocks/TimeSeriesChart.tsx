@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
+import { downsampleLTTB, getOptimalThreshold } from '@/lib/utils/downsample';
 import {
   LineChart,
   Line,
@@ -124,9 +125,26 @@ export function TimeSeriesChart({
     '#ec4899', // pink-500
   ];
 
-  // Process data for chart
+  // Track chart container width for optimal downsampling
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [chartWidth, setChartWidth] = useState(800); // Default width
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0].contentRect.width;
+      setChartWidth(width);
+    });
+
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  // Process data for chart with intelligent downsampling
   const chartData = useMemo(() => {
-    return data.map((point) => {
+    // Convert to chart format
+    const formattedData = data.map((point) => {
       const timestamp = new Date(point.timestamp);
       let formattedTime: string;
 
@@ -159,7 +177,24 @@ export function TimeSeriesChart({
         timestamp: timestamp.getTime(), // For sorting
       };
     }).sort((a, b) => a.timestamp - b.timestamp);
-  }, [data, timeFormat]);
+
+    // Apply LTTB downsampling for better performance
+    const threshold = getOptimalThreshold(chartWidth, formattedData.length);
+
+    if (formattedData.length > threshold) {
+      // Use first series key for downsampling calculation
+      const firstSeriesKey = series[0]?.key;
+      const downsampled = downsampleLTTB(formattedData, threshold, firstSeriesKey);
+
+      console.log(
+        `[TimeSeriesChart] Downsampled ${formattedData.length} → ${downsampled.length} points (${Math.round((1 - downsampled.length / formattedData.length) * 100)}% reduction)`
+      );
+
+      return downsampled;
+    }
+
+    return formattedData;
+  }, [data, timeFormat, chartWidth, series]);
 
   // Custom tooltip
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -309,7 +344,7 @@ export function TimeSeriesChart({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow border border-gray-200 p-4">
+    <div ref={containerRef} className="bg-white rounded-lg shadow border border-gray-200 p-4">
       {/* Header */}
       {title && (
         <div className="mb-4">

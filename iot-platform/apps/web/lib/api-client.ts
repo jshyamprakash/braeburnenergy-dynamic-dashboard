@@ -1,4 +1,10 @@
 import type { ApiResponse } from './types';
+import {
+  NetworkError,
+  createApiError,
+  getErrorMessage,
+  getUserFriendlyMessage,
+} from './api-error';
 
 // API base URL (from environment variable or default to localhost)
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -17,21 +23,49 @@ class ApiClient {
   ): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
 
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      },
-    });
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          ...options?.headers,
+        },
+      });
 
-    const data: ApiResponse<T> = await response.json();
+      // Handle non-JSON responses (e.g., 500 errors with HTML)
+      const contentType = response.headers.get('content-type');
+      const isJson = contentType?.includes('application/json');
 
-    if (!data.success) {
-      throw new Error(data.error.message);
+      if (!response.ok) {
+        // Try to parse error from JSON response
+        if (isJson) {
+          const errorData: ApiResponse<T> = await response.json();
+          const message = errorData.error?.message || getErrorMessage(response.status);
+          throw createApiError(response.status, message, errorData.error);
+        } else {
+          // Non-JSON error response (e.g., nginx error page)
+          const message = getErrorMessage(response.status);
+          throw createApiError(response.status, message);
+        }
+      }
+
+      const data: ApiResponse<T> = await response.json();
+
+      if (!data.success) {
+        const message = data.error?.message || 'Request failed';
+        throw createApiError(response.status, message, data.error);
+      }
+
+      return data.data;
+    } catch (error) {
+      // Network errors (no response from server)
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new NetworkError('Unable to connect to the server. Please check your connection.');
+      }
+
+      // Re-throw API errors
+      throw error;
     }
-
-    return data.data;
   }
 
   async get<T>(endpoint: string): Promise<{ data: T }> {
@@ -43,24 +77,37 @@ class ApiClient {
   async getPaginated<T>(endpoint: string): Promise<{ data: T[]; pagination: any }> {
     const url = `${this.baseURL}${endpoint}`;
 
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
-    const result = await response.json();
+      if (!response.ok) {
+        const message = getErrorMessage(response.status);
+        throw createApiError(response.status, message);
+      }
 
-    if (!result.success) {
-      throw new Error(result.error?.message || 'Request failed');
+      const result = await response.json();
+
+      if (!result.success) {
+        const message = result.error?.message || 'Request failed';
+        throw createApiError(response.status, message, result.error);
+      }
+
+      // Return both data and pagination from the backend response
+      return {
+        data: result.data,
+        pagination: result.pagination,
+      };
+    } catch (error) {
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new NetworkError();
+      }
+      throw error;
     }
-
-    // Return both data and pagination from the backend response
-    return {
-      data: result.data,
-      pagination: result.pagination,
-    };
   }
 
   async post<T>(endpoint: string, body: unknown): Promise<{ data: T }> {

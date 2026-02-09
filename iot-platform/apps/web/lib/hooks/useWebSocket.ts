@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { io, type Socket } from 'socket.io-client';
 import type { WebSocketEvent, DeviceState } from '../types';
+import { connectionToasts } from '../utils/toast';
 
 const WEBSOCKET_URL =
   process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'http://localhost:3001';
@@ -25,11 +26,18 @@ export function useWebSocket() {
     socket.on('connect', () => {
       console.log('[WebSocket] Connected:', socket.id);
       setIsConnected(true);
+      connectionToasts.connected();
     });
 
     socket.on('disconnect', () => {
       console.log('[WebSocket] Disconnected');
       setIsConnected(false);
+      connectionToasts.disconnected();
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('[WebSocket] Connection Error:', error);
+      connectionToasts.error(error);
     });
 
     socket.on('error', (error) => {
@@ -63,22 +71,25 @@ export function useDeviceStateUpdates(
     // Subscribe to device-specific updates
     socket.emit('subscribe:device', deviceId);
 
-    // Listen for state updates
-    const handleStateUpdate = (event: WebSocketEvent) => {
-      if (event.type === 'device:state:created') {
-        if (event.payload.deviceId === deviceId) {
-          onUpdate(event.payload.state);
-        }
-      }
+    // Listen for state updates (backend emits 'device:state')
+    const handleStateUpdate = (update: { deviceId: string; data: any; timestamp: Date }) => {
+      console.log('[WebSocket] Received device state:', update);
+      // Convert backend format to DeviceState format
+      onUpdate({
+        id: `ws-${Date.now()}`,
+        deviceId: update.deviceId,
+        data: update.data,
+        timestamp: new Date(update.timestamp).toISOString(),
+      });
     };
 
-    socket.on('device:state:update', handleStateUpdate);
+    socket.on('device:state', handleStateUpdate);
 
     // Cleanup
     return () => {
       console.log(`[WebSocket] Unsubscribing from device: ${deviceId}`);
       socket.emit('unsubscribe:device', deviceId);
-      socket.off('device:state:update', handleStateUpdate);
+      socket.off('device:state', handleStateUpdate);
     };
   }, [socket, isConnected, deviceId, onUpdate]);
 }
