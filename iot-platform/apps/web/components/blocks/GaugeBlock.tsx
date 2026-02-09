@@ -113,11 +113,11 @@ export function GaugeBlock({
     return 'Normal';
   }, [value, warningThreshold, criticalThreshold]);
 
-  // Size configurations
+  // Size configurations - use 'auto' for responsive height
   const sizeConfig = {
-    sm: { height: 120, fontSize: 'text-xl', unitSize: 'text-xs', labelSize: 'text-xs', containerPadding: 'p-3' },
-    md: { height: 180, fontSize: 'text-3xl', unitSize: 'text-sm', labelSize: 'text-sm', containerPadding: 'p-4' },
-    lg: { height: 240, fontSize: 'text-4xl', unitSize: 'text-base', labelSize: 'text-base', containerPadding: 'p-6' },
+    sm: { height: 'auto' as const, fontSize: 'text-xl', unitSize: 'text-xs', labelSize: 'text-xs', containerPadding: 'p-2' },
+    md: { height: 'auto' as const, fontSize: 'text-2xl', unitSize: 'text-sm', labelSize: 'text-sm', containerPadding: 'p-3' },
+    lg: { height: 'auto' as const, fontSize: 'text-3xl', unitSize: 'text-sm', labelSize: 'text-sm', containerPadding: 'p-4' },
   };
 
   const config = sizeConfig[size];
@@ -132,23 +132,23 @@ export function GaugeBlock({
   ];
 
   return (
-    <div className={`bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 ${config.containerPadding}`}>
+    <div className={`bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 h-full flex flex-col ${config.containerPadding}`}>
       {/* Header */}
       {label && (
-        <div className="mb-2">
+        <div className="mb-2 flex-shrink-0">
           <h3 className={`font-semibold text-gray-900 dark:text-gray-100 ${config.labelSize}`}>{label}</h3>
         </div>
       )}
 
-      {/* Gauge Chart */}
-      <div className="relative" style={{ height: config.height }}>
+      {/* Gauge Chart - grows to fill available space */}
+      <div className="relative flex-1 min-h-0">
         <ResponsiveContainer width="100%" height="100%">
           <RadialBarChart
             cx="50%"
             cy="50%"
-            innerRadius="70%"
-            outerRadius="100%"
-            barSize={size === 'sm' ? 12 : size === 'md' ? 16 : 20}
+            innerRadius="65%"
+            outerRadius="95%"
+            barSize={20}
             data={data}
             startAngle={180}
             endAngle={0}
@@ -170,7 +170,7 @@ export function GaugeBlock({
 
         {/* Value Overlay */}
         {showValue && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
             <div className={`font-bold ${config.fontSize}`} style={{ color: gaugeColor }}>
               {value.toFixed(1)}
               <span className={`${config.unitSize} text-gray-500 dark:text-gray-400 ml-1`}>{unit}</span>
@@ -183,7 +183,7 @@ export function GaugeBlock({
       </div>
 
       {/* Status and Thresholds */}
-      <div className="mt-3 flex items-center justify-between text-xs">
+      <div className="mt-2 flex items-center justify-between text-xs flex-shrink-0">
         <div className="flex items-center gap-2">
           <div
             className={`px-2 py-1 rounded-full font-medium ${

@@ -211,50 +211,38 @@ export function DashboardBuilder({
       switch (block.type) {
         case 'gauge':
           return (
-            <div className="w-full h-full flex items-center justify-center p-2">
-              <div className="w-full h-full max-w-full">
-                <GaugeBlock
-                  value={block.config.value || 75}
-                  min={block.config.min || 0}
-                  max={block.config.max || 100}
-                  label={block.config.title || 'Gauge'}
-                  unit={block.config.unit || ''}
-                  warningThreshold={block.config.warningThreshold}
-                  criticalThreshold={block.config.criticalThreshold}
-                  size="md"
-                />
-              </div>
-            </div>
+            <GaugeBlock
+              value={block.config.value || 75}
+              min={block.config.min || 0}
+              max={block.config.max || 100}
+              label={block.config.title || 'Gauge'}
+              unit={block.config.unit || ''}
+              warningThreshold={block.config.warningThreshold}
+              criticalThreshold={block.config.criticalThreshold}
+              size="md"
+            />
           );
 
         case 'chart':
           return (
-            <div className="w-full h-full p-2">
-              <div className="w-full h-full">
-                <TimeSeriesChart
-                  data={block.config.data || []}
-                  series={block.config.series || []}
-                  title={block.config.title || 'Chart'}
-                  type={block.config.chartType || 'line'}
-                  height={250}
-                />
-              </div>
-            </div>
+            <TimeSeriesChart
+              data={block.config.data || []}
+              series={block.config.series || []}
+              title={block.config.title || 'Chart'}
+              type={block.config.chartType || 'line'}
+              height={250}
+            />
           );
 
         case 'liveStream':
           return (
-            <div className="w-full h-full p-2">
-              <div className="w-full h-full">
-                <LiveStreamBlock
-                  deviceId={block.config.deviceId}
-                  title={block.config.title || 'Live Stream'}
-                  height={300}
-                  fields={block.config.fields}
-                  maxUpdates={50}
-                />
-              </div>
-            </div>
+            <LiveStreamBlock
+              deviceId={block.config.deviceId}
+              title={block.config.title || 'Live Stream'}
+              height={300}
+              fields={block.config.fields}
+              maxUpdates={50}
+            />
           );
 
         default:
