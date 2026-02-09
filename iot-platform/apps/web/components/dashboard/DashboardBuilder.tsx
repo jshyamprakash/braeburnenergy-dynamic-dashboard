@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import GridLayout, { Layout } from 'react-grid-layout';
+import { Responsive as ResponsiveGridLayout, Layout, Layouts } from 'react-grid-layout';
 import { GaugeBlock } from '../blocks/GaugeBlock';
 import { TimeSeriesChart } from '../blocks/TimeSeriesChart';
 import { LiveStreamBlock } from '../blocks/LiveStreamBlock';
@@ -13,7 +13,11 @@ import { toast } from '@/lib/utils/toast';
 export interface DashboardBlock {
   id: string;
   type: 'gauge' | 'chart' | 'liveStream';
-  layout: Layout;
+  layouts: {
+    lg: Layout;
+    md: Layout;
+    sm: Layout;
+  };
   config: {
     title?: string;
     deviceId?: string;
@@ -88,12 +92,22 @@ export function DashboardBuilder({
     }
   };
 
-  const handleLayoutChange = (newLayout: Layout[]) => {
+  const handleLayoutChange = (layout: Layout[], allLayouts: Layouts) => {
     setBlocks((prevBlocks) =>
       prevBlocks.map((block) => {
-        const layoutItem = newLayout.find((l) => l.i === block.id);
-        if (layoutItem) {
-          return { ...block, layout: layoutItem };
+        const lgLayout = allLayouts.lg?.find((l) => l.i === block.id);
+        const mdLayout = allLayouts.md?.find((l) => l.i === block.id);
+        const smLayout = allLayouts.sm?.find((l) => l.i === block.id);
+
+        if (lgLayout || mdLayout || smLayout) {
+          return {
+            ...block,
+            layouts: {
+              lg: lgLayout || block.layouts.lg,
+              md: mdLayout || block.layouts.md,
+              sm: smLayout || block.layouts.sm,
+            },
+          };
         }
         return block;
       })
@@ -102,15 +116,54 @@ export function DashboardBuilder({
 
   const handleAddBlock = (type: DashboardBlock['type']) => {
     const newId = `block_${Date.now()}`;
+
+    // Define default sizes per breakpoint
+    const defaultSizes = {
+      gauge: {
+        lg: { w: 3, h: 5 },
+        md: { w: 5, h: 5 },
+        sm: { w: 6, h: 5 },
+      },
+      chart: {
+        lg: { w: 6, h: 6 },
+        md: { w: 10, h: 6 },
+        sm: { w: 6, h: 6 },
+      },
+      liveStream: {
+        lg: { w: 6, h: 7 },
+        md: { w: 10, h: 7 },
+        sm: { w: 6, h: 7 },
+      },
+    };
+
+    const sizes = defaultSizes[type];
+    const baseX = (blocks.length * 2) % 12;
+
     const newBlock: DashboardBlock = {
       id: newId,
       type,
-      layout: {
-        i: newId,
-        x: (blocks.length * 2) % 12,
-        y: Infinity, // Puts it at the bottom
-        w: type === 'gauge' ? 3 : 6,
-        h: type === 'gauge' ? 4 : 6,
+      layouts: {
+        lg: {
+          i: newId,
+          x: baseX,
+          y: Infinity,
+          w: sizes.lg.w,
+          h: sizes.lg.h,
+        },
+        md: {
+          i: newId,
+          x: baseX % 10,
+          y: Infinity,
+          w: sizes.md.w,
+          h: sizes.md.h,
+        },
+        sm: {
+          i: newId,
+          x: 0,
+          y: Infinity,
+          w: sizes.sm.w,
+          h: sizes.sm.h,
+        },
       },
       config: {
         title: `New ${type === 'gauge' ? 'Gauge' : type === 'chart' ? 'Chart' : 'Live Stream'}`,
@@ -158,38 +211,50 @@ export function DashboardBuilder({
       switch (block.type) {
         case 'gauge':
           return (
-            <GaugeBlock
-              value={block.config.value || 75}
-              min={block.config.min || 0}
-              max={block.config.max || 100}
-              label={block.config.title || 'Gauge'}
-              unit={block.config.unit || ''}
-              warningThreshold={block.config.warningThreshold}
-              criticalThreshold={block.config.criticalThreshold}
-              size="md"
-            />
+            <div className="w-full h-full flex items-center justify-center p-2">
+              <div className="w-full h-full max-w-full">
+                <GaugeBlock
+                  value={block.config.value || 75}
+                  min={block.config.min || 0}
+                  max={block.config.max || 100}
+                  label={block.config.title || 'Gauge'}
+                  unit={block.config.unit || ''}
+                  warningThreshold={block.config.warningThreshold}
+                  criticalThreshold={block.config.criticalThreshold}
+                  size="md"
+                />
+              </div>
+            </div>
           );
 
         case 'chart':
           return (
-            <TimeSeriesChart
-              data={block.config.data || []}
-              series={block.config.series || []}
-              title={block.config.title || 'Chart'}
-              type={block.config.chartType || 'line'}
-              height={200}
-            />
+            <div className="w-full h-full p-2">
+              <div className="w-full h-full">
+                <TimeSeriesChart
+                  data={block.config.data || []}
+                  series={block.config.series || []}
+                  title={block.config.title || 'Chart'}
+                  type={block.config.chartType || 'line'}
+                  height={250}
+                />
+              </div>
+            </div>
           );
 
         case 'liveStream':
           return (
-            <LiveStreamBlock
-              deviceId={block.config.deviceId}
-              title={block.config.title || 'Live Stream'}
-              height={250}
-              fields={block.config.fields}
-              maxUpdates={50}
-            />
+            <div className="w-full h-full p-2">
+              <div className="w-full h-full">
+                <LiveStreamBlock
+                  deviceId={block.config.deviceId}
+                  title={block.config.title || 'Live Stream'}
+                  height={300}
+                  fields={block.config.fields}
+                  maxUpdates={50}
+                />
+              </div>
+            </div>
           );
 
         default:
@@ -200,10 +265,10 @@ export function DashboardBuilder({
     return (
       <div
         key={block.id}
-        className={`relative h-full ${
+        className={`relative w-full h-full overflow-hidden ${
           isEditMode
-            ? 'border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg'
-            : ''
+            ? 'border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800'
+            : 'bg-transparent'
         } ${isSelected ? 'ring-2 ring-blue-500' : ''}`}
         onClick={(e) => {
           if (isEditMode) {
@@ -315,19 +380,26 @@ export function DashboardBuilder({
             </p>
           </div>
         ) : (
-          <GridLayout
+          <ResponsiveGridLayout
             className="layout"
-            layout={blocks.map((b) => b.layout)}
-            cols={12}
-            rowHeight={50}
-            width={1200}
+            layouts={{
+              lg: blocks.map((b) => b.layouts.lg),
+              md: blocks.map((b) => b.layouts.md),
+              sm: blocks.map((b) => b.layouts.sm),
+            }}
+            breakpoints={{ lg: 1200, md: 996, sm: 768 }}
+            cols={{ lg: 12, md: 10, sm: 6 }}
+            rowHeight={60}
             onLayoutChange={handleLayoutChange}
             isDraggable={isEditMode}
             isResizable={isEditMode}
             compactType="vertical"
+            preventCollision={false}
+            containerPadding={[0, 0]}
+            margin={[16, 16]}
           >
             {blocks.map(renderBlock)}
-          </GridLayout>
+          </ResponsiveGridLayout>
         )}
       </div>
 
