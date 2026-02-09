@@ -66,8 +66,8 @@ export function useDeviceRealtime(deviceId?: string) {
     // Connect to WebSocket
     socket.connect();
 
-    // Subscribe to device updates
-    socket.emit('subscribe', { deviceId });
+    // Subscribe to device updates (server expects 'subscribe:device' with deviceId string)
+    socket.emit('subscribe:device', deviceId);
 
     // Listen for state updates
     const handleStateUpdate = (state: DeviceState) => {
@@ -80,7 +80,7 @@ export function useDeviceRealtime(deviceId?: string) {
 
     return () => {
       socket.off('device:state', handleStateUpdate);
-      socket.emit('unsubscribe', { deviceId });
+      socket.emit('unsubscribe:device', deviceId);
     };
   }, [deviceId]);
 

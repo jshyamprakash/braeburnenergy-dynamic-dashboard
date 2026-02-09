@@ -4,11 +4,13 @@ const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 // Create socket instance
 export const socket: Socket = io(SOCKET_URL, {
+  path: '/ws', // WebSocket path matches server configuration
   autoConnect: false, // Don't connect immediately
   reconnection: true,
   reconnectionDelay: 1000,
   reconnectionDelayMax: 5000,
   reconnectionAttempts: 5,
+  transports: ['websocket', 'polling'],
 });
 
 // Connection event handlers (for debugging)
