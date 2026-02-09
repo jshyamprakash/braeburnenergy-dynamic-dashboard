@@ -11,6 +11,7 @@ export function Navigation() {
     { href: '/', label: 'Home' },
     { href: '/devices', label: 'Devices' },
     { href: '/dashboard', label: 'Dashboard' },
+    { href: '/dashboard-builder', label: 'Builder' },
     { href: '/dashboard-demo', label: 'Demo' },
     { href: '/websocket-test', label: 'WebSocket' },
   ];
