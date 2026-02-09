@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { apiClient } from '@/lib/api-client';
-import { socket } from '@/lib/socket';
+import { useWebSocket } from '@/lib/hooks/useWebSocket';
 import type { Device, DeviceState } from '@repo/types';
 
 /**
@@ -59,20 +59,23 @@ export function useDeviceStates(deviceId?: string, options?: { limit?: number })
  */
 export function useDeviceRealtime(deviceId?: string) {
   const [latestState, setLatestState] = useState<DeviceState | null>(null);
+  const { socket, isConnected } = useWebSocket();
 
   useEffect(() => {
-    if (!deviceId) return;
-
-    // Connect to WebSocket
-    socket.connect();
+    if (!socket || !isConnected || !deviceId) return;
 
     // Subscribe to device updates (server expects 'subscribe:device' with deviceId string)
     socket.emit('subscribe:device', deviceId);
 
     // Listen for state updates
-    const handleStateUpdate = (state: DeviceState) => {
-      if (state.deviceId === deviceId) {
-        setLatestState(state);
+    const handleStateUpdate = (update: { deviceId: string; data: any; timestamp: Date }) => {
+      if (update.deviceId === deviceId) {
+        setLatestState({
+          id: `ws-${Date.now()}`,
+          deviceId: update.deviceId,
+          data: update.data,
+          timestamp: new Date(update.timestamp).toISOString(),
+        });
       }
     };
 
@@ -82,7 +85,7 @@ export function useDeviceRealtime(deviceId?: string) {
       socket.off('device:state', handleStateUpdate);
       socket.emit('unsubscribe:device', deviceId);
     };
-  }, [deviceId]);
+  }, [socket, isConnected, deviceId]);
 
   return latestState;
 }
