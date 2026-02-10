@@ -22,6 +22,8 @@ vi.mock('ulid', () => ({
   ulid: vi.fn(() => '01HGW5N8XZ7KQRST9VW2XY3Z4A'),
 }));
 
+const TEST_ORG_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+
 describe('DeviceService', () => {
   let deviceService: DeviceService;
 
@@ -34,7 +36,8 @@ describe('DeviceService', () => {
     it('should create a device with generated ULID', async () => {
       const mockDevice = {
         id: '123e4567-e89b-12d3-a456-426614174000',
-        deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A',
+        orgId: TEST_ORG_ID,
+          deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A',
         name: 'Temperature Sensor',
         tags: ['warehouse', 'floor-1'],
         attributes: { location: 'Zone A' },
@@ -44,7 +47,7 @@ describe('DeviceService', () => {
 
       vi.mocked(prisma.device.create).mockResolvedValue(mockDevice);
 
-      const result = await deviceService.create({
+      const result = await deviceService.create(TEST_ORG_ID, {
         name: 'Temperature Sensor',
         tags: ['warehouse', 'floor-1'],
         attributes: { location: 'Zone A' },
@@ -53,6 +56,7 @@ describe('DeviceService', () => {
       expect(result).toEqual(mockDevice);
       expect(prisma.device.create).toHaveBeenCalledWith({
         data: {
+          orgId: TEST_ORG_ID,
           deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A',
           name: 'Temperature Sensor',
           tags: ['warehouse', 'floor-1'],
@@ -64,7 +68,8 @@ describe('DeviceService', () => {
     it('should create device without attributes if not provided', async () => {
       const mockDevice = {
         id: '123e4567-e89b-12d3-a456-426614174000',
-        deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A',
+        orgId: TEST_ORG_ID,
+          deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A',
         name: 'Simple Sensor',
         tags: [],
         attributes: null,
@@ -74,12 +79,13 @@ describe('DeviceService', () => {
 
       vi.mocked(prisma.device.create).mockResolvedValue(mockDevice);
 
-      await deviceService.create({
+      await deviceService.create(TEST_ORG_ID, {
         name: 'Simple Sensor',
       });
 
       expect(prisma.device.create).toHaveBeenCalledWith({
         data: {
+          orgId: TEST_ORG_ID,
           deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A',
           name: 'Simple Sensor',
           tags: [],
@@ -92,7 +98,8 @@ describe('DeviceService', () => {
     it('should find device by deviceId', async () => {
       const mockDevice = {
         id: '123e4567-e89b-12d3-a456-426614174000',
-        deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A',
+        orgId: TEST_ORG_ID,
+          deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A',
         name: 'Temperature Sensor',
         tags: ['warehouse'],
         attributes: null,
@@ -102,18 +109,24 @@ describe('DeviceService', () => {
 
       vi.mocked(prisma.device.findUnique).mockResolvedValue(mockDevice);
 
-      const result = await deviceService.getByDeviceId('01HGW5N8XZ7KQRST9VW2XY3Z4A');
+      const result = await deviceService.getByDeviceId(TEST_ORG_ID, '01HGW5N8XZ7KQRST9VW2XY3Z4A');
 
       expect(result).toEqual(mockDevice);
       expect(prisma.device.findUnique).toHaveBeenCalledWith({
-        where: { deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A' },
+        where: {
+          orgId_deviceId: {
+            orgId: TEST_ORG_ID,
+            deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A',
+          },
+        },
+        include: undefined,
       });
     });
 
     it('should return null if device not found', async () => {
       vi.mocked(prisma.device.findUnique).mockResolvedValue(null);
 
-      const result = await deviceService.getByDeviceId('nonexistent');
+      const result = await deviceService.getByDeviceId(TEST_ORG_ID, 'nonexistent');
 
       expect(result).toBeNull();
     });
@@ -123,7 +136,8 @@ describe('DeviceService', () => {
     it('should update device by deviceId', async () => {
       const mockUpdatedDevice = {
         id: '123e4567-e89b-12d3-a456-426614174000',
-        deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A',
+        orgId: TEST_ORG_ID,
+          deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A',
         name: 'Updated Sensor',
         tags: ['new-tag'],
         attributes: { updated: true },
@@ -133,7 +147,7 @@ describe('DeviceService', () => {
 
       vi.mocked(prisma.device.update).mockResolvedValue(mockUpdatedDevice);
 
-      const result = await deviceService.update('01HGW5N8XZ7KQRST9VW2XY3Z4A', {
+      const result = await deviceService.update(TEST_ORG_ID, '01HGW5N8XZ7KQRST9VW2XY3Z4A', {
         name: 'Updated Sensor',
         tags: ['new-tag'],
         attributes: { updated: true },
@@ -141,7 +155,13 @@ describe('DeviceService', () => {
 
       expect(result).toEqual(mockUpdatedDevice);
       expect(prisma.device.update).toHaveBeenCalledWith({
-        where: { deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A' },
+        where: {
+          orgId_deviceId: {
+            orgId: TEST_ORG_ID,
+            deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A',
+          },
+        },
+        include: undefined,
         data: {
           name: 'Updated Sensor',
           tags: ['new-tag'],
@@ -155,7 +175,8 @@ describe('DeviceService', () => {
     it('should delete device by deviceId', async () => {
       const mockDevice = {
         id: '123e4567-e89b-12d3-a456-426614174000',
-        deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A',
+        orgId: TEST_ORG_ID,
+          deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A',
         name: 'Temperature Sensor',
         tags: [],
         attributes: null,
@@ -165,11 +186,17 @@ describe('DeviceService', () => {
 
       vi.mocked(prisma.device.delete).mockResolvedValue(mockDevice);
 
-      const result = await deviceService.delete('01HGW5N8XZ7KQRST9VW2XY3Z4A');
+      const result = await deviceService.delete(TEST_ORG_ID, '01HGW5N8XZ7KQRST9VW2XY3Z4A');
 
       expect(result).toEqual(mockDevice);
       expect(prisma.device.delete).toHaveBeenCalledWith({
-        where: { deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A' },
+        where: {
+          orgId_deviceId: {
+            orgId: TEST_ORG_ID,
+            deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A',
+          },
+        },
+        include: undefined,
       });
     });
   });
@@ -179,6 +206,7 @@ describe('DeviceService', () => {
       const mockDevices = [
         {
           id: '123e4567-e89b-12d3-a456-426614174001',
+          orgId: TEST_ORG_ID,
           deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A',
           name: 'Device 1',
           tags: [],
@@ -200,7 +228,7 @@ describe('DeviceService', () => {
       vi.mocked(prisma.device.findMany).mockResolvedValue(mockDevices);
       vi.mocked(prisma.device.count).mockResolvedValue(2);
 
-      const result = await deviceService.list({ limit: 10, offset: 0 });
+      const result = await deviceService.list(TEST_ORG_ID, { limit: 10, offset: 0 });
 
       expect(result.data).toEqual(mockDevices);
       expect(result.pagination).toMatchObject({
@@ -214,7 +242,7 @@ describe('DeviceService', () => {
       vi.mocked(prisma.device.findMany).mockResolvedValue([]);
       vi.mocked(prisma.device.count).mockResolvedValue(0);
 
-      await deviceService.list({
+      await deviceService.list(TEST_ORG_ID, {
         tags: ['sensor', 'floor-1'],
         tagsMode: 'hasEvery',
       });
@@ -222,6 +250,7 @@ describe('DeviceService', () => {
       expect(prisma.device.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: {
+            orgId: TEST_ORG_ID,
             tags: { hasEvery: ['sensor', 'floor-1'] },
           },
         })
@@ -233,7 +262,7 @@ describe('DeviceService', () => {
       vi.mocked(prisma.device.findMany).mockResolvedValue([]);
       vi.mocked(prisma.device.count).mockResolvedValue(0);
 
-      await deviceService.list({
+      await deviceService.list(TEST_ORG_ID, {
         tags: ['sensor', 'actuator'],
         tagsMode: 'hasSome',
       });
@@ -252,18 +281,24 @@ describe('DeviceService', () => {
     it('should return true if device exists', async () => {
       vi.mocked(prisma.device.count).mockResolvedValue(1);
 
-      const result = await deviceService.exists('01HGW5N8XZ7KQRST9VW2XY3Z4A');
+      const result = await deviceService.exists(TEST_ORG_ID, '01HGW5N8XZ7KQRST9VW2XY3Z4A');
 
       expect(result).toBe(true);
       expect(prisma.device.count).toHaveBeenCalledWith({
-        where: { deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A' },
+        where: {
+          orgId_deviceId: {
+            orgId: TEST_ORG_ID,
+            deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A',
+          },
+        },
+        include: undefined,
       });
     });
 
     it('should return false if device does not exist', async () => {
       vi.mocked(prisma.device.count).mockResolvedValue(0);
 
-      const result = await deviceService.exists('nonexistent');
+      const result = await deviceService.exists(TEST_ORG_ID, 'nonexistent');
 
       expect(result).toBe(false);
     });
@@ -273,20 +308,20 @@ describe('DeviceService', () => {
     it('should count all devices', async () => {
       vi.mocked(prisma.device.count).mockResolvedValue(42);
 
-      const result = await deviceService.count();
+      const result = await deviceService.count(TEST_ORG_ID);
 
       expect(result).toBe(42);
-      expect(prisma.device.count).toHaveBeenCalledWith({ where: {} });
+      expect(prisma.device.count).toHaveBeenCalledWith({ where: { orgId: TEST_ORG_ID } });
     });
 
     it('should count devices filtered by tags', async () => {
       vi.mocked(prisma.device.count).mockResolvedValue(5);
 
-      const result = await deviceService.count(['sensor']);
+      const result = await deviceService.count(TEST_ORG_ID, ['sensor']);
 
       expect(result).toBe(5);
       expect(prisma.device.count).toHaveBeenCalledWith({
-        where: { tags: { hasEvery: ['sensor'] } },
+        where: { orgId: TEST_ORG_ID, tags: { hasEvery: ['sensor'] } },
       });
     });
   });
@@ -301,7 +336,7 @@ describe('DeviceService', () => {
         { name: 'Device 3' },
       ];
 
-      const result = await deviceService.bulkCreate(devices);
+      const result = await deviceService.bulkCreate(TEST_ORG_ID, devices);
 
       expect(result.count).toBe(3);
       expect(prisma.device.createMany).toHaveBeenCalled();

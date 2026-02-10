@@ -19,65 +19,98 @@ export default function DashboardDemoPage() {
   // Live stream data
   const [liveStreamData, setLiveStreamData] = useState<DeviceState[]>([]);
 
+  // Initialize with a few data points for immediate display
+  useEffect(() => {
+    const initialPoints: TimeSeriesDataPoint[] = [];
+    const now = Date.now();
+
+    // Create 5 initial points (10 seconds of history)
+    for (let i = 4; i >= 0; i--) {
+      initialPoints.push({
+        timestamp: new Date(now - i * 2000).toISOString(),
+        temperature: 75 + (Math.random() - 0.5) * 5,
+        pressure: 45 + (Math.random() - 0.5) * 3,
+        humidity: 62 + (Math.random() - 0.5) * 4,
+        speed: 1850 + (Math.random() - 0.5) * 100,
+      });
+    }
+
+    setHistoricalData(initialPoints);
+  }, []);
+
   // Simulate data updates every 2 seconds
   useEffect(() => {
     const interval = setInterval(() => {
+      // Use functional updates to capture latest values
+      let latestTemp = 0;
+      let latestPressure = 0;
+      let latestHumidity = 0;
+      let latestSpeed = 0;
+
       // Temperature oscillates between 70-95°C
       setTemperature((prev) => {
         const change = (Math.random() - 0.5) * 3;
-        return Math.max(70, Math.min(95, prev + change));
+        latestTemp = Math.max(70, Math.min(95, prev + change));
+        return latestTemp;
       });
 
       // Pressure oscillates between 30-60 PSI
       setPressure((prev) => {
         const change = (Math.random() - 0.5) * 2;
-        return Math.max(30, Math.min(60, prev + change));
+        latestPressure = Math.max(30, Math.min(60, prev + change));
+        return latestPressure;
       });
 
       // Humidity oscillates between 40-80%
       setHumidity((prev) => {
         const change = (Math.random() - 0.5) * 2.5;
-        return Math.max(40, Math.min(80, prev + change));
+        latestHumidity = Math.max(40, Math.min(80, prev + change));
+        return latestHumidity;
       });
 
       // Speed oscillates between 1500-2200 RPM
       setSpeed((prev) => {
         const change = (Math.random() - 0.5) * 50;
-        return Math.max(1500, Math.min(2200, prev + change));
+        latestSpeed = Math.max(1500, Math.min(2200, prev + change));
+        return latestSpeed;
       });
 
-      // Add to historical data (keep last 20 points)
-      setHistoricalData((prev) => {
-        const newPoint: TimeSeriesDataPoint = {
-          timestamp: new Date().toISOString(),
-          temperature: temperature,
-          pressure: pressure,
-          humidity: humidity,
-          speed: speed,
-        };
-        const updated = [...prev, newPoint];
-        return updated.slice(-20); // Keep only last 20 points
-      });
+      // Use setTimeout to ensure state updates have completed
+      setTimeout(() => {
+        // Add to historical data (keep last 20 points)
+        setHistoricalData((prev) => {
+          const newPoint: TimeSeriesDataPoint = {
+            timestamp: new Date().toISOString(),
+            temperature: latestTemp,
+            pressure: latestPressure,
+            humidity: latestHumidity,
+            speed: latestSpeed,
+          };
+          const updated = [...prev, newPoint];
+          console.log('📊 Historical data updated:', updated.length, 'points');
+          return updated.slice(-20); // Keep only last 20 points
+        });
 
-      // Add to live stream data
-      setLiveStreamData((prev) => {
-        const newState: DeviceState = {
-          id: `sim-${Date.now()}`,
-          deviceId: 'demo-device-001',
-          timestamp: new Date().toISOString(),
-          data: {
-            temperature: temperature,
-            pressure: pressure,
-            humidity: humidity,
-            speed: speed,
-          },
-        };
-        return [newState, ...prev];
-      });
+        // Add to live stream data
+        setLiveStreamData((prev) => {
+          const newState: DeviceState = {
+            id: `sim-${Date.now()}`,
+            deviceId: 'demo-device-001',
+            timestamp: new Date().toISOString(),
+            data: {
+              temperature: latestTemp,
+              pressure: latestPressure,
+              humidity: latestHumidity,
+              speed: latestSpeed,
+            },
+          };
+          return [newState, ...prev];
+        });
+      }, 0);
     }, 2000);
 
     return () => clearInterval(interval);
-  }, [temperature, pressure, humidity, speed]);
+  }, []); // ✅ Empty deps - interval only created once
 
   return (
     <div className="space-y-6">
@@ -97,10 +130,13 @@ export default function DashboardDemoPage() {
 
       {/* Info Banner */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h3 className="text-sm font-medium text-blue-900 mb-2">Dashboard Blocks</h3>
+        <h3 className="text-sm font-medium text-blue-900 mb-2">📊 Dashboard Demo with Simulated Data</h3>
         <p className="text-xs text-blue-700">
-          These gauge blocks visualize real-time sensor data with color-coded thresholds.
-          Data updates every 2 seconds to simulate live IoT device feeds.
+          These dashboard blocks showcase all component variations with simulated data.
+          Values update every 2 seconds to demonstrate real-time visualization capabilities.
+        </p>
+        <p className="text-xs text-blue-700 mt-2">
+          💡 <strong>Want real device data?</strong> Visit the <a href="/dashboard" className="underline font-medium">Live Dashboard</a> to see actual data from your device simulator.
         </p>
       </div>
 
@@ -363,7 +399,12 @@ export default function DashboardDemoPage() {
 
       {/* Time-Series Charts */}
       <div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Time-Series Charts</h2>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">
+          Time-Series Charts
+          <span className="ml-3 text-sm font-normal text-gray-500">
+            ({historicalData.length} data points)
+          </span>
+        </h2>
 
         {/* Line Chart - Multi-series */}
         <div className="mb-6">

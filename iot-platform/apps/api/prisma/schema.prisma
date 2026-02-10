@@ -10,29 +10,62 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ============================================================================
+// Organizations (Multi-Tenancy)
+// ============================================================================
+
+model Organization {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  slug      String   @unique  // URL-friendly identifier
+  settings  Json?    @default("{}")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  devices      Device[]
+  deviceStates DeviceState[]
+
+  @@map("organizations")
+}
+
+// ============================================================================
+// Devices
+// ============================================================================
+
 model Device {
   id         String   @id @default(uuid()) @db.Uuid
-  deviceId   String   @unique @map("device_id")  // ULID generated in application layer
+  orgId      String   @map("org_id") @db.Uuid  // Multi-tenancy
+  deviceId   String   @map("device_id")  // ULID generated in application layer
   name       String
   tags       String[]
   attributes Json?
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 
-  states DeviceState[]
+  organization Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  states       DeviceState[]
 
+  @@unique([orgId, deviceId])  // Unique deviceId per organization
+  @@index([orgId])
   @@map("devices")
 }
 
+// ============================================================================
+// Device States (Time-Series)
+// ============================================================================
+
 model DeviceState {
   id        String   @default(uuid()) @db.Uuid
+  orgId     String   @map("org_id") @db.Uuid  // Multi-tenancy (denormalized for query performance)
   deviceId  String   @map("device_id")  // References Device.deviceId (ULID)
   data      Json
   timestamp DateTime @default(now())
 
-  device Device @relation(fields: [deviceId], references: [deviceId], onDelete: Cascade)
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  device       Device       @relation(fields: [deviceId, orgId], references: [deviceId, orgId], onDelete: Cascade)
 
   @@id([id, timestamp])
+  @@index([orgId, deviceId, timestamp])
   @@index([deviceId, timestamp])
   @@map("device_states")
 }

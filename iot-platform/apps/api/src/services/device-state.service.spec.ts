@@ -17,6 +17,8 @@ vi.mock('../lib/prisma', () => ({
   },
 }));
 
+const TEST_ORG_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+
 describe('DeviceStateService', () => {
   let deviceStateService: DeviceStateService;
 
@@ -36,7 +38,7 @@ describe('DeviceStateService', () => {
 
       vi.mocked(prisma.deviceState.create).mockResolvedValue(mockState);
 
-      const result = await deviceStateService.create({
+      const result = await deviceStateService.create(TEST_ORG_ID, {
         deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A',
         data: { temperature: 23.5, humidity: 45 },
       });
@@ -44,6 +46,7 @@ describe('DeviceStateService', () => {
       expect(result).toEqual(mockState);
       expect(prisma.deviceState.create).toHaveBeenCalledWith({
         data: {
+          orgId: TEST_ORG_ID,
           deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A',
           data: { temperature: 23.5, humidity: 45 },
           timestamp: expect.any(Date),
@@ -62,7 +65,7 @@ describe('DeviceStateService', () => {
 
       vi.mocked(prisma.deviceState.create).mockResolvedValue(mockState);
 
-      await deviceStateService.create({
+      await deviceStateService.create(TEST_ORG_ID, {
         deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A',
         data: { temperature: 25.0 },
         timestamp: customTimestamp,
@@ -70,6 +73,7 @@ describe('DeviceStateService', () => {
 
       expect(prisma.deviceState.create).toHaveBeenCalledWith({
         data: {
+          orgId: TEST_ORG_ID,
           deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A',
           data: { temperature: 25.0 },
           timestamp: customTimestamp,
@@ -82,7 +86,7 @@ describe('DeviceStateService', () => {
     it('should create multiple device states', async () => {
       vi.mocked(prisma.deviceState.createMany).mockResolvedValue({ count: 2 });
 
-      const result = await deviceStateService.bulkCreate({
+      const result = await deviceStateService.bulkCreate(TEST_ORG_ID, {
         states: [
           {
             deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A',
@@ -99,6 +103,7 @@ describe('DeviceStateService', () => {
       expect(prisma.deviceState.createMany).toHaveBeenCalledWith({
         data: expect.arrayContaining([
           expect.objectContaining({
+            orgId: TEST_ORG_ID,
             deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A',
             data: { temperature: 23.5 },
             timestamp: expect.any(Date),
@@ -115,7 +120,7 @@ describe('DeviceStateService', () => {
       }));
 
       await expect(
-        deviceStateService.bulkCreate({ states })
+        deviceStateService.bulkCreate(TEST_ORG_ID, { states })
       ).rejects.toThrow();
     });
   });
@@ -141,6 +146,7 @@ describe('DeviceStateService', () => {
       vi.mocked(prisma.deviceState.count).mockResolvedValue(2);
 
       const result = await deviceStateService.getStates(
+        TEST_ORG_ID,
         '01HGW5N8XZ7KQRST9VW2XY3Z4A',
         { limit: 10, offset: 0 }
       );
@@ -160,7 +166,7 @@ describe('DeviceStateService', () => {
       vi.mocked(prisma.deviceState.findMany).mockResolvedValue([]);
       vi.mocked(prisma.deviceState.count).mockResolvedValue(0);
 
-      await deviceStateService.getStates('01HGW5N8XZ7KQRST9VW2XY3Z4A', {
+      await deviceStateService.getStates(TEST_ORG_ID, '01HGW5N8XZ7KQRST9VW2XY3Z4A', {
         startTime,
         endTime,
       });
@@ -168,6 +174,7 @@ describe('DeviceStateService', () => {
       expect(prisma.deviceState.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: {
+            orgId: TEST_ORG_ID,
             deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A',
             timestamp: {
               gte: startTime,
@@ -182,7 +189,7 @@ describe('DeviceStateService', () => {
       vi.mocked(prisma.deviceState.findMany).mockResolvedValue([]);
       vi.mocked(prisma.deviceState.count).mockResolvedValue(0);
 
-      await deviceStateService.getStates('01HGW5N8XZ7KQRST9VW2XY3Z4A', {
+      await deviceStateService.getStates(TEST_ORG_ID, '01HGW5N8XZ7KQRST9VW2XY3Z4A', {
         sortOrder: 'desc',
       });
 

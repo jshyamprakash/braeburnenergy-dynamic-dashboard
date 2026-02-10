@@ -19,21 +19,23 @@ export class DeviceService {
   /**
    * Create a new device with system-generated ULID
    *
+   * @param orgId - Organization ID
    * @param data - Device creation data
    * @returns Created device with ULID
    *
    * @example
-   * const device = await deviceService.create({
+   * const device = await deviceService.create("org-uuid", {
    *   name: "Temperature Sensor",
    *   tags: ["warehouse", "floor-1"],
    *   attributes: { location: "Zone A" }
    * });
    * // Returns device with deviceId: "01HGW5N8XZ7KQRST9VW2XY3Z4A"
    */
-  async create(data: CreateDeviceDTO) {
+  async create(orgId: string, data: CreateDeviceDTO) {
     const deviceId = ulid(); // Generate time-sortable ULID
 
     const createData: any = {
+      orgId,
       deviceId,
       name: data.name,
       tags: data.tags || [],
@@ -50,15 +52,21 @@ export class DeviceService {
   }
 
   /**
-   * Get device by ULID
+   * Get device by ULID within organization
    *
+   * @param orgId - Organization ID
    * @param deviceId - Device ULID
    * @param includeStates - Include recent states (default: false)
    * @returns Device or null if not found
    */
-  async getByDeviceId(deviceId: string, includeStates = false) {
+  async getByDeviceId(orgId: string, deviceId: string, includeStates = false) {
     return prisma.device.findUnique({
-      where: { deviceId },
+      where: {
+        orgId_deviceId: {
+          orgId,
+          deviceId,
+        },
+      },
       include: includeStates
         ? {
             states: {
@@ -83,13 +91,14 @@ export class DeviceService {
   }
 
   /**
-   * Update device
+   * Update device within organization
    *
+   * @param orgId - Organization ID
    * @param deviceId - Device ULID
    * @param data - Update data (partial)
    * @returns Updated device or null if not found
    */
-  async update(deviceId: string, data: UpdateDeviceDTO) {
+  async update(orgId: string, deviceId: string, data: UpdateDeviceDTO) {
     try {
       const updateData: any = {};
 
@@ -105,7 +114,12 @@ export class DeviceService {
       }
 
       return await prisma.device.update({
-        where: { deviceId },
+        where: {
+          orgId_deviceId: {
+            orgId,
+            deviceId,
+          },
+        },
         data: updateData,
       });
     } catch (error) {
@@ -120,15 +134,21 @@ export class DeviceService {
   }
 
   /**
-   * Delete device
+   * Delete device within organization
    *
+   * @param orgId - Organization ID
    * @param deviceId - Device ULID
    * @returns Deleted device or null if not found
    */
-  async delete(deviceId: string) {
+  async delete(orgId: string, deviceId: string) {
     try {
       return await prisma.device.delete({
-        where: { deviceId },
+        where: {
+          orgId_deviceId: {
+            orgId,
+            deviceId,
+          },
+        },
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -142,16 +162,19 @@ export class DeviceService {
   }
 
   /**
-   * List devices with filtering, search, and pagination
+   * List devices with filtering, search, and pagination within organization
    *
+   * @param orgId - Organization ID
    * @param query - Query parameters
    * @returns Paginated device list
    */
-  async list(query: QueryDevicesDTO) {
+  async list(orgId: string, query: QueryDevicesDTO) {
     const { limit = 100, offset = 0, tags, search, sortBy = 'createdAt', sortOrder = 'desc' } = query;
 
-    // Build where clause
-    const where: Prisma.DeviceWhereInput = {};
+    // Build where clause with org_id filter
+    const where: Prisma.DeviceWhereInput = {
+      orgId, // Filter by organization
+    };
 
     // Tag filtering (array contains)
     if (tags && tags.length > 0) {
@@ -191,15 +214,17 @@ export class DeviceService {
   }
 
   /**
-   * Search devices by tags (has ANY of the specified tags)
+   * Search devices by tags (has ANY of the specified tags) within organization
    *
+   * @param orgId - Organization ID
    * @param tags - Tags to search for
    * @param limit - Result limit
    * @returns Devices matching any tag
    */
-  async searchByTags(tags: string[], limit = 100) {
+  async searchByTags(orgId: string, tags: string[], limit = 100) {
     return prisma.device.findMany({
       where: {
+        orgId,
         tags: {
           hasSome: tags, // Has ANY of these tags (OR logic)
         },
@@ -210,14 +235,16 @@ export class DeviceService {
   }
 
   /**
-   * Get devices by exact tag set
+   * Get devices by exact tag set within organization
    *
+   * @param orgId - Organization ID
    * @param tags - Exact tags array
    * @returns Devices with exactly these tags
    */
-  async getByExactTags(tags: string[]) {
+  async getByExactTags(orgId: string, tags: string[]) {
     return prisma.device.findMany({
       where: {
+        orgId,
         tags: {
           equals: tags,
         },
@@ -226,13 +253,16 @@ export class DeviceService {
   }
 
   /**
-   * Get device count
+   * Get device count within organization
    *
+   * @param orgId - Organization ID
    * @param tags - Optional tag filter
    * @returns Total device count
    */
-  async count(tags?: string[]) {
-    const where: Prisma.DeviceWhereInput = {};
+  async count(orgId: string, tags?: string[]) {
+    const where: Prisma.DeviceWhereInput = {
+      orgId,
+    };
 
     if (tags && tags.length > 0) {
       where.tags = {
@@ -244,27 +274,35 @@ export class DeviceService {
   }
 
   /**
-   * Check if device exists
+   * Check if device exists within organization
    *
+   * @param orgId - Organization ID
    * @param deviceId - Device ULID
    * @returns True if device exists
    */
-  async exists(deviceId: string): Promise<boolean> {
+  async exists(orgId: string, deviceId: string): Promise<boolean> {
     const count = await prisma.device.count({
-      where: { deviceId },
+      where: {
+        orgId_deviceId: {
+          orgId,
+          deviceId,
+        },
+      },
     });
     return count > 0;
   }
 
   /**
-   * Bulk create devices
+   * Bulk create devices within organization
    *
+   * @param orgId - Organization ID
    * @param devices - Array of device data
    * @returns Created devices
    */
-  async bulkCreate(devices: CreateDeviceDTO[]) {
+  async bulkCreate(orgId: string, devices: CreateDeviceDTO[]) {
     const data = devices.map((device) => {
       const record: any = {
+        orgId,
         deviceId: ulid(), // Generate ULID for each device
         name: device.name,
         tags: device.tags || [],
@@ -280,37 +318,41 @@ export class DeviceService {
 
     return prisma.device.createMany({
       data,
-      skipDuplicates: true, // Skip if deviceId already exists
+      skipDuplicates: true, // Skip if composite key already exists
     });
   }
 
   /**
-   * Get recently created devices (uses ULID time-sorting)
+   * Get recently created devices within organization (uses ULID time-sorting)
    *
+   * @param orgId - Organization ID
    * @param limit - Number of devices to return
    * @returns Recently created devices (newest first)
    */
-  async getRecent(limit = 50) {
+  async getRecent(orgId: string, limit = 50) {
     return prisma.device.findMany({
+      where: { orgId },
       orderBy: { deviceId: 'desc' }, // ULID is time-sortable!
       take: limit,
     });
   }
 
   /**
-   * Get devices created in time range (uses ULID timestamp)
+   * Get devices created in time range within organization (uses ULID timestamp)
    *
+   * @param orgId - Organization ID
    * @param startTime - Start of time range
    * @param endTime - End of time range
    * @returns Devices created in range
    */
-  async getByTimeRange(startTime: Date, endTime: Date) {
+  async getByTimeRange(orgId: string, startTime: Date, endTime: Date) {
     // Generate ULID boundaries from timestamps
     const startUlid = ulid(startTime.getTime());
     const endUlid = ulid(endTime.getTime());
 
     return prisma.device.findMany({
       where: {
+        orgId,
         deviceId: {
           gte: startUlid,
           lte: endUlid,

@@ -21,8 +21,8 @@ export default function DashboardPage() {
   // Fetch devices from database
   const { data: devicesData, isLoading: devicesLoading } = useDevices({ limit: 10 });
 
-  // Use the WebSocket Test Device (has recent data)
-  const targetDeviceId = '01KGS318RAC4ARXA2EEYH8Q3HH';
+  // Automatically use the first available device (or fallback to test device)
+  const targetDeviceId = devicesData?.devices?.[0]?.deviceId || '01KGS318RAC4ARXA2EEYH8Q3HH';
 
   // Fetch recent states for latest value (small query)
   const { data: statesData, isLoading: statesLoading } = useDeviceStates(targetDeviceId, {
@@ -123,6 +123,28 @@ export default function DashboardPage() {
     );
   }
 
+  // Show helpful message if no devices exist
+  if (!devicesData?.devices?.length) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center max-w-md">
+          <div className="text-6xl mb-4">🤖</div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">No Devices Found</h2>
+          <p className="text-gray-600 mb-6">
+            Start the device simulator to create devices and see live data on this dashboard.
+          </p>
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-left">
+            <p className="text-sm font-medium text-gray-900 mb-2">Start the simulator:</p>
+            <pre className="bg-gray-900 text-green-400 p-3 rounded text-xs overflow-x-auto">
+{`cd iot-platform
+pnpm run simulate -- --devices 5 --interval 2s`}
+            </pre>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -130,7 +152,7 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Live Dashboard</h1>
           <p className="text-sm text-gray-600 mt-1">
-            Real-time data from WebSocket Test Device
+            Real-time data from {devicesData?.devices?.[0]?.name || 'device simulator'}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -150,15 +172,18 @@ export default function DashboardPage() {
       {/* Info Banner */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <h3 className="text-sm font-medium text-blue-900 mb-2">
-          📊 Real Device Data
+          📊 Real Device Data Dashboard
         </h3>
         <p className="text-xs text-blue-700">
-          This dashboard displays actual data from device <code className="bg-blue-100 px-1 rounded">{targetDeviceId}</code> stored in TimescaleDB.
-          Data updates in real-time via WebSocket when new device states are posted to the API.
+          Displaying data from <strong>{devicesData?.devices?.[0]?.name}</strong> (ID: <code className="bg-blue-100 px-1 rounded">{targetDeviceId}</code>).
+          All data is stored in TimescaleDB and updates in real-time via WebSocket.
         </p>
         <p className="text-xs text-blue-700 mt-2">
-          ⚡ <strong>Performance:</strong> Charts use server-side aggregation (1-minute buckets) to handle high-frequency data efficiently.
-          Supports 10+ messages/second without performance degradation.
+          ⚡ <strong>Performance:</strong> Charts use server-side aggregation (1-minute buckets) for efficient rendering.
+          Handles 10+ messages/second without performance degradation.
+        </p>
+        <p className="text-xs text-blue-700 mt-2">
+          💡 <strong>Tip:</strong> Visit <a href="/dashboard-demo" className="underline font-medium">Dashboard Demo</a> to see all component variations with simulated data.
         </p>
       </div>
 

@@ -12,6 +12,12 @@ import {
 } from '../schemas/device.schema';
 
 /**
+ * Default organization ID for POC
+ * TODO: Replace with orgId from JWT token or request header in MVP
+ */
+const DEFAULT_ORG_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+
+/**
  * DeviceController
  *
  * HTTP request handlers for device management
@@ -30,8 +36,8 @@ export class DeviceController {
       // Validate request body
       const validatedData = createDeviceSchema.parse(request.body);
 
-      // Create device
-      const device = await deviceService.create(validatedData);
+      // Create device (using default org for now)
+      const device = await deviceService.create(DEFAULT_ORG_ID, validatedData);
 
       // Return 201 Created
       return reply.code(201).send({
@@ -68,8 +74,8 @@ export class DeviceController {
       const { deviceId } = deviceIdParamSchema.parse(request.params);
       const includeStates = request.query.includeStates === 'true';
 
-      // Get device
-      const device = await deviceService.getByDeviceId(deviceId, includeStates);
+      // Get device (using default org for now)
+      const device = await deviceService.getByDeviceId(DEFAULT_ORG_ID, deviceId, includeStates);
 
       if (!device) {
         return reply.code(404).send({
@@ -111,8 +117,8 @@ export class DeviceController {
       // Validate query params
       const validatedQuery = queryDevicesSchema.parse(request.query);
 
-      // Get devices
-      const result = await deviceService.list(validatedQuery);
+      // Get devices (using default org for now)
+      const result = await deviceService.list(DEFAULT_ORG_ID, validatedQuery);
 
       return reply.code(200).send({
         success: true,
@@ -148,8 +154,8 @@ export class DeviceController {
       const { deviceId } = deviceIdParamSchema.parse(request.params);
       const validatedData = updateDeviceSchema.parse(request.body);
 
-      // Update device
-      const device = await deviceService.update(deviceId, validatedData);
+      // Update device (using default org for now)
+      const device = await deviceService.update(DEFAULT_ORG_ID, deviceId, validatedData);
 
       if (!device) {
         return reply.code(404).send({
@@ -191,8 +197,8 @@ export class DeviceController {
       // Validate params
       const { deviceId } = deviceIdParamSchema.parse(request.params);
 
-      // Delete device
-      const device = await deviceService.delete(deviceId);
+      // Delete device (using default org for now)
+      const device = await deviceService.delete(DEFAULT_ORG_ID, deviceId);
 
       if (!device) {
         return reply.code(404).send({
@@ -244,7 +250,7 @@ export class DeviceController {
       const tagArray = tags.split(',').map((t) => t.trim()).filter(Boolean);
       const limitNum = limit ? parseInt(limit, 10) : 100;
 
-      const devices = await deviceService.searchByTags(tagArray, limitNum);
+      const devices = await deviceService.searchByTags(DEFAULT_ORG_ID, tagArray, limitNum);
 
       return reply.code(200).send({
         success: true,
@@ -271,7 +277,7 @@ export class DeviceController {
       const { tags } = request.query;
       const tagArray = tags ? tags.split(',').map((t) => t.trim()).filter(Boolean) : undefined;
 
-      const count = await deviceService.count(tagArray);
+      const count = await deviceService.count(DEFAULT_ORG_ID, tagArray);
 
       return reply.code(200).send({
         success: true,
@@ -297,7 +303,7 @@ export class DeviceController {
     try {
       const limit = request.query.limit ? parseInt(request.query.limit, 10) : 50;
 
-      const devices = await deviceService.getRecent(limit);
+      const devices = await deviceService.getRecent(DEFAULT_ORG_ID, limit);
 
       return reply.code(200).send({
         success: true,

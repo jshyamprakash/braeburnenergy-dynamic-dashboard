@@ -24,6 +24,15 @@ beforeEach(async () => {
   // Clear all data in reverse order of dependencies
   await prisma.deviceState.deleteMany({});
   await prisma.device.deleteMany({});
+
+  // Delete all organizations except the default one (created in migration)
+  await prisma.organization.deleteMany({
+    where: {
+      id: {
+        not: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', // Keep default org
+      },
+    },
+  });
 });
 
 // Teardown: Run once after all tests
@@ -33,6 +42,13 @@ afterAll(async () => {
   // Final cleanup
   await prisma.deviceState.deleteMany({});
   await prisma.device.deleteMany({});
+  await prisma.organization.deleteMany({
+    where: {
+      id: {
+        not: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', // Keep default org
+      },
+    },
+  });
 
   // Disconnect
   await prisma.$disconnect();

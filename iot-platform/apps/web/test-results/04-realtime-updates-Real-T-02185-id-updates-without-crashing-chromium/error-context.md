@@ -1,0 +1,277 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - navigation [ref=e2]:
+    - generic [ref=e4]:
+      - generic [ref=e5]:
+        - heading "IoT Platform" [level=1] [ref=e7]
+        - generic [ref=e8]:
+          - link "Home" [ref=e9] [cursor=pointer]:
+            - /url: /
+          - link "Devices" [ref=e10] [cursor=pointer]:
+            - /url: /devices
+          - link "Dashboard" [ref=e11] [cursor=pointer]:
+            - /url: /dashboard
+          - link "Builder" [ref=e12] [cursor=pointer]:
+            - /url: /dashboard-builder
+          - link "Demo" [ref=e13] [cursor=pointer]:
+            - /url: /dashboard-demo
+          - link "WebSocket" [ref=e14] [cursor=pointer]:
+            - /url: /websocket-test
+      - generic [ref=e15]:
+        - generic [ref=e16]: POC v1.0 - Week 2
+        - button "Toggle theme" [ref=e17]:
+          - img [ref=e18]
+  - main [ref=e20]:
+    - generic [ref=e21]:
+      - generic [ref=e22]:
+        - generic [ref=e23]:
+          - heading "Live Dashboard" [level=1] [ref=e24]
+          - paragraph [ref=e25]: Real-time data from E2E Realtime Test 1770716819656
+        - generic [ref=e26]:
+          - generic [ref=e29]: Live
+          - generic [ref=e30]: 2 updates received
+          - generic [ref=e31]: ⚡ Throttled (1/sec)
+      - generic [ref=e32]:
+        - heading "📊 Real Device Data Dashboard" [level=3] [ref=e33]
+        - paragraph [ref=e34]:
+          - text: Displaying data from
+          - strong [ref=e35]: E2E Realtime Test 1770716819656
+          - text: "(ID:"
+          - code [ref=e36]: 01KH3F4W9MSTFPZF6FG25NYVFC
+          - text: ). All data is stored in TimescaleDB and updates in real-time via WebSocket.
+        - paragraph [ref=e37]:
+          - text: ⚡
+          - strong [ref=e38]: "Performance:"
+          - text: Charts use server-side aggregation (1-minute buckets) for efficient rendering. Handles 10+ messages/second without performance degradation.
+        - paragraph [ref=e39]:
+          - text: 💡
+          - strong [ref=e40]: "Tip:"
+          - text: Visit
+          - link "Dashboard Demo" [ref=e41] [cursor=pointer]:
+            - /url: /dashboard-demo
+          - text: to see all component variations with simulated data.
+      - generic [ref=e42]:
+        - heading "Current Readings" [level=2] [ref=e43]
+        - generic [ref=e44]:
+          - generic [ref=e45]:
+            - heading "Temperature" [level=3] [ref=e47]
+            - generic [ref=e48]:
+              - application [ref=e51]
+              - generic:
+                - generic: 29.5°C
+                - generic: 0 - 100 °C
+            - generic [ref=e79]:
+              - generic [ref=e81]: Normal
+              - generic [ref=e82]:
+                - generic [ref=e85]: 30°C
+                - generic [ref=e88]: 40°C
+          - generic [ref=e89]:
+            - heading "Humidity" [level=3] [ref=e91]
+            - generic [ref=e92]:
+              - application [ref=e95]
+              - generic:
+                - generic: 61.0%
+                - generic: 0 - 100 %
+            - generic [ref=e123]:
+              - generic [ref=e125]: Normal
+              - generic [ref=e126]:
+                - generic [ref=e129]: 70%
+                - generic [ref=e132]: 85%
+          - generic [ref=e133]:
+            - heading "Device Info" [level=3] [ref=e134]
+            - generic [ref=e135]:
+              - generic [ref=e136]:
+                - text: "Device ID:"
+                - generic [ref=e137]: 01KH3F4W9MSTFPZF6FG25NYVFC
+              - generic [ref=e138]:
+                - text: "Last Update:"
+                - generic [ref=e139]: 2/10/2026, 3:17:01 PM
+              - generic [ref=e140]:
+                - text: "Data Points:"
+                - generic [ref=e141]: "1"
+          - generic [ref=e142]:
+            - generic [ref=e143]: ✅
+            - generic [ref=e144]: System Status
+            - generic [ref=e145]: All Systems Operational
+            - generic [ref=e146]: "API: Connected"
+            - generic [ref=e147]: "WebSocket: Active"
+      - generic [ref=e148]:
+        - heading "Historical Trends" [level=2] [ref=e149]
+        - generic [ref=e150]:
+          - generic [ref=e151]:
+            - generic [ref=e152]:
+              - heading "Temperature & Humidity Over Time" [level=3] [ref=e153]
+              - button "Export" [ref=e155]:
+                - img [ref=e156]
+                - text: Export
+            - generic [ref=e160]:
+              - list [ref=e162]:
+                - listitem [ref=e163]:
+                  - img "Humidity legend icon" [ref=e164]
+                  - text: Humidity
+                - listitem [ref=e166]:
+                  - img "Temperature legend icon" [ref=e167]
+                  - text: Temperature
+              - application [ref=e169]:
+                - generic [ref=e193]:
+                  - generic [ref=e194]:
+                    - generic [ref=e196]: Feb 10, 03:16 PM
+                    - generic [ref=e198]: Feb 10, 03:17 PM
+                  - generic [ref=e199]:
+                    - generic [ref=e201]: "0"
+                    - generic [ref=e203]: "20"
+                    - generic [ref=e205]: "40"
+                    - generic [ref=e207]: "60"
+                    - generic [ref=e209]: "80"
+            - generic [ref=e210]:
+              - generic [ref=e211]: 2 data points
+              - generic [ref=e212]: 2/10/2026, 3:16:00 PM - 2/10/2026, 3:17:01 PM
+          - generic [ref=e213]:
+            - generic [ref=e214]:
+              - generic [ref=e215]:
+                - heading "Temperature Trend" [level=3] [ref=e216]
+                - button "Export" [ref=e218]:
+                  - img [ref=e219]
+                  - text: Export
+              - application [ref=e224]:
+                - generic [ref=e241]:
+                  - generic [ref=e242]:
+                    - generic [ref=e244]: 03:16 PM
+                    - generic [ref=e246]: 03:17 PM
+                  - generic [ref=e247]:
+                    - generic [ref=e249]: "0"
+                    - generic [ref=e251]: "8"
+                    - generic [ref=e253]: "16"
+                    - generic [ref=e255]: "24"
+                    - generic [ref=e257]: "32"
+                  - generic [ref=e258]: Temperature (°C)
+              - generic [ref=e259]:
+                - generic [ref=e260]: 2 data points
+                - generic [ref=e261]: 2/10/2026, 3:16:00 PM - 2/10/2026, 3:17:01 PM
+            - generic [ref=e262]:
+              - generic [ref=e263]:
+                - heading "Humidity Trend" [level=3] [ref=e264]
+                - button "Export" [ref=e266]:
+                  - img [ref=e267]
+                  - text: Export
+              - application [ref=e272]:
+                - generic [ref=e289]:
+                  - generic [ref=e290]:
+                    - generic [ref=e292]: 03:16 PM
+                    - generic [ref=e294]: 03:17 PM
+                  - generic [ref=e295]:
+                    - generic [ref=e297]: "0"
+                    - generic [ref=e299]: "20"
+                    - generic [ref=e301]: "40"
+                    - generic [ref=e303]: "60"
+                    - generic [ref=e305]: "80"
+                  - generic [ref=e306]: Humidity (%)
+              - generic [ref=e307]:
+                - generic [ref=e308]: 2 data points
+                - generic [ref=e309]: 2/10/2026, 3:16:00 PM - 2/10/2026, 3:17:01 PM
+      - generic [ref=e310]:
+        - heading "Live Data Stream" [level=2] [ref=e311]
+        - generic [ref=e312]:
+          - generic [ref=e313]:
+            - generic [ref=e314]:
+              - heading "Real-Time Device Updates (Virtualized)" [level=3] [ref=e315]
+              - generic [ref=e318]: Live
+            - generic [ref=e319]:
+              - generic [ref=e320]: 12 updates
+              - button "Pause" [ref=e321]
+              - button "Clear" [ref=e322]
+              - button "Export CSV" [ref=e323]:
+                - img [ref=e324]
+                - text: Export CSV
+          - list [ref=e327]:
+            - listitem [ref=e328]:
+              - generic [ref=e329]:
+                - generic [ref=e330]: 03:17:01.447 PM
+                - generic [ref=e331]: New
+              - generic [ref=e332]:
+                - generic [ref=e333]:
+                  - generic [ref=e334]: temperature
+                  - generic [ref=e335]: "29.49"
+                - generic [ref=e336]:
+                  - generic [ref=e337]: humidity
+                  - generic [ref=e338]: "60.97"
+              - group [ref=e339]:
+                - generic "View Raw JSON" [ref=e340] [cursor=pointer]
+            - listitem [ref=e341]:
+              - generic [ref=e343]: 03:17:01.447 PM
+              - generic [ref=e344]:
+                - generic [ref=e345]:
+                  - generic [ref=e346]: temperature
+                  - generic [ref=e347]: "29.49"
+                - generic [ref=e348]:
+                  - generic [ref=e349]: humidity
+                  - generic [ref=e350]: "60.97"
+              - group [ref=e351]:
+                - generic "View Raw JSON" [ref=e352] [cursor=pointer]
+            - listitem [ref=e353]:
+              - generic [ref=e355]: 03:17:01.449 PM
+              - generic [ref=e356]:
+                - generic [ref=e357]:
+                  - generic [ref=e358]: temperature
+                  - generic [ref=e359]: "20.21"
+                - generic [ref=e360]:
+                  - generic [ref=e361]: humidity
+                  - generic [ref=e362]: "55.70"
+              - group [ref=e363]:
+                - generic "View Raw JSON" [ref=e364] [cursor=pointer]
+            - listitem [ref=e365]:
+              - generic [ref=e367]: 03:17:01.446 PM
+              - generic [ref=e368]:
+                - generic [ref=e369]:
+                  - generic [ref=e370]: temperature
+                  - generic [ref=e371]: "21.05"
+                - generic [ref=e372]:
+                  - generic [ref=e373]: humidity
+                  - generic [ref=e374]: "68.55"
+              - group [ref=e375]:
+                - generic "View Raw JSON" [ref=e376] [cursor=pointer]
+            - listitem [ref=e377]:
+              - generic [ref=e379]: 03:17:01.450 PM
+              - generic [ref=e380]:
+                - generic [ref=e381]:
+                  - generic [ref=e382]: temperature
+                  - generic [ref=e383]: "28.48"
+                - generic [ref=e384]:
+                  - generic [ref=e385]: humidity
+                  - generic [ref=e386]: "62.36"
+              - group [ref=e387]:
+                - generic "View Raw JSON" [ref=e388] [cursor=pointer]
+            - listitem [ref=e389]:
+              - generic [ref=e391]: 03:17:01.448 PM
+              - generic [ref=e392]:
+                - generic [ref=e393]:
+                  - generic [ref=e394]: temperature
+                  - generic [ref=e395]: "25.65"
+                - generic [ref=e396]:
+                  - generic [ref=e397]: humidity
+                  - generic [ref=e398]: "63.86"
+              - group [ref=e399]:
+                - generic "View Raw JSON" [ref=e400] [cursor=pointer]
+          - generic [ref=e403]:
+            - generic [ref=e404]: Showing 12 of 12 total updates
+            - generic [ref=e406]: "Latest: 03:17:01.447 PM"
+      - generic [ref=e407]:
+        - heading "🧪 Test Real-Time Updates" [level=2] [ref=e408]
+        - generic [ref=e409]:
+          - paragraph [ref=e410]: "To see live updates, post a new device state:"
+          - generic [ref=e411]: "curl -X POST http://localhost:3001/devices/01KH3F4W9MSTFPZF6FG25NYVFC/states \\ -H \"Content-Type: application/json\" \\ -d '{ \"data\": { \"temperature\": 28.5, \"humidity\": 65 } }'"
+          - paragraph [ref=e412]: Watch the gauges, charts, and live stream update in real-time! 🚀
+  - region "Notifications alt+T":
+    - list:
+      - listitem [ref=e413]:
+        - img [ref=e415]
+        - generic [ref=e417]:
+          - generic [ref=e418]: Connected
+          - generic [ref=e419]: Real-time updates enabled
+  - button "Open Next.js Dev Tools" [ref=e425] [cursor=pointer]:
+    - img [ref=e426]
+  - alert [ref=e429]
+  - generic [ref=e430]: "32"
+```

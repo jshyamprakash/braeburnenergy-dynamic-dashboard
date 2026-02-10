@@ -34,18 +34,14 @@ export function useDevices(params?: {
       if (params?.offset) queryParams.set('offset', params.offset.toString());
       if (params?.tags) queryParams.set('tags', params.tags.join(','));
 
-      const response = await apiClient.get<Device[]>(
+      // Use getPaginated to preserve pagination metadata from backend
+      const response = await apiClient.getPaginated<Device>(
         `/devices?${queryParams}`
       );
-      // Backend returns plain array, wrap it for consistency
+
       return {
-        data: response.data,
-        pagination: {
-          total: response.data.length,
-          limit: params?.limit || 100,
-          offset: params?.offset || 0,
-          hasMore: false,
-        },
+        devices: response.data, // Return as 'devices' for easier access
+        pagination: response.pagination,
       };
     },
   });

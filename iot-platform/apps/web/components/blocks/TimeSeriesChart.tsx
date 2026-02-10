@@ -210,6 +210,8 @@ export function TimeSeriesChart({
 
   // Process data for chart with intelligent downsampling
   const chartData = useMemo(() => {
+    console.log('[TimeSeriesChart] Raw data:', data.length, 'points', data[0]);
+
     // Convert to chart format
     const formattedData = data.map((point) => {
       const timestamp = new Date(point.timestamp);
@@ -260,6 +262,7 @@ export function TimeSeriesChart({
       return downsampled;
     }
 
+    console.log('[TimeSeriesChart] Chart data:', formattedData.length, 'points', formattedData[0]);
     return formattedData;
   }, [data, timeFormat, chartWidth, series]);
 
@@ -413,8 +416,7 @@ export function TimeSeriesChart({
   return (
     <div
       ref={containerRef}
-      className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4 h-full flex flex-col"
-      style={{ minHeight: height ? `${height}px` : '300px' }}
+      className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4 flex flex-col"
     >
       {/* Header */}
       <div className="mb-4 flex items-center justify-between flex-shrink-0">
@@ -468,15 +470,22 @@ export function TimeSeriesChart({
         )}
       </div>
 
-      {/* Chart - grows to fill available space */}
+      {/* Chart - fixed height for ResponsiveContainer */}
       {chartData.length > 0 ? (
-        <div ref={chartRef} className="flex-1 min-h-[200px]">
+        <div
+          ref={chartRef}
+          className="flex-shrink-0"
+          style={{ height: `${height - 100}px` }}
+        >
           <ResponsiveContainer width="100%" height="100%">
             {renderChart()}
           </ResponsiveContainer>
         </div>
       ) : (
-        <div className="flex-1 min-h-[200px] flex items-center justify-center text-gray-500 dark:text-gray-400 text-sm">
+        <div
+          className="flex-shrink-0 flex items-center justify-center text-gray-500 dark:text-gray-400 text-sm"
+          style={{ height: `${height - 100}px` }}
+        >
           No data available
         </div>
       )}

@@ -5,6 +5,7 @@ import swaggerUi from '@fastify/swagger-ui';
 import { config } from './config/config';
 import { deviceRoutes } from './routes/device.routes';
 import { deviceStateRoutes } from './routes/device-state.routes';
+import { organizationRoutes } from './routes/organization.routes';
 import { healthRoutes } from './routes/health.routes';
 
 /**
@@ -64,6 +65,7 @@ export async function createServer() {
       ],
       tags: [
         { name: 'Health', description: 'Health check and monitoring endpoints' },
+        { name: 'organizations', description: 'Multi-tenancy organization management' },
         { name: 'Devices', description: 'Device management operations' },
         { name: 'Device States', description: 'Time-series device state management with TimescaleDB' },
       ],
@@ -138,6 +140,7 @@ export async function createServer() {
 
   // Register routes
   await fastify.register(healthRoutes);
+  await fastify.register(organizationRoutes);
   await fastify.register(deviceRoutes);
   await fastify.register(deviceStateRoutes);
 
@@ -150,6 +153,7 @@ export async function createServer() {
       timestamp: new Date().toISOString(),
       endpoints: {
         health: '/health',
+        organizations: '/organizations',
         devices: '/devices',
         states: '/states',
         docs: '/docs',

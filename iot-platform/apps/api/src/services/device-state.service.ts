@@ -22,19 +22,21 @@ export class DeviceStateService {
   /**
    * Create a new device state
    *
+   * @param orgId - Organization ID
    * @param data - State creation data
    * @returns Created device state
    *
    * @example
-   * const state = await deviceStateService.create({
+   * const state = await deviceStateService.create("org-uuid", {
    *   deviceId: "01HGW5N8XZ7KQRST9VW2XY3Z4A",
    *   data: { temperature: 23.5, humidity: 45 },
    *   timestamp: new Date()
    * });
    */
-  async create(data: CreateDeviceStateDTO) {
+  async create(orgId: string, data: CreateDeviceStateDTO) {
     return prisma.deviceState.create({
       data: {
+        orgId,
         deviceId: data.deviceId,
         data: data.data as any,
         timestamp: data.timestamp || new Date(),
@@ -45,19 +47,21 @@ export class DeviceStateService {
   /**
    * Bulk create device states (batch ingestion)
    *
+   * @param orgId - Organization ID
    * @param data - Bulk creation data
    * @returns Count of created states
    *
    * @example
-   * const result = await deviceStateService.bulkCreate({
+   * const result = await deviceStateService.bulkCreate("org-uuid", {
    *   states: [
    *     { deviceId: "01HGW...", data: { temp: 23.5 } },
    *     { deviceId: "01HGW...", data: { temp: 24.1 } },
    *   ]
    * });
    */
-  async bulkCreate(data: BulkCreateDeviceStatesDTO) {
+  async bulkCreate(orgId: string, data: BulkCreateDeviceStatesDTO) {
     const states = data.states.map((state) => ({
+      orgId,
       deviceId: state.deviceId,
       data: state.data as any,
       timestamp: state.timestamp || new Date(),
@@ -69,17 +73,19 @@ export class DeviceStateService {
   }
 
   /**
-   * Get device states with time-range filtering
+   * Get device states with time-range filtering within organization
    *
+   * @param orgId - Organization ID
    * @param deviceId - Device ULID
    * @param query - Query parameters (time range, pagination, sorting)
    * @returns Paginated device states
    */
-  async getStates(deviceId: string, query: QueryDeviceStatesDTO) {
+  async getStates(orgId: string, deviceId: string, query: QueryDeviceStatesDTO) {
     const { startTime, endTime, limit = 1000, offset = 0, sortOrder = 'desc' } = query;
 
-    // Build where clause
+    // Build where clause with org and device filters
     const where: Prisma.DeviceStateWhereInput = {
+      orgId,
       deviceId,
     };
 

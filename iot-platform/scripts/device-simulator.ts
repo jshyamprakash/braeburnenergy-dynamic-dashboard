@@ -18,6 +18,13 @@ import { ulid } from 'ulid';
 // Configuration
 const API_URL = process.env.API_URL || 'http://localhost:3001';
 
+/**
+ * Note: Multi-Tenancy Support
+ * The simulator creates devices through the API, which automatically assigns
+ * them to the default organization (aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa).
+ * No changes needed for POC phase - the API handles organization assignment.
+ */
+
 interface DeviceProfile {
   type: string;
   name: string;

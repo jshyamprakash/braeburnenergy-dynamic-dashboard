@@ -1,0 +1,148 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - navigation [ref=e2]:
+    - generic [ref=e4]:
+      - generic [ref=e5]:
+        - heading "IoT Platform" [level=1] [ref=e7]
+        - generic [ref=e8]:
+          - link "Home" [ref=e9] [cursor=pointer]:
+            - /url: /
+          - link "Devices" [ref=e10] [cursor=pointer]:
+            - /url: /devices
+          - link "Dashboard" [ref=e11] [cursor=pointer]:
+            - /url: /dashboard
+          - link "Builder" [ref=e12] [cursor=pointer]:
+            - /url: /dashboard-builder
+          - link "Demo" [ref=e13] [cursor=pointer]:
+            - /url: /dashboard-demo
+          - link "WebSocket" [ref=e14] [cursor=pointer]:
+            - /url: /websocket-test
+      - generic [ref=e15]:
+        - generic [ref=e16]: POC v1.0 - Week 2
+        - button "Toggle theme" [ref=e17]:
+          - img [ref=e18]
+  - main [ref=e20]:
+    - generic [ref=e21]:
+      - generic [ref=e22]:
+        - generic [ref=e23]:
+          - generic [ref=e24]:
+            - heading "Dashboard Builder" [level=2] [ref=e25]
+            - generic [ref=e26]: 1 block
+          - generic [ref=e27]:
+            - button "Hide Palette" [ref=e28]
+            - button "Save Layout" [ref=e29]
+            - button "Clear All" [ref=e30]
+            - button "Exit Edit Mode" [ref=e31]
+        - generic [ref=e34]:
+          - button "Settings" [ref=e37]:
+            - img [ref=e38]
+          - generic [ref=e40]:
+            - heading "New Gauge" [level=3] [ref=e42]
+            - generic [ref=e43]:
+              - application [ref=e46]
+              - generic:
+                - generic: "75.0"
+                - generic: 0 - 100
+            - generic [ref=e76]: Normal
+      - generic [ref=e79]:
+        - generic [ref=e80]:
+          - heading "Add Blocks" [level=3] [ref=e81]
+          - button "Close palette" [ref=e82]:
+            - img [ref=e83]
+        - generic [ref=e85]:
+          - button "Gauge Display a single value with thresholds" [active] [ref=e86]:
+            - generic [ref=e87]:
+              - img [ref=e89]
+              - generic [ref=e92]:
+                - heading "Gauge" [level=4] [ref=e93]
+                - paragraph [ref=e94]: Display a single value with thresholds
+          - button "Time-Series Chart Visualize historical data over time" [ref=e95]:
+            - generic [ref=e96]:
+              - img [ref=e98]
+              - generic [ref=e100]:
+                - heading "Time-Series Chart" [level=4] [ref=e101]
+                - paragraph [ref=e102]: Visualize historical data over time
+          - button "Live Stream Real-time data feed from devices" [ref=e103]:
+            - generic [ref=e104]:
+              - img [ref=e106]
+              - generic [ref=e108]:
+                - heading "Live Stream" [level=4] [ref=e109]
+                - paragraph [ref=e110]: Real-time data feed from devices
+        - generic [ref=e111]:
+          - heading "How to use:" [level=4] [ref=e112]
+          - list [ref=e113]:
+            - listitem [ref=e114]: • Click a block type to add it to your dashboard
+            - listitem [ref=e115]: • Drag blocks to reposition them
+            - listitem [ref=e116]: • Resize blocks by dragging corners or edges
+            - listitem [ref=e117]: • Click the settings icon (⋮) to open block options
+            - listitem [ref=e118]: • Select "Edit Settings" to configure properties
+            - listitem [ref=e119]: • Select "Duplicate Block" to create a copy
+          - heading "Keyboard shortcuts:" [level=4] [ref=e120]
+          - list [ref=e121]:
+            - listitem [ref=e122]: • Delete - Remove selected block
+            - listitem [ref=e123]: • Ctrl+D - Duplicate selected block
+            - listitem [ref=e124]: • Esc - Close config panel
+      - generic [ref=e126]:
+        - generic [ref=e127]:
+          - generic [ref=e128]:
+            - heading "Configure Block" [level=3] [ref=e129]
+            - paragraph [ref=e130]: Gauge
+          - button "Close configuration" [ref=e131]:
+            - img [ref=e132]
+        - generic [ref=e134]:
+          - generic [ref=e135]:
+            - generic [ref=e136]: Title
+            - textbox "Gauge title" [ref=e137]: New Gauge
+          - generic [ref=e138]:
+            - generic [ref=e139]: Device
+            - combobox [ref=e140]:
+              - option "Select a device" [selected]
+              - option "E2E Realtime Test 1770716816036 (Q0ZR15)"
+              - option "E2E Test Device 1770716807903 (BHN449)"
+              - option "Pressure Sensor YSWWNS (Q28DMJ)"
+              - option "Pressure Sensor 5HQPY1 (5ZGYY7)"
+              - option "Pressure Sensor ECNNNW (M1EE0S)"
+              - option "Pressure Sensor 2SQGR1 (P7ZSAA)"
+              - option "Temperature Sensor 8B4A82 (MS131R)"
+              - option "Air Quality Sensor 4TTABK (6K82NW)"
+              - option "Temperature Sensor Q157PS (KW4ZJ0)"
+              - option "Energy Meter MMQA7T (N84W70)"
+              - option "Vibration Sensor 0CRK67 (MTV255)"
+              - option "Air Quality Sensor ANSQF5 (F6HQQ3)"
+              - option "Pressure Sensor 6F8JBC (PAS604)"
+              - option "Temperature Sensor SRABHD (4J6Z68)"
+              - option "Pressure Sensor HD5MYY (VXKVRA)"
+              - option "Temperature Sensor B9PZ6T (5T3RXM)"
+              - option "Temperature Sensor 682EBR (Q4DF6K)"
+              - option "Temperature Sensor 4SYR19 (GKG66K)"
+              - option "Energy Meter FZDE9K (HE2445)"
+              - option "Vibration Sensor 4M05PE (K069DQ)"
+              - option "Pressure Sensor PZD7ZY (MGV742)"
+              - option "Air Quality Sensor A29F8M (1X1YWZ)"
+              - option "Temperature Sensor R38S46 (G2C61H)"
+            - paragraph [ref=e141]: 23 devices available
+          - generic [ref=e142]:
+            - generic [ref=e143]:
+              - generic [ref=e144]: Min Value
+              - spinbutton [ref=e145]: "0"
+            - generic [ref=e146]:
+              - generic [ref=e147]: Max Value
+              - spinbutton [ref=e148]: "100"
+          - generic [ref=e149]:
+            - generic [ref=e150]: Unit
+            - textbox "e.g., °C, %, PSI" [ref=e151]
+          - generic [ref=e152]:
+            - generic [ref=e153]:
+              - generic [ref=e154]: Warning Threshold
+              - spinbutton [ref=e155]
+            - generic [ref=e156]:
+              - generic [ref=e157]: Critical Threshold
+              - spinbutton [ref=e158]
+        - paragraph [ref=e160]: Changes are applied automatically. Click outside or press the X to close this panel.
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e166] [cursor=pointer]:
+    - img [ref=e167]
+  - alert [ref=e170]
+```

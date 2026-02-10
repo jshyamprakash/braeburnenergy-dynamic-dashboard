@@ -58,11 +58,33 @@ export function useDeviceStates(deviceId?: string, options?: { limit?: number })
 
 /**
  * Real-time device state updates via WebSocket
+ * Fetches the latest state on mount, then listens for real-time updates
  */
 export function useDeviceRealtime(deviceId?: string) {
   const [latestState, setLatestState] = useState<DeviceState | null>(null);
   const { socket, isConnected } = useWebSocket();
 
+  // Fetch the latest state on mount
+  useEffect(() => {
+    if (!deviceId) return;
+
+    const fetchLatestState = async () => {
+      try {
+        const response = await apiClient.get<DeviceState[]>(
+          `/devices/${deviceId}/states?limit=1`
+        );
+        if (response.data && response.data.length > 0) {
+          setLatestState(response.data[0]);
+        }
+      } catch (error) {
+        console.error('Failed to fetch latest state:', error);
+      }
+    };
+
+    fetchLatestState();
+  }, [deviceId]);
+
+  // Listen for real-time WebSocket updates
   useEffect(() => {
     if (!socket || !isConnected || !deviceId) return;
 

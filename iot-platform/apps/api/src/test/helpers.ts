@@ -8,6 +8,11 @@ import { prisma } from '../lib/prisma';
  */
 
 /**
+ * Default organization ID for tests (matches migration default org)
+ */
+export const DEFAULT_ORG_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+
+/**
  * Create a test device
  */
 export async function createTestDevice(overrides: any = {}) {
@@ -15,6 +20,7 @@ export async function createTestDevice(overrides: any = {}) {
 
   return prisma.device.create({
     data: {
+      orgId: overrides.orgId || DEFAULT_ORG_ID,
       deviceId,
       name: overrides.name || 'Test Device',
       tags: overrides.tags || ['test'],
@@ -43,9 +49,10 @@ export async function createTestDevices(count: number) {
 /**
  * Create a test device state
  */
-export async function createTestDeviceState(deviceId: string, data: any = {}) {
+export async function createTestDeviceState(deviceId: string, data: any = {}, orgId: string = DEFAULT_ORG_ID) {
   return prisma.deviceState.create({
     data: {
+      orgId,
       deviceId,
       data: data || { temperature: 25.0, humidity: 50.0 },
       timestamp: new Date(),
@@ -56,7 +63,7 @@ export async function createTestDeviceState(deviceId: string, data: any = {}) {
 /**
  * Create multiple test device states
  */
-export async function createTestDeviceStates(deviceId: string, count: number) {
+export async function createTestDeviceStates(deviceId: string, count: number, orgId: string = DEFAULT_ORG_ID) {
   const states = [];
   const now = new Date();
 
@@ -65,6 +72,7 @@ export async function createTestDeviceStates(deviceId: string, count: number) {
 
     const state = await prisma.deviceState.create({
       data: {
+        orgId,
         deviceId,
         data: { temperature: 20 + i, humidity: 40 + i },
         timestamp,

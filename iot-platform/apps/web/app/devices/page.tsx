@@ -71,7 +71,7 @@ export default function DevicesPage() {
 
         <div className="bg-white shadow sm:rounded-lg">
           <div className="px-4 py-5 sm:p-6">
-            {data && data.data.length > 0 ? (
+            {data && data.devices.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead>
@@ -94,7 +94,7 @@ export default function DevicesPage() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {data.data.map((device) => (
+                    {data.devices.map((device) => (
                       <tr key={device.deviceId} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
                           <Link
@@ -174,7 +174,7 @@ export default function DevicesPage() {
 
             {data && data.pagination && (
               <div className="mt-4 text-sm text-gray-500">
-                Showing {data.data.length} of {data.pagination.total} devices
+                Showing {data.devices.length} of {data.pagination.total} devices
               </div>
             )}
           </div>

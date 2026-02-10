@@ -16,6 +16,12 @@ import { deviceIdParamSchema, type DeviceIdParam } from '../schemas/device.schem
 import { broadcastDeviceState } from '../websocket/server';
 
 /**
+ * Default organization ID for POC
+ * TODO: Replace with orgId from JWT token or request header in MVP
+ */
+const DEFAULT_ORG_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+
+/**
  * DeviceStateController
  *
  * HTTP request handlers for device state/telemetry management
@@ -40,8 +46,8 @@ export class DeviceStateController {
         deviceId,
       });
 
-      // Create state
-      const state = await deviceStateService.create(validatedData);
+      // Create state (using default org for now)
+      const state = await deviceStateService.create(DEFAULT_ORG_ID, validatedData);
 
       // Broadcast to WebSocket subscribers
       const io = (request.server as any).io as SocketIOServer;
@@ -95,7 +101,7 @@ export class DeviceStateController {
       const validatedData = bulkCreateDeviceStatesSchema.parse(request.body);
 
       // Bulk create
-      const result = await deviceStateService.bulkCreate(validatedData);
+      const result = await deviceStateService.bulkCreate(DEFAULT_ORG_ID, validatedData);
 
       return reply.code(201).send({
         success: true,
@@ -134,8 +140,8 @@ export class DeviceStateController {
       const { deviceId } = deviceIdParamSchema.parse(request.params);
       const validatedQuery = queryDeviceStatesSchema.parse(request.query);
 
-      // Check if device exists
-      const device = await deviceService.getByDeviceId(deviceId);
+      // Check if device exists (using default org for now)
+      const device = await deviceService.getByDeviceId(DEFAULT_ORG_ID, deviceId);
       if (!device) {
         return reply.code(404).send({
           success: false,
@@ -143,8 +149,8 @@ export class DeviceStateController {
         });
       }
 
-      // Get states
-      const result = await deviceStateService.getStates(deviceId, validatedQuery);
+      // Get states (using default org for now)
+      const result = await deviceStateService.getStates(DEFAULT_ORG_ID, deviceId, validatedQuery);
 
       return reply.code(200).send({
         success: true,

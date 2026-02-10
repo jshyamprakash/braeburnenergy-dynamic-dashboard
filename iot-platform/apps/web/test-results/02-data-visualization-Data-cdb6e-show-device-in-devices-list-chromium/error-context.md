@@ -1,0 +1,81 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - navigation [ref=e2]:
+    - generic [ref=e4]:
+      - generic [ref=e5]:
+        - heading "IoT Platform" [level=1] [ref=e7]
+        - generic [ref=e8]:
+          - link "Home" [ref=e9] [cursor=pointer]:
+            - /url: /
+          - link "Devices" [ref=e10] [cursor=pointer]:
+            - /url: /devices
+          - link "Dashboard" [ref=e11] [cursor=pointer]:
+            - /url: /dashboard
+          - link "Builder" [ref=e12] [cursor=pointer]:
+            - /url: /dashboard-builder
+          - link "Demo" [ref=e13] [cursor=pointer]:
+            - /url: /dashboard-demo
+          - link "WebSocket" [ref=e14] [cursor=pointer]:
+            - /url: /websocket-test
+      - generic [ref=e15]:
+        - generic [ref=e16]: POC v1.0 - Week 2
+        - button "Toggle theme" [ref=e17]:
+          - img [ref=e18]
+  - main [ref=e20]:
+    - generic [ref=e21]:
+      - generic [ref=e22]:
+        - generic [ref=e23]:
+          - button "←" [ref=e24]
+          - generic [ref=e25]:
+            - heading "E2E Viz Test 1770716806026" [level=1] [ref=e26]
+            - paragraph [ref=e27]: 01KH3F4EZVNDGWQRAH4F90WB15
+        - generic [ref=e31]: Live (0 updates)
+      - generic [ref=e33]:
+        - heading "Device Information" [level=3] [ref=e34]
+        - generic [ref=e35]:
+          - generic [ref=e36]:
+            - term [ref=e37]: Name
+            - definition [ref=e38]: E2E Viz Test 1770716806026
+          - generic [ref=e39]:
+            - term [ref=e40]: Device ID
+            - definition [ref=e41]: 01KH3F4EZVNDGWQRAH4F90WB15
+          - generic [ref=e42]:
+            - term [ref=e43]: Tags
+            - definition [ref=e44]:
+              - generic [ref=e45]: e2e-test
+              - generic [ref=e46]: visualization
+          - generic [ref=e47]:
+            - term [ref=e48]: Created
+            - definition [ref=e49]: 2/10/2026, 3:16:46 PM
+          - generic [ref=e50]:
+            - term [ref=e51]: Attributes
+            - definition [ref=e52]:
+              - generic [ref=e53]: "{ \"test\": true, \"purpose\": \"e2e-testing\" }"
+      - generic [ref=e55]:
+        - heading "Latest State" [level=3] [ref=e57]
+        - generic [ref=e58]:
+          - paragraph [ref=e59]: No state data available
+          - paragraph [ref=e60]: Send data to this device to see it here
+      - generic [ref=e62]:
+        - heading "State History" [level=3] [ref=e63]
+        - paragraph [ref=e65]: No state history available
+      - generic [ref=e66]:
+        - heading "Quick Actions" [level=4] [ref=e67]
+        - generic [ref=e68]:
+          - link "Test WebSocket →" [ref=e69] [cursor=pointer]:
+            - /url: /websocket-test
+          - link "API Docs →" [ref=e70] [cursor=pointer]:
+            - /url: http://localhost:3001/docs#/Devices/get_devices__deviceId_
+  - region "Notifications alt+T":
+    - list:
+      - listitem [ref=e71]:
+        - img [ref=e73]
+        - generic [ref=e75]:
+          - generic [ref=e76]: Connected
+          - generic [ref=e77]: Real-time updates enabled
+  - button "Open Next.js Dev Tools" [ref=e83] [cursor=pointer]:
+    - img [ref=e84]
+  - alert [ref=e87]
+```
