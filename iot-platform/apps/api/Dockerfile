@@ -1,0 +1,84 @@
+# =============================================================================
+# Stage 1: Dependencies
+# =============================================================================
+FROM node:20-alpine AS deps
+
+# Install build dependencies for native modules
+RUN apk add --no-cache libc6-compat openssl
+
+WORKDIR /app
+
+# Install pnpm
+RUN npm install -g pnpm@8.15.0
+
+# Copy workspace configuration
+COPY pnpm-workspace.yaml ./
+COPY pnpm-lock.yaml ./
+COPY package.json ./
+
+# Copy API package.json for dependency installation
+COPY apps/api/package.json ./apps/api/
+COPY packages/types/package.json ./packages/types/ 2>/dev/null || true
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile --prod=false
+
+# =============================================================================
+# Stage 2: Builder
+# =============================================================================
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Install pnpm
+RUN npm install -g pnpm@8.15.0
+
+# Copy dependencies from deps stage
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
+
+# Copy source code
+COPY . .
+
+# Generate Prisma Client
+WORKDIR /app/apps/api
+RUN pnpm prisma generate
+
+# Build TypeScript
+RUN pnpm build
+
+# =============================================================================
+# Stage 3: Production
+# =============================================================================
+FROM node:20-alpine AS runner
+
+# Install openssl for Prisma
+RUN apk add --no-cache openssl
+
+WORKDIR /app
+
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 fastify
+
+# Copy built application
+COPY --from=builder --chown=fastify:nodejs /app/apps/api/dist ./dist
+COPY --from=builder --chown=fastify:nodejs /app/apps/api/node_modules ./node_modules
+COPY --from=builder --chown=fastify:nodejs /app/apps/api/prisma ./prisma
+COPY --from=builder --chown=fastify:nodejs /app/apps/api/package.json ./package.json
+
+# Install pnpm for running migrations
+RUN npm install -g pnpm@8.15.0
+
+# Switch to non-root user
+USER fastify
+
+# Expose port
+EXPOSE 3001
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+
+# Start application
+CMD ["node", "dist/server.js"]
