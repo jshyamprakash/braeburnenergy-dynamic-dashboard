@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { DashboardBlock } from './DashboardBuilder';
 import { useDevices, useDeviceFields } from '@/hooks/useDeviceData';
 
@@ -17,8 +17,13 @@ interface BlockConfigPanelProps {
  */
 export function BlockConfigPanel({ block, onUpdate, onClose }: BlockConfigPanelProps) {
   const [config, setConfig] = useState(block.config);
-  const { data: devices = [] } = useDevices();
+  const { data: devices = [], isLoading: devicesLoading, error: devicesError } = useDevices();
   const fields = useDeviceFields(config.deviceId);
+
+  // Sync config only when switching to a different block (not when config updates)
+  useEffect(() => {
+    setConfig(block.config);
+  }, [block.id]); // Only depend on block.id, NOT block.config
 
   const handleChange = (key: string, value: any) => {
     const newConfig = { ...config, [key]: value };
@@ -48,22 +53,44 @@ export function BlockConfigPanel({ block, onUpdate, onClose }: BlockConfigPanelP
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Device
               </label>
-              <select
-                value={config.deviceId || ''}
-                onChange={(e) => {
-                  handleChange('deviceId', e.target.value);
-                  // Reset field when device changes
-                  handleChange('field', '');
-                }}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select a device</option>
-                {devices.map((device) => (
-                  <option key={device.id} value={device.deviceId}>
-                    {device.name} ({device.deviceId.slice(-6)})
-                  </option>
-                ))}
-              </select>
+              {devicesLoading ? (
+                <div className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
+                  Loading devices...
+                </div>
+              ) : devicesError ? (
+                <div className="w-full px-3 py-2 border border-red-300 dark:border-red-600 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400">
+                  Error loading devices
+                </div>
+              ) : (
+                <select
+                  value={config.deviceId || ''}
+                  onChange={(e) => {
+                    // Update both deviceId and field in a single operation
+                    const newConfig = { ...config, deviceId: e.target.value, field: '' };
+                    setConfig(newConfig);
+                    onUpdate(newConfig);
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+                  disabled={devices.length === 0}
+                >
+                  <option value="">Select a device</option>
+                  {devices.map((device) => (
+                    <option key={device.id} value={device.deviceId}>
+                      {device.name} ({device.deviceId.slice(-6)})
+                    </option>
+                  ))}
+                </select>
+              )}
+              {!devicesLoading && !devicesError && devices.length === 0 && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                  No devices found. Run the simulator to create devices.
+                </p>
+              )}
+              {!devicesLoading && !devicesError && devices.length > 0 && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  {devices.length} device{devices.length !== 1 ? 's' : ''} available
+                </p>
+              )}
             </div>
 
             {config.deviceId && (
@@ -83,6 +110,9 @@ export function BlockConfigPanel({ block, onUpdate, onClose }: BlockConfigPanelP
                     </option>
                   ))}
                 </select>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  {fields.length} field{fields.length !== 1 ? 's' : ''} available: {fields.join(', ')}
+                </p>
               </div>
             )}
 
@@ -109,18 +139,6 @@ export function BlockConfigPanel({ block, onUpdate, onClose }: BlockConfigPanelP
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Current Value
-              </label>
-              <input
-                type="number"
-                value={config.value ?? 75}
-                onChange={(e) => handleChange('value', Number(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
-              />
             </div>
 
             <div>

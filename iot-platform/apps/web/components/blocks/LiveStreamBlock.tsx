@@ -5,6 +5,7 @@ import { List, type ListImperativeAPI } from 'react-window';
 import type { DeviceState } from '@/lib/types';
 import { exportDeviceStatesToCSV } from '@/lib/utils/export';
 import { toast } from '@/lib/utils/toast';
+import { useDeviceStateUpdates } from '@/lib/hooks/useWebSocket';
 
 interface LiveStreamBlockProps {
   /**
@@ -92,6 +93,23 @@ export function LiveStreamBlock({
     }
   }, [manualData, maxUpdates, isPaused]);
 
+  // Clear updates when device changes
+  useEffect(() => {
+    setUpdates([]);
+    setUpdateCount(0);
+  }, [deviceId]);
+
+  // Subscribe to real-time WebSocket updates
+  useDeviceStateUpdates(deviceId, (state: DeviceState) => {
+    if (!isPaused) {
+      setUpdates((prev) => {
+        const updated = [state, ...prev];
+        return updated.slice(0, maxUpdates);
+      });
+      setUpdateCount((prev) => prev + 1);
+    }
+  });
+
   // Auto-scroll to top when new data arrives (for virtualized list)
   useEffect(() => {
     if (autoScroll && streamRef.current && !isPaused && updates.length > 0) {
@@ -120,9 +138,6 @@ export function LiveStreamBlock({
     return String(value);
   };
 
-  // Get fields to display
-  const displayFields = fields || (updates.length > 0 ? Object.keys(updates[0].data) : []);
-
   // Row component for virtual list
   const Row = ({
     index,
@@ -138,6 +153,9 @@ export function LiveStreamBlock({
     };
   }) => {
     const update = updates[index];
+    // Get fields for THIS specific update (not just the first one)
+    const rowFields = fields || Object.keys(update.data);
+
     return (
       <div
         style={style}
@@ -158,7 +176,7 @@ export function LiveStreamBlock({
 
         {/* Field Values */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-          {displayFields.map((field) => (
+          {rowFields.map((field) => (
             <div
               key={field}
               className="bg-white dark:bg-gray-700 px-2 py-1.5 rounded border border-gray-200 dark:border-gray-600"

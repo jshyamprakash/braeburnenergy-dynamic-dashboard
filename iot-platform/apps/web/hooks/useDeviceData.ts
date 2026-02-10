@@ -51,6 +51,8 @@ export function useDeviceStates(deviceId?: string, options?: { limit?: number })
     },
     enabled: !!deviceId,
     refetchInterval: 5000, // Refetch every 5 seconds
+    staleTime: 0, // Always consider data stale - force fresh fetches
+    gcTime: 30000, // Keep in cache for 30 seconds (formerly cacheTime)
   });
 }
 

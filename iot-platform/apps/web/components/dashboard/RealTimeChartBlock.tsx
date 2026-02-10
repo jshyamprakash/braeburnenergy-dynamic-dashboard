@@ -24,7 +24,11 @@ export function RealTimeChartBlock({
   deviceId,
   data: fallbackData = [],
   series: fallbackSeries = [],
-  ...chartProps
+  chartType = 'line',
+  title,
+  showLegend,
+  showGrid,
+  smooth,
 }: RealTimeChartBlockProps) {
   const { data: deviceStates = [] } = useDeviceStates(deviceId, { limit: 50 });
   const fields = useDeviceFields(deviceId);
@@ -58,7 +62,11 @@ export function RealTimeChartBlock({
 
   return (
     <TimeSeriesChart
-      {...chartProps}
+      type={chartType} // Map chartType to type prop
+      title={title}
+      showLegend={showLegend}
+      showGrid={showGrid}
+      smooth={smooth}
       data={chartData}
       series={chartSeries}
       hideExport={true}
