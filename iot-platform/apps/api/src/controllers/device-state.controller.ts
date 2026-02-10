@@ -1,5 +1,6 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import type { Server as SocketIOServer } from 'socket.io';
+import { deviceService } from '../services/device.service';
 import { deviceStateService } from '../services/device-state.service';
 import {
   createDeviceStateSchema,
@@ -132,6 +133,15 @@ export class DeviceStateController {
       // Validate params and query
       const { deviceId } = deviceIdParamSchema.parse(request.params);
       const validatedQuery = queryDeviceStatesSchema.parse(request.query);
+
+      // Check if device exists
+      const device = await deviceService.getByDeviceId(deviceId);
+      if (!device) {
+        return reply.code(404).send({
+          success: false,
+          error: 'Device not found',
+        });
+      }
 
       // Get states
       const result = await deviceStateService.getStates(deviceId, validatedQuery);

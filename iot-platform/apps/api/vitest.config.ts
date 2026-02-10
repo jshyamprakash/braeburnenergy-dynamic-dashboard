@@ -20,6 +20,8 @@ export default defineConfig({
       ],
     },
     testTimeout: 10000,
+    // Disable parallel file execution for integration tests to avoid race conditions
+    fileParallelism: false,
   },
   resolve: {
     alias: {

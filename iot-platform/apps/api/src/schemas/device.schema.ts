@@ -112,7 +112,6 @@ export const queryDevicesSchema = z.object({
   tags: z
     .string()
     .transform((val) => val.split(',').map((t) => t.trim()).filter(Boolean))
-    .pipe(z.array(z.string()).optional())
     .optional()
     .describe('Filter by tags (comma-separated)'),
 

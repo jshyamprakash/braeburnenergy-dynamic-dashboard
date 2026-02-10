@@ -167,6 +167,11 @@ export async function createServer() {
 }
 
 /**
+ * Alias for createServer (used in integration tests)
+ */
+export const build = createServer;
+
+/**
  * Start the server
  */
 export async function startServer() {
