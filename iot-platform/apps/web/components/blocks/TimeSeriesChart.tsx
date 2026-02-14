@@ -243,16 +243,17 @@ export function TimeSeriesChart({
       return {
         ...point,
         time: formattedTime,
-        timestamp: timestamp.getTime(), // For sorting
+        timestamp: point.timestamp, // Keep original timestamp
+        _sortKey: timestamp.getTime(), // For sorting
       };
-    }).sort((a, b) => a.timestamp - b.timestamp);
+    }).sort((a, b) => (a._sortKey as number) - (b._sortKey as number));
 
     // Apply LTTB downsampling for better performance
     const threshold = getOptimalThreshold(chartWidth, formattedData.length);
 
     if (formattedData.length > threshold) {
       // Use first series key for downsampling calculation
-      const firstSeriesKey = series[0]?.key;
+      const firstSeriesKey = series[0]?.key as any;
       const downsampled = downsampleLTTB(formattedData, threshold, firstSeriesKey);
 
       console.log(
@@ -416,7 +417,7 @@ export function TimeSeriesChart({
   return (
     <div
       ref={containerRef}
-      className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4 flex flex-col"
+      className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4 flex flex-col h-full"
     >
       {/* Header */}
       <div className="mb-4 flex items-center justify-between flex-shrink-0">
@@ -470,12 +471,11 @@ export function TimeSeriesChart({
         )}
       </div>
 
-      {/* Chart - fixed height for ResponsiveContainer */}
+      {/* Chart - flexible height using flex-1 */}
       {chartData.length > 0 ? (
         <div
           ref={chartRef}
-          className="flex-shrink-0"
-          style={{ height: `${height - 100}px` }}
+          className="flex-1 min-h-0"
         >
           <ResponsiveContainer width="100%" height="100%">
             {renderChart()}
@@ -483,8 +483,7 @@ export function TimeSeriesChart({
         </div>
       ) : (
         <div
-          className="flex-shrink-0 flex items-center justify-center text-gray-500 dark:text-gray-400 text-sm"
-          style={{ height: `${height - 100}px` }}
+          className="flex-1 min-h-0 flex items-center justify-center text-gray-500 dark:text-gray-400 text-sm"
         >
           No data available
         </div>

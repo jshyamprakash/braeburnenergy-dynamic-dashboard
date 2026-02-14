@@ -1,5 +1,7 @@
 import { ulid } from 'ulid';
-import { prisma } from '../lib/prisma';
+import mongoose from 'mongoose';
+import { Device } from '../models/device.model';
+import { DeviceState } from '../models/device-state.model';
 
 /**
  * Test Data Helpers
@@ -8,9 +10,9 @@ import { prisma } from '../lib/prisma';
  */
 
 /**
- * Default organization ID for tests (matches migration default org)
+ * Default organization ID for tests (matches seeded default org)
  */
-export const DEFAULT_ORG_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+export const DEFAULT_ORG_ID = 'aaaaaaaaaaaaaaaaaaaaaaaa';
 
 /**
  * Create a test device
@@ -18,15 +20,16 @@ export const DEFAULT_ORG_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
 export async function createTestDevice(overrides: any = {}) {
   const deviceId = ulid();
 
-  return prisma.device.create({
-    data: {
-      orgId: overrides.orgId || DEFAULT_ORG_ID,
-      deviceId,
-      name: overrides.name || 'Test Device',
-      tags: overrides.tags || ['test'],
-      attributes: overrides.attributes || null,
-    },
+  const device = new Device({
+    orgId: new mongoose.Types.ObjectId(overrides.orgId || DEFAULT_ORG_ID),
+    deviceId,
+    name: overrides.name || 'Test Device',
+    tags: overrides.tags || ['test'],
+    attributes: overrides.attributes || null,
   });
+
+  const saved = await device.save();
+  return saved.toObject();
 }
 
 /**
@@ -50,14 +53,25 @@ export async function createTestDevices(count: number) {
  * Create a test device state
  */
 export async function createTestDeviceState(deviceId: string, data: any = {}, orgId: string = DEFAULT_ORG_ID) {
-  return prisma.deviceState.create({
-    data: {
-      orgId,
+  const state = new DeviceState({
+    timestamp: new Date(),
+    metadata: {
       deviceId,
-      data: data || { temperature: 25.0, humidity: 50.0 },
-      timestamp: new Date(),
+      orgId: new mongoose.Types.ObjectId(orgId),
     },
+    data: data && Object.keys(data).length > 0 ? data : { temperature: 25.0, humidity: 50.0 },
   });
+
+  const saved = await state.save();
+  const obj = saved.toObject();
+
+  // Return flat format matching API response
+  return {
+    id: obj._id,
+    deviceId: obj.metadata.deviceId,
+    data: obj.data,
+    timestamp: obj.timestamp,
+  };
 }
 
 /**
@@ -70,16 +84,24 @@ export async function createTestDeviceStates(deviceId: string, count: number, or
   for (let i = 0; i < count; i++) {
     const timestamp = new Date(now.getTime() - i * 60000); // 1 minute intervals
 
-    const state = await prisma.deviceState.create({
-      data: {
-        orgId,
+    const state = new DeviceState({
+      timestamp,
+      metadata: {
         deviceId,
-        data: { temperature: 20 + i, humidity: 40 + i },
-        timestamp,
+        orgId: new mongoose.Types.ObjectId(orgId),
       },
+      data: { temperature: 20 + i, humidity: 40 + i },
     });
 
-    states.push(state);
+    const saved = await state.save();
+    const obj = saved.toObject();
+
+    states.push({
+      id: obj._id,
+      deviceId: obj.metadata.deviceId,
+      data: obj.data,
+      timestamp: obj.timestamp,
+    });
   }
 
   return states;

@@ -100,7 +100,7 @@ export function LiveStreamBlock({
   }, [deviceId]);
 
   // Subscribe to real-time WebSocket updates
-  useDeviceStateUpdates(deviceId, (state: DeviceState) => {
+  useDeviceStateUpdates(deviceId || null, (state: DeviceState) => {
     if (!isPaused) {
       setUpdates((prev) => {
         const updated = [state, ...prev];

@@ -4,7 +4,7 @@
 FROM node:20-alpine AS deps
 
 # Install build dependencies for native modules
-RUN apk add --no-cache libc6-compat openssl
+RUN apk add --no-cache libc6-compat
 
 WORKDIR /app
 
@@ -40,20 +40,14 @@ COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
 # Copy source code
 COPY . .
 
-# Generate Prisma Client
-WORKDIR /app/apps/api
-RUN pnpm prisma generate
-
 # Build TypeScript
+WORKDIR /app/apps/api
 RUN pnpm build
 
 # =============================================================================
 # Stage 3: Production
 # =============================================================================
 FROM node:20-alpine AS runner
-
-# Install openssl for Prisma
-RUN apk add --no-cache openssl
 
 WORKDIR /app
 
@@ -64,11 +58,7 @@ RUN adduser --system --uid 1001 fastify
 # Copy built application
 COPY --from=builder --chown=fastify:nodejs /app/apps/api/dist ./dist
 COPY --from=builder --chown=fastify:nodejs /app/apps/api/node_modules ./node_modules
-COPY --from=builder --chown=fastify:nodejs /app/apps/api/prisma ./prisma
 COPY --from=builder --chown=fastify:nodejs /app/apps/api/package.json ./package.json
-
-# Install pnpm for running migrations
-RUN npm install -g pnpm@8.15.0
 
 # Switch to non-root user
 USER fastify
@@ -81,4 +71,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
 # Start application
-CMD ["node", "dist/server.js"]
+CMD ["node", "dist/index.js"]

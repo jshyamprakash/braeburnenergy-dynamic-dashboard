@@ -33,7 +33,7 @@ export const updateOrganizationSchema = z.object({
  * Schema for organization ID parameter
  */
 export const orgIdParamSchema = z.object({
-  orgId: z.string().uuid().describe('Organization UUID'),
+  orgId: z.string().min(1).describe('Organization ID'),
 });
 
 /**

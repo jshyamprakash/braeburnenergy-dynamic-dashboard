@@ -59,3 +59,16 @@ body {
     text-wrap: balance;
   }
 }
+
+/* React Grid Layout - Hide resize handles and drag cursor for static items */
+.react-grid-item.static .react-resizable-handle {
+  display: none !important;
+}
+
+.react-grid-item.static {
+  cursor: default !important;
+}
+
+.react-grid-item.react-draggable-dragging {
+  cursor: move !important;
+}

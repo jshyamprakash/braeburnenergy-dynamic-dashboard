@@ -5,6 +5,7 @@ import { GaugeBlock } from '@/components/blocks/GaugeBlock';
 import { TimeSeriesChart, type TimeSeriesDataPoint } from '@/components/blocks/TimeSeriesChart';
 import { LiveStreamBlock } from '@/components/blocks/LiveStreamBlock';
 import type { DeviceState } from '@/lib/types';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 
 export default function DashboardDemoPage() {
   // Simulate real-time data updates
@@ -113,7 +114,8 @@ export default function DashboardDemoPage() {
   }, []); // ✅ Empty deps - interval only created once
 
   return (
-    <div className="space-y-6">
+    <ProtectedRoute>
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -493,5 +495,6 @@ export default function DashboardDemoPage() {
         </div>
       </div>
     </div>
+    </ProtectedRoute>
   );
 }

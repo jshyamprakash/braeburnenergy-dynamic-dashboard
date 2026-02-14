@@ -5,32 +5,121 @@ import {
   getErrorMessage,
   getUserFriendlyMessage,
 } from './api-error';
+import { apiConfig } from './config';
 
-// API base URL (from environment variable or default to localhost)
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+// API base URL from centralized config
+const API_BASE_URL = apiConfig.baseUrl;
+
+// Token storage keys (must match AuthContext)
+const ACCESS_TOKEN_KEY = 'iot_access_token';
+const REFRESH_TOKEN_KEY = 'iot_refresh_token';
 
 // Type-safe API client using native fetch
 class ApiClient {
   private baseURL: string;
+  private refreshPromise: Promise<void> | null = null;
 
   constructor(baseURL: string) {
     this.baseURL = baseURL;
   }
 
+  /**
+   * Get access token from localStorage
+   */
+  private getAccessToken(): string | null {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem(ACCESS_TOKEN_KEY);
+  }
+
+  /**
+   * Refresh access token using refresh token
+   */
+  private async refreshAccessToken(): Promise<void> {
+    // If refresh is already in progress, wait for it
+    if (this.refreshPromise) {
+      return this.refreshPromise;
+    }
+
+    this.refreshPromise = (async () => {
+      try {
+        const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+
+        if (!refreshToken) {
+          throw new Error('No refresh token available');
+        }
+
+        const response = await fetch(`${this.baseURL}/auth/refresh`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ refreshToken }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          throw new Error('Token refresh failed');
+        }
+
+        // Update tokens in localStorage
+        localStorage.setItem(ACCESS_TOKEN_KEY, data.data.accessToken);
+        localStorage.setItem(REFRESH_TOKEN_KEY, data.data.refreshToken);
+      } catch (error) {
+        // Refresh failed - clear tokens and redirect to login
+        localStorage.removeItem(ACCESS_TOKEN_KEY);
+        localStorage.removeItem(REFRESH_TOKEN_KEY);
+        localStorage.removeItem('iot_user');
+
+        // Redirect to login page if we're in the browser
+        if (typeof window !== 'undefined') {
+          window.location.href = '/login';
+        }
+
+        throw error;
+      } finally {
+        this.refreshPromise = null;
+      }
+    })();
+
+    return this.refreshPromise;
+  }
+
   private async request<T>(
     endpoint: string,
-    options?: RequestInit
+    options?: RequestInit,
+    retry = true
   ): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
+
+    // Get access token and add to headers
+    const accessToken = this.getAccessToken();
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      ...options?.headers,
+    };
+
+    if (accessToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`;
+    }
 
     try {
       const response = await fetch(url, {
         ...options,
-        headers: {
-          'Content-Type': 'application/json',
-          ...options?.headers,
-        },
+        headers,
       });
+
+      // Handle 401 Unauthorized - Try to refresh token and retry
+      if (response.status === 401 && retry) {
+        try {
+          await this.refreshAccessToken();
+          // Retry the original request with new token
+          return this.request<T>(endpoint, options, false);
+        } catch (refreshError) {
+          // Refresh failed - will redirect to login in refreshAccessToken
+          throw createApiError(401, 'Authentication failed. Please login again.');
+        }
+      }
 
       // Handle non-JSON responses (e.g., 500 errors with HTML)
       const contentType = response.headers.get('content-type');
@@ -39,8 +128,8 @@ class ApiClient {
       if (!response.ok) {
         // Try to parse error from JSON response
         if (isJson) {
-          const errorData: ApiResponse<T> = await response.json();
-          const message = errorData.error?.message || getErrorMessage(response.status);
+          const errorData = await response.json() as any;
+          const message = errorData.error?.message || errorData.error || getErrorMessage(response.status);
           throw createApiError(response.status, message, errorData.error);
         } else {
           // Non-JSON error response (e.g., nginx error page)
@@ -49,10 +138,10 @@ class ApiClient {
         }
       }
 
-      const data: ApiResponse<T> = await response.json();
+      const data = await response.json() as any;
 
       if (!data.success) {
-        const message = data.error?.message || 'Request failed';
+        const message = data.error?.message || data.error || 'Request failed';
         throw createApiError(response.status, message, data.error);
       }
 

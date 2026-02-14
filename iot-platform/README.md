@@ -5,8 +5,8 @@ Enterprise IoT Platform for real-time device management, time-series data ingest
 [![Node.js](https://img.shields.io/badge/Node.js-20.x-green.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg)](https://www.typescriptlang.org/)
 [![Next.js](https://img.shields.io/badge/Next.js-16.x-black.svg)](https://nextjs.org/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16.x-blue.svg)](https://www.postgresql.org/)
-[![TimescaleDB](https://img.shields.io/badge/TimescaleDB-Latest-orange.svg)](https://www.timescale.com/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-8.x-green.svg)](https://www.mongodb.com/)
+[![Mongoose](https://img.shields.io/badge/Mongoose-ODM-red.svg)](https://mongoosejs.com/)
 
 ---
 
@@ -18,10 +18,10 @@ Enterprise IoT Platform for real-time device management, time-series data ingest
 - **Custom Attributes**: Store device metadata as flexible JSON
 
 ### Time-Series Data
-- **High-Performance Ingestion**: TimescaleDB hypertables for efficient time-series storage
+- **High-Performance Ingestion**: MongoDB Time Series Collections for efficient time-series storage
 - **Batch Operations**: Bulk create device states for high-throughput scenarios
-- **Data Retention**: Automatic data retention policies (90-day default)
-- **Compression**: Built-in TimescaleDB compression after 7 days
+- **Data Retention**: Automatic TTL-based data expiration (90-day default via expireAfterSeconds)
+- **Aggregation**: Built-in MongoDB $dateTrunc aggregation for time-bucketed queries
 
 ### Real-Time Communication
 - **WebSocket Support**: Live device state updates via Socket.io
@@ -54,7 +54,7 @@ Enterprise IoT Platform for real-time device management, time-series data ingest
                          │ HTTP/WebSocket
 ┌────────────────────────▼────────────────────────────────────────┐
 │                       Backend API (Fastify)                      │
-│  Controllers → Services → Prisma ORM → PostgreSQL + TimescaleDB │
+│  Controllers → Services → Mongoose ODM → MongoDB Time Series     │
 │  Socket.io Server • Zod Validation • Pino Logging              │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -62,7 +62,7 @@ Enterprise IoT Platform for real-time device management, time-series data ingest
 **Key Architectural Decisions:**
 - **Clean Architecture**: Separation of concerns (Controllers → Services → Data Access)
 - **Type Safety**: Shared types package for frontend/backend consistency
-- **Production-Ready**: No SQLite or throwaway patterns - PostgreSQL + TimescaleDB from day 1
+- **Production-Ready**: No SQLite or throwaway patterns - MongoDB with Time Series Collections from day 1
 - **Scalability**: Designed for horizontal scaling with stateless API and external state
 
 ---
@@ -72,8 +72,8 @@ Enterprise IoT Platform for real-time device management, time-series data ingest
 ### Backend
 - **Runtime**: Node.js 20
 - **Framework**: Fastify 4.x (high-performance HTTP server)
-- **Database**: PostgreSQL 16 + TimescaleDB (time-series optimization)
-- **ORM**: Prisma 5.x (type-safe database access)
+- **Database**: MongoDB 8 with Time Series Collections (time-series optimization)
+- **ODM**: Mongoose (schema-based MongoDB object modeling)
 - **Validation**: Zod (schema validation)
 - **Real-Time**: Socket.io (WebSocket communication)
 - **Logging**: Pino (structured JSON logging)
@@ -102,7 +102,7 @@ Enterprise IoT Platform for real-time device management, time-series data ingest
 - Node.js 20+
 - pnpm 8.15+
 - Docker & Docker Compose (for containerized setup)
-- PostgreSQL 16 + TimescaleDB (for manual setup)
+- MongoDB 8 (for manual setup)
 
 ### Option 1: Docker (Recommended)
 
@@ -111,11 +111,8 @@ Enterprise IoT Platform for real-time device management, time-series data ingest
 git clone <repository-url>
 cd iot-platform
 
-# Start all services (PostgreSQL + API + Frontend)
+# Start all services (MongoDB + API + Frontend)
 docker-compose up -d
-
-# Run database migrations
-docker-compose exec api pnpm prisma migrate deploy
 
 # Access the application
 # Frontend: http://localhost:3000
@@ -129,21 +126,16 @@ docker-compose exec api pnpm prisma migrate deploy
 # 1. Install dependencies
 pnpm install
 
-# 2. Setup PostgreSQL + TimescaleDB
+# 2. Setup MongoDB
 # See DEPLOYMENT.md for platform-specific instructions
 
 # 3. Configure environment variables
 cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.example apps/web/.env
 
-# Edit .env files with your database credentials
+# Edit .env files with your MongoDB connection string
 
-# 4. Run migrations
-cd apps/api
-pnpm prisma migrate deploy
-cd ../..
-
-# 5. Start development servers
+# 4. Start development servers
 pnpm dev
 
 # Access the application
@@ -158,18 +150,16 @@ pnpm dev
 ```
 iot-platform/
 ├── apps/
-│   ├── api/                    # Backend API (Fastify + Prisma)
-│   │   ├── prisma/             # Database schema and migrations
-│   │   │   ├── schema.prisma   # Prisma schema definition
-│   │   │   └── migrations/     # Migration history
+│   ├── api/                    # Backend API (Fastify + Mongoose)
 │   │   ├── src/
 │   │   │   ├── controllers/    # HTTP request handlers
 │   │   │   ├── services/       # Business logic layer
+│   │   │   ├── models/         # Mongoose schema definitions
 │   │   │   ├── routes/         # API route definitions
 │   │   │   ├── schemas/        # Zod validation schemas
 │   │   │   ├── middleware/     # Error handling, logging
 │   │   │   ├── websocket/      # Socket.io server setup
-│   │   │   ├── lib/            # Utilities (Prisma client, etc.)
+│   │   │   ├── lib/            # Utilities (Mongoose connection, etc.)
 │   │   │   ├── config/         # Configuration management
 │   │   │   └── server.ts       # Entry point
 │   │   ├── vitest.config.ts    # Test configuration
@@ -257,12 +247,6 @@ pnpm test:run src/routes/*.integration.test.ts
 # Run tests with coverage
 pnpm test:coverage
 
-# Database migrations
-pnpm prisma migrate dev          # Create and apply migration (dev)
-pnpm prisma migrate deploy       # Apply migrations (production)
-pnpm prisma generate             # Regenerate Prisma Client
-pnpm prisma studio               # Open database GUI
-
 # Device simulator
 pnpm run simulate -- --devices 5 --interval 1s
 ```
@@ -317,7 +301,7 @@ pnpm test:coverage
 Integration tests use the same database as development. For safety, always include "test" in the database name:
 
 ```bash
-DATABASE_URL="postgresql://user:password@localhost:5432/iot_platform_test"
+MONGODB_URI="mongodb://localhost:27017/iot_platform_test?replicaSet=rs0"
 ```
 
 ---
@@ -338,7 +322,7 @@ DATABASE_URL="postgresql://user:password@localhost:5432/iot_platform_test"
 #### Backend (apps/api/.env)
 
 ```bash
-DATABASE_URL="postgresql://user:password@localhost:5432/iot_platform"
+MONGODB_URI="mongodb://localhost:27017/iot_platform?replicaSet=rs0"
 NODE_ENV=development
 PORT=3001
 HOST=0.0.0.0
@@ -414,12 +398,8 @@ pnpm --filter @repo/web tsc --noEmit
 ### 4. Database Changes
 
 ```bash
-# Edit schema
-vim apps/api/prisma/schema.prisma
-
-# Create migration
-cd apps/api
-pnpm prisma migrate dev --name your_migration_name
+# Edit Mongoose models in apps/api/src/models/
+# No migration step needed - Mongoose schemas are applied at runtime
 ```
 
 ### 5. Commit Changes
@@ -438,10 +418,10 @@ git push origin feature/your-feature-name
 
 **Database Connection Failed:**
 ```bash
-# Check PostgreSQL is running
+# Check MongoDB is running
 docker-compose ps
 # or
-sudo systemctl status postgresql
+mongosh --eval "rs.status().ok"
 ```
 
 **Port Already in Use:**
@@ -450,12 +430,6 @@ sudo systemctl status postgresql
 lsof -i :3001
 # Kill process
 kill -9 <PID>
-```
-
-**Prisma Client Not Generated:**
-```bash
-cd apps/api
-pnpm prisma generate
 ```
 
 **Frontend Can't Connect to API:**
@@ -473,7 +447,7 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md#troubleshooting) for more solutions.
 - [ ] Change default database password
 - [ ] Enable HTTPS with valid SSL certificate
 - [ ] Restrict CORS to specific domains
-- [ ] Don't expose PostgreSQL to public internet
+- [ ] Don't expose MongoDB to public internet
 - [ ] Enable database backups
 - [ ] Keep dependencies updated
 - [ ] Review logs regularly
@@ -489,9 +463,6 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md#security-considerations) for details.
 ```bash
 # Production deployment
 docker-compose up -d
-
-# Run migrations
-docker-compose exec api pnpm prisma migrate deploy
 
 # View logs
 docker-compose logs -f
@@ -518,8 +489,8 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md#manual-production-deployment) for complete i
 For production scale (10,000-100,000 devices):
 - Add MQTT broker (EMQX)
 - Implement batch inserts (1000 rows/transaction)
-- Add read replicas for PostgreSQL
-- Enable TimescaleDB compression
+- Add MongoDB replica set members for read scaling
+- Enable MongoDB Time Series collection optimization
 - Deploy Gateway Edge Agents for protocol translation
 
 See `../docs/POC_TO_ENTERPRISE_PLAN.md` for scaling roadmap.
@@ -531,8 +502,8 @@ See `../docs/POC_TO_ENTERPRISE_PLAN.md` for scaling roadmap.
 ### ✅ Phase 0: POC (Weeks 1-3) - COMPLETE
 
 - [x] Monorepo setup with Turborepo
-- [x] PostgreSQL + TimescaleDB database
-- [x] Fastify API with Prisma ORM
+- [x] MongoDB with Time Series Collections
+- [x] Fastify API with Mongoose ODM
 - [x] Next.js 16 frontend with React 19
 - [x] WebSocket real-time updates
 - [x] Dashboard components (Gauge, Chart, LiveStream)
@@ -597,8 +568,8 @@ This project is a POC/MVP implementation. License to be determined.
 Built with modern, production-ready technologies:
 - [Next.js](https://nextjs.org/) - React framework
 - [Fastify](https://fastify.dev/) - Fast HTTP server
-- [Prisma](https://www.prisma.io/) - Next-generation ORM
-- [TimescaleDB](https://www.timescale.com/) - Time-series database
+- [Mongoose](https://mongoosejs.com/) - MongoDB object modeling
+- [MongoDB](https://www.mongodb.com/) - Document database with Time Series Collections
 - [Socket.io](https://socket.io/) - Real-time engine
 - [Turborepo](https://turbo.build/) - High-performance build system
 

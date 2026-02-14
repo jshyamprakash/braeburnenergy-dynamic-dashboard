@@ -40,34 +40,34 @@ function migrateOldLayout(oldBlock: any): DashboardBlock {
   const typeConstraints = constraints[blockType as keyof typeof constraints] || constraints.chart;
 
   // Create responsive layouts from old single layout
-  const lgLayout: Layout = {
+  const lgLayout = {
     i: oldLayout.i,
     x: oldLayout.x,
     y: oldLayout.y,
     w: oldLayout.w,
     h: oldLayout.h,
     ...typeConstraints.lg,
-  };
+  } as unknown as Layout;
 
   // Adjust for medium screens (10 cols)
-  const mdLayout: Layout = {
+  const mdLayout = {
     i: oldLayout.i,
     x: Math.floor((oldLayout.x * 10) / 12),
     y: oldLayout.y,
     w: Math.min(Math.ceil((oldLayout.w * 10) / 12), 10),
     h: oldLayout.h,
     ...typeConstraints.md,
-  };
+  } as unknown as Layout;
 
   // Adjust for small screens (6 cols, full width)
-  const smLayout: Layout = {
+  const smLayout = {
     i: oldLayout.i,
     x: 0,
     y: oldLayout.y,
     w: 6,
     h: oldLayout.h,
     ...typeConstraints.sm,
-  };
+  } as unknown as Layout;
 
   return {
     ...oldBlock,

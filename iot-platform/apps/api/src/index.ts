@@ -1,6 +1,8 @@
 import { createServer } from './server';
 import { createWebSocketServer } from './websocket/server';
 import { validateConfig, config } from './config/config';
+import { connectDB, disconnectDB } from './lib/mongoose';
+import { initializeTimeSeriesCollections } from './models';
 
 /**
  * Application Entry Point
@@ -13,6 +15,11 @@ async function main() {
     console.log('🔍 Validating configuration...');
     validateConfig();
     console.log('✅ Configuration validated');
+
+    // Connect to MongoDB
+    console.log('🗄️  Connecting to MongoDB...');
+    await connectDB();
+    await initializeTimeSeriesCollections();
 
     // Create Fastify server (but don't start yet)
     console.log('🚀 Creating HTTP server...');
@@ -36,7 +43,7 @@ async function main() {
     console.log(`   HTTP API:  http://${config.server.host}:${config.server.port}`);
     console.log(`   WebSocket: ws://${config.server.host}:${config.server.port}/ws`);
     console.log(`   Health:    http://${config.server.host}:${config.server.port}/health`);
-    console.log(`   Database:  ${config.database.url.split('@')[1]?.split('?')[0] || 'PostgreSQL'}\n`);
+    console.log(`   Database:  MongoDB (${config.database.uri.split('?')[0]})\n`);
 
     // Graceful shutdown
     const signals = ['SIGINT', 'SIGTERM'];
@@ -44,6 +51,7 @@ async function main() {
       process.on(signal, async () => {
         fastify.log.info(`Received ${signal}, closing server gracefully...`);
         await fastify.close();
+        await disconnectDB();
         process.exit(0);
       });
     });

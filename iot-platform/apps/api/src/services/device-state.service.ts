@@ -1,5 +1,5 @@
-import { Prisma } from '@prisma/client';
-import { prisma } from '../lib/prisma';
+import mongoose from 'mongoose';
+import { DeviceState } from '../models/device-state.model';
 import type {
   CreateDeviceStateDTO,
   BulkCreateDeviceStatesDTO,
@@ -15,110 +15,94 @@ import type {
  * Handles all business logic for device state/telemetry management
  * - Time-series data ingestion
  * - Time-range queries
- * - Aggregation and downsampling (using TimescaleDB)
+ * - Aggregation and downsampling (using MongoDB aggregation pipeline)
  * - Bulk operations
  */
 export class DeviceStateService {
   /**
    * Create a new device state
-   *
-   * @param orgId - Organization ID
-   * @param data - State creation data
-   * @returns Created device state
-   *
-   * @example
-   * const state = await deviceStateService.create("org-uuid", {
-   *   deviceId: "01HGW5N8XZ7KQRST9VW2XY3Z4A",
-   *   data: { temperature: 23.5, humidity: 45 },
-   *   timestamp: new Date()
-   * });
    */
-  async create(orgId: string, data: CreateDeviceStateDTO) {
-    return prisma.deviceState.create({
-      data: {
-        orgId,
+  async create(orgId: string, data: CreateDeviceStateDTO & { quality?: any }) {
+    const doc = new DeviceState({
+      timestamp: data.timestamp || new Date(),
+      metadata: {
         deviceId: data.deviceId,
-        data: data.data as any,
-        timestamp: data.timestamp || new Date(),
+        orgId: new mongoose.Types.ObjectId(orgId),
       },
+      data: data.data,
+      quality: data.quality,
     });
+
+    const saved = await doc.save();
+    const obj = saved.toObject();
+
+    // Return flat format for API compatibility
+    return {
+      _id: obj._id,
+      id: obj._id,
+      deviceId: obj.metadata.deviceId,
+      orgId: obj.metadata.orgId.toString(),
+      data: obj.data,
+      timestamp: obj.timestamp,
+      quality: obj.quality,
+    };
   }
 
   /**
    * Bulk create device states (batch ingestion)
-   *
-   * @param orgId - Organization ID
-   * @param data - Bulk creation data
-   * @returns Count of created states
-   *
-   * @example
-   * const result = await deviceStateService.bulkCreate("org-uuid", {
-   *   states: [
-   *     { deviceId: "01HGW...", data: { temp: 23.5 } },
-   *     { deviceId: "01HGW...", data: { temp: 24.1 } },
-   *   ]
-   * });
    */
   async bulkCreate(orgId: string, data: BulkCreateDeviceStatesDTO) {
-    const states = data.states.map((state) => ({
-      orgId,
-      deviceId: state.deviceId,
-      data: state.data as any,
+    const docs = data.states.map((state) => ({
       timestamp: state.timestamp || new Date(),
+      metadata: {
+        deviceId: state.deviceId,
+        orgId: new mongoose.Types.ObjectId(orgId),
+      },
+      data: state.data,
     }));
 
-    return prisma.deviceState.createMany({
-      data: states,
-    });
+    const result = await DeviceState.insertMany(docs);
+    return { count: result.length };
   }
 
   /**
    * Get device states with time-range filtering within organization
-   *
-   * @param orgId - Organization ID
-   * @param deviceId - Device ULID
-   * @param query - Query parameters (time range, pagination, sorting)
-   * @returns Paginated device states
    */
   async getStates(orgId: string, deviceId: string, query: QueryDeviceStatesDTO) {
     const { startTime, endTime, limit = 1000, offset = 0, sortOrder = 'desc' } = query;
 
-    // Build where clause with org and device filters
-    const where: Prisma.DeviceStateWhereInput = {
-      orgId,
-      deviceId,
+    const filter: any = {
+      'metadata.deviceId': deviceId,
+      'metadata.orgId': new mongoose.Types.ObjectId(orgId),
     };
 
-    // Time range filter
     if (startTime || endTime) {
-      where.timestamp = {};
-      if (startTime) {
-        where.timestamp.gte = startTime;
-      }
-      if (endTime) {
-        where.timestamp.lte = endTime;
-      }
+      filter.timestamp = {};
+      if (startTime) filter.timestamp.$gte = startTime;
+      if (endTime) filter.timestamp.$lte = endTime;
     }
 
-    // Execute query with count
+    const sortDirection = sortOrder === 'desc' ? -1 : 1;
+
     const [states, total] = await Promise.all([
-      prisma.deviceState.findMany({
-        where,
-        orderBy: { timestamp: sortOrder },
-        take: limit,
-        skip: offset,
-        select: {
-          id: true,
-          deviceId: true,
-          data: true,
-          timestamp: true,
-        },
-      }),
-      prisma.deviceState.count({ where }),
+      DeviceState.find(filter)
+        .sort({ timestamp: sortDirection })
+        .skip(offset)
+        .limit(limit)
+        .lean(),
+      DeviceState.countDocuments(filter),
     ]);
 
+    // Transform to flat format for API compatibility
+    const data = states.map((s: any) => ({
+      id: s._id,
+      deviceId: s.metadata.deviceId,
+      data: s.data,
+      timestamp: s.timestamp,
+    }));
+
     return {
-      data: states,
+      data,
       pagination: {
         total,
         limit,
@@ -130,150 +114,127 @@ export class DeviceStateService {
 
   /**
    * Get latest state for a device
-   *
-   * @param deviceId - Device ULID
-   * @returns Latest state or null
    */
   async getLatest(deviceId: string) {
-    return prisma.deviceState.findFirst({
-      where: { deviceId },
-      orderBy: { timestamp: 'desc' },
-      select: {
-        id: true,
-        deviceId: true,
-        data: true,
-        timestamp: true,
-      },
-    });
+    const state = await DeviceState.findOne({ 'metadata.deviceId': deviceId })
+      .sort({ timestamp: -1 })
+      .lean() as any;
+
+    if (!state) return null;
+
+    return {
+      id: state._id,
+      deviceId: state.metadata.deviceId,
+      data: state.data,
+      timestamp: state.timestamp,
+    };
   }
 
   /**
    * Get oldest state for a device
-   *
-   * @param deviceId - Device ULID
-   * @returns Oldest state or null
    */
   async getOldest(deviceId: string) {
-    return prisma.deviceState.findFirst({
-      where: { deviceId },
-      orderBy: { timestamp: 'asc' },
-      select: {
-        id: true,
-        deviceId: true,
-        data: true,
-        timestamp: true,
-      },
-    });
+    const state = await DeviceState.findOne({ 'metadata.deviceId': deviceId })
+      .sort({ timestamp: 1 })
+      .lean() as any;
+
+    if (!state) return null;
+
+    return {
+      id: state._id,
+      deviceId: state.metadata.deviceId,
+      data: state.data,
+      timestamp: state.timestamp,
+    };
   }
 
   /**
    * Get state count for a device
-   *
-   * @param deviceId - Device ULID
-   * @param startTime - Optional start time
-   * @param endTime - Optional end time
-   * @returns State count
    */
   async count(deviceId: string, startTime?: Date, endTime?: Date): Promise<number> {
-    const where: Prisma.DeviceStateWhereInput = {
-      deviceId,
+    const filter: any = {
+      'metadata.deviceId': deviceId,
     };
 
     if (startTime || endTime) {
-      where.timestamp = {};
-      if (startTime) {
-        where.timestamp.gte = startTime;
-      }
-      if (endTime) {
-        where.timestamp.lte = endTime;
-      }
+      filter.timestamp = {};
+      if (startTime) filter.timestamp.$gte = startTime;
+      if (endTime) filter.timestamp.$lte = endTime;
     }
 
-    return prisma.deviceState.count({ where });
+    return DeviceState.countDocuments(filter);
   }
 
   /**
    * Delete old states (cleanup)
    *
-   * @param deviceId - Device ULID
-   * @param beforeDate - Delete states older than this date
-   * @returns Number of deleted states
+   * Note: MongoDB Time Series collections have built-in TTL via expireAfterSeconds,
+   * but this method allows manual cleanup for specific devices.
    */
   async deleteOldStates(deviceId: string, beforeDate: Date) {
-    const result = await prisma.deviceState.deleteMany({
-      where: {
-        deviceId,
-        timestamp: {
-          lt: beforeDate,
-        },
-      },
+    const result = await DeviceState.deleteMany({
+      'metadata.deviceId': deviceId,
+      timestamp: { $lt: beforeDate },
     });
 
-    return result.count;
+    return result.deletedCount;
   }
 
   /**
-   * Aggregate device states using TimescaleDB time_bucket
+   * Aggregate device states using MongoDB aggregation pipeline
    *
-   * This uses raw SQL to leverage TimescaleDB's time_bucket function
-   * for efficient downsampling of time-series data.
-   *
-   * @param deviceId - Device ULID
-   * @param data - Aggregation parameters
-   * @returns Aggregated data points
-   *
-   * @example
-   * const aggregated = await deviceStateService.aggregate("01HGW...", {
-   *   startTime: new Date("2026-02-01"),
-   *   endTime: new Date("2026-02-05"),
-   *   bucket: "1h",
-   *   fields: ["temperature", "humidity"],
-   *   functions: ["avg", "min", "max"]
-   * });
+   * Replaces TimescaleDB time_bucket with MongoDB $dateTrunc
    */
   async aggregate(deviceId: string, data: AggregateDeviceStatesDTO) {
     const { startTime, endTime, bucket, fields, functions } = data;
 
-    // Convert bucket to PostgreSQL interval
-    const interval = this.getBucketInterval(bucket);
+    const { unit, binSize } = this.getBucketConfig(bucket);
 
-    // Build SELECT clause for each field and function combination
-    const aggregations = fields.flatMap((field) =>
-      functions.map((func) => {
-        const sqlFunc = this.getAggregationSQL(func, field);
-        return `${sqlFunc} as "${field}_${func}"`;
-      })
-    );
+    // Build aggregation expressions for each field/function combination
+    const groupAccumulators: any = {};
+    fields.forEach((field) => {
+      functions.forEach((func) => {
+        const key = `${field}_${func}`;
+        groupAccumulators[key] = this.getAggregationExpression(func, field);
+      });
+    });
 
-    // Raw SQL query using TimescaleDB time_bucket
-    const query = `
-      SELECT
-        time_bucket('${interval}', timestamp) AS bucket,
-        ${aggregations.join(',\n        ')}
-      FROM device_states
-      WHERE device_id = $1
-        AND timestamp >= $2
-        AND timestamp <= $3
-      GROUP BY bucket
-      ORDER BY bucket ASC
-    `;
+    const pipeline: any[] = [
+      // Match by device and time range
+      {
+        $match: {
+          'metadata.deviceId': deviceId,
+          timestamp: { $gte: startTime, $lte: endTime },
+        },
+      },
+      // Group by time bucket
+      {
+        $group: {
+          _id: {
+            $dateTrunc: {
+              date: '$timestamp',
+              unit,
+              binSize,
+            },
+          },
+          ...groupAccumulators,
+        },
+      },
+      // Sort by bucket ascending
+      { $sort: { _id: 1 } },
+    ];
 
-    const result = await prisma.$queryRawUnsafe<any[]>(
-      query,
-      deviceId,
-      startTime,
-      endTime
-    );
+    const result = await DeviceState.aggregate(pipeline);
 
     return {
       deviceId,
       startTime,
       endTime,
       bucket,
-      data: result.map((row) => ({
-        bucket: row.bucket,
+      data: result.map((row: any) => ({
+        bucket: row._id,
         values: Object.entries(row)
-          .filter(([key]) => key !== 'bucket')
+          .filter(([key]) => key !== '_id')
           .reduce((acc, [key, value]) => {
             acc[key] = value as number;
             return acc;
@@ -284,12 +245,6 @@ export class DeviceStateService {
 
   /**
    * Get simple statistics for a field
-   *
-   * @param deviceId - Device ULID
-   * @param field - Data field name (e.g., "temperature")
-   * @param startTime - Start time
-   * @param endTime - End time
-   * @returns Statistics (avg, min, max, count)
    */
   async getStatistics(
     deviceId: string,
@@ -297,45 +252,38 @@ export class DeviceStateService {
     startTime: Date,
     endTime: Date
   ) {
-    const query = `
-      SELECT
-        AVG((data->>'${field}')::numeric) as avg,
-        MIN((data->>'${field}')::numeric) as min,
-        MAX((data->>'${field}')::numeric) as max,
-        COUNT(*) as count
-      FROM device_states
-      WHERE device_id = $1
-        AND timestamp >= $2
-        AND timestamp <= $3
-        AND data ? '${field}'
-    `;
+    const pipeline = [
+      {
+        $match: {
+          'metadata.deviceId': deviceId,
+          timestamp: { $gte: startTime, $lte: endTime },
+          [`data.${field}`]: { $exists: true },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          avg: { $avg: { $toDouble: `$data.${field}` } },
+          min: { $min: { $toDouble: `$data.${field}` } },
+          max: { $max: { $toDouble: `$data.${field}` } },
+          count: { $sum: 1 },
+        },
+      },
+    ];
 
-    const result = await prisma.$queryRawUnsafe<any[]>(
-      query,
-      deviceId,
-      startTime,
-      endTime
-    );
-
+    const result = await DeviceState.aggregate(pipeline);
     const stats = result[0] || { avg: null, min: null, max: null, count: 0 };
 
-    // Convert BigInt to Number for JSON serialization
     return {
-      avg: stats.avg ? Number(stats.avg) : null,
-      min: stats.min ? Number(stats.min) : null,
-      max: stats.max ? Number(stats.max) : null,
+      avg: stats.avg !== null ? Number(stats.avg) : null,
+      min: stats.min !== null ? Number(stats.min) : null,
+      max: stats.max !== null ? Number(stats.max) : null,
       count: Number(stats.count),
     };
   }
 
   /**
    * Get states for multiple devices (batch query)
-   *
-   * @param deviceIds - Array of device ULIDs
-   * @param startTime - Start time
-   * @param endTime - End time
-   * @param limit - Limit per device
-   * @returns States grouped by device
    */
   async getStatesForDevices(
     deviceIds: string[],
@@ -343,38 +291,33 @@ export class DeviceStateService {
     endTime?: Date,
     limit = 100
   ) {
-    const where: Prisma.DeviceStateWhereInput = {
-      deviceId: {
-        in: deviceIds,
-      },
+    const filter: any = {
+      'metadata.deviceId': { $in: deviceIds },
     };
 
     if (startTime || endTime) {
-      where.timestamp = {};
-      if (startTime) {
-        where.timestamp.gte = startTime;
-      }
-      if (endTime) {
-        where.timestamp.lte = endTime;
-      }
+      filter.timestamp = {};
+      if (startTime) filter.timestamp.$gte = startTime;
+      if (endTime) filter.timestamp.$lte = endTime;
     }
 
-    const states = await prisma.deviceState.findMany({
-      where,
-      orderBy: { timestamp: 'desc' },
-      take: limit * deviceIds.length,
-      select: {
-        id: true,
-        deviceId: true,
-        data: true,
-        timestamp: true,
-      },
-    });
+    const states = await DeviceState.find(filter)
+      .sort({ timestamp: -1 })
+      .limit(limit * deviceIds.length)
+      .lean();
 
-    // Group by deviceId
+    // Group by deviceId and transform to flat format
     return deviceIds.map((deviceId) => ({
       deviceId,
-      states: states.filter((s) => s.deviceId === deviceId).slice(0, limit),
+      states: (states as any[])
+        .filter((s) => s.metadata.deviceId === deviceId)
+        .slice(0, limit)
+        .map((s) => ({
+          id: s._id,
+          deviceId: s.metadata.deviceId,
+          data: s.data,
+          timestamp: s.timestamp,
+        })),
     }));
   }
 
@@ -383,42 +326,43 @@ export class DeviceStateService {
   // =========================================================================
 
   /**
-   * Convert TimeBucket enum to PostgreSQL interval
+   * Convert TimeBucket to MongoDB $dateTrunc unit and binSize
    */
-  private getBucketInterval(bucket: TimeBucket): string {
-    const intervals: Record<TimeBucket, string> = {
-      '1m': '1 minute',
-      '5m': '5 minutes',
-      '15m': '15 minutes',
-      '1h': '1 hour',
-      '6h': '6 hours',
-      '1d': '1 day',
-      '1w': '1 week',
+  private getBucketConfig(bucket: TimeBucket): { unit: string; binSize: number } {
+    const configs: Record<TimeBucket, { unit: string; binSize: number }> = {
+      '1m': { unit: 'minute', binSize: 1 },
+      '5m': { unit: 'minute', binSize: 5 },
+      '15m': { unit: 'minute', binSize: 15 },
+      '1h': { unit: 'hour', binSize: 1 },
+      '6h': { unit: 'hour', binSize: 6 },
+      '1d': { unit: 'day', binSize: 1 },
+      '1w': { unit: 'week', binSize: 1 },
     };
-    return intervals[bucket];
+    return configs[bucket];
   }
 
   /**
-   * Generate SQL aggregation function
+   * Generate MongoDB aggregation expression for a function/field combination
    */
-  private getAggregationSQL(func: AggregationFunction, field: string): string {
-    const jsonbPath = `(data->>'${field}')::numeric`;
+  private getAggregationExpression(func: AggregationFunction, field: string): any {
+    const fieldPath = `$data.${field}`;
+    const numericField = { $toDouble: fieldPath };
 
     switch (func) {
       case 'avg':
-        return `AVG(${jsonbPath})`;
+        return { $avg: numericField };
       case 'min':
-        return `MIN(${jsonbPath})`;
+        return { $min: numericField };
       case 'max':
-        return `MAX(${jsonbPath})`;
+        return { $max: numericField };
       case 'sum':
-        return `SUM(${jsonbPath})`;
+        return { $sum: numericField };
       case 'count':
-        return `COUNT(${jsonbPath})`;
+        return { $sum: 1 };
       case 'first':
-        return `FIRST(${jsonbPath}, timestamp)`;
+        return { $first: numericField };
       case 'last':
-        return `LAST(${jsonbPath}, timestamp)`;
+        return { $last: numericField };
       default:
         throw new Error(`Unsupported aggregation function: ${func}`);
     }

@@ -1,26 +1,26 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import { useDevices, useDeleteDevice } from '@/lib/hooks/useDevices';
 import { DeviceForm } from '@/components/DeviceForm';
 import type { Device } from '@/lib/types';
+import { useAppDispatch, useAppSelector } from '@/lib/store';
+import { openDeviceForm, closeDeviceForm, selectDeviceFormModal } from '@/lib/store/slices/uiSlice';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 
 export default function DevicesPage() {
   const { data, isLoading, error, refetch } = useDevices({ limit: 50 });
   const deleteDevice = useDeleteDevice();
 
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingDevice, setEditingDevice] = useState<Device | null>(null);
+  const dispatch = useAppDispatch();
+  const deviceFormModal = useAppSelector(selectDeviceFormModal);
 
   const handleCreateClick = () => {
-    setEditingDevice(null);
-    setIsFormOpen(true);
+    dispatch(openDeviceForm({ type: 'create' }));
   };
 
   const handleEditClick = (device: Device) => {
-    setEditingDevice(device);
-    setIsFormOpen(true);
+    dispatch(openDeviceForm({ type: 'edit', data: device }));
   };
 
   const handleDeleteClick = async (device: Device) => {
@@ -37,26 +37,20 @@ export default function DevicesPage() {
     refetch();
   };
 
-  if (isLoading) {
-    return (
-      <div className="bg-white shadow sm:rounded-lg p-6">
-        <p className="text-gray-500">Loading devices...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="bg-white shadow sm:rounded-lg p-6">
-        <p className="text-red-600">Error: {error.message}</p>
-        <p className="text-sm text-gray-500 mt-2">
-          Make sure the API server is running on http://localhost:3001
-        </p>
-      </div>
-    );
-  }
-
   return (
+    <ProtectedRoute>
+      {isLoading ? (
+        <div className="bg-white shadow sm:rounded-lg p-6">
+          <p className="text-gray-500">Loading devices...</p>
+        </div>
+      ) : error ? (
+        <div className="bg-white shadow sm:rounded-lg p-6">
+          <p className="text-red-600">Error: {error.message}</p>
+          <p className="text-sm text-gray-500 mt-2">
+            Make sure the API server is running on http://localhost:3001
+          </p>
+        </div>
+      ) : (
     <>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
@@ -183,11 +177,13 @@ export default function DevicesPage() {
 
       {/* Device Form Modal */}
       <DeviceForm
-        isOpen={isFormOpen}
-        onClose={() => setIsFormOpen(false)}
-        device={editingDevice}
+        isOpen={deviceFormModal.isOpen}
+        onClose={() => dispatch(closeDeviceForm())}
+        device={deviceFormModal.data}
         onSuccess={handleFormSuccess}
       />
     </>
+      )}
+    </ProtectedRoute>
   );
 }

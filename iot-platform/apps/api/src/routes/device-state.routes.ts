@@ -6,6 +6,8 @@ import {
 } from '../schemas/device-state.schema';
 import { deviceIdParamSchema } from '../schemas/device.schema';
 import { zodToSwagger, successResponse, paginatedResponse, errorResponse } from '../utils/swagger';
+import { requireAuth } from '../middleware/auth.middleware';
+import { requirePermission } from '../middleware/rbac.middleware';
 
 /**
  * Device State Routes
@@ -19,6 +21,7 @@ export async function deviceStateRoutes(fastify: FastifyInstance) {
       tags: ['Device States'],
       summary: 'Bulk create device states',
       description: 'Creates multiple device states in a single batch (up to 1000 states). Used for high-throughput data ingestion.',
+      security: [{ bearerAuth: [] }],
       body: zodToSwagger(bulkCreateDeviceStatesSchema),
       response: {
         201: successResponse(
@@ -34,6 +37,7 @@ export async function deviceStateRoutes(fastify: FastifyInstance) {
         400: errorResponse('Validation error - max 1000 states per batch'),
       },
     },
+    preHandler: [requireAuth, requirePermission('device-state:create')],
   }, deviceStateController.bulkCreate.bind(deviceStateController));
 
   // Create device state
@@ -42,6 +46,7 @@ export async function deviceStateRoutes(fastify: FastifyInstance) {
       tags: ['Device States'],
       summary: 'Create device state',
       description: 'Creates a new state for a device. Automatically broadcasts to WebSocket subscribers. TimescaleDB hypertable with 7-day chunks.',
+      security: [{ bearerAuth: [] }],
       params: zodToSwagger(deviceIdParamSchema),
       body: {
         type: 'object',
@@ -64,7 +69,7 @@ export async function deviceStateRoutes(fastify: FastifyInstance) {
           {
             type: 'object',
             properties: {
-              id: { type: 'string', format: 'uuid' },
+              id: { type: 'string' },
               deviceId: { type: 'string'},
               data: { type: 'object', additionalProperties: true },
               timestamp: { type: 'string', format: 'date-time' },
@@ -76,6 +81,7 @@ export async function deviceStateRoutes(fastify: FastifyInstance) {
         400: errorResponse('Validation error - data cannot be empty'),
       },
     },
+    preHandler: [requireAuth, requirePermission('device-state:create')],
   }, deviceStateController.create.bind(deviceStateController));
 
   // List device states
@@ -84,6 +90,7 @@ export async function deviceStateRoutes(fastify: FastifyInstance) {
       tags: ['Device States'],
       summary: 'List device states',
       description: 'Retrieves device states with time-range filtering, pagination, and sorting. Optimized with TimescaleDB chunk pruning.',
+      security: [{ bearerAuth: [] }],
       params: zodToSwagger(deviceIdParamSchema),
       querystring: zodToSwagger(queryDeviceStatesSchema),
       response: {
@@ -91,7 +98,7 @@ export async function deviceStateRoutes(fastify: FastifyInstance) {
           {
             type: 'object',
             properties: {
-              id: { type: 'string', format: 'uuid' },
+              id: { type: 'string' },
               deviceId: { type: 'string' },
               data: { type: 'object', additionalProperties: true },
               timestamp: { type: 'string', format: 'date-time' },
@@ -102,6 +109,7 @@ export async function deviceStateRoutes(fastify: FastifyInstance) {
         404: errorResponse('Device not found'),
       },
     },
+    preHandler: [requireAuth, requirePermission('device-state:read')],
   }, deviceStateController.list.bind(deviceStateController));
 
   // Get latest state
@@ -110,13 +118,14 @@ export async function deviceStateRoutes(fastify: FastifyInstance) {
       tags: ['Device States'],
       summary: 'Get latest device state',
       description: 'Retrieves the most recent state for a device. Optimized with timestamp DESC index.',
+      security: [{ bearerAuth: [] }],
       params: zodToSwagger(deviceIdParamSchema),
       response: {
         200: successResponse(
           {
             type: 'object',
             properties: {
-              id: { type: 'string', format: 'uuid' },
+              id: { type: 'string' },
               deviceId: { type: 'string' },
               data: { type: 'object', additionalProperties: true },
               timestamp: { type: 'string', format: 'date-time' },
@@ -127,6 +136,7 @@ export async function deviceStateRoutes(fastify: FastifyInstance) {
         404: errorResponse('No states found for this device'),
       },
     },
+    preHandler: [requireAuth, requirePermission('device-state:read')],
   }, deviceStateController.getLatest.bind(deviceStateController));
 
   // Aggregate device states
@@ -135,6 +145,7 @@ export async function deviceStateRoutes(fastify: FastifyInstance) {
       tags: ['Device States'],
       summary: 'Aggregate device states (TimescaleDB)',
       description: 'Aggregates time-series data using TimescaleDB time_bucket. Used for downsampling data for charts and dashboards. Supports avg, min, max, sum, count, first, last.',
+      security: [{ bearerAuth: [] }],
       params: zodToSwagger(deviceIdParamSchema),
       querystring: {
         type: 'object',
@@ -196,6 +207,7 @@ export async function deviceStateRoutes(fastify: FastifyInstance) {
         404: errorResponse('Device not found'),
       },
     },
+    preHandler: [requireAuth, requirePermission('device-state:read')],
   }, deviceStateController.aggregate.bind(deviceStateController));
 
   // Get field statistics
@@ -204,6 +216,7 @@ export async function deviceStateRoutes(fastify: FastifyInstance) {
       tags: ['Device States'],
       summary: 'Get field statistics',
       description: 'Calculates statistics (avg, min, max, count) for a specific data field over a time range.',
+      security: [{ bearerAuth: [] }],
       params: zodToSwagger(deviceIdParamSchema),
       querystring: {
         type: 'object',
@@ -238,6 +251,7 @@ export async function deviceStateRoutes(fastify: FastifyInstance) {
         404: errorResponse('Device not found'),
       },
     },
+    preHandler: [requireAuth, requirePermission('device-state:read')],
   }, deviceStateController.getStatistics.bind(deviceStateController));
 
   // Get state count
@@ -246,6 +260,7 @@ export async function deviceStateRoutes(fastify: FastifyInstance) {
       tags: ['Device States'],
       summary: 'Get state count',
       description: 'Returns total count of states for a device, optionally filtered by time range.',
+      security: [{ bearerAuth: [] }],
       params: zodToSwagger(deviceIdParamSchema),
       querystring: {
         type: 'object',
@@ -267,6 +282,7 @@ export async function deviceStateRoutes(fastify: FastifyInstance) {
         404: errorResponse('Device not found'),
       },
     },
+    preHandler: [requireAuth, requirePermission('device-state:read')],
   }, deviceStateController.count.bind(deviceStateController));
 
   // Delete old states
@@ -274,7 +290,8 @@ export async function deviceStateRoutes(fastify: FastifyInstance) {
     schema: {
       tags: ['Device States'],
       summary: 'Delete old states',
-      description: 'Deletes device states older than a specified date. TimescaleDB automatic retention policy deletes data older than 90 days.',
+      description: 'Deletes device states older than a specified date. TimescaleDB automatic retention policy deletes data older than 90 days. Requires Admin or SuperAdmin role.',
+      security: [{ bearerAuth: [] }],
       params: zodToSwagger(deviceIdParamSchema),
       querystring: {
         type: 'object',
@@ -302,5 +319,6 @@ export async function deviceStateRoutes(fastify: FastifyInstance) {
         400: errorResponse('Validation error - beforeDate required'),
       },
     },
+    preHandler: [requireAuth, requirePermission('device-state:export')], // Using export permission for delete (Admin+)
   }, deviceStateController.deleteOld.bind(deviceStateController));
 }

@@ -28,7 +28,7 @@ export const config = {
 
   // Database Configuration
   database: {
-    url: process.env.DATABASE_URL || 'postgresql://postgres:@localhost:5432/iot_platform?schema=public',
+    uri: process.env.MONGODB_URI || 'mongodb://localhost:27017/iot_platform?replicaSet=rs0',
   },
 
   // WebSocket Configuration
@@ -45,6 +45,9 @@ export const config = {
   // Security Configuration
   security: {
     jwtSecret: process.env.JWT_SECRET || 'your-secret-key-change-this-in-production',
+    jwtAccessExpiry: process.env.JWT_ACCESS_EXPIRY || '15m',
+    jwtRefreshExpiry: process.env.JWT_REFRESH_EXPIRY || '7d',
+    bcryptRounds: parseInt(process.env.BCRYPT_ROUNDS || '10', 10),
   },
 
   // API Configuration
@@ -64,7 +67,7 @@ export const config = {
 // Validate required configuration
 export function validateConfig() {
   const required = [
-    { key: 'DATABASE_URL', value: config.database.url },
+    { key: 'MONGODB_URI', value: config.database.uri },
     { key: 'PORT', value: config.server.port },
   ];
 

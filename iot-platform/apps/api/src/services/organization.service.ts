@@ -1,5 +1,7 @@
-import { prisma } from '../lib/prisma';
-import type { Organization, Prisma } from '@prisma/client';
+import mongoose from 'mongoose';
+import { Organization, type IOrganization } from '../models/organization.model';
+import { Device } from '../models/device.model';
+import { DeviceState } from '../models/device-state.model';
 
 /**
  * OrganizationService handles organization CRUD operations
@@ -12,32 +14,28 @@ class OrganizationService {
     name: string;
     slug: string;
     settings?: Record<string, any>;
-  }): Promise<Organization> {
-    return prisma.organization.create({
-      data: {
-        name: data.name,
-        slug: data.slug,
-        settings: data.settings || {},
-      },
+  }): Promise<IOrganization> {
+    const org = new Organization({
+      name: data.name,
+      slug: data.slug,
+      settings: data.settings || {},
     });
+    return org.save();
   }
 
   /**
    * Get organization by ID
    */
-  async getById(id: string): Promise<Organization | null> {
-    return prisma.organization.findUnique({
-      where: { id },
-    });
+  async getById(id: string): Promise<IOrganization | null> {
+    if (!mongoose.Types.ObjectId.isValid(id)) return null;
+    return Organization.findById(id).lean() as Promise<IOrganization | null>;
   }
 
   /**
    * Get organization by slug
    */
-  async getBySlug(slug: string): Promise<Organization | null> {
-    return prisma.organization.findUnique({
-      where: { slug },
-    });
+  async getBySlug(slug: string): Promise<IOrganization | null> {
+    return Organization.findOne({ slug }).lean() as Promise<IOrganization | null>;
   }
 
   /**
@@ -48,31 +46,29 @@ class OrganizationService {
     offset?: number;
     search?: string;
   } = {}): Promise<{
-    organizations: Organization[];
+    organizations: IOrganization[];
     total: number;
   }> {
     const { limit = 20, offset = 0, search } = options;
 
-    const where: Prisma.OrganizationWhereInput = search
-      ? {
-          OR: [
-            { name: { contains: search, mode: 'insensitive' } },
-            { slug: { contains: search, mode: 'insensitive' } },
-          ],
-        }
-      : {};
+    const filter: any = {};
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { slug: { $regex: search, $options: 'i' } },
+      ];
+    }
 
     const [organizations, total] = await Promise.all([
-      prisma.organization.findMany({
-        where,
-        take: limit,
-        skip: offset,
-        orderBy: { createdAt: 'desc' },
-      }),
-      prisma.organization.count({ where }),
+      Organization.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(offset)
+        .limit(limit)
+        .lean(),
+      Organization.countDocuments(filter),
     ]);
 
-    return { organizations, total };
+    return { organizations: organizations as unknown as IOrganization[], total };
   }
 
   /**
@@ -85,33 +81,32 @@ class OrganizationService {
       slug?: string;
       settings?: Record<string, any>;
     }
-  ): Promise<Organization | null> {
-    try {
-      return await prisma.organization.update({
-        where: { id },
-        data,
-      });
-    } catch (error: any) {
-      if (error.code === 'P2025') {
-        return null; // Organization not found
-      }
-      throw error;
-    }
+  ): Promise<IOrganization | null> {
+    if (!mongoose.Types.ObjectId.isValid(id)) return null;
+    return Organization.findByIdAndUpdate(id, { $set: data }, { new: true }).lean() as Promise<IOrganization | null>;
   }
 
   /**
    * Delete organization (cascade deletes devices and states)
    */
   async delete(id: string): Promise<boolean> {
+    if (!mongoose.Types.ObjectId.isValid(id)) return false;
+
+    const org = await Organization.findById(id);
+    if (!org) return false;
+
     try {
-      await prisma.organization.delete({
-        where: { id },
-      });
+      const objectId = new mongoose.Types.ObjectId(id);
+
+      // Note: MongoDB Time Series Collections don't support transactions for delete operations
+      // Perform cascade deletes sequentially instead
+      await DeviceState.deleteMany({ 'metadata.orgId': objectId });
+      await Device.deleteMany({ orgId: objectId });
+      await Organization.findByIdAndDelete(id);
+
       return true;
-    } catch (error: any) {
-      if (error.code === 'P2025') {
-        return false; // Organization not found
-      }
+    } catch (error) {
+      console.error('Error deleting organization:', error);
       throw error;
     }
   }
@@ -123,27 +118,18 @@ class OrganizationService {
     deviceCount: number;
     stateCount: number;
   } | null> {
-    const org = await prisma.organization.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        _count: {
-          select: {
-            devices: true,
-            deviceStates: true,
-          },
-        },
-      },
-    });
+    if (!mongoose.Types.ObjectId.isValid(id)) return null;
 
-    if (!org) {
-      return null;
-    }
+    const org = await Organization.findById(id);
+    if (!org) return null;
 
-    return {
-      deviceCount: org._count.devices,
-      stateCount: org._count.deviceStates,
-    };
+    const objectId = new mongoose.Types.ObjectId(id);
+    const [deviceCount, stateCount] = await Promise.all([
+      Device.countDocuments({ orgId: objectId }),
+      DeviceState.countDocuments({ 'metadata.orgId': objectId }),
+    ]);
+
+    return { deviceCount, stateCount };
   }
 }
 

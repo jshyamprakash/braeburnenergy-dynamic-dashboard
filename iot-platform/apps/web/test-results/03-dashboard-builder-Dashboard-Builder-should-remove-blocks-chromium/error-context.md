@@ -99,31 +99,11 @@
             - generic [ref=e139]: Device
             - combobox [ref=e140]:
               - option "Select a device" [selected]
-              - option "E2E Realtime Test 1770716816036 (Q0ZR15)"
-              - option "E2E Realtime Test 1770716814102 (3N6YXT)"
-              - option "E2E Test Device 1770716807903 (BHN449)"
-              - option "Pressure Sensor YSWWNS (Q28DMJ)"
-              - option "Pressure Sensor 5HQPY1 (5ZGYY7)"
-              - option "Pressure Sensor ECNNNW (M1EE0S)"
-              - option "Pressure Sensor 2SQGR1 (P7ZSAA)"
-              - option "Temperature Sensor 8B4A82 (MS131R)"
-              - option "Air Quality Sensor 4TTABK (6K82NW)"
-              - option "Temperature Sensor Q157PS (KW4ZJ0)"
-              - option "Energy Meter MMQA7T (N84W70)"
-              - option "Vibration Sensor 0CRK67 (MTV255)"
-              - option "Air Quality Sensor ANSQF5 (F6HQQ3)"
-              - option "Pressure Sensor 6F8JBC (PAS604)"
-              - option "Temperature Sensor SRABHD (4J6Z68)"
-              - option "Pressure Sensor HD5MYY (VXKVRA)"
-              - option "Temperature Sensor B9PZ6T (5T3RXM)"
-              - option "Temperature Sensor 682EBR (Q4DF6K)"
-              - option "Temperature Sensor 4SYR19 (GKG66K)"
-              - option "Energy Meter FZDE9K (HE2445)"
-              - option "Vibration Sensor 4M05PE (K069DQ)"
-              - option "Pressure Sensor PZD7ZY (MGV742)"
-              - option "Air Quality Sensor A29F8M (1X1YWZ)"
-              - option "Temperature Sensor R38S46 (G2C61H)"
-            - paragraph [ref=e141]: 24 devices available
+              - option "E2E Realtime Test 1770873089797 (M7KWXD)"
+              - option "E2E Realtime Test 1770873089751 (WQSPA5)"
+              - option "E2E Test Device 1770873084982 (TGPV2Z)"
+              - option "Test Sensor (1KDQ1E)"
+            - paragraph [ref=e141]: 4 devices available
           - generic [ref=e142]:
             - generic [ref=e143]:
               - generic [ref=e144]: Min Value
@@ -143,7 +123,16 @@
               - spinbutton [ref=e158]
         - paragraph [ref=e160]: Changes are applied automatically. Click outside or press the X to close this panel.
   - region "Notifications alt+T"
-  - button "Open Next.js Dev Tools" [ref=e166] [cursor=pointer]:
-    - img [ref=e167]
-  - alert [ref=e170]
+  - generic [ref=e165] [cursor=pointer]:
+    - button "Open Next.js Dev Tools" [ref=e166]:
+      - img [ref=e167]
+    - generic [ref=e170]:
+      - button "Open issues overlay" [ref=e171]:
+        - generic [ref=e172]:
+          - generic [ref=e173]: "0"
+          - generic [ref=e174]: "1"
+        - generic [ref=e175]: Issue
+      - button "Collapse issues badge" [ref=e176]:
+        - img [ref=e177]
+  - alert [ref=e179]
 ```

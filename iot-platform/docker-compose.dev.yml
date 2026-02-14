@@ -1,26 +1,44 @@
 version: '3.8'
 
 services:
-  # PostgreSQL with TimescaleDB (Development)
-  postgres:
-    image: timescale/timescaledb:latest-pg16
+  # MongoDB with Replica Set (Development)
+  mongodb:
+    image: mongo:8
     container_name: iot-platform-db-dev
-    environment:
-      POSTGRES_USER: iot_platform
-      POSTGRES_PASSWORD: dev_password
-      POSTGRES_DB: iot_platform
-      POSTGRES_HOST_AUTH_METHOD: md5
+    command: ["--replSet", "rs0", "--bind_ip_all"]
     ports:
-      - "5432:5432"
+      - "27017:27017"
     volumes:
-      - postgres_dev_data:/var/lib/postgresql/data
+      - mongodb_dev_data:/data/db
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U iot_platform"]
+      test: ["CMD", "mongosh", "--eval", "try { rs.status().ok } catch(e) { rs.initiate().ok }"]
       interval: 10s
-      timeout: 5s
+      timeout: 10s
       retries: 5
+      start_period: 30s
     networks:
       - iot-network-dev
+
+  # MongoDB Replica Set Initialization
+  mongodb-init:
+    image: mongo:8
+    container_name: iot-platform-db-init-dev
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    entrypoint: >
+      mongosh --host mongodb:27017 --eval "
+        try {
+          rs.status();
+          print('Replica set already initialized');
+        } catch(e) {
+          rs.initiate({_id: 'rs0', members: [{_id: 0, host: 'mongodb:27017'}]});
+          print('Replica set initiated');
+        }
+      "
+    networks:
+      - iot-network-dev
+    restart: "no"
 
   # Backend API (Development with hot-reload)
   api:
@@ -31,7 +49,7 @@ services:
     container_name: iot-platform-api-dev
     environment:
       NODE_ENV: development
-      DATABASE_URL: postgresql://iot_platform:dev_password@postgres:5432/iot_platform?schema=public
+      MONGODB_URI: mongodb://mongodb:27017/iot_platform?replicaSet=rs0
       PORT: 3001
       HOST: 0.0.0.0
     ports:
@@ -39,18 +57,17 @@ services:
     volumes:
       # Mount source code for hot-reload
       - ./apps/api/src:/app/apps/api/src
-      - ./apps/api/prisma:/app/apps/api/prisma
       - /app/apps/api/node_modules  # Don't mount node_modules
     depends_on:
-      postgres:
+      mongodb:
         condition: service_healthy
+      mongodb-init:
+        condition: service_completed_successfully
     networks:
       - iot-network-dev
     command: >
       sh -c "
         cd /app/apps/api &&
-        pnpm prisma generate &&
-        pnpm prisma migrate dev &&
         pnpm dev
       "
 
@@ -87,5 +104,5 @@ networks:
     driver: bridge
 
 volumes:
-  postgres_dev_data:
+  mongodb_dev_data:
     driver: local

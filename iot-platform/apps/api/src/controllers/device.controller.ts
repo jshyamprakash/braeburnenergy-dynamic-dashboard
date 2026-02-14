@@ -15,7 +15,7 @@ import {
  * Default organization ID for POC
  * TODO: Replace with orgId from JWT token or request header in MVP
  */
-const DEFAULT_ORG_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+const DEFAULT_ORG_ID = 'aaaaaaaaaaaaaaaaaaaaaaaa';
 
 /**
  * DeviceController

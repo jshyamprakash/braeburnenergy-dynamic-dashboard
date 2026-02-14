@@ -1,5 +1,12 @@
+'use client';
+
 import { DashboardBuilder } from '@/components/dashboard/DashboardBuilder';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 
 export default function DashboardBuilderPage() {
-  return <DashboardBuilder dashboardId="main" />;
+  return (
+    <ProtectedRoute>
+      <DashboardBuilder dashboardId="main" />
+    </ProtectedRoute>
+  );
 }

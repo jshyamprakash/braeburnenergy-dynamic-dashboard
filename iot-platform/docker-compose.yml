@@ -1,27 +1,45 @@
 version: '3.8'
 
 services:
-  # PostgreSQL with TimescaleDB
-  postgres:
-    image: timescale/timescaledb:latest-pg16
+  # MongoDB with Replica Set
+  mongodb:
+    image: mongo:8
     container_name: iot-platform-db
-    environment:
-      POSTGRES_USER: iot_platform
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-secure_password_change_me}
-      POSTGRES_DB: iot_platform
-      POSTGRES_HOST_AUTH_METHOD: md5
+    command: ["--replSet", "rs0", "--bind_ip_all"]
     ports:
-      - "5432:5432"
+      - "27017:27017"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mongodb_data:/data/db
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U iot_platform"]
+      test: ["CMD", "mongosh", "--eval", "try { rs.status().ok } catch(e) { rs.initiate().ok }"]
       interval: 10s
-      timeout: 5s
+      timeout: 10s
       retries: 5
+      start_period: 30s
     networks:
       - iot-network
     restart: unless-stopped
+
+  # MongoDB Replica Set Initialization
+  mongodb-init:
+    image: mongo:8
+    container_name: iot-platform-db-init
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    entrypoint: >
+      mongosh --host mongodb:27017 --eval "
+        try {
+          rs.status();
+          print('Replica set already initialized');
+        } catch(e) {
+          rs.initiate({_id: 'rs0', members: [{_id: 0, host: 'mongodb:27017'}]});
+          print('Replica set initiated');
+        }
+      "
+    networks:
+      - iot-network
+    restart: "no"
 
   # Backend API
   api:
@@ -31,22 +49,19 @@ services:
     container_name: iot-platform-api
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://iot_platform:${DB_PASSWORD:-secure_password_change_me}@postgres:5432/iot_platform?schema=public
+      MONGODB_URI: mongodb://mongodb:27017/iot_platform?replicaSet=rs0
       PORT: 3001
       HOST: 0.0.0.0
     ports:
       - "3001:3001"
     depends_on:
-      postgres:
+      mongodb:
         condition: service_healthy
+      mongodb-init:
+        condition: service_completed_successfully
     networks:
       - iot-network
     restart: unless-stopped
-    command: >
-      sh -c "
-        pnpm prisma migrate deploy &&
-        node dist/server.js
-      "
 
   # Frontend Web
   web:
@@ -71,5 +86,5 @@ networks:
     driver: bridge
 
 volumes:
-  postgres_data:
+  mongodb_data:
     driver: local

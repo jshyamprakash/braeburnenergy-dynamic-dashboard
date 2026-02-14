@@ -12,7 +12,8 @@
     "start": "./scripts/start.sh",
     "stop": "./scripts/stop.sh",
     "status": "./scripts/status.sh",
-    "simulate": "cd scripts && pnpm run simulate"
+    "simulate": "cd scripts && pnpm run simulate",
+    "seed:admin": "cd apps/api && pnpm seed:admin"
   },
   "devDependencies": {
     "turbo": "^1.11.3"

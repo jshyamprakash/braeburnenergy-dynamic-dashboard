@@ -111,7 +111,7 @@ class OrganizationController {
     // If updating slug, check if it's already taken
     if (validatedData.slug) {
       const existing = await organizationService.getBySlug(validatedData.slug);
-      if (existing && existing.id !== orgId) {
+      if (existing && (existing._id?.toString() || existing.id) !== orgId) {
         return reply.code(409).send({
           success: false,
           error: 'Organization with this slug already exists',

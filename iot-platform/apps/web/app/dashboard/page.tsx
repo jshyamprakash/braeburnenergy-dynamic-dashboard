@@ -8,8 +8,11 @@ import { useDeviceStates } from '@/lib/hooks/useDeviceStates';
 import { useDeviceStatesAggregated } from '@/lib/hooks/useDeviceStatesAggregated';
 import { useDeviceStateUpdates } from '@/lib/hooks/useWebSocket';
 import { useThrottle } from '@/lib/hooks/useThrottle';
-import { useState, useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useEffect } from 'react';
 import type { DeviceState } from '@/lib/types';
+import { useAppDispatch, useAppSelector } from '@/lib/store';
+import { deviceStateUpdated, selectDeviceLatestUpdate, selectUpdateHistory } from '@/lib/store/slices/websocketSlice';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 
 /**
  * Real Dashboard Page
@@ -44,17 +47,35 @@ export default function DashboardPage() {
     }
   );
 
-  // Real-time state updates via WebSocket
-  const [latestState, setLatestState] = useState<DeviceState | null>(null);
-  const [liveStreamData, setLiveStreamData] = useState<DeviceState[]>([]);
-  const [updateCount, setUpdateCount] = useState(0);
+  // Redux state for WebSocket updates
+  const dispatch = useAppDispatch();
+  const latestState = useAppSelector((state) => selectDeviceLatestUpdate(state, targetDeviceId));
+  const updateHistory = useAppSelector(selectUpdateHistory);
+
+  // Get live stream data for this device only and convert to DeviceState format
+  const liveStreamData = useMemo(() => {
+    return updateHistory
+      .filter((update) => update.deviceId === targetDeviceId)
+      .slice(0, 20)
+      .map((update) => ({
+        deviceId: update.deviceId,
+        data: update.data,
+        timestamp: update.timestamp,
+        orgId: update.orgId,
+      } as unknown as DeviceState));
+  }, [updateHistory, targetDeviceId]);
+
+  // Calculate update count
+  const updateCount = liveStreamData.length;
 
   // Handle real-time updates from WebSocket (throttled for performance)
   const handleStateUpdateRaw = useCallback((state: DeviceState) => {
-    setLatestState(state);
-    setLiveStreamData((prev) => [state, ...prev].slice(0, 20)); // Keep last 20
-    setUpdateCount((prev) => prev + 1);
-  }, []);
+    dispatch(deviceStateUpdated({
+      deviceId: targetDeviceId,
+      data: state.data,
+      timestamp: state.timestamp,
+    }));
+  }, [dispatch, targetDeviceId]);
 
   // Throttle updates to max 1 per second (prevents UI lag at high frequency)
   const handleStateUpdate = useThrottle(handleStateUpdateRaw, 1000);
@@ -63,9 +84,12 @@ export default function DashboardPage() {
   useDeviceStateUpdates(targetDeviceId, handleStateUpdate);
 
   // Get latest values from either WebSocket or historical data
-  const currentState = latestState || (statesData?.data?.[0]);
-  const temperature = currentState?.data?.temperature || 0;
-  const humidity = currentState?.data?.humidity || 0;
+  const currentStateData = statesData?.data?.[0];
+  const temperature = latestState?.data?.temperature || currentStateData?.data?.temperature || 0;
+  const humidity = latestState?.data?.humidity || currentStateData?.data?.humidity || 0;
+
+  // Get timestamp for display
+  const lastUpdateTimestamp = latestState?.timestamp || currentStateData?.timestamp;
 
   // Prepare time-series data using aggregated data (performance optimized)
   const timeSeriesData: TimeSeriesDataPoint[] = useMemo(() => {
@@ -112,40 +136,33 @@ export default function DashboardPage() {
     );
   }, [aggregatedData, liveStreamData, oneHourAgo]);
 
-  if (devicesLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading dashboard...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show helpful message if no devices exist
-  if (!devicesData?.devices?.length) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center max-w-md">
-          <div className="text-6xl mb-4">🤖</div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">No Devices Found</h2>
-          <p className="text-gray-600 mb-6">
-            Start the device simulator to create devices and see live data on this dashboard.
-          </p>
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-left">
-            <p className="text-sm font-medium text-gray-900 mb-2">Start the simulator:</p>
-            <pre className="bg-gray-900 text-green-400 p-3 rounded text-xs overflow-x-auto">
-{`cd iot-platform
-pnpm run simulate -- --devices 5 --interval 2s`}
-            </pre>
+  return (
+    <ProtectedRoute>
+      {devicesLoading ? (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading dashboard...</p>
           </div>
         </div>
-      </div>
-    );
-  }
-
-  return (
+      ) : !devicesData?.devices?.length ? (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center max-w-md">
+            <div className="text-6xl mb-4">🤖</div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">No Devices Found</h2>
+            <p className="text-gray-600 mb-6">
+              Start the device simulator to create devices and see live data on this dashboard.
+            </p>
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-left">
+              <p className="text-sm font-medium text-gray-900 mb-2">Start the simulator:</p>
+              <pre className="bg-gray-900 text-green-400 p-3 rounded text-xs overflow-x-auto">
+{`cd iot-platform
+pnpm run simulate -- --devices 5 --interval 2s`}
+              </pre>
+            </div>
+          </div>
+        </div>
+      ) : (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
@@ -221,8 +238,8 @@ pnpm run simulate -- --devices 5 --interval 2s`}
               <div>
                 <span className="text-gray-500">Last Update:</span>
                 <div className="text-gray-900">
-                  {currentState?.timestamp
-                    ? new Date(currentState.timestamp).toLocaleString()
+                  {lastUpdateTimestamp
+                    ? new Date(lastUpdateTimestamp).toLocaleString()
                     : 'No data'}
                 </div>
               </div>
@@ -348,5 +365,7 @@ pnpm run simulate -- --devices 5 --interval 2s`}
         </div>
       </div>
     </div>
+      )}
+    </ProtectedRoute>
   );
 }

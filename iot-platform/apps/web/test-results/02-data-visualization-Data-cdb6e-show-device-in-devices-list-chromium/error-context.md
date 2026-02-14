@@ -29,18 +29,18 @@
         - generic [ref=e23]:
           - button "←" [ref=e24]
           - generic [ref=e25]:
-            - heading "E2E Viz Test 1770716806026" [level=1] [ref=e26]
-            - paragraph [ref=e27]: 01KH3F4EZVNDGWQRAH4F90WB15
+            - heading "E2E Viz Test 1770873083665" [level=1] [ref=e26]
+            - paragraph [ref=e27]: 01KH845NT96E18Y8NZD86DCZ9S
         - generic [ref=e31]: Live (0 updates)
       - generic [ref=e33]:
         - heading "Device Information" [level=3] [ref=e34]
         - generic [ref=e35]:
           - generic [ref=e36]:
             - term [ref=e37]: Name
-            - definition [ref=e38]: E2E Viz Test 1770716806026
+            - definition [ref=e38]: E2E Viz Test 1770873083665
           - generic [ref=e39]:
             - term [ref=e40]: Device ID
-            - definition [ref=e41]: 01KH3F4EZVNDGWQRAH4F90WB15
+            - definition [ref=e41]: 01KH845NT96E18Y8NZD86DCZ9S
           - generic [ref=e42]:
             - term [ref=e43]: Tags
             - definition [ref=e44]:
@@ -48,7 +48,7 @@
               - generic [ref=e46]: visualization
           - generic [ref=e47]:
             - term [ref=e48]: Created
-            - definition [ref=e49]: 2/10/2026, 3:16:46 PM
+            - definition [ref=e49]: 2/12/2026, 10:41:23 AM
           - generic [ref=e50]:
             - term [ref=e51]: Attributes
             - definition [ref=e52]:

@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactElement } from 'react';
 import type { DashboardBlock } from './DashboardBuilder';
 
 interface BlockPaletteProps {
@@ -17,7 +18,7 @@ export function BlockPalette({ onAddBlock, onClose }: BlockPaletteProps) {
     type: DashboardBlock['type'];
     name: string;
     description: string;
-    icon: JSX.Element;
+    icon: ReactElement;
   }> = [
     {
       type: 'gauge',

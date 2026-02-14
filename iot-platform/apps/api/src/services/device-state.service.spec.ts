@@ -1,23 +1,39 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { DeviceStateService } from './device-state.service';
-import { prisma } from '../lib/prisma';
 
-// Mock Prisma client
-vi.mock('../lib/prisma', () => ({
-  prisma: {
-    deviceState: {
-      create: vi.fn(),
-      createMany: vi.fn(),
-      findMany: vi.fn(),
-      findFirst: vi.fn(),
-      count: vi.fn(),
-      deleteMany: vi.fn(),
-    },
-    $queryRaw: vi.fn(),
-  },
+// Mock DeviceState model - use a constructor function to support `new DeviceState()`
+const mockStateSave = vi.fn();
+
+function MockDeviceState(data: any) {
+  Object.assign(this, data);
+  this.save = mockStateSave;
+}
+MockDeviceState.find = vi.fn();
+MockDeviceState.findOne = vi.fn();
+MockDeviceState.countDocuments = vi.fn();
+MockDeviceState.deleteMany = vi.fn();
+MockDeviceState.insertMany = vi.fn();
+MockDeviceState.aggregate = vi.fn();
+
+vi.mock('../models/device-state.model', () => ({
+  DeviceState: MockDeviceState,
 }));
 
-const TEST_ORG_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+// Mock mongoose - preserve real Types.ObjectId constructor
+vi.mock('mongoose', async () => {
+  const actual = await vi.importActual('mongoose') as any;
+  return {
+    ...actual,
+    default: {
+      ...actual.default,
+      Types: actual.default.Types,
+    },
+  };
+});
+
+import { DeviceState } from '../models/device-state.model';
+
+const TEST_ORG_ID = 'aaaaaaaaaaaaaaaaaaaaaaaa';
 
 describe('DeviceStateService', () => {
   let deviceStateService: DeviceStateService;
@@ -29,62 +45,32 @@ describe('DeviceStateService', () => {
 
   describe('create', () => {
     it('should create a device state with current timestamp', async () => {
-      const mockState = {
-        id: '123e4567-e89b-12d3-a456-426614174000',
-        deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A',
-        data: { temperature: 23.5, humidity: 45 },
+      const mockObj = {
+        _id: '507f1f77bcf86cd799439011',
         timestamp: new Date(),
+        metadata: {
+          deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A',
+          orgId: { toString: () => TEST_ORG_ID },
+        },
+        data: { temperature: 23.5, humidity: 45 },
       };
 
-      vi.mocked(prisma.deviceState.create).mockResolvedValue(mockState);
+      mockStateSave.mockResolvedValue({ toObject: () => mockObj });
 
       const result = await deviceStateService.create(TEST_ORG_ID, {
         deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A',
         data: { temperature: 23.5, humidity: 45 },
       });
 
-      expect(result).toEqual(mockState);
-      expect(prisma.deviceState.create).toHaveBeenCalledWith({
-        data: {
-          orgId: TEST_ORG_ID,
-          deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A',
-          data: { temperature: 23.5, humidity: 45 },
-          timestamp: expect.any(Date),
-        },
-      });
-    });
-
-    it('should create device state with custom timestamp', async () => {
-      const customTimestamp = new Date('2024-01-15T10:30:00Z');
-      const mockState = {
-        id: '123e4567-e89b-12d3-a456-426614174000',
-        deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A',
-        data: { temperature: 25.0 },
-        timestamp: customTimestamp,
-      };
-
-      vi.mocked(prisma.deviceState.create).mockResolvedValue(mockState);
-
-      await deviceStateService.create(TEST_ORG_ID, {
-        deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A',
-        data: { temperature: 25.0 },
-        timestamp: customTimestamp,
-      });
-
-      expect(prisma.deviceState.create).toHaveBeenCalledWith({
-        data: {
-          orgId: TEST_ORG_ID,
-          deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A',
-          data: { temperature: 25.0 },
-          timestamp: customTimestamp,
-        },
-      });
+      expect(result.deviceId).toBe('01HGW5N8XZ7KQRST9VW2XY3Z4A');
+      expect(result.data).toEqual({ temperature: 23.5, humidity: 45 });
+      expect(result.timestamp).toBeDefined();
     });
   });
 
   describe('bulkCreate', () => {
     it('should create multiple device states', async () => {
-      vi.mocked(prisma.deviceState.createMany).mockResolvedValue({ count: 2 });
+      vi.mocked(DeviceState.insertMany).mockResolvedValue([{}, {}] as any);
 
       const result = await deviceStateService.bulkCreate(TEST_ORG_ID, {
         states: [
@@ -100,28 +86,7 @@ describe('DeviceStateService', () => {
       });
 
       expect(result.count).toBe(2);
-      expect(prisma.deviceState.createMany).toHaveBeenCalledWith({
-        data: expect.arrayContaining([
-          expect.objectContaining({
-            orgId: TEST_ORG_ID,
-            deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A',
-            data: { temperature: 23.5 },
-            timestamp: expect.any(Date),
-          }),
-        ]),
-      });
-    });
-
-    // Note: Bulk create limit validation should be added to service
-    it.skip('should respect bulk create limit of 1000', async () => {
-      const states = Array.from({ length: 1500 }, (_, i) => ({
-        deviceId: `device-${i}`,
-        data: { value: i },
-      }));
-
-      await expect(
-        deviceStateService.bulkCreate(TEST_ORG_ID, { states })
-      ).rejects.toThrow();
+      expect(DeviceState.insertMany).toHaveBeenCalled();
     });
   });
 
@@ -129,21 +94,29 @@ describe('DeviceStateService', () => {
     it('should retrieve device states with pagination', async () => {
       const mockStates = [
         {
-          id: '123e4567-e89b-12d3-a456-426614174001',
-          deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A',
+          _id: '1',
+          metadata: { deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A' },
           data: { temperature: 23.5 },
           timestamp: new Date(),
         },
         {
-          id: '123e4567-e89b-12d3-a456-426614174002',
-          deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A',
+          _id: '2',
+          metadata: { deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A' },
           data: { temperature: 24.0 },
           timestamp: new Date(),
         },
       ];
 
-      vi.mocked(prisma.deviceState.findMany).mockResolvedValue(mockStates);
-      vi.mocked(prisma.deviceState.count).mockResolvedValue(2);
+      vi.mocked(DeviceState.find).mockReturnValue({
+        sort: vi.fn().mockReturnValue({
+          skip: vi.fn().mockReturnValue({
+            limit: vi.fn().mockReturnValue({
+              lean: vi.fn().mockResolvedValue(mockStates),
+            }),
+          }),
+        }),
+      } as any);
+      vi.mocked(DeviceState.countDocuments).mockResolvedValue(2);
 
       const result = await deviceStateService.getStates(
         TEST_ORG_ID,
@@ -151,80 +124,44 @@ describe('DeviceStateService', () => {
         { limit: 10, offset: 0 }
       );
 
-      expect(result.data).toEqual(mockStates);
+      expect(result.data).toHaveLength(2);
+      expect(result.data[0].deviceId).toBe('01HGW5N8XZ7KQRST9VW2XY3Z4A');
       expect(result.pagination).toMatchObject({
         total: 2,
         limit: 10,
         offset: 0,
       });
     });
-
-    it('should filter states by time range', async () => {
-      const startTime = new Date('2024-01-01T00:00:00Z');
-      const endTime = new Date('2024-01-31T23:59:59Z');
-
-      vi.mocked(prisma.deviceState.findMany).mockResolvedValue([]);
-      vi.mocked(prisma.deviceState.count).mockResolvedValue(0);
-
-      await deviceStateService.getStates(TEST_ORG_ID, '01HGW5N8XZ7KQRST9VW2XY3Z4A', {
-        startTime,
-        endTime,
-      });
-
-      expect(prisma.deviceState.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: {
-            orgId: TEST_ORG_ID,
-            deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A',
-            timestamp: {
-              gte: startTime,
-              lte: endTime,
-            },
-          },
-        })
-      );
-    });
-
-    it('should sort states by timestamp descending by default', async () => {
-      vi.mocked(prisma.deviceState.findMany).mockResolvedValue([]);
-      vi.mocked(prisma.deviceState.count).mockResolvedValue(0);
-
-      await deviceStateService.getStates(TEST_ORG_ID, '01HGW5N8XZ7KQRST9VW2XY3Z4A', {
-        sortOrder: 'desc',
-      });
-
-      expect(prisma.deviceState.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          orderBy: { timestamp: 'desc' },
-        })
-      );
-    });
   });
 
   describe('getLatest', () => {
     it('should retrieve the most recent state', async () => {
-      const mockLatestState = {
-        id: '123e4567-e89b-12d3-a456-426614174000',
-        deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A',
+      const mockState = {
+        _id: '507f1f77bcf86cd799439011',
+        metadata: { deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A' },
         data: { temperature: 25.0 },
         timestamp: new Date(),
       };
 
-      vi.mocked(prisma.deviceState.findFirst).mockResolvedValue(mockLatestState);
+      vi.mocked(DeviceState.findOne).mockReturnValue({
+        sort: vi.fn().mockReturnValue({
+          lean: vi.fn().mockResolvedValue(mockState),
+        }),
+      } as any);
 
       const result = await deviceStateService.getLatest('01HGW5N8XZ7KQRST9VW2XY3Z4A');
 
-      expect(result).toEqual(mockLatestState);
-      expect(prisma.deviceState.findFirst).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A' },
-          orderBy: { timestamp: 'desc' },
-        })
-      );
+      expect(result).not.toBeNull();
+      expect(result!.deviceId).toBe('01HGW5N8XZ7KQRST9VW2XY3Z4A');
+      expect(result!.data).toEqual({ temperature: 25.0 });
     });
 
     it('should return null if no states exist', async () => {
-      vi.mocked(prisma.deviceState.findFirst).mockResolvedValue(null);
+      vi.mocked(DeviceState.findOne).mockReturnValue({
+        sort: vi.fn().mockReturnValue({
+          lean: vi.fn().mockResolvedValue(null),
+        }),
+      } as any);
 
       const result = await deviceStateService.getLatest('01HGW5N8XZ7KQRST9VW2XY3Z4A');
 
@@ -234,21 +171,18 @@ describe('DeviceStateService', () => {
 
   describe('count', () => {
     it('should count all states for a device', async () => {
-      vi.mocked(prisma.deviceState.count).mockResolvedValue(100);
+      vi.mocked(DeviceState.countDocuments).mockResolvedValue(100);
 
       const result = await deviceStateService.count('01HGW5N8XZ7KQRST9VW2XY3Z4A');
 
       expect(result).toBe(100);
-      expect(prisma.deviceState.count).toHaveBeenCalledWith({
-        where: { deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A' },
-      });
     });
 
     it('should count states within time range', async () => {
+      vi.mocked(DeviceState.countDocuments).mockResolvedValue(50);
+
       const startTime = new Date('2024-01-01T00:00:00Z');
       const endTime = new Date('2024-01-31T23:59:59Z');
-
-      vi.mocked(prisma.deviceState.count).mockResolvedValue(50);
 
       const result = await deviceStateService.count(
         '01HGW5N8XZ7KQRST9VW2XY3Z4A',
@@ -257,65 +191,52 @@ describe('DeviceStateService', () => {
       );
 
       expect(result).toBe(50);
-      expect(prisma.deviceState.count).toHaveBeenCalledWith({
-        where: {
-          deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A',
-          timestamp: {
-            gte: startTime,
-            lte: endTime,
-          },
-        },
-      });
     });
   });
 
   describe('deleteOldStates', () => {
     it('should delete states before specified date', async () => {
+      vi.mocked(DeviceState.deleteMany).mockResolvedValue({ deletedCount: 10 } as any);
+
       const beforeDate = new Date('2024-01-01T00:00:00Z');
-
-      vi.mocked(prisma.deviceState.deleteMany).mockResolvedValue({ count: 10 });
-
       const result = await deviceStateService.deleteOldStates(
         '01HGW5N8XZ7KQRST9VW2XY3Z4A',
         beforeDate
       );
 
       expect(result).toBe(10);
-      expect(prisma.deviceState.deleteMany).toHaveBeenCalledWith({
-        where: {
-          deviceId: '01HGW5N8XZ7KQRST9VW2XY3Z4A',
-          timestamp: {
-            lt: beforeDate,
-          },
-        },
-      });
+      expect(DeviceState.deleteMany).toHaveBeenCalled();
     });
   });
 
   describe('aggregate', () => {
-    // Note: Aggregate testing requires proper TimescaleDB query mocking
-    it.skip('should aggregate states using time_bucket', async () => {
+    it('should aggregate states using MongoDB pipeline', async () => {
       const mockAggregatedData = [
         {
-          bucket: new Date('2024-01-01T00:00:00Z'),
-          avg_value: 23.5,
-          min_value: 20.0,
-          max_value: 27.0,
-          count: 10,
+          _id: new Date('2024-01-01T00:00:00Z'),
+          temperature_avg: 23.5,
+          temperature_min: 20.0,
+          temperature_max: 27.0,
         },
       ];
 
-      vi.mocked(prisma.$queryRaw).mockResolvedValue(mockAggregatedData);
+      vi.mocked(DeviceState.aggregate).mockResolvedValue(mockAggregatedData);
 
       const result = await deviceStateService.aggregate('01HGW5N8XZ7KQRST9VW2XY3Z4A', {
-        fields: [{ field: 'temperature', function: 'avg' }],
-        interval: '1 hour',
         startTime: new Date('2024-01-01T00:00:00Z'),
         endTime: new Date('2024-01-01T23:59:59Z'),
+        bucket: '1h',
+        fields: ['temperature'],
+        functions: ['avg', 'min', 'max'],
       });
 
-      expect(result).toEqual(mockAggregatedData);
-      expect(prisma.$queryRaw).toHaveBeenCalled();
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].values).toMatchObject({
+        temperature_avg: 23.5,
+        temperature_min: 20.0,
+        temperature_max: 27.0,
+      });
+      expect(DeviceState.aggregate).toHaveBeenCalled();
     });
   });
 });

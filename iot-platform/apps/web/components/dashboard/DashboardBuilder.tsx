@@ -1,15 +1,58 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Responsive as ResponsiveGridLayout, Layout, Layouts } from 'react-grid-layout';
+import { Responsive as ResponsiveGridLayout } from 'react-grid-layout';
 import { RealTimeGaugeBlock } from './RealTimeGaugeBlock';
 import { RealTimeChartBlock } from './RealTimeChartBlock';
 import { LiveStreamBlock } from '../blocks/LiveStreamBlock';
 import { BlockPalette } from './BlockPalette';
 import { BlockConfigPanel } from './BlockConfigPanel';
-import { saveDashboardLayout, loadDashboardLayout } from '@/lib/utils/dashboard-storage';
 import { toast } from '@/lib/utils/toast';
 import { useDeviceRealtime, useDeviceStates } from '@/hooks/useDeviceData';
+import { useAppDispatch, useAppSelector } from '@/lib/store';
+import {
+  initializeDashboard,
+  loadDashboardFromBackend,
+  syncDashboardWithBackend,
+  addBlock,
+  removeBlock,
+  updateBlockConfig,
+  updateLayouts,
+  setEditMode,
+  toggleEditMode,
+  selectBlock,
+  saveDashboard,
+  resetDashboard,
+  setOnlineStatus,
+  selectBlocks,
+  selectEditMode,
+  selectSelectedBlockId,
+  selectSelectedBlock,
+  selectIsDirty,
+  selectLayouts,
+  selectSyncStatus,
+  selectSyncError,
+  selectIsOnline,
+  type DashboardBlock as ReduxDashboardBlock,
+} from '@/lib/store/slices/dashboardSlice';
+import { dashboardConfig } from '@/lib/config';
+
+// Define Layout type for react-grid-layout items
+interface Layout {
+  i: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  static?: boolean;
+  minW?: number;
+  maxW?: number;
+  minH?: number;
+  maxH?: number;
+}
+
+// Define Layouts type for react-grid-layout responsive layouts
+type Layouts = { [breakpoint: string]: Layout[] };
 
 /**
  * Generate mock time-series data for chart blocks
@@ -31,21 +74,8 @@ function generateMockChartData(points: number = 24) {
   return data;
 }
 
-export interface DashboardBlock {
-  id: string;
-  type: 'gauge' | 'chart' | 'liveStream';
-  layouts: {
-    lg: Layout;
-    md: Layout;
-    sm: Layout;
-  };
-  config: {
-    title?: string;
-    deviceId?: string;
-    fields?: string[];
-    [key: string]: any;
-  };
-}
+// Re-export DashboardBlock from Redux slice for backward compatibility
+export type DashboardBlock = ReduxDashboardBlock;
 
 interface DashboardBuilderProps {
   /**
@@ -84,27 +114,64 @@ export function DashboardBuilder({
   isEditMode: externalEditMode,
   onEditModeChange,
 }: DashboardBuilderProps) {
-  const [blocks, setBlocks] = useState<DashboardBlock[]>(initialBlocks);
-  const [internalEditMode, setInternalEditMode] = useState(false);
-  const isEditMode = externalEditMode !== undefined ? externalEditMode : internalEditMode;
+  const dispatch = useAppDispatch();
 
-  const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
+  // Redux state
+  const blocks = useAppSelector(selectBlocks);
+  const reduxEditMode = useAppSelector(selectEditMode);
+  const selectedBlockId = useAppSelector(selectSelectedBlockId);
+  const selectedBlock = useAppSelector(selectSelectedBlock);
+  const isDirty = useAppSelector(selectIsDirty);
+  const layouts = useAppSelector(selectLayouts);
+  const syncStatus = useAppSelector(selectSyncStatus);
+  const syncError = useAppSelector(selectSyncError);
+  const isOnline = useAppSelector(selectIsOnline);
+
+  // Use external edit mode if provided, otherwise use Redux state
+  const isEditMode = externalEditMode !== undefined ? externalEditMode : reduxEditMode;
+
+  // Local UI state (not shared across components)
   const [showPalette, setShowPalette] = useState(false);
   const [containerWidth, setContainerWidth] = useState(1200);
   const [blockMenuOpen, setBlockMenuOpen] = useState<string | null>(null);
   const gridContainerRef = useRef<HTMLDivElement>(null);
 
-  const selectedBlock = blocks.find((b) => b.id === selectedBlockId);
-
-  // Load from localStorage on client mount (avoid hydration mismatch)
+  // Initialize dashboard: localStorage first (instant), then backend (sync)
   useEffect(() => {
-    if (initialBlocks.length === 0 && typeof window !== 'undefined') {
-      const saved = loadDashboardLayout(dashboardId);
-      if (saved) {
-        setBlocks(saved);
+    // Step 1: Load from localStorage immediately (fast, works offline)
+    dispatch(initializeDashboard(dashboardId));
+
+    // Step 2: Try to load from backend (sync across devices)
+    dispatch(loadDashboardFromBackend(dashboardId));
+  }, [dashboardId, dispatch]);
+
+  // Online/offline detection
+  useEffect(() => {
+    const handleOnline = () => {
+      dispatch(setOnlineStatus(true));
+      toast.success('Back online - dashboard will sync');
+      // Attempt to sync when coming back online
+      if (isDirty) {
+        dispatch(syncDashboardWithBackend());
       }
-    }
-  }, [dashboardId, initialBlocks.length]);
+    };
+
+    const handleOffline = () => {
+      dispatch(setOnlineStatus(false));
+      toast.warning('Offline mode - changes saved locally');
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    // Set initial online status
+    dispatch(setOnlineStatus(navigator.onLine));
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [dispatch, isDirty]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -124,7 +191,7 @@ export function DashboardBuilder({
       // Escape - Close config panel or deselect
       if (e.key === 'Escape') {
         if (selectedBlockId) {
-          setSelectedBlockId(null);
+          dispatch(selectBlock(null));
         }
         if (blockMenuOpen) {
           setBlockMenuOpen(null);
@@ -166,36 +233,18 @@ export function DashboardBuilder({
     if (onEditModeChange) {
       onEditModeChange(newMode);
     } else {
-      setInternalEditMode(newMode);
+      dispatch(toggleEditMode());
     }
 
     if (!newMode) {
-      setSelectedBlockId(null);
+      dispatch(selectBlock(null));
       setShowPalette(false);
       setBlockMenuOpen(null);
     }
   };
 
   const handleLayoutChange = (layout: Layout[], allLayouts: Layouts) => {
-    setBlocks((prevBlocks) =>
-      prevBlocks.map((block) => {
-        const lgLayout = allLayouts.lg?.find((l) => l.i === block.id);
-        const mdLayout = allLayouts.md?.find((l) => l.i === block.id);
-        const smLayout = allLayouts.sm?.find((l) => l.i === block.id);
-
-        if (lgLayout || mdLayout || smLayout) {
-          return {
-            ...block,
-            layouts: {
-              lg: lgLayout || block.layouts.lg,
-              md: mdLayout || block.layouts.md,
-              sm: smLayout || block.layouts.sm,
-            },
-          };
-        }
-        return block;
-      })
-    );
+    dispatch(updateLayouts(allLayouts));
   };
 
   const handleAddBlock = (type: DashboardBlock['type']) => {
@@ -204,19 +253,19 @@ export function DashboardBuilder({
     // Define default sizes and constraints per breakpoint
     const defaultSizes = {
       gauge: {
-        lg: { w: 3, h: 5, minW: 2, maxW: 4, minH: 4, maxH: 8 },
-        md: { w: 5, h: 5, minW: 3, maxW: 6, minH: 4, maxH: 8 },
-        sm: { w: 6, h: 5, minW: 4, maxW: 6, minH: 4, maxH: 8 },
+        lg: { w: 2, h: 5, minW: 2, maxW: 4, minH: 4, maxH: 8 },
+        md: { w: 3, h: 5, minW: 2, maxW: 6, minH: 4, maxH: 8 },
+        sm: { w: 3, h: 5, minW: 3, maxW: 6, minH: 4, maxH: 8 },
       },
       chart: {
-        lg: { w: 6, h: 6, minW: 4, maxW: 12, minH: 4, maxH: 12 },
-        md: { w: 10, h: 6, minW: 5, maxW: 10, minH: 4, maxH: 12 },
-        sm: { w: 6, h: 6, minW: 4, maxW: 6, minH: 4, maxH: 12 },
+        lg: { w: 6, h: 6, minW: 3, maxW: 12, minH: 4, maxH: 12 },
+        md: { w: 10, h: 6, minW: 3, maxW: 10, minH: 4, maxH: 12 },
+        sm: { w: 6, h: 6, minW: 3, maxW: 6, minH: 4, maxH: 12 },
       },
       liveStream: {
-        lg: { w: 6, h: 7, minW: 4, maxW: 12, minH: 5, maxH: 15 },
-        md: { w: 10, h: 7, minW: 5, maxW: 10, minH: 5, maxH: 15 },
-        sm: { w: 6, h: 7, minW: 4, maxW: 6, minH: 5, maxH: 15 },
+        lg: { w: 6, h: 7, minW: 3, maxW: 12, minH: 5, maxH: 15 },
+        md: { w: 10, h: 7, minW: 3, maxW: 10, minH: 5, maxH: 15 },
+        sm: { w: 6, h: 7, minW: 3, maxW: 6, minH: 5, maxH: 15 },
       },
     };
 
@@ -280,16 +329,13 @@ export function DashboardBuilder({
       config: defaultConfig,
     };
 
-    setBlocks([...blocks, newBlock]);
-    setSelectedBlockId(newId);
+    dispatch(addBlock(newBlock));
+    dispatch(selectBlock(newId));
     toast.success(`Added ${type} block`);
   };
 
   const handleRemoveBlock = (blockId: string) => {
-    setBlocks(blocks.filter((b) => b.id !== blockId));
-    if (selectedBlockId === blockId) {
-      setSelectedBlockId(null);
-    }
+    dispatch(removeBlock(blockId));
     toast.success('Block removed');
   };
 
@@ -312,31 +358,49 @@ export function DashboardBuilder({
       },
     };
 
-    setBlocks([...blocks, duplicatedBlock]);
-    setSelectedBlockId(newId);
+    dispatch(addBlock(duplicatedBlock));
+    dispatch(selectBlock(newId));
     toast.success('Block duplicated');
   };
 
   const handleUpdateBlockConfig = (blockId: string, config: DashboardBlock['config']) => {
-    setBlocks((prevBlocks) =>
-      prevBlocks.map((block) =>
-        block.id === blockId ? { ...block, config: { ...block.config, ...config } } : block
-      )
-    );
+    dispatch(updateBlockConfig({ id: blockId, config }));
   };
 
-  const handleSaveLayout = () => {
-    saveDashboardLayout(dashboardId, blocks);
-    toast.success('Dashboard layout saved');
+  const handleSaveLayout = async () => {
+    // Use hybrid sync (localStorage + backend)
+    const result = await dispatch(syncDashboardWithBackend());
+
+    if (syncDashboardWithBackend.fulfilled.match(result)) {
+      const payload = result.payload as any;
+      if (payload?.synced) {
+        toast.success('Dashboard synced to cloud');
+      } else if (payload?.reason === 'offline') {
+        toast.success('Dashboard saved locally (offline)');
+      }
+    } else {
+      toast.warning('Saved locally, cloud sync failed');
+    }
   };
 
   const handleClearLayout = () => {
     if (confirm('Are you sure you want to clear the entire dashboard?')) {
-      setBlocks([]);
-      setSelectedBlockId(null);
+      dispatch(resetDashboard());
       toast.success('Dashboard cleared');
     }
   };
+
+  // Auto-save with hybrid sync (localStorage + backend)
+  useEffect(() => {
+    if (isDirty) {
+      const timer = setTimeout(() => {
+        // Hybrid sync: saves to localStorage + backend
+        dispatch(syncDashboardWithBackend());
+      }, dashboardConfig.autoSaveDelay);
+
+      return () => clearTimeout(timer);
+    }
+  }, [isDirty, dispatch]);
 
   const renderBlock = (block: DashboardBlock) => {
     const isSelected = selectedBlockId === block.id;
@@ -426,7 +490,7 @@ export function DashboardBuilder({
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        setSelectedBlockId(block.id);
+                        dispatch(selectBlock(block.id));
                         setBlockMenuOpen(null);
                       }}
                       className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-2"
@@ -488,6 +552,46 @@ export function DashboardBuilder({
             <span className="text-xs text-gray-500 dark:text-gray-400">
               {blocks.length} block{blocks.length !== 1 ? 's' : ''}
             </span>
+
+            {/* Sync Status Indicator */}
+            <div className="flex items-center gap-2">
+              {syncStatus === 'loading' && (
+                <div className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400">
+                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse" />
+                  <span>Loading...</span>
+                </div>
+              )}
+              {syncStatus === 'syncing' && (
+                <div className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400">
+                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse" />
+                  <span>Syncing...</span>
+                </div>
+              )}
+              {syncStatus === 'synced' && !isDirty && (
+                <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  <span>Synced</span>
+                </div>
+              )}
+              {syncStatus === 'error' && (
+                <div className="flex items-center gap-2 text-xs text-red-600 dark:text-red-400" title={syncError || 'Sync failed'}>
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  <span>Error</span>
+                </div>
+              )}
+              {!isOnline && (
+                <div className="flex items-center gap-2 text-xs text-orange-600 dark:text-orange-400">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414m-1.414-1.414L3 3m8.293 8.293l1.414 1.414" />
+                  </svg>
+                  <span>Offline</span>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
@@ -546,17 +650,17 @@ export function DashboardBuilder({
           <ResponsiveGridLayout
             className="layout"
             layouts={{
-              lg: blocks.map((b) => b.layouts.lg),
-              md: blocks.map((b) => b.layouts.md),
-              sm: blocks.map((b) => b.layouts.sm),
+              lg: blocks.map((b) => ({ ...b.layouts.lg, static: !isEditMode })),
+              md: blocks.map((b) => ({ ...b.layouts.md, static: !isEditMode })),
+              sm: blocks.map((b) => ({ ...b.layouts.sm, static: !isEditMode })),
             }}
             breakpoints={{ lg: 1200, md: 996, sm: 768 }}
             cols={{ lg: 12, md: 10, sm: 6 }}
             rowHeight={60}
             width={containerWidth}
-            onLayoutChange={handleLayoutChange}
-            isDraggable={isEditMode}
-            isResizable={isEditMode}
+            onLayoutChange={handleLayoutChange as any}
+            {...({ isDraggable: isEditMode } as any)}
+            {...({ isResizable: isEditMode } as any)}
             compactType="vertical"
             preventCollision={false}
             containerPadding={[0, 0]}
@@ -585,7 +689,7 @@ export function DashboardBuilder({
           <BlockConfigPanel
             block={selectedBlock}
             onUpdate={(config) => handleUpdateBlockConfig(selectedBlock.id, config)}
-            onClose={() => setSelectedBlockId(null)}
+            onClose={() => dispatch(selectBlock(null))}
           />
         </div>
       )}

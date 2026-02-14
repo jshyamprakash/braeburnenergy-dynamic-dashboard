@@ -1,5 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { organizationController } from '../controllers/organization.controller';
+import { requireAuth } from '../middleware/auth.middleware';
+import { requirePermission } from '../middleware/rbac.middleware';
 
 export async function organizationRoutes(fastify: FastifyInstance) {
   // Create organization
@@ -7,8 +9,9 @@ export async function organizationRoutes(fastify: FastifyInstance) {
     '/organizations',
     {
       schema: {
-        description: 'Create a new organization',
+        description: 'Create a new organization (SuperAdmin only)',
         tags: ['organizations'],
+        security: [{ bearerAuth: [] }],
         body: {
           type: 'object',
           required: ['name', 'slug'],
@@ -33,13 +36,15 @@ export async function organizationRoutes(fastify: FastifyInstance) {
               data: {
                 type: 'object',
                 properties: {
-                  id: { type: 'string', format: 'uuid' },
+                  _id: { type: 'string' },
+                  id: { type: 'string' },
                   name: { type: 'string' },
                   slug: { type: 'string' },
                   settings: { type: 'object', additionalProperties: true },
                   createdAt: { type: 'string', format: 'date-time' },
                   updatedAt: { type: 'string', format: 'date-time' },
                 },
+                additionalProperties: true,
               },
             },
           },
@@ -53,6 +58,7 @@ export async function organizationRoutes(fastify: FastifyInstance) {
           },
         },
       },
+      preHandler: [requireAuth, requirePermission('organization:create')],
     },
     organizationController.create.bind(organizationController)
   );
@@ -62,8 +68,9 @@ export async function organizationRoutes(fastify: FastifyInstance) {
     '/organizations',
     {
       schema: {
-        description: 'List all organizations',
+        description: 'List all organizations (SuperAdmin and Admin only)',
         tags: ['organizations'],
+        security: [{ bearerAuth: [] }],
         querystring: {
           type: 'object',
           properties: {
@@ -83,7 +90,7 @@ export async function organizationRoutes(fastify: FastifyInstance) {
                 items: {
                   type: 'object',
                   properties: {
-                    id: { type: 'string', format: 'uuid' },
+                    id: { type: 'string' },
                     name: { type: 'string' },
                     slug: { type: 'string' },
                     settings: { type: 'object', additionalProperties: true },
@@ -104,6 +111,7 @@ export async function organizationRoutes(fastify: FastifyInstance) {
           },
         },
       },
+      preHandler: [requireAuth, requirePermission('organization:read')],
     },
     organizationController.list.bind(organizationController)
   );
@@ -113,13 +121,14 @@ export async function organizationRoutes(fastify: FastifyInstance) {
     '/organizations/:orgId',
     {
       schema: {
-        description: 'Get organization by ID',
+        description: 'Get organization by ID (SuperAdmin and Admin only)',
         tags: ['organizations'],
+        security: [{ bearerAuth: [] }],
         params: {
           type: 'object',
           required: ['orgId'],
           properties: {
-            orgId: { type: 'string', format: 'uuid', description: 'Organization UUID' },
+            orgId: { type: 'string', description: 'Organization ID' },
           },
         },
         response: {
@@ -131,13 +140,15 @@ export async function organizationRoutes(fastify: FastifyInstance) {
               data: {
                 type: 'object',
                 properties: {
-                  id: { type: 'string', format: 'uuid' },
+                  _id: { type: 'string' },
+                  id: { type: 'string' },
                   name: { type: 'string' },
                   slug: { type: 'string' },
                   settings: { type: 'object', additionalProperties: true },
                   createdAt: { type: 'string', format: 'date-time' },
                   updatedAt: { type: 'string', format: 'date-time' },
                 },
+                additionalProperties: true,
               },
             },
           },
@@ -151,6 +162,7 @@ export async function organizationRoutes(fastify: FastifyInstance) {
           },
         },
       },
+      preHandler: [requireAuth, requirePermission('organization:read')],
     },
     organizationController.getById.bind(organizationController)
   );
@@ -160,8 +172,9 @@ export async function organizationRoutes(fastify: FastifyInstance) {
     '/organizations/slug/:slug',
     {
       schema: {
-        description: 'Get organization by slug',
+        description: 'Get organization by slug (SuperAdmin and Admin only)',
         tags: ['organizations'],
+        security: [{ bearerAuth: [] }],
         params: {
           type: 'object',
           required: ['slug'],
@@ -178,13 +191,15 @@ export async function organizationRoutes(fastify: FastifyInstance) {
               data: {
                 type: 'object',
                 properties: {
-                  id: { type: 'string', format: 'uuid' },
+                  _id: { type: 'string' },
+                  id: { type: 'string' },
                   name: { type: 'string' },
                   slug: { type: 'string' },
                   settings: { type: 'object', additionalProperties: true },
                   createdAt: { type: 'string', format: 'date-time' },
                   updatedAt: { type: 'string', format: 'date-time' },
                 },
+                additionalProperties: true,
               },
             },
           },
@@ -198,6 +213,7 @@ export async function organizationRoutes(fastify: FastifyInstance) {
           },
         },
       },
+      preHandler: [requireAuth, requirePermission('organization:read')],
     },
     organizationController.getBySlug.bind(organizationController)
   );
@@ -207,13 +223,14 @@ export async function organizationRoutes(fastify: FastifyInstance) {
     '/organizations/:orgId',
     {
       schema: {
-        description: 'Update organization',
+        description: 'Update organization (SuperAdmin only)',
         tags: ['organizations'],
+        security: [{ bearerAuth: [] }],
         params: {
           type: 'object',
           required: ['orgId'],
           properties: {
-            orgId: { type: 'string', format: 'uuid', description: 'Organization UUID' },
+            orgId: { type: 'string', description: 'Organization ID' },
           },
         },
         body: {
@@ -239,13 +256,15 @@ export async function organizationRoutes(fastify: FastifyInstance) {
               data: {
                 type: 'object',
                 properties: {
-                  id: { type: 'string', format: 'uuid' },
+                  _id: { type: 'string' },
+                  id: { type: 'string' },
                   name: { type: 'string' },
                   slug: { type: 'string' },
                   settings: { type: 'object', additionalProperties: true },
                   createdAt: { type: 'string', format: 'date-time' },
                   updatedAt: { type: 'string', format: 'date-time' },
                 },
+                additionalProperties: true,
               },
             },
           },
@@ -267,6 +286,7 @@ export async function organizationRoutes(fastify: FastifyInstance) {
           },
         },
       },
+      preHandler: [requireAuth, requirePermission('organization:update')],
     },
     organizationController.update.bind(organizationController)
   );
@@ -276,13 +296,14 @@ export async function organizationRoutes(fastify: FastifyInstance) {
     '/organizations/:orgId',
     {
       schema: {
-        description: 'Delete organization (cascade deletes devices and states)',
+        description: 'Delete organization (cascade deletes devices and states) - SuperAdmin only',
         tags: ['organizations'],
+        security: [{ bearerAuth: [] }],
         params: {
           type: 'object',
           required: ['orgId'],
           properties: {
-            orgId: { type: 'string', format: 'uuid', description: 'Organization UUID' },
+            orgId: { type: 'string', description: 'Organization ID' },
           },
         },
         response: {
@@ -304,6 +325,7 @@ export async function organizationRoutes(fastify: FastifyInstance) {
           },
         },
       },
+      preHandler: [requireAuth, requirePermission('organization:delete')],
     },
     organizationController.delete.bind(organizationController)
   );
@@ -313,13 +335,14 @@ export async function organizationRoutes(fastify: FastifyInstance) {
     '/organizations/:orgId/stats',
     {
       schema: {
-        description: 'Get organization statistics (device count, state count)',
+        description: 'Get organization statistics (device count, state count) - SuperAdmin and Admin only',
         tags: ['organizations'],
+        security: [{ bearerAuth: [] }],
         params: {
           type: 'object',
           required: ['orgId'],
           properties: {
-            orgId: { type: 'string', format: 'uuid', description: 'Organization UUID' },
+            orgId: { type: 'string', description: 'Organization ID' },
           },
         },
         response: {
@@ -347,6 +370,7 @@ export async function organizationRoutes(fastify: FastifyInstance) {
           },
         },
       },
+      preHandler: [requireAuth, requirePermission('organization:read')],
     },
     organizationController.getStats.bind(organizationController)
   );

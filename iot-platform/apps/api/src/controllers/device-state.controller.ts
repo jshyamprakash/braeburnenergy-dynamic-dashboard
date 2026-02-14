@@ -2,6 +2,8 @@ import type { FastifyRequest, FastifyReply } from 'fastify';
 import type { Server as SocketIOServer } from 'socket.io';
 import { deviceService } from '../services/device.service';
 import { deviceStateService } from '../services/device-state.service';
+import { DataQualityService } from '../services/data-quality.service';
+import { AlarmService } from '../services/alarm.service';
 import {
   createDeviceStateSchema,
   bulkCreateDeviceStatesSchema,
@@ -19,7 +21,7 @@ import { broadcastDeviceState } from '../websocket/server';
  * Default organization ID for POC
  * TODO: Replace with orgId from JWT token or request header in MVP
  */
-const DEFAULT_ORG_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+const DEFAULT_ORG_ID = 'aaaaaaaaaaaaaaaaaaaaaaaa';
 
 /**
  * DeviceStateController
@@ -28,6 +30,9 @@ const DEFAULT_ORG_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
  * Handles time-series data ingestion, queries, and aggregations
  */
 export class DeviceStateController {
+  private dataQualityService = new DataQualityService();
+  private alarmService = new AlarmService();
+
   /**
    * POST /devices/:deviceId/states
    * Create a new device state
@@ -46,8 +51,61 @@ export class DeviceStateController {
         deviceId,
       });
 
-      // Create state (using default org for now)
-      const state = await deviceStateService.create(DEFAULT_ORG_ID, validatedData);
+      // Get device info (need tags for alarm evaluation)
+      const device = await deviceService.getByDeviceId(DEFAULT_ORG_ID, deviceId);
+      if (!device) {
+        return reply.code(404).send({
+          success: false,
+          error: 'Device not found',
+        });
+      }
+
+      // Validate data quality (EPA/AWWA compliance)
+      const validationResult = await this.dataQualityService.validateDeviceState(
+        deviceId,
+        validatedData.data as Record<string, any>,
+        validatedData.timestamp ? new Date(validatedData.timestamp) : new Date()
+      );
+
+      // Log quality issues if any
+      if (!validationResult.isValid) {
+        request.log.warn(
+          {
+            deviceId,
+            errors: validationResult.errors,
+            warnings: validationResult.warnings,
+            quality: validationResult.quality,
+          },
+          'Data quality validation issues detected'
+        );
+      }
+
+      // Create state with quality metadata
+      const state = await deviceStateService.create(DEFAULT_ORG_ID, {
+        ...validatedData,
+        quality: validationResult.quality,
+      });
+
+      // Evaluate alarm conditions (ISA-18.2)
+      const triggeredAlarms = await this.alarmService.evaluateDeviceState(
+        deviceId,
+        device.tags,
+        validatedData.data as Record<string, any>,
+        state._id.toString(),
+        validatedData.timestamp ? new Date(validatedData.timestamp) : new Date()
+      );
+
+      // Log triggered alarms
+      if (triggeredAlarms.length > 0) {
+        request.log.warn(
+          {
+            deviceId,
+            alarmCount: triggeredAlarms.length,
+            alarms: triggeredAlarms.map(a => ({ tagName: a.tagName, priority: a.priority, value: a.triggerValue })),
+          },
+          'Alarms triggered'
+        );
+      }
 
       // Broadcast to WebSocket subscribers
       const io = (request.server as any).io as SocketIOServer;
@@ -57,6 +115,22 @@ export class DeviceStateController {
           data: state.data as Record<string, unknown>,
           timestamp: state.timestamp,
         });
+
+        // Broadcast alarms
+        if (triggeredAlarms.length > 0) {
+          triggeredAlarms.forEach(alarm => {
+            io.to(`device:${deviceId}`).emit('alarm:triggered', {
+              alarmId: alarm._id.toString(),
+              tagName: alarm.tagName,
+              deviceId: alarm.deviceId,
+              priority: alarm.priority,
+              field: alarm.field,
+              value: alarm.triggerValue,
+              timestamp: alarm.triggerTimestamp,
+              state: alarm.state,
+            });
+          });
+        }
       }
 
       return reply.code(201).send({
@@ -72,8 +146,8 @@ export class DeviceStateController {
         });
       }
 
-      // Check for foreign key constraint (device doesn't exist)
-      if (error instanceof Error && error.message.includes('Foreign key constraint')) {
+      // Check for device not found errors
+      if (error instanceof Error && error.message.includes('Device not found')) {
         return reply.code(404).send({
           success: false,
           error: 'Device not found',
@@ -100,8 +174,39 @@ export class DeviceStateController {
       // Validate body
       const validatedData = bulkCreateDeviceStatesSchema.parse(request.body);
 
-      // Bulk create
-      const result = await deviceStateService.bulkCreate(DEFAULT_ORG_ID, validatedData);
+      // Validate data quality for each state
+      const statesWithQuality = await Promise.all(
+        validatedData.states.map(async (state) => {
+          const validationResult = await this.dataQualityService.validateDeviceState(
+            state.deviceId,
+            state.data as Record<string, any>,
+            state.timestamp ? new Date(state.timestamp) : new Date()
+          );
+
+          // Log quality issues if any
+          if (!validationResult.isValid) {
+            request.log.warn(
+              {
+                deviceId: state.deviceId,
+                errors: validationResult.errors,
+                warnings: validationResult.warnings,
+                quality: validationResult.quality,
+              },
+              'Bulk ingestion: Data quality validation issues detected'
+            );
+          }
+
+          return {
+            ...state,
+            quality: validationResult.quality,
+          };
+        })
+      );
+
+      // Bulk create with quality metadata
+      const result = await deviceStateService.bulkCreate(DEFAULT_ORG_ID, {
+        states: statesWithQuality,
+      });
 
       return reply.code(201).send({
         success: true,

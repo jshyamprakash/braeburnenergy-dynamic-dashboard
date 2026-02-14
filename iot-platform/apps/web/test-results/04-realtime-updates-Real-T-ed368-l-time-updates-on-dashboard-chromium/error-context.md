@@ -28,7 +28,7 @@
       - generic [ref=e22]:
         - generic [ref=e23]:
           - heading "Live Dashboard" [level=1] [ref=e24]
-          - paragraph [ref=e25]: Real-time data from E2E Realtime Test 1770716814102
+          - paragraph [ref=e25]: Real-time data from E2E Realtime Test 1770873089797
         - generic [ref=e26]:
           - generic [ref=e29]: Live
           - generic [ref=e30]: 0 updates received
@@ -37,9 +37,9 @@
         - heading "📊 Real Device Data Dashboard" [level=3] [ref=e33]
         - paragraph [ref=e34]:
           - text: Displaying data from
-          - strong [ref=e35]: E2E Realtime Test 1770716814102
+          - strong [ref=e35]: E2E Realtime Test 1770873089797
           - text: "(ID:"
-          - code [ref=e36]: 01KH3F4PSNGWDJP7500G3N6YXT
+          - code [ref=e36]: 01KH845VRM2XR307PXPRM7KWXD
           - text: ). All data is stored in TimescaleDB and updates in real-time via WebSocket.
         - paragraph [ref=e37]:
           - text: ⚡
@@ -84,10 +84,10 @@
             - generic [ref=e135]:
               - generic [ref=e136]:
                 - text: "Device ID:"
-                - generic [ref=e137]: 01KH3F4PSNGWDJP7500G3N6YXT
+                - generic [ref=e137]: 01KH845VRM2XR307PXPRM7KWXD
               - generic [ref=e138]:
                 - text: "Last Update:"
-                - generic [ref=e139]: 2/10/2026, 3:16:54 PM
+                - generic [ref=e139]: 2/12/2026, 10:41:29 AM
               - generic [ref=e140]:
                 - text: "Data Points:"
                 - generic [ref=e141]: "1"
@@ -116,7 +116,7 @@
                   - text: Temperature
               - application [ref=e169]:
                 - generic [ref=e184]:
-                  - generic [ref=e187]: Feb 10, 03:16 PM
+                  - generic [ref=e187]: Feb 12, 10:41 AM
                   - generic [ref=e188]:
                     - generic [ref=e190]: "0"
                     - generic [ref=e192]: "15"
@@ -125,7 +125,7 @@
                     - generic [ref=e198]: "60"
             - generic [ref=e199]:
               - generic [ref=e200]: 1 data point
-              - generic [ref=e201]: 2/10/2026, 3:16:00 PM - 2/10/2026, 3:16:00 PM
+              - generic [ref=e201]: 2/12/2026, 10:41:00 AM - 2/12/2026, 10:41:00 AM
           - generic [ref=e202]:
             - generic [ref=e203]:
               - generic [ref=e204]:
@@ -135,7 +135,7 @@
                   - text: Export
               - application [ref=e213]:
                 - generic [ref=e226]:
-                  - generic [ref=e229]: 03:16 PM
+                  - generic [ref=e229]: 10:41 AM
                   - generic [ref=e230]:
                     - generic [ref=e232]: "0"
                     - generic [ref=e234]: "5"
@@ -145,7 +145,7 @@
                   - generic [ref=e241]: Temperature (°C)
               - generic [ref=e242]:
                 - generic [ref=e243]: 1 data point
-                - generic [ref=e244]: 2/10/2026, 3:16:00 PM - 2/10/2026, 3:16:00 PM
+                - generic [ref=e244]: 2/12/2026, 10:41:00 AM - 2/12/2026, 10:41:00 AM
             - generic [ref=e245]:
               - generic [ref=e246]:
                 - heading "Humidity Trend" [level=3] [ref=e247]
@@ -154,7 +154,7 @@
                   - text: Export
               - application [ref=e255]:
                 - generic [ref=e268]:
-                  - generic [ref=e271]: 03:16 PM
+                  - generic [ref=e271]: 10:41 AM
                   - generic [ref=e272]:
                     - generic [ref=e274]: "0"
                     - generic [ref=e276]: "15"
@@ -164,7 +164,7 @@
                   - generic [ref=e283]: Humidity (%)
               - generic [ref=e284]:
                 - generic [ref=e285]: 1 data point
-                - generic [ref=e286]: 2/10/2026, 3:16:00 PM - 2/10/2026, 3:16:00 PM
+                - generic [ref=e286]: 2/12/2026, 10:41:00 AM - 2/12/2026, 10:41:00 AM
       - generic [ref=e287]:
         - heading "Live Data Stream" [level=2] [ref=e288]
         - generic [ref=e289]:
@@ -182,13 +182,13 @@
           - generic [ref=e305]:
             - generic [ref=e306]: 📡
             - paragraph [ref=e307]: Waiting for data...
-            - paragraph [ref=e308]: "Listening to device: 01KH3F4PSNGWDJP7500G3N6YXT"
+            - paragraph [ref=e308]: "Listening to device: 01KH845VRM2XR307PXPRM7KWXD"
           - generic [ref=e311]: Showing 0 of 0 total updates
       - generic [ref=e312]:
         - heading "🧪 Test Real-Time Updates" [level=2] [ref=e313]
         - generic [ref=e314]:
           - paragraph [ref=e315]: "To see live updates, post a new device state:"
-          - generic [ref=e316]: "curl -X POST http://localhost:3001/devices/01KH3F4PSNGWDJP7500G3N6YXT/states \\ -H \"Content-Type: application/json\" \\ -d '{ \"data\": { \"temperature\": 28.5, \"humidity\": 65 } }'"
+          - generic [ref=e316]: "curl -X POST http://localhost:3001/devices/01KH845VRM2XR307PXPRM7KWXD/states \\ -H \"Content-Type: application/json\" \\ -d '{ \"data\": { \"temperature\": 28.5, \"humidity\": 65 } }'"
           - paragraph [ref=e317]: Watch the gauges, charts, and live stream update in real-time! 🚀
   - region "Notifications alt+T":
     - list:

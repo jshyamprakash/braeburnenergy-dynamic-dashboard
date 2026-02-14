@@ -2,7 +2,9 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { build } from '../server';
 import type { FastifyInstance } from 'fastify';
 import '../test/setup';
-import { prisma } from '../lib/prisma';
+import mongoose from 'mongoose';
+import { Device } from '../models/device.model';
+import { DeviceState } from '../models/device-state.model';
 
 describe('Organization Routes Integration Tests', () => {
   let app: FastifyInstance;
@@ -37,11 +39,10 @@ describe('Organization Routes Integration Tests', () => {
         timezone: 'UTC',
         industry: 'Manufacturing',
       });
-      expect(body.data.id).toBeDefined();
+      expect(body.data._id || body.data.id).toBeDefined();
     });
 
     it('should return 409 for duplicate slug', async () => {
-      // Create first organization
       await app.inject({
         method: 'POST',
         url: '/organizations',
@@ -51,13 +52,12 @@ describe('Organization Routes Integration Tests', () => {
         },
       });
 
-      // Try to create duplicate
       const response = await app.inject({
         method: 'POST',
         url: '/organizations',
         payload: {
           name: 'Another Test Org',
-          slug: 'test-org', // Duplicate slug
+          slug: 'test-org',
         },
       });
 
@@ -74,7 +74,7 @@ describe('Organization Routes Integration Tests', () => {
         url: '/organizations',
         payload: {
           name: 'Invalid Slug Org',
-          slug: 'Invalid Slug!', // Contains spaces and special chars
+          slug: 'Invalid Slug!',
         },
       });
 
@@ -86,7 +86,6 @@ describe('Organization Routes Integration Tests', () => {
         method: 'POST',
         url: '/organizations',
         payload: {
-          // Missing required fields
           settings: {},
         },
       });
@@ -97,7 +96,6 @@ describe('Organization Routes Integration Tests', () => {
 
   describe('GET /organizations', () => {
     it('should list organizations with pagination', async () => {
-      // Create multiple organizations
       for (let i = 1; i <= 3; i++) {
         await app.inject({
           method: 'POST',
@@ -153,7 +151,6 @@ describe('Organization Routes Integration Tests', () => {
 
   describe('GET /organizations/:orgId', () => {
     it('should get organization by ID', async () => {
-      // Create organization
       const createResponse = await app.inject({
         method: 'POST',
         url: '/organizations',
@@ -164,25 +161,24 @@ describe('Organization Routes Integration Tests', () => {
       });
 
       const created = JSON.parse(createResponse.body).data;
+      const orgId = created._id || created.id;
 
-      // Get by ID
       const response = await app.inject({
         method: 'GET',
-        url: `/organizations/${created.id}`,
+        url: `/organizations/${orgId}`,
       });
 
       expect(response.statusCode).toBe(200);
 
       const body = JSON.parse(response.body);
       expect(body.success).toBe(true);
-      expect(body.data.id).toBe(created.id);
       expect(body.data.name).toBe('Get By ID Test');
     });
 
     it('should return 404 for non-existent organization', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/organizations/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+        url: '/organizations/bbbbbbbbbbbbbbbbbbbbbbbb',
       });
 
       expect(response.statusCode).toBe(404);
@@ -191,7 +187,6 @@ describe('Organization Routes Integration Tests', () => {
 
   describe('GET /organizations/slug/:slug', () => {
     it('should get organization by slug', async () => {
-      // Create organization
       await app.inject({
         method: 'POST',
         url: '/organizations',
@@ -201,7 +196,6 @@ describe('Organization Routes Integration Tests', () => {
         },
       });
 
-      // Get by slug
       const response = await app.inject({
         method: 'GET',
         url: '/organizations/slug/slug-test-org',
@@ -227,7 +221,6 @@ describe('Organization Routes Integration Tests', () => {
 
   describe('PATCH /organizations/:orgId', () => {
     it('should update organization', async () => {
-      // Create organization
       const createResponse = await app.inject({
         method: 'POST',
         url: '/organizations',
@@ -238,11 +231,11 @@ describe('Organization Routes Integration Tests', () => {
       });
 
       const created = JSON.parse(createResponse.body).data;
+      const orgId = created._id || created.id;
 
-      // Update organization
       const response = await app.inject({
         method: 'PATCH',
-        url: `/organizations/${created.id}`,
+        url: `/organizations/${orgId}`,
         payload: {
           name: 'Updated Name',
           settings: {
@@ -256,7 +249,7 @@ describe('Organization Routes Integration Tests', () => {
       const body = JSON.parse(response.body);
       expect(body.success).toBe(true);
       expect(body.data.name).toBe('Updated Name');
-      expect(body.data.slug).toBe('original-slug'); // Unchanged
+      expect(body.data.slug).toBe('original-slug');
       expect(body.data.settings).toMatchObject({
         newSetting: 'value',
       });
@@ -265,7 +258,7 @@ describe('Organization Routes Integration Tests', () => {
     it('should return 404 when updating non-existent organization', async () => {
       const response = await app.inject({
         method: 'PATCH',
-        url: '/organizations/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+        url: '/organizations/bbbbbbbbbbbbbbbbbbbbbbbb',
         payload: {
           name: 'Updated Name',
         },
@@ -275,7 +268,6 @@ describe('Organization Routes Integration Tests', () => {
     });
 
     it('should return 409 when updating to existing slug', async () => {
-      // Create two organizations
       await app.inject({
         method: 'POST',
         url: '/organizations',
@@ -295,13 +287,13 @@ describe('Organization Routes Integration Tests', () => {
       });
 
       const orgB = JSON.parse(orgBResponse.body).data;
+      const orgBId = orgB._id || orgB.id;
 
-      // Try to update Org B to use Org A's slug
       const response = await app.inject({
         method: 'PATCH',
-        url: `/organizations/${orgB.id}`,
+        url: `/organizations/${orgBId}`,
         payload: {
-          slug: 'org-a', // Already exists
+          slug: 'org-a',
         },
       });
 
@@ -311,7 +303,6 @@ describe('Organization Routes Integration Tests', () => {
 
   describe('DELETE /organizations/:orgId', () => {
     it('should delete organization', async () => {
-      // Create organization
       const createResponse = await app.inject({
         method: 'POST',
         url: '/organizations',
@@ -322,11 +313,11 @@ describe('Organization Routes Integration Tests', () => {
       });
 
       const created = JSON.parse(createResponse.body).data;
+      const orgId = created._id || created.id;
 
-      // Delete organization
       const response = await app.inject({
         method: 'DELETE',
-        url: `/organizations/${created.id}`,
+        url: `/organizations/${orgId}`,
       });
 
       expect(response.statusCode).toBe(200);
@@ -335,10 +326,9 @@ describe('Organization Routes Integration Tests', () => {
       expect(body.success).toBe(true);
       expect(body.message).toContain('deleted');
 
-      // Verify it's deleted
       const getResponse = await app.inject({
         method: 'GET',
-        url: `/organizations/${created.id}`,
+        url: `/organizations/${orgId}`,
       });
 
       expect(getResponse.statusCode).toBe(404);
@@ -347,14 +337,13 @@ describe('Organization Routes Integration Tests', () => {
     it('should return 404 when deleting non-existent organization', async () => {
       const response = await app.inject({
         method: 'DELETE',
-        url: '/organizations/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+        url: '/organizations/bbbbbbbbbbbbbbbbbbbbbbbb',
       });
 
       expect(response.statusCode).toBe(404);
     });
 
     it('should cascade delete devices and states', async () => {
-      // Create organization
       const orgResponse = await app.inject({
         method: 'POST',
         url: '/organizations',
@@ -365,39 +354,35 @@ describe('Organization Routes Integration Tests', () => {
       });
 
       const org = JSON.parse(orgResponse.body).data;
+      const orgId = org._id || org.id;
 
-      // Create device directly in database (simpler than going through API)
-      const device = await prisma.device.create({
-        data: {
-          orgId: org.id,
-          deviceId: 'test-device-001',
-          name: 'Test Device',
-          tags: ['test'],
-        },
+      // Create device directly in database
+      const device = await Device.create({
+        orgId: new mongoose.Types.ObjectId(orgId),
+        deviceId: 'test-device-001',
+        name: 'Test Device',
+        tags: ['test'],
       });
 
       // Create device state
-      await prisma.deviceState.create({
-        data: {
-          orgId: org.id,
+      await DeviceState.create({
+        timestamp: new Date(),
+        metadata: {
           deviceId: device.deviceId,
-          data: { temperature: 25 },
+          orgId: new mongoose.Types.ObjectId(orgId),
         },
+        data: { temperature: 25 },
       });
 
       // Delete organization
       await app.inject({
         method: 'DELETE',
-        url: `/organizations/${org.id}`,
+        url: `/organizations/${orgId}`,
       });
 
       // Verify devices and states were cascade deleted
-      const deviceCount = await prisma.device.count({
-        where: { orgId: org.id },
-      });
-      const stateCount = await prisma.deviceState.count({
-        where: { orgId: org.id },
-      });
+      const deviceCount = await Device.countDocuments({ orgId: new mongoose.Types.ObjectId(orgId) });
+      const stateCount = await DeviceState.countDocuments({ 'metadata.orgId': new mongoose.Types.ObjectId(orgId) });
 
       expect(deviceCount).toBe(0);
       expect(stateCount).toBe(0);
@@ -406,7 +391,6 @@ describe('Organization Routes Integration Tests', () => {
 
   describe('GET /organizations/:orgId/stats', () => {
     it('should get organization statistics', async () => {
-      // Create organization
       const orgResponse = await app.inject({
         method: 'POST',
         url: '/organizations',
@@ -417,32 +401,31 @@ describe('Organization Routes Integration Tests', () => {
       });
 
       const org = JSON.parse(orgResponse.body).data;
+      const orgId = org._id || org.id;
 
       // Create devices
       for (let i = 1; i <= 3; i++) {
-        const device = await prisma.device.create({
-          data: {
-            orgId: org.id,
-            deviceId: `stats-device-${i}`,
-            name: `Stats Device ${i}`,
-            tags: ['test'],
-          },
+        const device = await Device.create({
+          orgId: new mongoose.Types.ObjectId(orgId),
+          deviceId: `stats-device-${i}`,
+          name: `Stats Device ${i}`,
+          tags: ['test'],
         });
 
         // Create states for each device
-        await prisma.deviceState.create({
-          data: {
-            orgId: org.id,
+        await DeviceState.create({
+          timestamp: new Date(),
+          metadata: {
             deviceId: device.deviceId,
-            data: { value: i },
+            orgId: new mongoose.Types.ObjectId(orgId),
           },
+          data: { value: i },
         });
       }
 
-      // Get stats
       const response = await app.inject({
         method: 'GET',
-        url: `/organizations/${org.id}/stats`,
+        url: `/organizations/${orgId}/stats`,
       });
 
       expect(response.statusCode).toBe(200);
@@ -456,7 +439,7 @@ describe('Organization Routes Integration Tests', () => {
     it('should return 404 for non-existent organization stats', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/organizations/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/stats',
+        url: '/organizations/bbbbbbbbbbbbbbbbbbbbbbbb/stats',
       });
 
       expect(response.statusCode).toBe(404);

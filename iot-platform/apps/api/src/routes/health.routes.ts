@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { prisma } from '../lib/prisma';
+import mongoose from 'mongoose';
 
 /**
  * Health Check Routes
@@ -72,7 +72,9 @@ export async function healthRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       // Check database connection
-      await prisma.$queryRaw`SELECT 1`;
+      const db = mongoose.connection.db;
+      if (!db) throw new Error('Database not connected');
+      await db.admin().ping();
 
       return reply.code(200).send({
         status: 'ready',

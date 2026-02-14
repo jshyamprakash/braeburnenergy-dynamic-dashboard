@@ -6,7 +6,18 @@ import { config } from './config/config';
 import { deviceRoutes } from './routes/device.routes';
 import { deviceStateRoutes } from './routes/device-state.routes';
 import { organizationRoutes } from './routes/organization.routes';
+import { dashboardRoutes } from './routes/dashboard.routes';
 import { healthRoutes } from './routes/health.routes';
+import { authRoutes } from './routes/auth.routes';
+import { apiKeyRoutes } from './routes/api-key.routes';
+import { auditLogRoutes } from './routes/audit-log.routes';
+import { retentionPolicyRoutes } from './routes/retention-policy.routes';
+import { validationRuleRoutes } from './routes/validation-rule.routes';
+import { alarmRoutes } from './routes/alarm.routes';
+import { modbusGatewayRoutes } from './routes/modbus-gateway.routes';
+import { opcuaGatewayRoutes } from './routes/opcua-gateway.routes';
+import { waterQualityRoutes } from './routes/water-quality.routes';
+import { registerAuditMiddleware } from './middleware/audit.middleware';
 
 /**
  * Create and configure Fastify server
@@ -40,6 +51,9 @@ export async function createServer() {
     allowedHeaders: ['Content-Type', 'Authorization', 'x-request-id'],
   });
 
+  // Register audit middleware (EPA compliance)
+  registerAuditMiddleware(fastify);
+
   // Register Swagger
   await fastify.register(swagger, {
     openapi: {
@@ -65,9 +79,19 @@ export async function createServer() {
       ],
       tags: [
         { name: 'Health', description: 'Health check and monitoring endpoints' },
+        { name: 'Authentication', description: 'User authentication and authorization (EPA-compliant RBAC)' },
+        { name: 'API Keys', description: 'API key management for machine-to-machine authentication' },
+        { name: 'Audit Logs', description: 'EPA-compliant audit trail (append-only, read-only)' },
+        { name: 'Retention Policies', description: 'EPA-compliant data retention policy management (5-year retention)' },
+        { name: 'Data Quality', description: 'EPA/AWWA-compliant data quality validation and QA/QC' },
+        { name: 'Alarm Management', description: 'ISA-18.2 compliant alarm management and acknowledgment' },
+        { name: 'Modbus Gateway', description: 'Industrial protocol gateway for Modbus TCP/RTU devices' },
+        { name: 'OPC UA Gateway', description: 'Industrial protocol gateway for OPC UA devices with subscriptions and polling' },
+        { name: 'Water Quality', description: 'EPA/AWWA compliant water quality parameter validation and compliance reporting' },
         { name: 'organizations', description: 'Multi-tenancy organization management' },
+        { name: 'Dashboards', description: 'Dashboard configuration and layout management with cross-device sync' },
         { name: 'Devices', description: 'Device management operations' },
-        { name: 'Device States', description: 'Time-series device state management with TimescaleDB' },
+        { name: 'Device States', description: 'Time-series device state management with MongoDB Time Series' },
       ],
       components: {
         securitySchemes: {
@@ -111,7 +135,7 @@ export async function createServer() {
     }
 
     // Database errors
-    if (error.message.includes('Prisma')) {
+    if (error.message.includes('Mongo') || error.message.includes('mongoose')) {
       return reply.code(500).send({
         success: false,
         error: 'Database error',
@@ -140,7 +164,17 @@ export async function createServer() {
 
   // Register routes
   await fastify.register(healthRoutes);
+  await fastify.register(authRoutes);
+  await fastify.register(apiKeyRoutes);
+  await fastify.register(auditLogRoutes);
+  await fastify.register(retentionPolicyRoutes);
+  await fastify.register(validationRuleRoutes);
+  await fastify.register(alarmRoutes);
+  await fastify.register(modbusGatewayRoutes);
+  await fastify.register(opcuaGatewayRoutes);
+  await fastify.register(waterQualityRoutes);
   await fastify.register(organizationRoutes);
+  await fastify.register(dashboardRoutes);
   await fastify.register(deviceRoutes);
   await fastify.register(deviceStateRoutes);
 
@@ -153,7 +187,22 @@ export async function createServer() {
       timestamp: new Date().toISOString(),
       endpoints: {
         health: '/health',
+        auth: '/auth',
+        apiKeys: '/api-keys',
+        auditLogs: '/audit-logs',
+        retentionPolicies: '/retention-policies',
+        validationRules: '/validation-rules',
+        qualityStats: '/quality/stats/:deviceId',
+        alarmRules: '/alarm-rules',
+        alarms: '/alarms',
+        alarmStatistics: '/alarms/statistics',
+        modbusGateways: '/modbus-gateways',
+        opcuaGateways: '/opcua-gateways',
+        waterQualityParameters: '/water-quality/parameters',
+        waterQualityValidation: '/water-quality/validate',
+        waterQualityCompliance: '/water-quality/compliance/:deviceId',
         organizations: '/organizations',
+        dashboards: '/dashboards',
         devices: '/devices',
         states: '/states',
         docs: '/docs',

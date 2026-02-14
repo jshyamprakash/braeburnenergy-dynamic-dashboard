@@ -38,355 +38,74 @@
               - columnheader "Created" [ref=e34]
               - columnheader "Actions" [ref=e35]
           - rowgroup [ref=e36]:
-            - row "01KH3F4H0B6SM7XACFJ0BHN449 E2E Test Device 1770716807903 e2e-test automated 2/10/2026 Edit Delete" [ref=e37]:
-              - cell "01KH3F4H0B6SM7XACFJ0BHN449" [ref=e38]:
-                - link "01KH3F4H0B6SM7XACFJ0BHN449" [ref=e39] [cursor=pointer]:
-                  - /url: /devices/01KH3F4H0B6SM7XACFJ0BHN449
-              - cell "E2E Test Device 1770716807903" [ref=e40]
+            - row "01KH845Q60NYZMZWRG85TGPV2Z E2E Test Device 1770873084982 e2e-test automated 2/12/2026 Edit Delete" [ref=e37]:
+              - cell "01KH845Q60NYZMZWRG85TGPV2Z" [ref=e38]:
+                - link "01KH845Q60NYZMZWRG85TGPV2Z" [ref=e39] [cursor=pointer]:
+                  - /url: /devices/01KH845Q60NYZMZWRG85TGPV2Z
+              - cell "E2E Test Device 1770873084982" [ref=e40]
               - cell "e2e-test automated" [ref=e41]:
                 - generic [ref=e42]:
                   - generic [ref=e43]: e2e-test
                   - generic [ref=e44]: automated
-              - cell "2/10/2026" [ref=e45]
+              - cell "2/12/2026" [ref=e45]
               - cell "Edit Delete" [ref=e46]:
                 - button "Edit" [ref=e47]
                 - button "Delete" [ref=e48]
-            - row "01KH3F4EZVNDGWQRAH4F90WB15 E2E Viz Test 1770716806026 e2e-test visualization 2/10/2026 Edit Delete" [ref=e49]:
-              - cell "01KH3F4EZVNDGWQRAH4F90WB15" [ref=e50]:
-                - link "01KH3F4EZVNDGWQRAH4F90WB15" [ref=e51] [cursor=pointer]:
-                  - /url: /devices/01KH3F4EZVNDGWQRAH4F90WB15
-              - cell "E2E Viz Test 1770716806026" [ref=e52]
+            - row "01KH845NT96E18Y8NZD86DCZ9S E2E Viz Test 1770873083665 e2e-test visualization 2/12/2026 Edit Delete" [ref=e49]:
+              - cell "01KH845NT96E18Y8NZD86DCZ9S" [ref=e50]:
+                - link "01KH845NT96E18Y8NZD86DCZ9S" [ref=e51] [cursor=pointer]:
+                  - /url: /devices/01KH845NT96E18Y8NZD86DCZ9S
+              - cell "E2E Viz Test 1770873083665" [ref=e52]
               - cell "e2e-test visualization" [ref=e53]:
                 - generic [ref=e54]:
                   - generic [ref=e55]: e2e-test
                   - generic [ref=e56]: visualization
-              - cell "2/10/2026" [ref=e57]
+              - cell "2/12/2026" [ref=e57]
               - cell "Edit Delete" [ref=e58]:
                 - button "Edit" [ref=e59]
                 - button "Delete" [ref=e60]
-            - row "01KH3F4EY76XXHEB8HTMFMCSMN E2E Viz Test 1770716805992 e2e-test visualization 2/10/2026 Edit Delete" [ref=e61]:
-              - cell "01KH3F4EY76XXHEB8HTMFMCSMN" [ref=e62]:
-                - link "01KH3F4EY76XXHEB8HTMFMCSMN" [ref=e63] [cursor=pointer]:
-                  - /url: /devices/01KH3F4EY76XXHEB8HTMFMCSMN
-              - cell "E2E Viz Test 1770716805992" [ref=e64]
+            - row "01KH845NR0Q7NDNNTRAN265KP5 E2E Viz Test 1770873083608 e2e-test visualization 2/12/2026 Edit Delete" [ref=e61]:
+              - cell "01KH845NR0Q7NDNNTRAN265KP5" [ref=e62]:
+                - link "01KH845NR0Q7NDNNTRAN265KP5" [ref=e63] [cursor=pointer]:
+                  - /url: /devices/01KH845NR0Q7NDNNTRAN265KP5
+              - cell "E2E Viz Test 1770873083608" [ref=e64]
               - cell "e2e-test visualization" [ref=e65]:
                 - generic [ref=e66]:
                   - generic [ref=e67]: e2e-test
                   - generic [ref=e68]: visualization
-              - cell "2/10/2026" [ref=e69]
+              - cell "2/12/2026" [ref=e69]
               - cell "Edit Delete" [ref=e70]:
                 - button "Edit" [ref=e71]
                 - button "Delete" [ref=e72]
-            - row "01KH3F4EVJTCR6A0RHVCB8AJ8T E2E Viz Test 1770716805908 e2e-test visualization 2/10/2026 Edit Delete" [ref=e73]:
-              - cell "01KH3F4EVJTCR6A0RHVCB8AJ8T" [ref=e74]:
-                - link "01KH3F4EVJTCR6A0RHVCB8AJ8T" [ref=e75] [cursor=pointer]:
-                  - /url: /devices/01KH3F4EVJTCR6A0RHVCB8AJ8T
-              - cell "E2E Viz Test 1770716805908" [ref=e76]
+            - row "01KH845NMH10HC92QCGT9GYED5 E2E Viz Test 1770873083489 e2e-test visualization 2/12/2026 Edit Delete" [ref=e73]:
+              - cell "01KH845NMH10HC92QCGT9GYED5" [ref=e74]:
+                - link "01KH845NMH10HC92QCGT9GYED5" [ref=e75] [cursor=pointer]:
+                  - /url: /devices/01KH845NMH10HC92QCGT9GYED5
+              - cell "E2E Viz Test 1770873083489" [ref=e76]
               - cell "e2e-test visualization" [ref=e77]:
                 - generic [ref=e78]:
                   - generic [ref=e79]: e2e-test
                   - generic [ref=e80]: visualization
-              - cell "2/10/2026" [ref=e81]
+              - cell "2/12/2026" [ref=e81]
               - cell "Edit Delete" [ref=e82]:
                 - button "Edit" [ref=e83]
                 - button "Delete" [ref=e84]
-            - row "01KH3DN8VPD903V8QPBWQ28DMJ Pressure Sensor YSWWNS pressure_sensor simulated demo 2/10/2026 Edit Delete" [ref=e85]:
-              - cell "01KH3DN8VPD903V8QPBWQ28DMJ" [ref=e86]:
-                - link "01KH3DN8VPD903V8QPBWQ28DMJ" [ref=e87] [cursor=pointer]:
-                  - /url: /devices/01KH3DN8VPD903V8QPBWQ28DMJ
-              - cell "Pressure Sensor YSWWNS" [ref=e88]
-              - cell "pressure_sensor simulated demo" [ref=e89]:
+            - row "01KH838SB8PQ8H7XTDJ81KDQ1E Test Sensor temperature test 2/12/2026 Edit Delete" [ref=e85]:
+              - cell "01KH838SB8PQ8H7XTDJ81KDQ1E" [ref=e86]:
+                - link "01KH838SB8PQ8H7XTDJ81KDQ1E" [ref=e87] [cursor=pointer]:
+                  - /url: /devices/01KH838SB8PQ8H7XTDJ81KDQ1E
+              - cell "Test Sensor" [ref=e88]
+              - cell "temperature test" [ref=e89]:
                 - generic [ref=e90]:
-                  - generic [ref=e91]: pressure_sensor
-                  - generic [ref=e92]: simulated
-                  - generic [ref=e93]: demo
-              - cell "2/10/2026" [ref=e94]
-              - cell "Edit Delete" [ref=e95]:
-                - button "Edit" [ref=e96]
-                - button "Delete" [ref=e97]
-            - row "01KH3DN8VF1JF29XFKV95ZGYY7 Pressure Sensor 5HQPY1 pressure_sensor simulated demo 2/10/2026 Edit Delete" [ref=e98]:
-              - cell "01KH3DN8VF1JF29XFKV95ZGYY7" [ref=e99]:
-                - link "01KH3DN8VF1JF29XFKV95ZGYY7" [ref=e100] [cursor=pointer]:
-                  - /url: /devices/01KH3DN8VF1JF29XFKV95ZGYY7
-              - cell "Pressure Sensor 5HQPY1" [ref=e101]
-              - cell "pressure_sensor simulated demo" [ref=e102]:
-                - generic [ref=e103]:
-                  - generic [ref=e104]: pressure_sensor
-                  - generic [ref=e105]: simulated
-                  - generic [ref=e106]: demo
-              - cell "2/10/2026" [ref=e107]
-              - cell "Edit Delete" [ref=e108]:
-                - button "Edit" [ref=e109]
-                - button "Delete" [ref=e110]
-            - row "01KH3DN8V6DK5H370EKMM1EE0S Pressure Sensor ECNNNW pressure_sensor simulated demo 2/10/2026 Edit Delete" [ref=e111]:
-              - cell "01KH3DN8V6DK5H370EKMM1EE0S" [ref=e112]:
-                - link "01KH3DN8V6DK5H370EKMM1EE0S" [ref=e113] [cursor=pointer]:
-                  - /url: /devices/01KH3DN8V6DK5H370EKMM1EE0S
-              - cell "Pressure Sensor ECNNNW" [ref=e114]
-              - cell "pressure_sensor simulated demo" [ref=e115]:
-                - generic [ref=e116]:
-                  - generic [ref=e117]: pressure_sensor
-                  - generic [ref=e118]: simulated
-                  - generic [ref=e119]: demo
-              - cell "2/10/2026" [ref=e120]
-              - cell "Edit Delete" [ref=e121]:
-                - button "Edit" [ref=e122]
-                - button "Delete" [ref=e123]
-            - row "01KH3DN8TWJY06B7QXG9P7ZSAA Pressure Sensor 2SQGR1 pressure_sensor simulated demo 2/10/2026 Edit Delete" [ref=e124]:
-              - cell "01KH3DN8TWJY06B7QXG9P7ZSAA" [ref=e125]:
-                - link "01KH3DN8TWJY06B7QXG9P7ZSAA" [ref=e126] [cursor=pointer]:
-                  - /url: /devices/01KH3DN8TWJY06B7QXG9P7ZSAA
-              - cell "Pressure Sensor 2SQGR1" [ref=e127]
-              - cell "pressure_sensor simulated demo" [ref=e128]:
-                - generic [ref=e129]:
-                  - generic [ref=e130]: pressure_sensor
-                  - generic [ref=e131]: simulated
-                  - generic [ref=e132]: demo
-              - cell "2/10/2026" [ref=e133]
-              - cell "Edit Delete" [ref=e134]:
-                - button "Edit" [ref=e135]
-                - button "Delete" [ref=e136]
-            - row "01KH3DN8T67B0T0W7ZV6MS131R Temperature Sensor 8B4A82 temperature_sensor simulated demo 2/10/2026 Edit Delete" [ref=e137]:
-              - cell "01KH3DN8T67B0T0W7ZV6MS131R" [ref=e138]:
-                - link "01KH3DN8T67B0T0W7ZV6MS131R" [ref=e139] [cursor=pointer]:
-                  - /url: /devices/01KH3DN8T67B0T0W7ZV6MS131R
-              - cell "Temperature Sensor 8B4A82" [ref=e140]
-              - cell "temperature_sensor simulated demo" [ref=e141]:
-                - generic [ref=e142]:
-                  - generic [ref=e143]: temperature_sensor
-                  - generic [ref=e144]: simulated
-                  - generic [ref=e145]: demo
-              - cell "2/10/2026" [ref=e146]
-              - cell "Edit Delete" [ref=e147]:
-                - button "Edit" [ref=e148]
-                - button "Delete" [ref=e149]
-            - row "01KH3DMG7FA76K1BT0496K82NW Air Quality Sensor 4TTABK air_quality_sensor simulated demo 2/10/2026 Edit Delete" [ref=e150]:
-              - cell "01KH3DMG7FA76K1BT0496K82NW" [ref=e151]:
-                - link "01KH3DMG7FA76K1BT0496K82NW" [ref=e152] [cursor=pointer]:
-                  - /url: /devices/01KH3DMG7FA76K1BT0496K82NW
-              - cell "Air Quality Sensor 4TTABK" [ref=e153]
-              - cell "air_quality_sensor simulated demo" [ref=e154]:
-                - generic [ref=e155]:
-                  - generic [ref=e156]: air_quality_sensor
-                  - generic [ref=e157]: simulated
-                  - generic [ref=e158]: demo
-              - cell "2/10/2026" [ref=e159]
-              - cell "Edit Delete" [ref=e160]:
-                - button "Edit" [ref=e161]
-                - button "Delete" [ref=e162]
-            - row "01KH3DMG76NXY40EC5KCKW4ZJ0 Temperature Sensor Q157PS temperature_sensor simulated demo 2/10/2026 Edit Delete" [ref=e163]:
-              - cell "01KH3DMG76NXY40EC5KCKW4ZJ0" [ref=e164]:
-                - link "01KH3DMG76NXY40EC5KCKW4ZJ0" [ref=e165] [cursor=pointer]:
-                  - /url: /devices/01KH3DMG76NXY40EC5KCKW4ZJ0
-              - cell "Temperature Sensor Q157PS" [ref=e166]
-              - cell "temperature_sensor simulated demo" [ref=e167]:
-                - generic [ref=e168]:
-                  - generic [ref=e169]: temperature_sensor
-                  - generic [ref=e170]: simulated
-                  - generic [ref=e171]: demo
-              - cell "2/10/2026" [ref=e172]
-              - cell "Edit Delete" [ref=e173]:
-                - button "Edit" [ref=e174]
-                - button "Delete" [ref=e175]
-            - row "01KH3DMG6YY1HG0VJYMPN84W70 Energy Meter MMQA7T energy_meter simulated demo 2/10/2026 Edit Delete" [ref=e176]:
-              - cell "01KH3DMG6YY1HG0VJYMPN84W70" [ref=e177]:
-                - link "01KH3DMG6YY1HG0VJYMPN84W70" [ref=e178] [cursor=pointer]:
-                  - /url: /devices/01KH3DMG6YY1HG0VJYMPN84W70
-              - cell "Energy Meter MMQA7T" [ref=e179]
-              - cell "energy_meter simulated demo" [ref=e180]:
-                - generic [ref=e181]:
-                  - generic [ref=e182]: energy_meter
-                  - generic [ref=e183]: simulated
-                  - generic [ref=e184]: demo
-              - cell "2/10/2026" [ref=e185]
-              - cell "Edit Delete" [ref=e186]:
-                - button "Edit" [ref=e187]
-                - button "Delete" [ref=e188]
-            - row "01KH3DMG6NNQDKPXWR3AMTV255 Vibration Sensor 0CRK67 vibration_sensor simulated demo 2/10/2026 Edit Delete" [ref=e189]:
-              - cell "01KH3DMG6NNQDKPXWR3AMTV255" [ref=e190]:
-                - link "01KH3DMG6NNQDKPXWR3AMTV255" [ref=e191] [cursor=pointer]:
-                  - /url: /devices/01KH3DMG6NNQDKPXWR3AMTV255
-              - cell "Vibration Sensor 0CRK67" [ref=e192]
-              - cell "vibration_sensor simulated demo" [ref=e193]:
-                - generic [ref=e194]:
-                  - generic [ref=e195]: vibration_sensor
-                  - generic [ref=e196]: simulated
-                  - generic [ref=e197]: demo
-              - cell "2/10/2026" [ref=e198]
-              - cell "Edit Delete" [ref=e199]:
-                - button "Edit" [ref=e200]
-                - button "Delete" [ref=e201]
-            - row "01KH3DMG5ZVQ8XFFFPN3F6HQQ3 Air Quality Sensor ANSQF5 air_quality_sensor simulated demo 2/10/2026 Edit Delete" [ref=e202]:
-              - cell "01KH3DMG5ZVQ8XFFFPN3F6HQQ3" [ref=e203]:
-                - link "01KH3DMG5ZVQ8XFFFPN3F6HQQ3" [ref=e204] [cursor=pointer]:
-                  - /url: /devices/01KH3DMG5ZVQ8XFFFPN3F6HQQ3
-              - cell "Air Quality Sensor ANSQF5" [ref=e205]
-              - cell "air_quality_sensor simulated demo" [ref=e206]:
-                - generic [ref=e207]:
-                  - generic [ref=e208]: air_quality_sensor
-                  - generic [ref=e209]: simulated
-                  - generic [ref=e210]: demo
-              - cell "2/10/2026" [ref=e211]
-              - cell "Edit Delete" [ref=e212]:
-                - button "Edit" [ref=e213]
-                - button "Delete" [ref=e214]
-            - row "01KH3DE8FXFC0KDXBB2MPAS604 Pressure Sensor 6F8JBC pressure_sensor simulated demo 2/10/2026 Edit Delete" [ref=e215]:
-              - cell "01KH3DE8FXFC0KDXBB2MPAS604" [ref=e216]:
-                - link "01KH3DE8FXFC0KDXBB2MPAS604" [ref=e217] [cursor=pointer]:
-                  - /url: /devices/01KH3DE8FXFC0KDXBB2MPAS604
-              - cell "Pressure Sensor 6F8JBC" [ref=e218]
-              - cell "pressure_sensor simulated demo" [ref=e219]:
-                - generic [ref=e220]:
-                  - generic [ref=e221]: pressure_sensor
-                  - generic [ref=e222]: simulated
-                  - generic [ref=e223]: demo
-              - cell "2/10/2026" [ref=e224]
-              - cell "Edit Delete" [ref=e225]:
-                - button "Edit" [ref=e226]
-                - button "Delete" [ref=e227]
-            - row "01KH3DE8FN1WNHBXPMYR4J6Z68 Temperature Sensor SRABHD temperature_sensor simulated demo 2/10/2026 Edit Delete" [ref=e228]:
-              - cell "01KH3DE8FN1WNHBXPMYR4J6Z68" [ref=e229]:
-                - link "01KH3DE8FN1WNHBXPMYR4J6Z68" [ref=e230] [cursor=pointer]:
-                  - /url: /devices/01KH3DE8FN1WNHBXPMYR4J6Z68
-              - cell "Temperature Sensor SRABHD" [ref=e231]
-              - cell "temperature_sensor simulated demo" [ref=e232]:
-                - generic [ref=e233]:
-                  - generic [ref=e234]: temperature_sensor
-                  - generic [ref=e235]: simulated
-                  - generic [ref=e236]: demo
-              - cell "2/10/2026" [ref=e237]
-              - cell "Edit Delete" [ref=e238]:
-                - button "Edit" [ref=e239]
-                - button "Delete" [ref=e240]
-            - row "01KH3DE8FF2C29NXDYM2VXKVRA Pressure Sensor HD5MYY pressure_sensor simulated demo 2/10/2026 Edit Delete" [ref=e241]:
-              - cell "01KH3DE8FF2C29NXDYM2VXKVRA" [ref=e242]:
-                - link "01KH3DE8FF2C29NXDYM2VXKVRA" [ref=e243] [cursor=pointer]:
-                  - /url: /devices/01KH3DE8FF2C29NXDYM2VXKVRA
-              - cell "Pressure Sensor HD5MYY" [ref=e244]
-              - cell "pressure_sensor simulated demo" [ref=e245]:
-                - generic [ref=e246]:
-                  - generic [ref=e247]: pressure_sensor
-                  - generic [ref=e248]: simulated
-                  - generic [ref=e249]: demo
-              - cell "2/10/2026" [ref=e250]
-              - cell "Edit Delete" [ref=e251]:
-                - button "Edit" [ref=e252]
-                - button "Delete" [ref=e253]
-            - row "01KH3DE8F8MFV8H4M3D35T3RXM Temperature Sensor B9PZ6T temperature_sensor simulated demo 2/10/2026 Edit Delete" [ref=e254]:
-              - cell "01KH3DE8F8MFV8H4M3D35T3RXM" [ref=e255]:
-                - link "01KH3DE8F8MFV8H4M3D35T3RXM" [ref=e256] [cursor=pointer]:
-                  - /url: /devices/01KH3DE8F8MFV8H4M3D35T3RXM
-              - cell "Temperature Sensor B9PZ6T" [ref=e257]
-              - cell "temperature_sensor simulated demo" [ref=e258]:
-                - generic [ref=e259]:
-                  - generic [ref=e260]: temperature_sensor
-                  - generic [ref=e261]: simulated
-                  - generic [ref=e262]: demo
-              - cell "2/10/2026" [ref=e263]
-              - cell "Edit Delete" [ref=e264]:
-                - button "Edit" [ref=e265]
-                - button "Delete" [ref=e266]
-            - row "01KH3DE8ES0RWD3YE9FYQ4DF6K Temperature Sensor 682EBR temperature_sensor simulated demo 2/10/2026 Edit Delete" [ref=e267]:
-              - cell "01KH3DE8ES0RWD3YE9FYQ4DF6K" [ref=e268]:
-                - link "01KH3DE8ES0RWD3YE9FYQ4DF6K" [ref=e269] [cursor=pointer]:
-                  - /url: /devices/01KH3DE8ES0RWD3YE9FYQ4DF6K
-              - cell "Temperature Sensor 682EBR" [ref=e270]
-              - cell "temperature_sensor simulated demo" [ref=e271]:
-                - generic [ref=e272]:
-                  - generic [ref=e273]: temperature_sensor
-                  - generic [ref=e274]: simulated
-                  - generic [ref=e275]: demo
-              - cell "2/10/2026" [ref=e276]
-              - cell "Edit Delete" [ref=e277]:
-                - button "Edit" [ref=e278]
-                - button "Delete" [ref=e279]
-            - row "01KH3DC7W8WY1SAMANJ6GKG66K Temperature Sensor 4SYR19 temperature_sensor simulated demo 2/10/2026 Edit Delete" [ref=e280]:
-              - cell "01KH3DC7W8WY1SAMANJ6GKG66K" [ref=e281]:
-                - link "01KH3DC7W8WY1SAMANJ6GKG66K" [ref=e282] [cursor=pointer]:
-                  - /url: /devices/01KH3DC7W8WY1SAMANJ6GKG66K
-              - cell "Temperature Sensor 4SYR19" [ref=e283]
-              - cell "temperature_sensor simulated demo" [ref=e284]:
-                - generic [ref=e285]:
-                  - generic [ref=e286]: temperature_sensor
-                  - generic [ref=e287]: simulated
-                  - generic [ref=e288]: demo
-              - cell "2/10/2026" [ref=e289]
-              - cell "Edit Delete" [ref=e290]:
-                - button "Edit" [ref=e291]
-                - button "Delete" [ref=e292]
-            - row "01KH3DC7VZ8ZDVWBAA0XHE2445 Energy Meter FZDE9K energy_meter simulated demo 2/10/2026 Edit Delete" [ref=e293]:
-              - cell "01KH3DC7VZ8ZDVWBAA0XHE2445" [ref=e294]:
-                - link "01KH3DC7VZ8ZDVWBAA0XHE2445" [ref=e295] [cursor=pointer]:
-                  - /url: /devices/01KH3DC7VZ8ZDVWBAA0XHE2445
-              - cell "Energy Meter FZDE9K" [ref=e296]
-              - cell "energy_meter simulated demo" [ref=e297]:
-                - generic [ref=e298]:
-                  - generic [ref=e299]: energy_meter
-                  - generic [ref=e300]: simulated
-                  - generic [ref=e301]: demo
-              - cell "2/10/2026" [ref=e302]
-              - cell "Edit Delete" [ref=e303]:
-                - button "Edit" [ref=e304]
-                - button "Delete" [ref=e305]
-            - row "01KH3DC7V86VECBV90JDK069DQ Vibration Sensor 4M05PE vibration_sensor simulated demo 2/10/2026 Edit Delete" [ref=e306]:
-              - cell "01KH3DC7V86VECBV90JDK069DQ" [ref=e307]:
-                - link "01KH3DC7V86VECBV90JDK069DQ" [ref=e308] [cursor=pointer]:
-                  - /url: /devices/01KH3DC7V86VECBV90JDK069DQ
-              - cell "Vibration Sensor 4M05PE" [ref=e309]
-              - cell "vibration_sensor simulated demo" [ref=e310]:
-                - generic [ref=e311]:
-                  - generic [ref=e312]: vibration_sensor
-                  - generic [ref=e313]: simulated
-                  - generic [ref=e314]: demo
-              - cell "2/10/2026" [ref=e315]
-              - cell "Edit Delete" [ref=e316]:
-                - button "Edit" [ref=e317]
-                - button "Delete" [ref=e318]
-            - row "01KH37F68QP6F92941BZMGV742 Pressure Sensor PZD7ZY pressure_sensor simulated demo 2/10/2026 Edit Delete" [ref=e319]:
-              - cell "01KH37F68QP6F92941BZMGV742" [ref=e320]:
-                - link "01KH37F68QP6F92941BZMGV742" [ref=e321] [cursor=pointer]:
-                  - /url: /devices/01KH37F68QP6F92941BZMGV742
-              - cell "Pressure Sensor PZD7ZY" [ref=e322]
-              - cell "pressure_sensor simulated demo" [ref=e323]:
-                - generic [ref=e324]:
-                  - generic [ref=e325]: pressure_sensor
-                  - generic [ref=e326]: simulated
-                  - generic [ref=e327]: demo
-              - cell "2/10/2026" [ref=e328]
-              - cell "Edit Delete" [ref=e329]:
-                - button "Edit" [ref=e330]
-                - button "Delete" [ref=e331]
-            - row "01KH37F68GWZG8Y1E9D41X1YWZ Air Quality Sensor A29F8M air_quality_sensor simulated demo 2/10/2026 Edit Delete" [ref=e332]:
-              - cell "01KH37F68GWZG8Y1E9D41X1YWZ" [ref=e333]:
-                - link "01KH37F68GWZG8Y1E9D41X1YWZ" [ref=e334] [cursor=pointer]:
-                  - /url: /devices/01KH37F68GWZG8Y1E9D41X1YWZ
-              - cell "Air Quality Sensor A29F8M" [ref=e335]
-              - cell "air_quality_sensor simulated demo" [ref=e336]:
-                - generic [ref=e337]:
-                  - generic [ref=e338]: air_quality_sensor
-                  - generic [ref=e339]: simulated
-                  - generic [ref=e340]: demo
-              - cell "2/10/2026" [ref=e341]
-              - cell "Edit Delete" [ref=e342]:
-                - button "Edit" [ref=e343]
-                - button "Delete" [ref=e344]
-            - row "01KH37F67TG5EZ4CRH48G2C61H Temperature Sensor R38S46 temperature_sensor simulated demo 2/10/2026 Edit Delete" [ref=e345]:
-              - cell "01KH37F67TG5EZ4CRH48G2C61H" [ref=e346]:
-                - link "01KH37F67TG5EZ4CRH48G2C61H" [ref=e347] [cursor=pointer]:
-                  - /url: /devices/01KH37F67TG5EZ4CRH48G2C61H
-              - cell "Temperature Sensor R38S46" [ref=e348]
-              - cell "temperature_sensor simulated demo" [ref=e349]:
-                - generic [ref=e350]:
-                  - generic [ref=e351]: temperature_sensor
-                  - generic [ref=e352]: simulated
-                  - generic [ref=e353]: demo
-              - cell "2/10/2026" [ref=e354]
-              - cell "Edit Delete" [ref=e355]:
-                - button "Edit" [ref=e356]
-                - button "Delete" [ref=e357]
-        - generic [ref=e358]: Showing 25 of 25 devices
+                  - generic [ref=e91]: temperature
+                  - generic [ref=e92]: test
+              - cell "2/12/2026" [ref=e93]
+              - cell "Edit Delete" [ref=e94]:
+                - button "Edit" [ref=e95]
+                - button "Delete" [ref=e96]
+        - generic [ref=e97]: Showing 5 of 5 devices
   - region "Notifications alt+T"
-  - button "Open Next.js Dev Tools" [ref=e364] [cursor=pointer]:
-    - img [ref=e365]
-  - alert [ref=e368]
+  - button "Open Next.js Dev Tools" [ref=e103] [cursor=pointer]:
+    - img [ref=e104]
+  - alert [ref=e107]
 ```

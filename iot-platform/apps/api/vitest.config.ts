@@ -15,7 +15,7 @@ export default defineConfig({
         'dist/',
         'src/**/*.spec.ts',
         'src/**/*.test.ts',
-        'prisma/',
+        'src/models/',
         'src/server.ts',
       ],
     },

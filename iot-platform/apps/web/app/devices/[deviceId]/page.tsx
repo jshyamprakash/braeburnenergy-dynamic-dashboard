@@ -7,6 +7,7 @@ import { useDevice } from '@/lib/hooks/useDevices';
 import { useDeviceStates, useLatestDeviceState } from '@/lib/hooks/useDeviceStates';
 import { useDeviceStateUpdates } from '@/lib/hooks/useWebSocket';
 import type { DeviceState } from '@/lib/types';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 
 export default function DeviceDetailPage() {
   const params = useParams();
@@ -33,31 +34,25 @@ export default function DeviceDetailPage() {
   // Use real-time state if available, otherwise use latest from API
   const currentState = realtimeState || latestState;
 
-  if (deviceLoading) {
-    return (
-      <div className="bg-white shadow sm:rounded-lg p-6">
-        <p className="text-gray-500">Loading device...</p>
-      </div>
-    );
-  }
-
-  if (deviceError || !device) {
-    return (
-      <div className="space-y-4">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-          <p className="text-red-600">Device not found or error loading device.</p>
-        </div>
-        <button
-          onClick={() => router.push('/devices')}
-          className="text-blue-600 hover:text-blue-800"
-        >
-          ← Back to Devices
-        </button>
-      </div>
-    );
-  }
-
   return (
+    <ProtectedRoute>
+      {deviceLoading ? (
+        <div className="bg-white shadow sm:rounded-lg p-6">
+          <p className="text-gray-500">Loading device...</p>
+        </div>
+      ) : deviceError || !device ? (
+        <div className="space-y-4">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+            <p className="text-red-600">Device not found or error loading device.</p>
+          </div>
+          <button
+            onClick={() => router.push('/devices')}
+            className="text-blue-600 hover:text-blue-800"
+          >
+            ← Back to Devices
+          </button>
+        </div>
+      ) : (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -224,5 +219,7 @@ export default function DeviceDetailPage() {
         </div>
       </div>
     </div>
+      )}
+    </ProtectedRoute>
   );
 }
