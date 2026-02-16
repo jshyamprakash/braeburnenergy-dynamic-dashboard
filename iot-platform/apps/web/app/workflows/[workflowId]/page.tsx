@@ -9,6 +9,7 @@ import NodePalette from '@/components/workflow/NodePalette';
 import NodeConfigPanel from '@/components/workflow/NodeConfigPanel';
 import WorkflowToolbar from '@/components/workflow/WorkflowToolbar';
 import ExecutionInputModal from '@/components/workflow/ExecutionInputModal';
+import SettingsModal from '@/components/workflow/SettingsModal';
 import ValidationPanel from '@/components/workflow/ValidationPanel';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { exportWorkflowToJSON } from '@/lib/utils/workflow-export';
@@ -45,6 +46,7 @@ function WorkflowBuilderPage() {
 
   const [isSaving, setIsSaving] = useState(false);
   const [isExecutionModalOpen, setIsExecutionModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isValidationPanelOpen, setIsValidationPanelOpen] = useState(false);
   const isNewWorkflow = params.workflowId === 'new';
 
@@ -149,7 +151,15 @@ function WorkflowBuilderPage() {
   };
 
   const handleSettings = () => {
-    toast.info('Settings modal coming in Week 3.7');
+    setIsSettingsModalOpen(true);
+  };
+
+  const handleSettingsSave = (updatedValues: any) => {
+    // Redux state will be updated by the modal's API call
+    // Just refresh the workflow to ensure state is in sync
+    if (workflowId) {
+      dispatch(loadWorkflow(workflowId));
+    }
   };
 
   return (
@@ -178,6 +188,21 @@ function WorkflowBuilderPage() {
         workflowId={workflowId}
         onClose={() => setIsExecutionModalOpen(false)}
         onExecute={handleExecute}
+      />
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={isSettingsModalOpen}
+        workflowId={workflowId}
+        currentValues={{
+          name,
+          description,
+          tags,
+          priority,
+          isEnabled,
+        }}
+        onClose={() => setIsSettingsModalOpen(false)}
+        onSave={handleSettingsSave}
       />
 
       {/* Main content */}
