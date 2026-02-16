@@ -1,0 +1,7 @@
+Operate under CLAUDE.md.
+Re-anchor to repository.
+
+Generate next task.
+Start next task.
+Task complete.
+

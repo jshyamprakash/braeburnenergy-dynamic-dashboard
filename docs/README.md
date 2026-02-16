@@ -7,32 +7,37 @@ Welcome! This documentation will guide you from proof-of-concept to enterprise-s
 
 ## 📚 Documentation Overview
 
+This documentation is organized into three main categories:
+- **📋 execution/** - Plans, tasks, and progress tracking
+- **📐 pre-execution/** - Architecture, guides, and rationale
+- **💻 software/** - Implementation documentation
+
 ### Start Here
 
 **New to this project?** Choose your path:
 
 | Document | Purpose | Time Commitment | Best For |
 |----------|---------|-----------------|----------|
-| **[POC_TASKS.md](POC_TASKS.md)** | Detailed 21-day task breakdown for POC | 3 weeks | Step-by-step POC implementation with copy-paste commands |
-| **[POC_TO_ENTERPRISE_PLAN.md](POC_TO_ENTERPRISE_PLAN.md)** | Complete scaling roadmap (POC → Enterprise) | Reference | Understanding full evolution path and scaling |
-| **[PRODUCTION_READY_POC.md](PRODUCTION_READY_POC.md)** | POC with production architecture | 3 weeks | Building POC that scales to enterprise |
-| **[IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md)** | 6-month phase-by-phase implementation | 6 months | Building production-ready platform |
-| **[ARCHITECTURE.md](ARCHITECTURE.md)** | Technical architecture deep-dive | Reference | Understanding system design decisions |
-| **[TECHNOLOGY_STACK_RATIONALE.md](TECHNOLOGY_STACK_RATIONALE.md)** | Technology choice explanations | Reference | Understanding "why" behind tech decisions |
-| **[LOAD_ANALYSIS.md](LOAD_ANALYSIS.md)** | Capacity planning and performance analysis | Reference | Validating architecture can handle target load |
+| **[POC_TASKS.md](execution/POC_TASKS.md)** | Detailed 21-day task breakdown for POC | 3 weeks | Step-by-step POC implementation with copy-paste commands |
+| **[POC_TO_ENTERPRISE_PLAN.md](execution/POC_TO_ENTERPRISE_PLAN.md)** | Complete scaling roadmap (POC → Enterprise) | Reference | Understanding full evolution path and scaling |
+| **[PRODUCTION_READY_POC.md](execution/PRODUCTION_READY_POC.md)** | POC with production architecture | 3 weeks | Building POC that scales to enterprise |
+| **[IMPLEMENTATION_GUIDE.md](pre-execution/IMPLEMENTATION_GUIDE.md)** | 6-month phase-by-phase implementation | 6 months | Building production-ready platform |
+| **[ARCHITECTURE.md](pre-execution/ARCHITECTURE.md)** | Technical architecture deep-dive | Reference | Understanding system design decisions |
+| **[TECHNOLOGY_STACK_RATIONALE.md](pre-execution/TECHNOLOGY_STACK_RATIONALE.md)** | Technology choice explanations | Reference | Understanding "why" behind tech decisions |
+| **[LOAD_ANALYSIS.md](pre-execution/LOAD_ANALYSIS.md)** | Capacity planning and performance analysis | Reference | Validating architecture can handle target load |
 
 **Which POC document should you use?**
 
 | Document | Best For | Structure | Complexity |
 |----------|----------|-----------|------------|
-| **[POC_TASKS.md](POC_TASKS.md)** | Implementation (copy-paste commands) | Day-by-day tasks with verification | Beginner-friendly |
-| **[PRODUCTION_READY_POC.md](PRODUCTION_READY_POC.md)** | Understanding patterns & code examples | Week-by-week with full code | Intermediate |
-| **[POC_TO_ENTERPRISE_PLAN.md](POC_TO_ENTERPRISE_PLAN.md)** | Strategic planning & scaling roadmap | Phase-by-phase evolution | Strategic overview |
+| **[POC_TASKS.md](execution/POC_TASKS.md)** | Implementation (copy-paste commands) | Day-by-day tasks with verification | Beginner-friendly |
+| **[PRODUCTION_READY_POC.md](execution/PRODUCTION_READY_POC.md)** | Understanding patterns & code examples | Week-by-week with full code | Intermediate |
+| **[POC_TO_ENTERPRISE_PLAN.md](execution/POC_TO_ENTERPRISE_PLAN.md)** | Strategic planning & scaling roadmap | Phase-by-phase evolution | Strategic overview |
 
 **Recommendation:**
-- **Starting implementation now?** → Use **[POC_TASKS.md](POC_TASKS.md)** (most actionable)
-- **Want to understand architecture first?** → Read **[PRODUCTION_READY_POC.md](PRODUCTION_READY_POC.md)**
-- **Planning long-term scaling?** → Review **[POC_TO_ENTERPRISE_PLAN.md](POC_TO_ENTERPRISE_PLAN.md)**
+- **Starting implementation now?** → Use **[POC_TASKS.md](execution/POC_TASKS.md)** (most actionable)
+- **Want to understand architecture first?** → Read **[PRODUCTION_READY_POC.md](execution/PRODUCTION_READY_POC.md)**
+- **Planning long-term scaling?** → Review **[POC_TO_ENTERPRISE_PLAN.md](execution/POC_TO_ENTERPRISE_PLAN.md)**
 
 ---
 
@@ -60,9 +65,9 @@ Welcome! This documentation will guide you from proof-of-concept to enterprise-s
 
 **No MQTT, No industrial protocols (Profinet/Modbus/OPC UA)** yet - HTTP only for simplicity.
 
-**→ Read: [POC_TASKS.md](POC_TASKS.md) for step-by-step implementation**
-**→ Or: [PRODUCTION_READY_POC.md](PRODUCTION_READY_POC.md) for patterns**
-**→ Or: [POC_TO_ENTERPRISE_PLAN.md](POC_TO_ENTERPRISE_PLAN.md) for full roadmap**
+**→ Read: [POC_TASKS.md](execution/POC_TASKS.md) for step-by-step implementation**
+**→ Or: [PRODUCTION_READY_POC.md](execution/PRODUCTION_READY_POC.md) for patterns**
+**→ Or: [POC_TO_ENTERPRISE_PLAN.md](execution/POC_TO_ENTERPRISE_PLAN.md) for full roadmap**
 
 **Success Criteria:**
 - [ ] Working demo in 3 weeks
@@ -89,8 +94,8 @@ Welcome! This documentation will guide you from proof-of-concept to enterprise-s
 - Hardcoded workflows → Visual editor
 - SQLite → PostgreSQL + TimescaleDB (Prisma)
 
-**→ Read: [POC_TO_ENTERPRISE_PLAN.md](POC_TO_ENTERPRISE_PLAN.md) Phase 1 (MVP)**
-**→ Or: [IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md) Phase 1-2**
+**→ Read: [POC_TO_ENTERPRISE_PLAN.md](execution/POC_TO_ENTERPRISE_PLAN.md) Phase 1 (MVP)**
+**→ Or: [IMPLEMENTATION_GUIDE.md](pre-execution/IMPLEMENTATION_GUIDE.md) Phase 1-2**
 
 **Success Criteria:**
 - [ ] 100+ devices connected via MQTT
@@ -115,8 +120,8 @@ Welcome! This documentation will guide you from proof-of-concept to enterprise-s
 - Single VPS → Vertical scaling (bigger server)
 - Manual workflows → Complex workflows
 
-**→ Read: [POC_TO_ENTERPRISE_PLAN.md](POC_TO_ENTERPRISE_PLAN.md) Phase 2 (Scale)**
-**→ Or: [IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md) Phase 3-4**
+**→ Read: [POC_TO_ENTERPRISE_PLAN.md](execution/POC_TO_ENTERPRISE_PLAN.md) Phase 2 (Scale)**
+**→ Or: [IMPLEMENTATION_GUIDE.md](pre-execution/IMPLEMENTATION_GUIDE.md) Phase 3-4**
 
 **Success Criteria:**
 - [ ] 1,000-10,000 devices supported
@@ -141,8 +146,8 @@ Welcome! This documentation will guide you from proof-of-concept to enterprise-s
 - Single region → Multi-region
 - Basic security → Enterprise security
 
-**→ Read: [POC_TO_ENTERPRISE_PLAN.md](POC_TO_ENTERPRISE_PLAN.md) Phase 3 (Enterprise)**
-**→ Or: [IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md) Appendix: Kubernetes Migration**
+**→ Read: [POC_TO_ENTERPRISE_PLAN.md](execution/POC_TO_ENTERPRISE_PLAN.md) Phase 3 (Enterprise)**
+**→ Or: [IMPLEMENTATION_GUIDE.md](pre-execution/IMPLEMENTATION_GUIDE.md) Appendix: Kubernetes Migration**
 
 **Success Criteria:**
 - [ ] 10,000+ devices supported
@@ -182,7 +187,7 @@ Phase 3 (Enterprise):
 └────────────────────────────────┘
 ```
 
-**→ Read: [ARCHITECTURE.md](ARCHITECTURE.md)**
+**→ Read: [ARCHITECTURE.md](pre-execution/ARCHITECTURE.md)**
 
 ---
 
@@ -210,9 +215,9 @@ Phase 3 (Enterprise):
 - Real-time WebSocket communication
 
 **Resources:**
-- **[POC_TASKS.md](POC_TASKS.md)** - Step-by-step tasks with commands
-- [PRODUCTION_READY_POC.md](PRODUCTION_READY_POC.md) - Code patterns
-- [PRISMA_MIGRATION_SUMMARY.md](PRISMA_MIGRATION_SUMMARY.md) - Prisma quick reference
+- **[POC_TASKS.md](execution/POC_TASKS.md)** - Step-by-step tasks with commands
+- [PRODUCTION_READY_POC.md](execution/PRODUCTION_READY_POC.md) - Code patterns
+- [PRISMA_MIGRATION_SUMMARY.md](software/PRISMA_MIGRATION_SUMMARY.md) - Prisma quick reference
 
 ### Week 3-8: MVP Development
 **Focus:** Production-ready features
@@ -224,7 +229,7 @@ Phase 3 (Enterprise):
 - React Flow (workflow editor)
 
 **Resources:**
-- [IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md) Phase 1-2
+- [IMPLEMENTATION_GUIDE.md](pre-execution/IMPLEMENTATION_GUIDE.md) Phase 1-2
 - [EMQX Documentation](https://www.emqx.io/docs/)
 - [TimescaleDB Guide](https://docs.timescale.com/)
 
@@ -238,7 +243,7 @@ Phase 3 (Enterprise):
 - Monitoring (Prometheus/Grafana)
 
 **Resources:**
-- [IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md) Phase 3-4
+- [IMPLEMENTATION_GUIDE.md](pre-execution/IMPLEMENTATION_GUIDE.md) Phase 3-4
 - [Go by Example](https://gobyexample.com/)
 
 ### Week 17+: Enterprise
@@ -251,7 +256,7 @@ Phase 3 (Enterprise):
 - SLA management
 
 **Resources:**
-- [ARCHITECTURE.md](ARCHITECTURE.md)
+- [ARCHITECTURE.md](pre-execution/ARCHITECTURE.md)
 - [Kubernetes Documentation](https://kubernetes.io/docs/)
 
 ---
@@ -320,7 +325,7 @@ docker-compose -f docker-compose.prod.yml up -d --scale api=5
 ## ❓ FAQ
 
 ### Q: I'm just validating the idea. Where should I start?
-**A:** Start with [POC_TASKS.md](POC_TASKS.md). Follow the day-by-day tasks and you'll have a working demo in 3 weeks.
+**A:** Start with [POC_TASKS.md](execution/POC_TASKS.md). Follow the day-by-day tasks and you'll have a working demo in 3 weeks.
 
 ### Q: Should I use Docker for POC?
 **A:** No. Keep it simple - just Node.js running locally. Add Docker in MVP phase.
@@ -337,10 +342,10 @@ docker-compose -f docker-compose.prod.yml up -d --scale api=5
 - **Scale:** PostgreSQL + TimescaleDB (Prisma) + Redis
 
 ### Q: How do I migrate from POC to MVP?
-**A:** Read the [POC_TO_ENTERPRISE_PLAN.md](POC_TO_ENTERPRISE_PLAN.md) migration checklist section. Since you used production-grade architecture in POC, migration is straightforward (add MQTT, multi-tenancy, workflows).
+**A:** Read the [POC_TO_ENTERPRISE_PLAN.md](execution/POC_TO_ENTERPRISE_PLAN.md) migration checklist section. Since you used production-grade architecture in POC, migration is straightforward (add MQTT, multi-tenancy, workflows).
 
 ### Q: This seems like a lot. What's the minimum to prove the concept?
-**A:** Follow Week 1 in [POC_TASKS.md](POC_TASKS.md) (Backend foundation with API and database). That's ~7 days. Add Week 2 (Frontend) for a complete demo.
+**A:** Follow Week 1 in [POC_TASKS.md](execution/POC_TASKS.md) (Backend foundation with API and database). That's ~7 days. Add Week 2 (Frontend) for a complete demo.
 
 ---
 
@@ -358,33 +363,66 @@ This is a reference architecture for building Losant-inspired IoT platforms. Cus
 
 ## 📞 Need Help?
 
-1. **Getting Started**: Follow [POC_TASKS.md](POC_TASKS.md) day-by-day
-2. **Scaling Questions**: Review [POC_TO_ENTERPRISE_PLAN.md](POC_TO_ENTERPRISE_PLAN.md)
-3. **Technical Questions**: Check [ARCHITECTURE.md](ARCHITECTURE.md)
-4. **Implementation Patterns**: Read [PRODUCTION_READY_POC.md](PRODUCTION_READY_POC.md)
-5. **Troubleshooting**: See Appendix in [POC_TASKS.md](POC_TASKS.md)
+1. **Getting Started**: Follow [POC_TASKS.md](execution/POC_TASKS.md) day-by-day
+2. **Scaling Questions**: Review [POC_TO_ENTERPRISE_PLAN.md](execution/POC_TO_ENTERPRISE_PLAN.md)
+3. **Technical Questions**: Check [ARCHITECTURE.md](pre-execution/ARCHITECTURE.md)
+4. **Implementation Patterns**: Read [PRODUCTION_READY_POC.md](execution/PRODUCTION_READY_POC.md)
+5. **Troubleshooting**: See Appendix in [POC_TASKS.md](execution/POC_TASKS.md)
 
 ---
 
 ## 🎯 Your Next Step
 
 **If you haven't started yet:**
-1. Open **[POC_TASKS.md](POC_TASKS.md)** and begin Week 1, Sprint 1.1
+1. Open **[POC_TASKS.md](execution/POC_TASKS.md)** and begin Week 1, Sprint 1.1
 2. Follow the copy-paste commands day-by-day
 3. Complete all verification steps
 
 **If you have a working POC:**
-1. Read **[POC_TO_ENTERPRISE_PLAN.md](POC_TO_ENTERPRISE_PLAN.md)** Phase 1 (MVP)
+1. Read **[POC_TO_ENTERPRISE_PLAN.md](execution/POC_TO_ENTERPRISE_PLAN.md)** Phase 1 (MVP)
 2. Follow the MVP migration checklist
 3. Add MQTT, multi-tenancy, and workflows
 
 **If you're scaling to enterprise:**
-1. Review **[POC_TO_ENTERPRISE_PLAN.md](POC_TO_ENTERPRISE_PLAN.md)** for full roadmap
-2. Check **[LOAD_ANALYSIS.md](LOAD_ANALYSIS.md)** for capacity planning
+1. Review **[POC_TO_ENTERPRISE_PLAN.md](execution/POC_TO_ENTERPRISE_PLAN.md)** for full roadmap
+2. Check **[LOAD_ANALYSIS.md](pre-execution/LOAD_ANALYSIS.md)** for capacity planning
 3. Follow phase-appropriate scaling recommendations
 
 ---
 
 **Good luck building your Losant-inspired IoT platform!** 🚀
 
-*Last Updated: 2026-02-04*
+## 📂 Folder Structure
+
+```
+docs/
+├── execution/          # Plans, tasks, and progress tracking
+│   ├── POC_TASKS.md
+│   ├── POC_TO_ENTERPRISE_PLAN.md
+│   ├── PRODUCTION_READY_POC.md
+│   ├── PROGRESS.md
+│   └── NOTES.md
+│
+├── pre-execution/      # Architecture, guides, and rationale
+│   ├── ARCHITECTURE.md
+│   ├── IMPLEMENTATION_GUIDE.md
+│   ├── TECHNOLOGY_STACK_RATIONALE.md
+│   ├── LOAD_ANALYSIS.md
+│   └── reference.md
+│
+├── software/           # Implementation documentation
+│   ├── AUTH_*.md (6 files)
+│   ├── MODBUS_*.md (4 files)
+│   ├── REDUX_*.md (3 files)
+│   ├── PHASE_*.md (5 files)
+│   ├── DEPLOYMENT.md
+│   ├── DOCKER.md
+│   ├── TOKEN_SESSION_TRACKING.md
+│   └── ... (30+ implementation docs)
+│
+└── README.md           # This file - documentation hub
+```
+
+---
+
+*Last Updated: 2026-02-14*

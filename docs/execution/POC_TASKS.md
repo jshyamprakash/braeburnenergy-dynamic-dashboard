@@ -8,6 +8,33 @@
 
 ---
 
+## ⚠️ CRITICAL DATABASE MIGRATION NOTICE
+
+**Date:** 2026-02-12
+**Status:** This document references PostgreSQL + Prisma + TimescaleDB
+
+**ACTUAL IMPLEMENTATION:**
+- ✅ **Database:** MongoDB 8 with Time Series Collections (NOT PostgreSQL)
+- ✅ **ODM:** Mongoose 8.x (NOT Prisma)
+- ✅ **Time Series:** MongoDB Time Series Collections (NOT TimescaleDB)
+- ✅ **Connection:** `MONGODB_URI` (NOT `DATABASE_URL`)
+- ✅ **IDs:** ObjectId `aaaaaaaaaaaaaaaaaaaaaaaa` (NOT UUID)
+
+**REFERENCES TO UPDATE:**
+- All mentions of "PostgreSQL" → Read as "MongoDB"
+- All mentions of "Prisma" → Read as "Mongoose"
+- All mentions of "TimescaleDB" → Read as "MongoDB Time Series Collections"
+- All `prisma migrate` commands → Not applicable (Mongoose uses schemas, not migrations)
+- All `DATABASE_URL` → Read as `MONGODB_URI`
+
+**FOR CURRENT IMPLEMENTATION:**
+- See `iot-platform/README.md` for MongoDB setup
+- See `scripts/setup-mongodb.sh` for replica set initialization
+- See `iot-platform/apps/api/src/models/` for Mongoose schemas
+- See `iot-platform/apps/api/src/lib/mongoose.ts` for connection
+
+---
+
 ## 📊 Implementation Status
 
 **Last Updated:** 2026-02-06

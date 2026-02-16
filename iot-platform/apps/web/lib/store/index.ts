@@ -6,6 +6,7 @@ import authReducer from './slices/authSlice';
 import uiReducer from './slices/uiSlice';
 import dashboardReducer from './slices/dashboardSlice';
 import websocketReducer from './slices/websocketSlice';
+import workflowReducer from './slices/workflowSlice';
 
 /**
  * Configure Redux store
@@ -16,6 +17,7 @@ export const store = configureStore({
     ui: uiReducer,
     dashboard: dashboardReducer,
     websocket: websocketReducer,
+    workflow: workflowReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

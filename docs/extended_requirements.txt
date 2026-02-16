@@ -1,0 +1,7 @@
+Device attributes may be provided as tags as key value pairs.
+
+Attributes will have defined keys and datatype
+
+Workflow will define the data structure and save it in timeseries db.
+
+Dashboard will have live and historic data.

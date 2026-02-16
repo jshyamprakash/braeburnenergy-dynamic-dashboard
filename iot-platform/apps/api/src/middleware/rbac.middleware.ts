@@ -53,6 +53,13 @@ const PERMISSIONS: Record<string, UserRole[]> = {
   'alarm:create': ['SuperAdmin', 'Admin', 'Operator'],
   'alarm:acknowledge': ['SuperAdmin', 'Admin', 'Operator'],
   'alarm:read': ['SuperAdmin', 'Admin', 'Operator', 'Viewer'],
+
+  // Workflow management
+  'workflow:create': ['SuperAdmin', 'Admin'],
+  'workflow:read': ['SuperAdmin', 'Admin', 'Operator', 'Viewer'],
+  'workflow:update': ['SuperAdmin', 'Admin'],
+  'workflow:delete': ['SuperAdmin', 'Admin'],
+  'workflow:execute': ['SuperAdmin', 'Admin', 'Operator'],
 };
 
 /**

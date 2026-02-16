@@ -15,6 +15,7 @@ export function Navigation() {
   const links = [
     { href: '/', label: 'Home' },
     { href: '/devices', label: 'Devices' },
+    { href: '/workflows', label: 'Workflows' },
     { href: '/dashboard', label: 'Dashboard' },
     { href: '/dashboard-builder', label: 'Builder' },
     { href: '/dashboard-demo', label: 'Demo' },

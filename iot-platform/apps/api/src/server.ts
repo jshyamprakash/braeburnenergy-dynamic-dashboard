@@ -17,6 +17,7 @@ import { alarmRoutes } from './routes/alarm.routes';
 import { modbusGatewayRoutes } from './routes/modbus-gateway.routes';
 import { opcuaGatewayRoutes } from './routes/opcua-gateway.routes';
 import { waterQualityRoutes } from './routes/water-quality.routes';
+import { workflowRoutes } from './routes/workflow.routes';
 import { registerAuditMiddleware } from './middleware/audit.middleware';
 
 /**
@@ -88,6 +89,7 @@ export async function createServer() {
         { name: 'Modbus Gateway', description: 'Industrial protocol gateway for Modbus TCP/RTU devices' },
         { name: 'OPC UA Gateway', description: 'Industrial protocol gateway for OPC UA devices with subscriptions and polling' },
         { name: 'Water Quality', description: 'EPA/AWWA compliant water quality parameter validation and compliance reporting' },
+        { name: 'Workflows', description: 'Visual workflow automation with node-based editor and execution engine' },
         { name: 'organizations', description: 'Multi-tenancy organization management' },
         { name: 'Dashboards', description: 'Dashboard configuration and layout management with cross-device sync' },
         { name: 'Devices', description: 'Device management operations' },
@@ -173,6 +175,7 @@ export async function createServer() {
   await fastify.register(modbusGatewayRoutes);
   await fastify.register(opcuaGatewayRoutes);
   await fastify.register(waterQualityRoutes);
+  await fastify.register(workflowRoutes);
   await fastify.register(organizationRoutes);
   await fastify.register(dashboardRoutes);
   await fastify.register(deviceRoutes);
@@ -201,6 +204,9 @@ export async function createServer() {
         waterQualityParameters: '/water-quality/parameters',
         waterQualityValidation: '/water-quality/validate',
         waterQualityCompliance: '/water-quality/compliance/:deviceId',
+        workflows: '/workflows',
+        workflowExecute: '/workflows/:workflowId/execute',
+        executions: '/executions/:executionId',
         organizations: '/organizations',
         dashboards: '/dashboards',
         devices: '/devices',

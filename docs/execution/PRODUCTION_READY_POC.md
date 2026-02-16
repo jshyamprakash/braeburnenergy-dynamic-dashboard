@@ -5,6 +5,20 @@
 
 ---
 
+## ⚠️ DATABASE MIGRATION NOTICE (2026-02-12)
+
+**This document references PostgreSQL + Prisma + TimescaleDB.**
+
+**CURRENT IMPLEMENTATION:**
+- ✅ MongoDB 8 + Mongoose + Time Series Collections
+- ✅ `MONGODB_URI` (not `DATABASE_URL`)
+- ✅ ObjectId IDs (not UUID)
+- ✅ Mongoose schemas (not Prisma migrations)
+
+Read "PostgreSQL" as "MongoDB", "Prisma" as "Mongoose", "TimescaleDB" as "MongoDB Time Series Collections".
+
+---
+
 ## Table of Contents
 
 1. [Architecture Principles](#architecture-principles)

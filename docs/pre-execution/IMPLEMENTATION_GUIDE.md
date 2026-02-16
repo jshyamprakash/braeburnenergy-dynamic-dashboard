@@ -6,6 +6,17 @@
 
 ---
 
+## ⚠️ DATABASE TECHNOLOGY NOTICE (2026-02-12)
+
+**This document was written assuming PostgreSQL + Prisma + TimescaleDB.**
+
+**CURRENT POC IMPLEMENTATION USES:**
+- MongoDB 8 + Mongoose + Time Series Collections
+
+When following this guide, substitute database technologies accordingly.
+
+---
+
 ## Table of Contents
 
 1. [Phase Overview](#phase-overview)
