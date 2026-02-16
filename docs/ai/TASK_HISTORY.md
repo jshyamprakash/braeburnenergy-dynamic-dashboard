@@ -9,6 +9,7 @@
 - Visual Workflow Editor Week 3.4: Run Workflow action (ExecutionInputModal, executeWorkflow thunk, status badge, toast notifications)
 - Visual Workflow Editor Week 3.5: Validation Panel (error display, click-to-navigate, error badges on nodes)
 - Visual Workflow Editor Week 3.6: Export/Import Workflow (JSON download/upload, schema validation, ULID regeneration)
+- Visual Workflow Editor Week 3.7: Settings Modal (workflow metadata editor, dark mode, validation)
 
 ## In Progress
 
@@ -16,7 +17,6 @@
 
 ## Backlog
 
-- Visual Workflow Editor Week 3.7: Settings Modal (workflow metadata editor)
 - Visual Workflow Editor Week 3.8: Keyboard Shortcuts (Cmd/Ctrl+S/R/E, Delete, Help tooltip)
 - Visual Workflow Editor Week 4: Execution Viewer (real-time step-by-step logs, state snapshots, WebSocket updates)
 - Visual Workflow Editor Week 5: Advanced features (templates, additional node types, bulk import)
