@@ -41,8 +41,10 @@ The platform follows a 5-layer architecture pattern:
 1. **Edge Compute Layer** - Gateway Edge Agents (GEA) for industrial protocol translation (Profinet, Modbus, OPC UA, BACnet, Siemens S7)
 2. **Connectivity Layer** - MQTT broker for device communication
 3. **Core Processing Layer** - Visual workflow engine (Flow-Based Programming)
-4. **Data Persistence Layer** - PostgreSQL + TimescaleDB with Prisma ORM (unified data access)
+4. **Data Persistence Layer** - MongoDB 8 + Time Series Collections with Mongoose ODM (unified time-series + document storage)
 5. **Application Layer** - Real-time dashboards with WebSocket feeds
+
+**MongoDB Migration Note (Feb 2026):** Platform migrated from PostgreSQL+TimescaleDB to MongoDB 8 with Time Series Collections to meet EPA compliance requirements and improve time-series data handling.
 
 ---
 
@@ -79,11 +81,13 @@ The platform follows a 5-layer architecture pattern:
 
 | Component | Technology | Version | Rationale |
 |-----------|-----------|---------|-----------|
-| **Primary Database** | PostgreSQL + TimescaleDB | 15+ / 2.13+ | Unified storage for metadata and time-series data |
-| **ORM** | Prisma | 5.x | Type-safe data access, auto-generated types, migrations |
+| **Primary Database** | MongoDB 8 + Time Series Collections | 8.0+ | Unified storage for metadata and time-series data; native time-series support; EPA compliance |
+| **ODM** | Mongoose | 8.23+ | Type-safe data access with TypeScript, auto-generated schemas, migrations |
 | **Cache/State** | Redis | 7.2+ | Session store, workflow state, pub/sub, real-time data |
 | **Object Storage** | MinIO (S3-compatible) | Latest | Cold data archival, file attachments (optional) |
 | **Search** | Elasticsearch | 8.x | Full-text search, log aggregation (optional) |
+
+**Migration Note:** Transitioned from PostgreSQL 15 + TimescaleDB 2.13 to MongoDB 8 with Time Series Collections (January 2026). Time Series Collections provide: 90-day TTL for EPA retention policy, automatic compression, optimized for high-volume sensor data, and simplified operations vs. TimescaleDB.
 
 ### Infrastructure Stack
 
@@ -148,12 +152,14 @@ The platform follows a 5-layer architecture pattern:
 ┌─────────────────────────────────────────────────────────────────┐
 │                    Data Persistence Layer                       │
 │  ┌──────────────────────────────┐  ┌──────────────┐             │
-│  │  PostgreSQL + TimescaleDB    │  │    Redis     │             │
-│  │  (Unified Database - Prisma) │  │  (State)     │             │
-│  │  - Telemetry (time-series)   │  │  - Sessions  │             │
+│  │  MongoDB 8 + Time Series      │  │    Redis     │             │
+│  │  (Unified Database - Mongoose)│  │  (State)     │             │
+│  │  - Device States (time-series)│  │  - Sessions  │             │
 │  │  - Devices (metadata)        │  │  - Workflow  │             │
 │  │  - Workflows (metadata)      │  │    Storage   │             │
 │  │  - Users & Organizations     │  │  - Cache     │             │
+│  │  - Audit Logs (10-yr TTL)    │  │              │             │
+│  │  [Replica Set: rs0, HA]       │  │              │             │
 │  └──────────────────────────────┘  └──────────────┘             │
 │  ┌──────────────┐                                               │
 │  │    MinIO     │                                               │
@@ -657,110 +663,170 @@ Each database component is chosen for its access pattern and data characteristic
 
 | Database | Use Case | Data Type | Access Pattern |
 |----------|----------|-----------|----------------|
-| **PostgreSQL + TimescaleDB** | Device telemetry, devices, workflows, users | Relational + Time-series | CRUD, range queries, aggregations |
-| **Prisma ORM** | Type-safe data access layer | - | Generated TypeScript types, migrations |
+| **MongoDB 8 + Time Series Collections** | Device telemetry, devices, workflows, users, audit logs | Document + Time-series | CRUD, range queries, aggregations, TTL expiration |
+| **Mongoose ODM** | Type-safe data access layer | - | Generated TypeScript types, migrations |
 | **Redis** | Session store, workflow state, cache | Key-value | High-speed reads/writes |
 | **MinIO** | File uploads, cold archives (optional) | Object storage | Append-only, infrequent reads |
 
-### TimescaleDB (Time-Series Data)
+**Migration Status (Feb 2026):** Migrated from PostgreSQL 15 + TimescaleDB 2.13 to MongoDB 8 to support EPA compliance requirements (Time Series Collections with TTL) and improve operational simplicity.
+
+### MongoDB Time Series Collections (Device State Data)
 
 **Schema Design:**
 
-```sql
--- Hypertable for device states (auto-partitioned by time)
-CREATE TABLE device_states (
-  time        TIMESTAMPTZ NOT NULL,
-  device_id   UUID NOT NULL,
-  org_id      UUID NOT NULL,        -- Multi-tenancy
-  data        JSONB NOT NULL,        -- Flexible schema
-  PRIMARY KEY (time, device_id)
-);
+```javascript
+// Mongoose schema for device state time-series collection
+// MongoDB automatically creates as Time Series Collection based on model options
 
--- Convert to hypertable (auto-partitioned by week)
-SELECT create_hypertable('device_states', 'time', chunk_time_interval => INTERVAL '1 week');
+const deviceStateSchema = new Schema({
+  timestamp: {
+    type: Date,
+    default: Date.now,
+    required: true
+  },
+  metadata: {
+    orgId: ObjectId,      // Multi-tenancy partition
+    deviceId: String,
+    source: String        // e.g., 'mqtt', 'api', 'modbus'
+  },
+  data: {
+    temperature: Number,
+    pressure: Number,
+    humidity: Number,
+    // ... flexible schema for any sensor data
+  },
+  quality: Number         // 0-100 data quality score (EPA QAPP)
+}, {
+  timeseries: {
+    timeField: 'timestamp',
+    metaField: 'metadata',
+    granularity: 'seconds'  // Supported: minutes, hours, seconds
+  },
+  expireAfterSeconds: 7776000  // 90 days (EPA default retention)
+});
 
--- Create index on device_id for fast lookups
-CREATE INDEX idx_device_states_device_id ON device_states (device_id, time DESC);
+// Compound index for optimal query performance
+deviceStateSchema.index({
+  'metadata.orgId': 1,
+  'metadata.deviceId': 1,
+  'timestamp': -1
+});
 
--- Compression policy (compress data older than 7 days)
-ALTER TABLE device_states SET (
-  timescaledb.compress,
-  timescaledb.compress_segmentby = 'device_id, org_id'
-);
+// Additional indexes for common queries
+deviceStateSchema.index({ 'metadata.orgId': 1, 'timestamp': -1 });
+deviceStateSchema.index({ 'timestamp': -1 });
 
-SELECT add_compression_policy('device_states', INTERVAL '7 days');
-
--- Retention policy (drop data older than 30 days, move to cold storage)
-SELECT add_retention_policy('device_states', INTERVAL '30 days');
+const DeviceState = model('DeviceState', deviceStateSchema);
 ```
 
-**Continuous Aggregates (Pre-computed Rollups):**
+**Time Series Collections Benefits:**
 
-```sql
--- Hourly aggregates for dashboard charts
-CREATE MATERIALIZED VIEW device_states_hourly
-WITH (timescaledb.continuous) AS
-SELECT
-  time_bucket('1 hour', time) AS bucket,
-  device_id,
-  org_id,
-  AVG((data->>'temperature')::numeric) AS avg_temp,
-  MAX((data->>'temperature')::numeric) AS max_temp,
-  MIN((data->>'temperature')::numeric) AS min_temp,
-  COUNT(*) AS sample_count
-FROM device_states
-GROUP BY bucket, device_id, org_id;
+- **Automatic Compression**: MongoDB automatically compresses device_states older than 5 minutes
+- **TTL Support**: `expireAfterSeconds: 7776000` (90 days) automatically removes old data for EPA compliance
+- **Optimized Storage**: 60-90% space savings vs. standard collections through compression
+- **High Ingestion**: Designed for high-volume time-series (100k+ writes/sec)
+- **Built-in Bucketing**: Automatic time-based bucketing improves query performance
 
--- Auto-refresh policy
-SELECT add_continuous_aggregate_policy('device_states_hourly',
-  start_offset => INTERVAL '3 hours',
-  end_offset => INTERVAL '1 hour',
-  schedule_interval => INTERVAL '1 hour'
-);
+**Aggregation Pipelines (Pre-computed Rollups):**
+
+```javascript
+// Hourly aggregates for dashboard charts
+db.device_states.aggregate([
+  {
+    $match: {
+      'metadata.deviceId': 'sensor-123',
+      'timestamp': {
+        $gte: new Date(Date.now() - 7*24*60*60*1000)  // Last 7 days
+      }
+    }
+  },
+  {
+    $group: {
+      _id: {
+        $dateTrunc: {
+          date: '$timestamp',
+          unit: 'hour',
+          binSize: 1
+        }
+      },
+      avg_temp: { $avg: '$data.temperature' },
+      max_temp: { $max: '$data.temperature' },
+      min_temp: { $min: '$data.temperature' },
+      sample_count: { $sum: 1 }
+    }
+  },
+  { $sort: { '_id': -1 } }
+]);
 ```
 
-### PostgreSQL + Prisma (Metadata & Configuration)
+### MongoDB + Mongoose (Metadata & Configuration)
 
-**Prisma Schema:**
+**Mongoose Schema:**
 
-```prisma
-// Device model
-model Device {
-  id          String   @id @default(uuid())
-  orgId       String
-  name        String
-  deviceId    String
-  tags        String[]
-  attributes  Json     // Flexible schema for device attributes
-  accessKey   String   // Hashed key
-  lastSeen    DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+```javascript
+// Device model (metadata collection)
+const deviceSchema = new Schema({
+  _id: ObjectId,
+  orgId: {
+    type: ObjectId,
+    ref: 'Organization',
+    required: true
+  },
+  deviceId: {
+    type: String,
+    required: true  // ULID: 26-char unique identifier
+  },
+  name: String,
+  type: String,  // Standalone, Gateway, Peripheral
+  tags: [String],
+  attributes: Schema.Types.Mixed,  // Flexible schema for device attributes
+  accessKey: String,               // Hashed MQTT access key
+  lastSeen: Date,
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
+  }
+}, { collection: 'devices' });
 
-  organization Organization @relation(fields: [orgId], references: [id])
-  states       DeviceState[]
+// Compound index for multi-tenant queries
+deviceSchema.index({ orgId: 1, deviceId: 1 }, { unique: true });
+deviceSchema.index({ orgId: 1, tags: 1 });
+deviceSchema.index({ lastSeen: -1 });
 
-  @@unique([orgId, deviceId])
-  @@index([orgId, tags])
-  @@map("devices")
-}
+// Workflow model (metadata collection)
+const workflowSchema = new Schema({
+  _id: ObjectId,
+  orgId: {
+    type: ObjectId,
+    ref: 'Organization',
+    required: true
+  },
+  name: String,
+  enabled: {
+    type: Boolean,
+    default: true
+  },
+  trigger: {
+    type: Schema.Types.Mixed  // { type, deviceIds, deviceTags }
+  },
+  nodes: [Schema.Types.Mixed],    // Array of workflow nodes
+  edges: [Schema.Types.Mixed],    // Array of workflow edges
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
+  }
+}, { collection: 'workflows' });
 
-// Workflow model
-model Workflow {
-  id        String   @id @default(uuid())
-  orgId     String
-  name      String
-  enabled   Boolean  @default(true)
-  trigger   Json     // { type, deviceIds, deviceTags }
-  nodes     Json     // Array of workflow nodes
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  organization Organization @relation(fields: [orgId], references: [id])
-
-  @@index([orgId, enabled])
-  @@map("workflows")
-}
+workflowSchema.index({ orgId: 1, enabled: 1 });
+workflowSchema.index({ createdAt: -1 });
 
 // Dashboard model
 model Dashboard {
@@ -781,34 +847,31 @@ model Dashboard {
 **Usage Examples:**
 
 ```typescript
-// Type-safe CRUD operations with Prisma
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
+// Type-safe CRUD operations with Mongoose
+import { Device, Workflow } from './models';
 
 // Create device with full type safety
-const device = await prisma.device.create({
-  data: {
-    orgId: orgId,
-    name: "Temperature Sensor 01",
-    deviceId: "abc123",
-    tags: ["factory-floor", "zone-a"],
-    attributes: {
-      temperature: { type: "number", unit: "celsius" },
-      humidity: { type: "number", unit: "percent" }
-    },
-    accessKey: hashedKey,
-  }
+const device = await Device.create({
+  orgId: new ObjectId(orgId),
+  name: "Temperature Sensor 01",
+  deviceId: "abc123",
+  type: "Standalone",
+  tags: ["factory-floor", "zone-a"],
+  attributes: {
+    temperature: { type: "number", unit: "celsius" },
+    humidity: { type: "number", unit: "percent" }
+  },
+  accessKey: hashedKey,
 });
 
-// Query with relations
-const workflow = await prisma.workflow.create({
-  data: {
-    orgId: orgId,
-    name: "High Temperature Alert",
-    enabled: true,
-    trigger: {
-      type: "deviceState",
-      deviceIds: ["abc123"],
+// Query with lean() for performance
+const workflow = await Workflow.create({
+  orgId: new ObjectId(orgId),
+  name: "High Temperature Alert",
+  enabled: true,
+  trigger: {
+    type: "deviceState",
+    deviceIds: ["abc123"],
       deviceTags: ["zone-a"]
     },
     nodes: [
@@ -904,28 +967,41 @@ iot-platform/
 
 **Logical Separation (Preferred for SaaS):**
 
-- Single database with `orgId` column on all tables
-- Row-Level Security (RLS) in PostgreSQL/TimescaleDB
-- Prisma middleware for automatic multi-tenant filtering
+- Single database with `orgId` field on all documents
+- MongoDB query filters for automatic multi-tenant isolation
+- Mongoose middleware for automatic orgId injection
 - Redis key prefixing: `org:{orgId}:...`
 
 **Benefits:**
 - Cost-effective
 - Easier maintenance
 - Simpler backups
+- Mongoose middleware handles filtering automatically
 
-**RLS Implementation (TimescaleDB):**
+**Multi-Tenant Filtering (MongoDB):**
 
-```sql
--- Enable RLS on device_states table
-ALTER TABLE device_states ENABLE ROW LEVEL SECURITY;
+```typescript
+// Mongoose middleware for automatic org filtering
+deviceStateSchema.pre(/^find/, function() {
+  // Automatically filter to current org
+  if (!this.options.orgId) {
+    throw new Error('orgId required for multi-tenant queries');
+  }
 
--- Policy: Users can only see their organization's data
-CREATE POLICY org_isolation ON device_states
-  USING (org_id = current_setting('app.current_org_id')::UUID);
+  this.where({ 'metadata.orgId': this.options.orgId });
+});
 
--- Set org_id in session
-SET app.current_org_id = '550e8400-e29b-41d4-a716-446655440000';
+// Usage: Query automatically filtered by orgId
+const states = await DeviceState
+  .find()
+  .setOptions({ orgId: currentOrgId })
+  .lean();
+
+// Alternative: Explicit filtering in queries
+const device = await Device.findOne({
+  orgId: currentOrgId,
+  deviceId: 'sensor-123'
+});
 ```
 
 ### Authentication & Authorization
@@ -1083,9 +1159,10 @@ app.post('/mqtt/acl', async (req, res) => {
         │            │                │                 │        │
         ▼            ▼                ▼                 ▼        ▼
   ┌──────────────────┐  ┌──────────────┐  ┌─────────┐  ┌─────────┐
-  │ PostgreSQL +     │  │    Redis     │  │  NATS   │  │  EMQX   │
-  │ TimescaleDB      │  │              │  │         │  │  MQTT   │
-  │ (Prisma)         │  │              │  │         │  │         │
+  │ MongoDB 8        │  │    Redis     │  │  NATS   │  │  EMQX   │
+  │ Time Series      │  │              │  │         │  │  MQTT   │
+  │ (Mongoose ODM)   │  │              │  │         │  │         │
+  │ [Replica Set]    │  │              │  │         │  │         │
   └──────────────────┘  └──────────────┘  └─────────┘  └─────────┘
 ```
 
@@ -1285,14 +1362,27 @@ spec:
 ### Database Deployment
 
 **Docker Compose (Initial):**
-- Single-node PostgreSQL + TimescaleDB with backups
+- MongoDB replica set (rs0) with 3 nodes for HA
 - Redis standalone
 - MinIO single-node (optional)
 
 **Kubernetes (Scale):**
-- PostgreSQL + TimescaleDB: StatefulSet with streaming replication (read replicas for scale)
+- MongoDB: StatefulSet with replica set (3+ nodes for quorum and HA)
 - Redis: Sentinel for HA, or Redis Cluster for scaling
 - MinIO: Distributed mode (4+ nodes for erasure coding, optional)
+
+**MongoDB Replica Set Configuration:**
+```javascript
+// Initialize replica set in docker-compose
+rs.initiate({
+  _id: 'rs0',
+  members: [
+    { _id: 0, host: 'mongodb-0:27017', priority: 2 },
+    { _id: 1, host: 'mongodb-1:27017', priority: 1 },
+    { _id: 2, host: 'mongodb-2:27017', priority: 1 }
+  ]
+});
+```
 
 ---
 
@@ -1305,9 +1395,9 @@ spec:
 | **Dashboard Latency** | <100ms (p99) | WebSocket message to UI render |
 | **Workflow Execution** | <500ms (p95) for simple flows | NATS trigger to completion |
 | **API Response Time** | <200ms (p95) | Kong ingress to response |
-| **Device State Ingestion** | 100k msg/sec | MQTT → TimescaleDB |
+| **Device State Ingestion** | 100k msg/sec | MQTT → MongoDB Time Series Collection |
 | **Concurrent Connections** | 1M+ devices | EMQX cluster |
-| **Database Writes** | 50k writes/sec | TimescaleDB insert rate |
+| **Database Writes** | 50k writes/sec | MongoDB Time Series insert rate (optimized for high-throughput) |
 
 ### Horizontal Scaling Strategy
 

@@ -1,66 +1,100 @@
-# Week 3.7 Implementation Decisions
+# Week 3.8 Implementation Decisions - Keyboard Shortcuts
 
 ## What Changed
 
-### 1. SettingsModal Component (New)
-- Created `components/workflow/SettingsModal.tsx` (280 lines)
-- Controlled form with useState for all metadata fields
-- Modal overlay with backdrop, Escape handler, click-outside-to-close
-- Form fields: name input, description textarea, priority dropdown, enabled toggle, tags input
+### 1. useWorkflowKeyboardShortcuts Hook (New)
+- Created `apps/web/hooks/useWorkflowKeyboardShortcuts.ts` (65 lines)
+- Custom React hook for global keyboard event listeners
+- Handlers for: Save (Cmd/Ctrl+S), Run (Cmd/Ctrl+R), Export (Cmd/Ctrl+E), Delete, Help (?)
+- Platform-aware modifier detection (Meta key on Mac, Ctrl on Windows/Linux)
+- Safely ignores shortcuts when focused on input/textarea elements
 
-### 2. Validation & State Management
-- Client-side validation: name required (1-100), description max 500, tags max 50
-- Unsaved changes detection via hasChanges state
-- Warning modal displayed when user closes with unsaved changes
-- Form resets on close without saving
+### 2. KeyboardShortcutsHelp Component (New)
+- Created `apps/web/components/workflow/KeyboardShortcutsHelp.tsx` (95 lines)
+- Modal dialog showing categorized keyboard shortcuts
+- Categories: File Operations, Execution, Editing, Help
+- Platform-specific key display (⌘S on Mac, Ctrl+S on Windows)
+- Full dark mode support with Tailwind classes
+- Reuses existing Modal component for consistency
 
-### 3. API Integration
-- PATCH `/workflows/:id` to update metadata (existing endpoint)
-- Redux state refresh after successful update (loadWorkflow dispatch)
-- Error handling with toast notifications
-- Save button disabled when no changes detected
+### 3. WorkflowToolbar Enhancement
+- Added `onShowHelp?: () => void` prop to WorkflowToolbarProps interface
+- Added help button (?) at the end of toolbar actions
+- Button triggers keyboard shortcuts modal via onShowHelp callback
+- Consistent styling with existing icon buttons
 
-### 4. UI/UX Features
-- Full dark mode support (Tailwind dark classes)
-- Character counters for name (100) and description (500)
-- Loading spinner on save button
-- Toast notifications for success/error
-- Priority dropdown with HIGH/MEDIUM/LOW options
-- Tags parsed from comma-separated input
+### 4. Modal Component Dark Mode
+- Updated `apps/web/components/Modal.tsx` for complete dark mode support
+- Dark variants: `dark:bg-gray-800`, `dark:border-gray-700`, `dark:text-white`
+- Ensures help modal matches app theme consistently
 
-### 5. Builder Page Integration
-- Added modal state (isSettingsModalOpen)
-- Wired handleSettings to setIsSettingsModalOpen(true)
-- Expanded Redux selector to include all metadata fields
-- Pass current values to modal
-- handleSettingsSave triggers workflow refresh
+### 5. WorkflowBuilderPage Integration
+- Imported keyboard shortcuts hook and help modal component
+- Added isHelpOpen state for modal visibility
+- Added selectedNodeId to Redux state destructuring
+- Implemented handleDeleteNode: removes selected node, shows toast
+- Wired keyboard shortcuts to handlers: save, run, export, delete, help
+- Passed onShowHelp callback to WorkflowToolbar
 
-## Technical Implications
+## Keyboard Shortcuts
 
-### Positive
-- Modular component pattern (reusable)
-- No new dependencies required
-- Uses existing PATCH endpoint
-- Validation prevents invalid state
-- Unsaved changes protection
+| Shortcut | Action | Platform |
+|----------|--------|----------|
+| Cmd/Ctrl+S | Save workflow | Mac uses Cmd, others use Ctrl |
+| Cmd/Ctrl+R | Run workflow | Shows ExecutionInputModal |
+| Cmd/Ctrl+E | Export workflow | Downloads JSON file |
+| Delete | Delete selected node | Only when node is selected |
+| ? or Shift+/ | Show help | Displays shortcuts modal |
 
-### Constraints
-- Form state separate from Redux (modal-only state)
-- Tags as comma-separated string (not chip UI)
-- No undo/redo within modal
-- File size not validated (metadata-only)
+## Technical Details
 
-## File Structure
+**Platform Detection:**
+```typescript
+const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform);
+const isModifierPressed = isMac ? event.metaKey : event.ctrlKey;
+```
+
+**Input Safety:**
+- Shortcuts disabled when `document.activeElement instanceof HTMLInputElement`
+- Shortcuts disabled when `document.activeElement instanceof HTMLTextAreaElement`
+- Prevents interfering with typing in config panel or settings modal
+
+**Delete Node Logic:**
+- Uses Redux `removeNode(selectedNodeId)` action
+- Automatically removes connected edges
+- Shows success toast with node label
+- Sets isDirty flag and triggers auto-save
+
+## Files Modified/Created
 
 **New Files:**
-- `apps/web/components/workflow/SettingsModal.tsx` (280 lines)
+- `apps/web/hooks/useWorkflowKeyboardShortcuts.ts` (65 lines)
+- `apps/web/components/workflow/KeyboardShortcutsHelp.tsx` (95 lines)
 
 **Modified Files:**
-- `apps/web/app/workflows/[workflowId]/page.tsx` (import + wiring)
+- `apps/web/components/workflow/WorkflowToolbar.tsx` (props + help button)
+- `apps/web/components/Modal.tsx` (dark mode classes)
+- `apps/web/app/workflows/[workflowId]/page.tsx` (integration)
+- `docs/ai/TASK_HISTORY.md` (marked Week 3.8 complete)
 
 ## Build Status
 
-✓ Production build: 5.2s, zero TypeScript errors
-✓ All routes compile successfully
-✓ Modal integrated with builder page
-✓ Dark mode styling consistent with app
+✅ Frontend: Production build successful in 5.2s
+✅ TypeScript: Zero errors with strict mode
+✅ All routes compile successfully
+✅ Dark mode fully functional
+
+## Design Decisions
+
+1. **Hook for keyboard logic** - Separates keyboard handling from component logic, reusable
+2. **Global event listeners** - Shortcuts work from anywhere on page, not just focused element
+3. **Platform detection** - Shows correct modifier key (⌘ vs Ctrl) for better UX
+4. **Modal for help** - Reuses existing Modal component instead of new Dialog library
+5. **Input safety** - Prevents shortcuts from interfering with text editing
+6. **Toast feedback** - User gets visual confirmation when Delete action executes
+
+## Next Steps
+
+- Week 3.9: Execution Viewer (step-by-step logs, real-time WebSocket updates)
+- Week 4: Advanced features (workflow templates, additional node types)
+- E2E Tests: Critical workflow paths with Playwright/Cypress

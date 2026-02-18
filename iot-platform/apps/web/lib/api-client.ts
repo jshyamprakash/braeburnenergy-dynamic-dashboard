@@ -167,11 +167,19 @@ class ApiClient {
     const url = `${this.baseURL}${endpoint}`;
 
     try {
+      // Get access token and add to headers
+      const accessToken = this.getAccessToken();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+      }
+
       const response = await fetch(url, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
       });
 
       if (!response.ok) {

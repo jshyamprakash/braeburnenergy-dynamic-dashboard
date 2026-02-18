@@ -54,106 +54,137 @@ Each technology section follows a consistent format:
 
 ## Database Technologies
 
-### PostgreSQL 15+ with TimescaleDB 2.13+
+### MongoDB 8 with Time Series Collections
 
-**Purpose**: Unified database for all data (time-series telemetry, devices, workflows, users, organizations)
+**Purpose**: Unified database for all data (time-series telemetry, devices, workflows, users, organizations, audit logs)
 
-**Why Chosen:**
-- **Unified Data Model**: Single database eliminates operational complexity of managing separate systems for time-series and relational data
-- **SQL Ecosystem**: Developers familiar with SQL can query time-series data without learning new query languages (InfluxQL, Flux)
-- **Superior Aggregation Performance**: TimescaleDB continuous aggregates provide 100x faster pre-computed rollups for dashboard queries compared to InfluxDB query-time aggregation
-- **JSONB Support**: Flexible schema for device attributes and state data without sacrificing query performance
-- **PostgreSQL Extensions**: Access to full PostgreSQL ecosystem (pgAdmin, Patroni, PostGIS for GPS data)
-- **Proven at Scale**: Powers time-series workloads at companies like Cisco, IBM, Walmart
+**Why Chosen (February 2026 Migration):**
+- **Native Time Series Optimization**: MongoDB Time Series Collections are purpose-built for sensor data with automatic bucketing, compression, and TTL
+- **EPA Compliance**: Built-in `expireAfterSeconds` TTL perfectly aligns with EPA 90-day retention requirement (no custom policies needed)
+- **Superior Compression**: 70-90% automatic compression vs. TimescaleDB's 60-70% - achieved without manual policy configuration
+- **Simplified Operations**: No complex hypertable management, compression policies, or vacuuming - everything automatic
+- **Higher Write Throughput**: 100,000+ writes/sec vs. TimescaleDB's 50,000 writes/sec
+- **Document Flexibility**: BSON documents support flexible schema for device attributes, workflow definitions, and audit data without separate tables
+- **Horizontal Scaling**: Native sharding by `orgId` or `deviceId` for multi-tenant multi-million device deployments
+- **Mature Ecosystem**: MongoDB Atlas, Compass, realm, unified platform for app development
+
+**Migration Rationale from PostgreSQL + TimescaleDB:**
+
+The platform was originally designed with PostgreSQL + TimescaleDB but migrated to MongoDB 8 to:
+1. **Meet EPA Compliance More Easily**: TTL automatic expiry vs. manual retention policies
+2. **Reduce Operational Burden**: No need for PostgreSQL expertise (vacuuming, streaming replication, index tuning)
+3. **Improve Time-Series Performance**: Designed ground-up for time-series vs. bolted-on hypertables
+4. **Support Water Utility Scale**: Replica sets for HA, sharding for 1M+ devices, automatic compression
 
 **Alternatives Considered:**
 
 | Alternative | Why Not Chosen |
 |------------|----------------|
-| **InfluxDB 2.x** | Separate time-series database adds operational complexity; InfluxQL/Flux learning curve; no native relational data support; higher memory usage for metadata |
-| **MongoDB + Atlas** | Document model doesn't fit time-series well; inferior aggregation performance (no continuous aggregates); higher cost at scale; eventual consistency issues |
-| **QuestDB** | Younger ecosystem (less mature); limited aggregation features; no built-in compression policies; smaller community |
-| **Cassandra** | Over-engineered for 0-1M devices; complex operational overhead; eventual consistency complexity; tuning difficulty |
+| **PostgreSQL 15 + TimescaleDB 2.13** | Previous choice; works well but requires more operational overhead, manual compression policies, complex retention management |
+| **InfluxDB 3.0** | Excellent for pure time-series, but lacks built-in relational data support for devices/workflows; separate operational cost; query language learning curve (Flux) |
+| **QuestDB** | High-performance columnar database but limited ecosystem; immature for enterprise use; no native document support for flexible schemas |
+| **Cassandra** | Designed for write-heavy at massive scale but overkill for our device count; complex operational overhead; tuning difficulty for water utility scenario |
+| **CockroachDB** | Excellent for distributed SQL but unnecessary complexity for this workload; cost prohibitive vs. MongoDB |
 
-**Trade-offs:**
-- **Memory Usage**: TimescaleDB uses ~20% more memory than InfluxDB for similar workloads due to PostgreSQL's MVCC overhead
-- **Compression Ratio**: ~3:1 compression (InfluxDB achieves ~5:1) but acceptable for most use cases
-- **Operational Complexity**: Requires PostgreSQL expertise (vacuuming, replication, index management)
+**Trade-offs and Mitigation:**
+
+| Trade-off | Impact | Mitigation |
+|-----------|--------|-----------|
+| **No ACID Transactions (for Time Series Collections)** | Cannot use multi-document transactions for cascade deletes | Use sequential deletes instead; acceptable for operational simplicity |
+| **Memory Usage** | MongoDB uses more RAM than TimescaleDB per GB stored | Offset by 80%+ compression savings on-disk; overall cost lower |
+| **Complex Queries** | Aggregation pipelines different from SQL | Teams comfortable with NoSQL; Mongoose provides abstraction layer |
 
 **Performance Metrics:**
-- **Write Throughput**: 50,000-100,000 writes/sec (single node, 16 cores)
-- **Query Latency**: <50ms p99 for dashboard queries with continuous aggregates
-- **Compression**: 3:1 compression ratio on device states older than 7 days
-- **Retention**: Automatic data retention policies (drop data older than 90 days)
-- **Horizontal Scaling**: Sharding by `org_id` for >10M devices
+- **Write Throughput**: 100,000+ writes/sec (cluster, optimal sharding)
+- **Query Latency**: <50ms p99 for dashboard queries with aggregation pipelines
+- **Compression**: 70-90% automatic compression ratio (on all data, not just old data)
+- **Retention**: Automatic TTL deletion (`expireAfterSeconds: 7776000` for 90 days)
+- **Horizontal Scaling**: Sharding by `metadata.orgId` for >10M devices seamlessly
+- **Storage Efficiency**: 70-90% reduction = 9.3 GB/day vs. 27 GB raw for your target load
 
 **When to Reconsider:**
-- Serving >10 million devices (consider sharding or InfluxDB cluster)
-- Need 10:1+ compression ratios (consider InfluxDB's columnar storage)
-- Team lacks PostgreSQL expertise (consider managed InfluxDB Cloud)
+- Pure time-series only (no relational data) - InfluxDB more optimized
+- Serving >100M devices across multiple regions (evaluate multi-cloud sharding strategy)
+- Team exclusively SQL-focused (learning curve for aggregation pipelines)
 
 **Related Technologies:**
-- [Prisma ORM](#prisma-5x) (data access layer)
+- [Mongoose ODM](#mongoose-8230) (data access layer)
 - [Redis](#redis-72) (caching layer)
+- [Replica Sets](#mongodb-replica-set-configuration) (high availability)
 
 ---
 
-### Prisma 5.x ORM
+### Mongoose 8.23.0 ODM
 
-**Purpose**: Type-safe data access layer for PostgreSQL, auto-generated TypeScript types, database migrations
+**Purpose**: Type-safe data access layer for MongoDB, auto-generated TypeScript types, schema management
 
 **Why Chosen:**
 - **Type Safety**: Auto-generates TypeScript types from schema, eliminating runtime type errors (no manual type definitions)
 - **Developer Experience**: Best-in-class TypeScript integration with IntelliSense, auto-completion, and compile-time validation
-- **Migration System**: Declarative migrations with version control, automatic rollback support, and migration history
-- **Eliminates Repository Layer**: Prisma Client IS the repository layer, reducing boilerplate code by 40-60%
-- **Query Performance**: Optimized SQL generation with automatic connection pooling and query batching
+- **MongoDB Native**: Purpose-built for MongoDB (not a generic ORM like Prisma)
+- **Time Series Collections**: Native support for MongoDB Time Series Collections with TTL and automatic compression
+- **Middleware System**: Powerful pre/post hooks for automatic orgId injection, audit logging, and data transformation
 
 **Alternatives Considered:**
 
 | Alternative | Why Not Chosen |
 |------------|----------------|
-| **TypeORM** | Less TypeScript-native; more boilerplate; migration system less robust; slower query generation |
-| **Sequelize** | JavaScript-first (TypeScript support is secondary); verbose API; no auto-generated types |
-| **Knex.js** | Raw SQL builder (no type safety); manual type definitions required; no schema management |
-| **pg (node-postgres)** | Too low-level; no type safety; manual query building; no migration system |
+| **TypeORM** | Originally designed for SQL databases; MongoDB support is secondary; less native time-series support |
+| **Prisma** | Originally designed for SQL; MongoDB support is limited; complex Time Series queries require raw queries |
+| **Mikro-ORM** | Smaller ecosystem; less TypeScript-native; MongoDB support less mature |
+| **Motor (async)** | Low-level driver; no type safety; requires manual type definitions; no schema management |
 
 **Trade-offs:**
-- **Learning Curve**: Prisma's opinionated approach requires unlearning traditional ORM patterns
-- **Raw SQL Escapes**: Complex TimescaleDB queries (time_bucket, continuous aggregates) require `prisma.$queryRaw` escapes
-- **Migration Customization**: TimescaleDB-specific features (hypertables, compression policies) require manual SQL migrations
+- **Learning Curve**: Mongoose's middleware system and hooks require understanding MongoDB-specific patterns
+- **Transaction Limitations**: Time Series Collections don't support multi-document transactions (use sequential operations)
+- **Schema Flexibility**: Mongoose schemas are flexible but need explicit definition (not auto-inferred like Prisma)
 
 **Performance Metrics:**
-- **Query Generation**: <5ms overhead for type-safe queries vs raw SQL
-- **Connection Pooling**: Automatic pooling reduces connection overhead by 80%
+- **Query Execution**: <50ms p99 for aggregation pipelines on time-series data
 - **Type Safety**: 100% type coverage for database operations
+- **Schema Validation**: Built-in Zod integration for runtime validation
 
 **Code Example:**
 ```typescript
 // Type-safe query with auto-completion
-const devices = await prisma.device.findMany({
-  where: {
-    orgId: orgId,
-    tags: { hasSome: ['zone-a'] }
+const devices = await Device.find({
+  orgId: new ObjectId(orgId),
+  tags: { $in: ['zone-a'] }
+}).lean();
+
+// Time Series aggregation
+const stats = await DeviceState.aggregate([
+  {
+    $match: {
+      'metadata.deviceId': 'sensor-123',
+      'timestamp': { $gte: new Date(Date.now() - 7*24*60*60*1000) }
+    }
   },
-  include: {
-    states: {
-      take: 1,
-      orderBy: { timestamp: 'desc' }
+  {
+    $group: {
+      _id: {
+        $dateTrunc: {
+          date: '$timestamp',
+          unit: 'hour',
+          binSize: 1
+        }
+      },
+      avg: { $avg: '$data.temperature' }
     }
   }
-});
-// TypeScript knows the exact shape of 'devices'
+]);
+// TypeScript knows the exact shape of aggregation results
 ```
 
 **When to Reconsider:**
-- Need for complex raw SQL queries exceeds 50% of queries (use Knex.js)
-- Team prefers traditional ORM patterns (use TypeORM)
-- Non-relational database migration (use native database clients)
+- Need for complex JOIN operations across collections (use SQL database)
+- Team prefers SQL and schema-driven databases (use PostgreSQL with Prisma)
+- Non-MongoDB migration (use native database clients)
 
 **Related Technologies:**
-- [PostgreSQL + TimescaleDB](#postgresql-15-with-timescaledb-213) (underlying database)
+- [MongoDB 8 with Time Series Collections](#mongodb-8-with-time-series-collections) (underlying database)
 - [TypeScript 5.x](#typescript-5x) (type system)
+- [Zod](#zod) (runtime validation)
 
 ---
 
@@ -755,48 +786,51 @@ Data Processing:      Real-time data aggregation and filtering
 
 ## Frontend Technologies
 
-### Next.js 14
+### Next.js 16.1.6
 
-**Purpose**: React framework with server-side rendering (SSR), static site generation (SSG), and API routes
+**Purpose**: React framework with server-side rendering (SSR), App Router, and integrated real-time features
 
 **Why Chosen:**
-- **SSR for Fast TTI**: Server-side rendering reduces dashboard Time to Interactive by 40-60%
-- **API Routes Co-Located**: API routes live alongside frontend code (monorepo benefits)
+- **Turbopack Build Tool**: Built-in Turbopack for 5-10x faster builds compared to Webpack
+- **App Router Stability**: Latest App Router with React Server Components (RSC) at production-ready maturity
 - **Built-in Optimizations**: Image optimization, font optimization, automatic code splitting
-- **Edge Caching**: Deploy to Vercel Edge for <50ms TTFB (Time to First Byte)
-- **App Router (RSC)**: React Server Components for faster data fetching
+- **Protected Routes**: Seamless integration with authentication middleware
+- **Real-time Support**: Native WebSocket and Socket.io integration for live dashboards
+- **Vercel Deployment**: Optimized for edge deployment with <50ms TTFB
 
 **Alternatives Considered:**
 
 | Alternative | Why Not Chosen |
 |------------|----------------|
-| **Vite + React** | No SSR (slower TTI); no built-in API routes; manual optimization needed |
-| **Remix** | Smaller community; less mature; limited hosting options (Vercel, Netlify only) |
-| **Create React App** | Deprecated; no SSR; slower build times; not maintained |
-| **Astro** | Content-focused (not ideal for real-time dashboards); limited React interactivity |
+| **Vite + React** | No SSR (slower TTI); no built-in protection for auth; manual optimization needed |
+| **Remix** | Smaller ecosystem; action-based routing differs from industry standard; fewer integrations |
+| **Create React App** | Deprecated; no SSR; Webpack build times; not actively maintained |
+| **Astro** | Content-focused (not ideal for real-time dashboards); less React interactivity |
 
 **Trade-offs:**
 - **Complexity**: RSC (React Server Components) adds client/server boundary complexity
 - **Server Component Restrictions**: Server components can't use React hooks (useState, useEffect)
-- **Vendor Lock-in**: Best experience on Vercel (self-hosting requires more configuration)
+- **Learning Curve**: 1-2 weeks to master App Router and RSC patterns
 
 **Performance Metrics:**
 - **Time to Interactive (TTI)**: 1.5-2 seconds (vs 3-5 seconds for SPA)
 - **First Contentful Paint (FCP)**: 0.8-1.2 seconds
-- **Build Time**: 20-60 seconds for 100+ pages
+- **Build Time**: 5-15 seconds for full rebuild (Turbopack)
 - **Bundle Size**: Automatic code splitting reduces initial bundle by 40-60%
 
-**SSR Example:**
+**Protected Routes Example:**
 ```typescript
-// Server component (runs on server)
-export default async function DashboardPage({ params }: { params: { id: string } }) {
-  const dashboard = await fetch(`/api/dashboards/${params.id}`).then(r => r.json());
+// app/workflows/page.tsx - Auto-protected with ProtectedRoute wrapper
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+
+export default async function WorkflowsPage() {
+  const workflows = await fetch(`/api/workflows`).then(r => r.json());
 
   return (
     <div>
-      <h1>{dashboard.name}</h1>
+      <h1>Workflows</h1>
       {/* Client component for interactivity */}
-      <DashboardCanvas blocks={dashboard.blocks} />
+      <WorkflowsList workflows={workflows} />
     </div>
   );
 }
@@ -804,131 +838,183 @@ export default async function DashboardPage({ params }: { params: { id: string }
 
 **When to Reconsider:**
 - No need for SSR (use Vite + React for simplicity)
-- Team lacks Next.js expertise (use Create React App or Vite)
-- Dashboard is entirely client-side rendered (use Vite)
+- Team lacks Next.js expertise and build time is critical (use Vite)
+- Fully client-side rendering required (use Vite + React)
 
 **Related Technologies:**
-- [React 18](#react-18) (UI library)
-- [Zustand](#zustand-4x) (state management)
+- [React 19](#react-19) (UI library)
+- [Redux Toolkit](#redux-toolkit-2112) (state management)
+- [Tailwind CSS v4](#tailwind-css-v4) (styling)
 
 ---
 
-### React 18
+### React 19.2.4
 
-**Purpose**: Component-based UI library for building dashboards
+**Purpose**: Component-based UI library for building interactive real-time dashboards
 
 **Why Chosen:**
 - **Virtual DOM**: Efficient diffing for high-frequency dashboard updates (100+ updates/sec)
-- **Concurrent Rendering**: React 18 Concurrent Mode prioritizes urgent updates (user input) over background updates
-- **Component Reusability**: Dashboard blocks are reusable React components
+- **Use Actions**: Simplified async operations and server-side state mutations
+- **Concurrent Rendering**: Automatic prioritization of urgent updates (user input) over background tasks
+- **Component Reusability**: Dashboard blocks are reusable React components with hooks
 - **Largest Ecosystem**: 2+ million packages, extensive community support
-- **Proven at Scale**: Powers Facebook, Netflix, Airbnb dashboards
+- **React Flow Integration**: Seamless support for React Flow visual workflow editor
 
 **Alternatives Considered:**
 
 | Alternative | Why Not Chosen |
 |------------|----------------|
-| **Vue 3** | Smaller ecosystem; less mature for large-scale applications |
-| **Angular** | Heavier framework (RxJS, TypeScript decorators); slower development velocity |
-| **Svelte** | Smaller ecosystem; less mature tooling; compile-time framework (harder to debug) |
-| **Solid.js** | Very small ecosystem; lacks mature component libraries |
+| **Vue 3** | Smaller ecosystem; less mature for large-scale applications; fewer integrations |
+| **Angular** | Heavier framework (RxJS, TypeScript decorators); slower development velocity; steeper learning curve |
+| **Svelte** | Smaller ecosystem; less mature tooling; compile-time framework (harder to debug); fewer components |
+| **Solid.js** | Very small ecosystem; lacks mature component libraries; minimal adoption in enterprise |
 
 **Trade-offs:**
-- **Bundle Size**: React 18 + React DOM = ~45KB gzipped (vs ~10KB for Svelte)
-- **Learning Curve**: Hooks, Context API, and Concurrent Mode require 2-3 weeks to master
+- **Bundle Size**: React 19 + React DOM = ~48KB gzipped (slightly larger than 18)
+- **Learning Curve**: Hooks, Server Components, and useActions require 2-3 weeks to master
 - **Re-Rendering Complexity**: Requires understanding `useMemo`, `useCallback`, `React.memo` for performance
 
 **Performance Metrics:**
 - **Update Throughput**: 100+ component updates/sec without frame drops
-- **Initial Load**: ~45KB gzipped for React 18 + React DOM
+- **Initial Load**: ~48KB gzipped for React 19 + React DOM
 - **Re-Render Overhead**: <5ms for 100 components with proper memoization
+- **Server Actions**: Eliminates need for separate API calls (direct server mutation)
 
-**Concurrent Mode Example:**
+**Actions & Transitions Example:**
 ```typescript
-import { startTransition } from 'react';
+'use client';
+import { useActionState, useTransition } from 'react';
 
-// Urgent update (user input)
-setSearchQuery(e.target.value);
+export function CreateDeviceForm() {
+  const [isPending, startTransition] = useTransition();
+  const [state, formAction] = useActionState(async (prevState, formData) => {
+    // Server action - runs on server, returns to client
+    return await createDevice({
+      name: formData.get('name'),
+      deviceId: formData.get('deviceId'),
+    });
+  }, null);
 
-// Deferred update (dashboard block re-render)
-startTransition(() => {
-  setDashboardBlocks(newBlocks);
-});
+  return (
+    <form action={formAction}>
+      <input name="name" required />
+      <input name="deviceId" required />
+      <button disabled={isPending}>
+        {isPending ? 'Creating...' : 'Create Device'}
+      </button>
+    </form>
+  );
+}
 ```
+
+**Features Used:**
+- **useTransition**: Smooth transitions between pending states
+- **useActionState**: Form submission with server actions
+- **React.lazy**: Code splitting for dashboard components
+- **Suspense**: Loading boundaries for async components
+- **useOptimistic**: Optimistic UI updates before server response
 
 **When to Reconsider:**
 - Need for <10KB bundle size (use Svelte or Solid.js)
 - Team prefers Vue (use Vue 3 + Vite)
+- No need for React 19's new actions (React 18 sufficient)
 
 **Related Technologies:**
-- [Next.js 14](#nextjs-14) (React framework)
-- [Zustand](#zustand-4x) (state management)
+- [Next.js 16](#nextjs-16-1-6) (React framework)
+- [Redux Toolkit](#redux-toolkit-2112) (state management)
+- [React Flow](#visual-workflow-editor) (workflow visualization)
 
 ---
 
-### Zustand 4.x
+### Redux Toolkit 2.11.2
 
-**Purpose**: Lightweight state management for dashboard state
+**Purpose**: Centralized state management for auth, UI, dashboard, workflows, and WebSocket state
 
 **Why Chosen:**
-- **Minimal Boilerplate**: 10x less code than Redux for the same functionality
-- **No Provider Wrapping**: No need for `<Provider>` wrapper (unlike Redux or Context API)
-- **TypeScript-Native**: First-class TypeScript support with IntelliSense
-- **Devtools Integration**: Redux DevTools integration for debugging
-- **Small Bundle Size**: ~1KB gzipped (vs ~8KB for Redux)
+- **Time-Travel Debugging**: Redux DevTools integration for debugging complex state changes
+- **Async Thunk Support**: Built-in async thunk pattern for API calls and side effects
+- **Immutable Updates**: Immer integration for safe immutable state updates
+- **TypeScript-Native**: Full TypeScript support with inferred action types and state shape
+- **Middleware System**: Extensible middleware for logging, analytics, error handling
+- **DevTools Integration**: Visual state inspection and time-travel debugging
 
 **Alternatives Considered:**
 
 | Alternative | Why Not Chosen |
 |------------|----------------|
-| **Redux Toolkit** | 8x more boilerplate; heavier bundle (8KB); overkill for dashboard state |
-| **Context API** | Performance issues with frequent updates (re-renders entire subtree) |
-| **MobX** | Implicit reactivity is harder to debug; less TypeScript-friendly |
-| **Jotai / Recoil** | Atom-based approach is more complex for dashboard state |
+| **Zustand** | No time-travel debugging; inadequate for complex multi-slice state; less middleware support |
+| **Context API** | Performance issues with frequent updates (re-renders entire subtree); no middleware support |
+| **MobX** | Implicit reactivity is harder to debug; less TypeScript-friendly; steeper learning curve |
+| **Jotai / Recoil** | Atom-based approach is more complex for centralized app state; smaller ecosystem |
 
 **Trade-offs:**
-- **No Time-Travel Debugging**: Unlike Redux, Zustand doesn't support time-travel debugging out of the box
-- **Smaller Community**: 10x smaller community than Redux (fewer learning resources)
+- **Bundle Size**: ~8KB gzipped (larger than Zustand, justified by features)
+- **Boilerplate**: More verbose than Zustand (slices, reducers, actions) but more structured
 
 **Performance Metrics:**
-- **Bundle Size**: ~1KB gzipped (vs ~8KB for Redux)
-- **Update Performance**: <1ms for state updates (no middleware overhead)
+- **Bundle Size**: ~8KB gzipped (acceptable for state management features)
+- **Update Performance**: <2ms for state updates with Immer integration
+- **Selector Memoization**: Prevents unnecessary re-renders with reselect pattern
 
 **State Management Example:**
 ```typescript
-import { create } from 'zustand';
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 
-interface DashboardState {
-  blocks: Block[];
-  liveData: Map<string, any>;
-  addBlock: (block: Block) => void;
-  updateLiveData: (deviceId: string, data: any) => void;
-}
+// Async thunk for API calls
+export const loadWorkflows = createAsyncThunk<Workflow[], void>(
+  'workflow/load',
+  async () => {
+    const response = await apiClient.get<Workflow[]>('/workflows');
+    return response.data;
+  }
+);
 
-export const useDashboardStore = create<DashboardState>((set) => ({
-  blocks: [],
-  liveData: new Map(),
-  addBlock: (block) => set((state) => ({ blocks: [...state.blocks, block] })),
-  updateLiveData: (deviceId, data) =>
-    set((state) => {
-      const liveData = new Map(state.liveData);
-      liveData.set(deviceId, data);
-      return { liveData };
-    }),
-}));
+// Slice with reducers and extra reducers for async thunks
+const workflowSlice = createSlice({
+  name: 'workflow',
+  initialState: { workflows: [], loading: false },
+  reducers: {
+    addWorkflow: (state, action) => {
+      state.workflows.push(action.payload);
+    },
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(loadWorkflows.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(loadWorkflows.fulfilled, (state, action) => {
+        state.workflows = action.payload;
+        state.loading = false;
+      });
+  },
+});
 
 // Usage in component
-const { blocks, addBlock } = useDashboardStore();
+const { workflows, loading } = useSelector((state) => state.workflow);
+const dispatch = useDispatch();
+
+useEffect(() => {
+  dispatch(loadWorkflows());
+}, [dispatch]);
 ```
 
+**Slices Implemented:**
+- **authSlice**: user, tokens, loading, session management
+- **uiSlice**: theme, modals, notifications, toast messages
+- **dashboardSlice**: layouts, blocks, hybrid localStorage + MongoDB sync
+- **websocketSlice**: connection state, subscriptions, real-time updates
+- **workflowSlice**: nodes, edges, execution state, workflow definitions
+
 **When to Reconsider:**
-- Need for time-travel debugging (use Redux Toolkit)
-- Complex async state management with sagas (use Redux Toolkit + Redux Saga)
-- Team has deep Redux expertise (stick with Redux)
+- Simple local component state (use useState)
+- Very small app with minimal cross-component state (use Context API)
+- Need for atomic, granular state updates (use Jotai/Recoil)
 
 **Related Technologies:**
-- [React 18](#react-18) (UI library)
+- [React 19](#react-19) (UI library)
 - [TanStack Query](#tanstack-query-react-query) (server state)
+- [Redux DevTools](#monitoring--observability) (debugging)
 
 ---
 
@@ -994,53 +1080,155 @@ const { mutate } = useMutation({
 
 ---
 
-### Tailwind CSS + shadcn/ui
+### Tailwind CSS v4.1.18
 
-**Purpose**: Utility-first CSS framework + pre-built React components
+**Purpose**: Utility-first CSS framework with modern CSS features and PostCSS integration
 
 **Why Chosen:**
+- **Single @import Syntax**: Simplified CSS with `@import "tailwindcss"` (no separate layer directives)
+- **Modern CSS Variables**: Native CSS variable support for dynamic theming (dark mode)
 - **Rapid Development**: Build UI 2-5x faster with utility classes
-- **Consistent Design System**: Pre-defined spacing, colors, typography scales
-- **No CSS File Bloat**: Purge unused CSS (final bundle <10KB for most apps)
-- **shadcn/ui Components**: Copy-paste React components (not npm dependency) for full customization
-- **TypeScript Support**: shadcn/ui components are TypeScript-native
+- **Dark Mode Support**: Built-in `darkMode: 'class'` for theme toggling with next-themes
+- **Next.js Integration**: Seamless integration with Next.js 16 and Turbopack
+- **@tailwindcss/postcss**: PostCSS plugin for optimized builds
 
 **Alternatives Considered:**
 
 | Alternative | Why Not Chosen |
 |------------|----------------|
 | **Material-UI (MUI)** | Heavy bundle size (100KB+); harder to customize; opinionated design |
-| **Ant Design** | Heavy bundle size; opinionated design; less flexible |
-| **Bootstrap** | Not utility-first; requires writing custom CSS; larger bundle |
-| **CSS Modules** | Too low-level; no design system; manual consistency enforcement |
+| **Ant Design** | Heavy bundle size; opinionated design; less flexible for real-time dashboards |
+| **Bootstrap** | Not utility-first; requires writing custom CSS; larger bundle; outdated theming |
+| **CSS Modules** | Too low-level; no design system; manual consistency enforcement; difficult dark mode |
 
 **Trade-offs:**
-- **Learning Curve**: 2-3 days to learn utility class naming conventions
-- **HTML Clutter**: Many utility classes per element can be verbose
-- **Build Step**: Requires PostCSS plugin for processing
+- **Learning Curve**: 2-3 days to learn utility class naming conventions (utility vs component classes)
+- **HTML Clutter**: Many utility classes per element can be verbose (consider @apply for complex patterns)
+- **Build Step**: Requires @tailwindcss/postcss plugin for processing
 
 **Performance Metrics:**
-- **Bundle Size**: <10KB after PurgeCSS (vs 100KB+ for MUI)
+- **Bundle Size**: ~15KB after PurgeCSS (vs 100KB+ for MUI)
 - **Development Speed**: 2-5x faster UI development compared to custom CSS
-- **Customization**: Full control over component styles (copy-paste approach)
+- **Build Time**: <2 seconds for production build (tree-shaking removes unused utilities)
+- **CSS Variables**: <1KB overhead for theming system
 
-**Usage Example:**
+**Dark Mode Example:**
 ```tsx
-import { Button } from '@/components/ui/button';
+// postcss.config.mjs
+export default {
+  plugins: {
+    '@tailwindcss/postcss': {},
+    autoprefixer: {},
+  },
+};
 
-// shadcn/ui button with Tailwind classes
-<Button className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
-  Create Device
-</Button>
+// tailwind.config.ts
+export default {
+  darkMode: 'class', // Enable class-based dark mode
+  content: ['./app/**/*.{js,ts,jsx,tsx}'],
+  theme: {
+    extend: {
+      colors: {
+        background: 'var(--background)',
+        foreground: 'var(--foreground)',
+      },
+    },
+  },
+};
+
+// Usage in component
+<div className="bg-white dark:bg-slate-900 text-black dark:text-white">
+  Dashboard Content
+</div>
 ```
+
+**Critical Configuration:**
+- **`darkMode: 'class'`**: REQUIRED for next-themes integration (toggles `dark` class on `<html>`)
+- **`@tailwindcss/postcss`**: New v4 plugin (replaces old `tailwindcss` package)
+- **`@import "tailwindcss"`**: Single import statement (not v3 layer directives)
 
 **When to Reconsider:**
 - Team prefers component libraries with opinionated design (use MUI or Ant Design)
-- No need for customization (use pre-built component library)
+- No need for dark mode support (still use Tailwind, just simpler config)
+- Heavy custom styling needed (consider CSS-in-JS like styled-components)
 
 **Related Technologies:**
-- [React 18](#react-18) (UI library)
-- [Next.js 14](#nextjs-14) (framework)
+- [React 19](#react-19) (UI library)
+- [Next.js 16](#nextjs-16-1-6) (framework)
+- [next-themes](#frontend-technologies) (dark mode provider)
+
+---
+
+### React Flow 11.11.4
+
+**Purpose**: Visual workflow editor with node-based interface for workflow composition
+
+**Why Chosen:**
+- **Declarative Node System**: Built-in Handle components for connection points (input/output)
+- **Drag-and-Drop**: Native drag-and-drop node placement with grid snapping
+- **MiniMap & Controls**: Built-in minimap, zoom controls, and background components
+- **Custom Nodes**: Extensible custom node components for device, condition, action, transform types
+- **TypeScript-Native**: Full TypeScript support with node/edge type safety
+- **Active Development**: Well-maintained with regular updates and feature additions
+
+**Alternatives Considered:**
+
+| Alternative | Why Not Chosen |
+|------------|----------------|
+| **Xyflow** | Newer fork of React Flow; smaller community; API differs |
+| **Reactflow** | Original React Flow (React Flow is maintained fork); feature parity |
+| **GoJS** | Powerful but commercial ($3,995+/year); overkill for workflow editor |
+| **Cytoscape.js** | Lower-level graph library; more boilerplate required; less React-native |
+| **Custom SVG** | Too much boilerplate; complex gesture handling; no built-in features |
+
+**Trade-offs:**
+- **Bundle Size**: ~100KB gzipped (acceptable for visual editor feature)
+- **Learning Curve**: 2-3 days to understand Handle positioning and edge connections
+- **Performance**: Can be slow with >500 nodes (mitigated by virtualization)
+
+**Performance Metrics:**
+- **Bundle Size**: ~100KB gzipped for React Flow + dependencies
+- **Rendering Speed**: <100ms for 100 nodes, <500ms for 500 nodes
+- **Interaction Latency**: <16ms for drag operations (smooth 60fps)
+
+**Custom Node Example:**
+```typescript
+import { Handle, Position, type NodeProps } from 'reactflow';
+
+export function DeviceNode({ data, selected }: NodeProps) {
+  return (
+    <div className={`node ${selected ? 'selected' : ''}`}>
+      {/* Input handle (left) */}
+      <Handle type="target" position={Position.Left} />
+
+      {/* Node content */}
+      <div className="p-2">
+        <strong>{data.label}</strong>
+        <div className="text-sm text-gray-600">{data.deviceId}</div>
+      </div>
+
+      {/* Output handle (right) */}
+      <Handle type="source" position={Position.Right} />
+    </div>
+  );
+}
+```
+
+**Features Implemented:**
+- **TriggerNode**: Device state triggers, time-based schedules, manual execution
+- **ConditionNode**: Branching logic (if/then/else, comparisons)
+- **ActionNode**: Send MQTT, publish alarms, update devices
+- **TransformNode**: Data mapping, aggregation, filtering
+
+**When to Reconsider:**
+- Need for more complex graph features (use GoJS or Cytoscape)
+- Performance with >1000 nodes (virtualize or use alternative)
+- Team prefers traditional form-based interface (use form builder)
+
+**Related Technologies:**
+- [React 19](#react-19) (UI library)
+- [Redux Toolkit](#redux-toolkit-2112) (workflow state management)
+- [TypeScript 5.x](#typescript-5x) (type safety)
 
 ---
 
@@ -1241,13 +1429,14 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
 - **PromQL Query Language**: Powerful query language for aggregations and alerting
 - **Grafana Dashboards**: Pre-built dashboards for common metrics (CPU, memory, latency)
 - **Industry Standard**: Used by Google, Uber, Spotify, Netflix
+- **MongoDB Integration**: Native MongoDB exporters for monitoring Time Series Collections
 
 **Alternatives Considered:**
 
 | Alternative | Why Not Chosen |
 |------------|----------------|
 | **Datadog** | Expensive ($15-30/host/month); vendor lock-in; overkill for <100 hosts |
-| **New Relic** | Expensive; vendor lock-in; complex pricing |
+| **New Relic** | Expensive; vendor lock-in; complex pricing; limited MongoDB support |
 | **CloudWatch** | AWS-only; more expensive than self-hosted; limited query capabilities |
 | **InfluxDB + Telegraf** | Requires separate data storage (InfluxDB); less mature ecosystem |
 
@@ -1276,9 +1465,11 @@ http_requests_total{route, status}
 workflow_execution_duration_seconds{workflow_id}
 workflow_execution_errors_total{workflow_id}
 
-# Database metrics
-postgres_connections{state}
-timescaledb_write_rate{table}
+# MongoDB metrics
+mongodb_connections{state}
+mongodb_timeseries_compression_ratio
+device_state_collection_count
+device_state_storage_size
 ```
 
 **When to Reconsider:**
@@ -1289,6 +1480,7 @@ timescaledb_write_rate{table}
 **Related Technologies:**
 - [Fluent Bit + Loki](#fluent-bit--loki) (log aggregation)
 - [Jaeger](#jaeger) (distributed tracing)
+- [MongoDB 8](#mongodb-8-with-time-series-collections) (database monitoring)
 
 ---
 
@@ -1423,7 +1615,7 @@ timescaledb_write_rate{table}
 
 **Infrastructure:**
 - Docker Compose on single VPS (8-core, 16GB RAM, 200GB SSD)
-- PostgreSQL + TimescaleDB
+- MongoDB 8 Replica Set (rs0)
 - Redis (single instance)
 - EMQX (single node)
 - NATS (single server)
@@ -1436,6 +1628,7 @@ timescaledb_write_rate{table}
 
 **Performance:**
 - 10,000 devices at 1 message/min = 167 msg/sec
+- Device state ingestion: 100k+ writes/sec (MongoDB Time Series)
 - Dashboard latency: <100ms p99
 - API latency: <200ms p95
 
@@ -1443,6 +1636,7 @@ timescaledb_write_rate{table}
 - >10k devices
 - >1,000 req/sec
 - Single VPS CPU >70%
+- MongoDB storage >100GB
 
 ---
 
@@ -1450,21 +1644,23 @@ timescaledb_write_rate{table}
 
 **Infrastructure:**
 - Docker Compose on scaled VPS (16-core, 32GB RAM, 500GB SSD)
-- PostgreSQL + TimescaleDB (vertical scaling)
+- MongoDB 8 Replica Set (3 nodes for HA)
 - Redis Sentinel (3 nodes for HA)
 - EMQX cluster (3 nodes)
 - NATS cluster (3 servers)
 
 **Monthly Costs:**
 - Primary VPS: $150-250 (16-core, 32GB RAM)
+- MongoDB replica nodes (2 additional VPS): $80-120
 - Redis Sentinel (2 additional VPS): $40-60
 - EMQX cluster (2 additional VPS): $80-120
 - Backup storage: $10-20
 - Monitoring: $20-30
-- **Total: $300-480/month**
+- **Total: $380-600/month**
 
 **Performance:**
 - 100,000 devices at 1 message/min = 1,667 msg/sec
+- Time-series compression: 70-90% storage savings
 - Dashboard latency: <150ms p99
 - API latency: <200ms p95
 
@@ -1472,6 +1668,7 @@ timescaledb_write_rate{table}
 - >100k devices
 - Need auto-scaling
 - Multi-region deployment
+- 90-day data retention exceeds available storage
 
 ---
 
@@ -1479,7 +1676,7 @@ timescaledb_write_rate{table}
 
 **Infrastructure:**
 - Kubernetes cluster (EKS/GKE/AKS)
-- PostgreSQL + TimescaleDB (read replicas, sharding by org_id)
+- MongoDB 8 Sharded Cluster (sharding by org_id)
 - Redis Cluster (6+ nodes)
 - EMQX cluster (10+ nodes)
 - NATS cluster (5+ servers)
@@ -1487,23 +1684,25 @@ timescaledb_write_rate{table}
 **Monthly Costs:**
 - Managed Kubernetes: $300-500 (EKS/GKE control plane + worker nodes)
 - Worker nodes (20+ nodes): $400-600
-- Managed databases (RDS/Cloud SQL): $200-400
+- Managed MongoDB Atlas: $300-600 (sharded clusters)
 - Redis Cluster: $100-200
 - Load balancers: $50-100
 - Monitoring (Datadog/New Relic): $200-500
 - Backup & disaster recovery: $50-100
-- **Total: $1,300-2,400/month**
+- **Total: $1,400-2,600/month**
 
 **Performance:**
 - 1,000,000 devices at 1 message/min = 16,667 msg/sec
+- Time-series compression across all shards: 70-90%
 - Dashboard latency: <200ms p99
 - API latency: <200ms p95
-- 99.9% uptime SLA
+- 99.9% uptime SLA (multi-region replication)
 
 **When to Scale:**
 - >1M devices
 - Multi-region deployment
-- Compliance requirements (SOC 2, HIPAA)
+- Compliance requirements (SOC 2, HIPAA, EPA)
+- Need for global low-latency access
 
 ---
 
@@ -1530,23 +1729,27 @@ timescaledb_write_rate{table}
 
 ---
 
-### 2. Unified Database (PostgreSQL + TimescaleDB) vs Polyglot Persistence
+### 2. Unified Database (MongoDB) vs Polyglot Persistence
 
-**Decision:** Unified database for all data (time-series, relational)
+**Decision:** Unified database for all data (time-series + relational + documents)
 
 **Rationale:**
-- **Operational Simplicity**: Single database to backup, monitor, tune
-- **Transactional Integrity**: Devices and device states in same ACID transaction
-- **Lower Latency**: No network hop between relational and time-series databases
-- **Cost Efficiency**: Single database license/hosting cost
+- **Native Time Series**: MongoDB Time Series Collections are purpose-built for sensor data (not bolt-on)
+- **Operational Simplicity**: Single database to backup, monitor, tune (no multiple systems)
+- **Document Flexibility**: BSON documents support flexible schema for devices, workflows, audit data
+- **Horizontal Scaling**: Native sharding by `orgId` or `deviceId` for multi-million device deployments
+- **High Write Throughput**: 100,000+ writes/sec vs PostgreSQL's 50,000 writes/sec
+- **EPA Compliance**: Built-in TTL (`expireAfterSeconds`) for 90-day retention policy
 
 **Trade-offs:**
-- **Less Specialized**: TimescaleDB compression (3:1) is worse than InfluxDB (5:1)
-- **Scaling Complexity**: Sharding PostgreSQL is harder than scaling dedicated time-series DB
+- **No ACID Transactions**: Time Series Collections don't support multi-document transactions (use sequential operations)
+- **Aggregation Learning Curve**: MongoDB aggregation pipelines differ from SQL joins
+- **Memory Usage**: MongoDB uses more RAM per stored GB than PostgreSQL (offset by compression savings)
 
 **When to Reconsider:**
-- >10 million devices (consider InfluxDB or QuestDB for time-series only)
-- Need >5:1 compression ratio (use InfluxDB)
+- Heavy relational operations (use PostgreSQL + Prisma)
+- Team exclusively SQL-focused (learning curve for aggregation pipelines)
+- <10k devices (PostgreSQL still viable, but MongoDB more future-proof)
 
 ---
 
@@ -1640,19 +1843,21 @@ timescaledb_write_rate{table}
 
 | Component | Maturity | Community Size | Risk Level | Alternatives Considered |
 |-----------|----------|----------------|------------|-------------------------|
-| **Next.js 14** | Stable | Large (500k+ weekly downloads) | Low | Vite + React, Remix |
+| **Next.js 16** | Stable | Large (500k+ weekly downloads) | Low | Vite + React, Remix |
+| **React 19** | Stable | Large (10M+ weekly downloads) | Low | Vue, Angular, Svelte |
 | **Fastify 4.x** | Stable | Medium (100k+ weekly downloads) | Low | Express, Hono |
-| **PostgreSQL + TimescaleDB** | Stable | Large (1M+ production deployments) | Low | InfluxDB, QuestDB, MongoDB |
-| **Prisma 5.x** | Stable | Large (200k+ weekly downloads) | Low | TypeORM, Sequelize, Knex.js |
+| **MongoDB 8 + Time Series** | Stable | Large (1M+ production deployments) | Low | InfluxDB, QuestDB, PostgreSQL + TimescaleDB |
+| **Mongoose 8.23** | Stable | Large (100k+ weekly downloads) | Low | TypeORM, Prisma (MongoDB), Motor |
 | **EMQX 5.x** | Production | Medium (10k+ production deployments) | Medium | VerneMQ, Mosquitto, AWS IoT Core |
 | **NATS 2.10** | Production | Medium (10k+ production deployments) | Low | RabbitMQ, Kafka, Redis Streams |
 | **Redis 7.2** | Mature | Large (1M+ production deployments) | Low | Memcached, in-memory Maps |
 | **Docker Compose** | Mature | Large (widely used) | Low | Docker Swarm, Kubernetes (initial) |
 | **Kubernetes** | Mature | Large (industry standard) | Medium | Used after scale (10k+ devices) |
-| **React 18** | Stable | Large (10M+ weekly downloads) | Low | Vue, Angular, Svelte |
-| **Zustand 4.x** | Stable | Medium (50k+ weekly downloads) | Low | Redux, Context API, MobX |
+| **Redux Toolkit 2.11** | Stable | Large (100k+ weekly downloads) | Low | Zustand, Context API, MobX |
 | **TanStack Query** | Stable | Large (100k+ weekly downloads) | Low | SWR, Apollo Client, RTK Query |
 | **Socket.io 4.x** | Stable | Large (200k+ weekly downloads) | Low | SSE, raw WebSocket, GraphQL Subscriptions |
+| **Tailwind CSS v4** | Stable | Large (1M+ weekly downloads) | Low | Material-UI, Ant Design, Bootstrap |
+| **React Flow** | Stable | Medium (50k+ weekly downloads) | Low | Xyflow, Reactflow alternatives |
 
 ---
 

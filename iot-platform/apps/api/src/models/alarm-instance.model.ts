@@ -147,7 +147,6 @@ const alarmInstanceSchema = new Schema<IAlarmInstance>({
   },
   resolvedTimestamp: {
     type: Date,
-    index: true,
   },
   acknowledgedBy: {
     type: String,

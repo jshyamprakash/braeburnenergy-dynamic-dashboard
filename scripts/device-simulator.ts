@@ -17,6 +17,9 @@ import { ulid } from 'ulid';
 
 // Configuration
 const API_URL = process.env.API_URL || 'http://localhost:3001';
+let authToken: string | null = null;
+let refreshToken: string | null = null;
+let tokenRefreshInterval: NodeJS.Timeout | null = null;
 
 /**
  * Note: Multi-Tenancy Support
@@ -24,6 +27,69 @@ const API_URL = process.env.API_URL || 'http://localhost:3001';
  * them to the default organization (aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa).
  * No changes needed for POC phase - the API handles organization assignment.
  */
+
+/**
+ * Authenticate with the API
+ */
+async function authenticate(): Promise<void> {
+  try {
+    const response = await fetch(`${API_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: 'admin',
+        password: 'Admin@12345',
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Authentication failed: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    authToken = result.data.accessToken;
+    refreshToken = result.data.refreshToken;
+    console.log('✅ Authenticated successfully\n');
+
+    // Schedule token refresh every 10 minutes (before 15-minute expiry)
+    if (tokenRefreshInterval) clearInterval(tokenRefreshInterval);
+    tokenRefreshInterval = setInterval(refreshAccessToken, 10 * 60 * 1000);
+  } catch (error) {
+    console.error('❌ Authentication failed:', error);
+    throw error;
+  }
+}
+
+/**
+ * Refresh access token using refresh token
+ */
+async function refreshAccessToken(): Promise<void> {
+  try {
+    if (!refreshToken) {
+      console.log('⚠️  No refresh token available, re-authenticating...');
+      await authenticate();
+      return;
+    }
+
+    const response = await fetch(`${API_URL}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Token refresh failed: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    authToken = result.data.accessToken;
+    refreshToken = result.data.refreshToken;
+    console.log('🔄 Token refreshed');
+  } catch (error) {
+    console.error('⚠️  Token refresh failed, re-authenticating:', error);
+    await authenticate();
+  }
+}
 
 interface DeviceProfile {
   type: string;
@@ -113,9 +179,11 @@ class DeviceSimulator {
     try {
       const response = await fetch(`${API_URL}/devices`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authToken && { Authorization: `Bearer ${authToken}` }),
+        },
         body: JSON.stringify({
-          deviceId: this.deviceId,
           name: `${this.profile.name} ${this.deviceId.slice(-6)}`,
           tags: [this.profile.type, 'simulated', 'demo'],
           attributes: {
@@ -201,7 +269,10 @@ class DeviceSimulator {
     try {
       const response = await fetch(`${API_URL}/devices/${this.deviceId}/states`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authToken && { Authorization: `Bearer ${authToken}` }),
+        },
         body: JSON.stringify({ data }),
       });
 
@@ -289,6 +360,9 @@ async function main() {
 🌐 API: ${API_URL}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `);
+
+  // Authenticate first
+  await authenticate();
 
   // Create devices with random profiles
   const devices: DeviceSimulator[] = [];

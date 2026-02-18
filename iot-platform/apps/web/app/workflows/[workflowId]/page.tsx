@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/lib/store';
-import { loadWorkflow, saveWorkflow, resetWorkflow, executeWorkflow } from '@/lib/store/slices/workflowSlice';
+import { loadWorkflow, saveWorkflow, resetWorkflow, executeWorkflow, removeNode } from '@/lib/store/slices/workflowSlice';
 import WorkflowCanvas from '@/components/workflow/WorkflowCanvas';
 import NodePalette from '@/components/workflow/NodePalette';
 import NodeConfigPanel from '@/components/workflow/NodeConfigPanel';
@@ -11,7 +11,9 @@ import WorkflowToolbar from '@/components/workflow/WorkflowToolbar';
 import ExecutionInputModal from '@/components/workflow/ExecutionInputModal';
 import SettingsModal from '@/components/workflow/SettingsModal';
 import ValidationPanel from '@/components/workflow/ValidationPanel';
+import KeyboardShortcutsHelp from '@/components/workflow/KeyboardShortcutsHelp';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import { useWorkflowKeyboardShortcuts } from '@/hooks/useWorkflowKeyboardShortcuts';
 import { exportWorkflowToJSON } from '@/lib/utils/workflow-export';
 import { toast } from 'sonner';
 
@@ -42,12 +44,14 @@ function WorkflowBuilderPage() {
     validationErrors,
     currentExecutionId,
     executionStatus,
+    selectedNodeId,
   } = useAppSelector(state => state.workflow);
 
   const [isSaving, setIsSaving] = useState(false);
   const [isExecutionModalOpen, setIsExecutionModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isValidationPanelOpen, setIsValidationPanelOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const isNewWorkflow = params.workflowId === 'new';
 
   // Load workflow on mount (if editing existing)
@@ -162,6 +166,26 @@ function WorkflowBuilderPage() {
     }
   };
 
+  // Handle delete selected node
+  const handleDeleteNode = () => {
+    if (selectedNodeId) {
+      const node = nodes.find(n => n.id === selectedNodeId);
+      if (node) {
+        dispatch(removeNode(selectedNodeId));
+        toast.success(`Deleted node: ${node.data.label || selectedNodeId}`);
+      }
+    }
+  };
+
+  // Setup keyboard shortcuts
+  useWorkflowKeyboardShortcuts({
+    onSave: handleSave,
+    onRun: handleRun,
+    onExport: handleExport,
+    onDelete: handleDeleteNode,
+    onShowHelp: () => setIsHelpOpen(true),
+  });
+
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       {/* Toolbar */}
@@ -179,6 +203,7 @@ function WorkflowBuilderPage() {
         onExport={handleExport}
         onSettings={handleSettings}
         onValidation={() => setIsValidationPanelOpen(true)}
+        onShowHelp={() => setIsHelpOpen(true)}
       />
 
       {/* Execution Input Modal */}
@@ -203,6 +228,12 @@ function WorkflowBuilderPage() {
         }}
         onClose={() => setIsSettingsModalOpen(false)}
         onSave={handleSettingsSave}
+      />
+
+      {/* Keyboard Shortcuts Help Modal */}
+      <KeyboardShortcutsHelp
+        isOpen={isHelpOpen}
+        onClose={() => setIsHelpOpen(false)}
       />
 
       {/* Main content */}

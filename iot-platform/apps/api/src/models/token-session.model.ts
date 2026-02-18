@@ -57,7 +57,6 @@ const TokenSessionSchema = new Schema<ITokenSession>(
     expiresAt: {
       type: Date,
       required: true,
-      index: true, // For TTL cleanup
     },
     revokedAt: {
       type: Date,

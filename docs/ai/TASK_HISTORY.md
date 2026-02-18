@@ -10,6 +10,7 @@
 - Visual Workflow Editor Week 3.5: Validation Panel (error display, click-to-navigate, error badges on nodes)
 - Visual Workflow Editor Week 3.6: Export/Import Workflow (JSON download/upload, schema validation, ULID regeneration)
 - Visual Workflow Editor Week 3.7: Settings Modal (workflow metadata editor, dark mode, validation)
+- Visual Workflow Editor Week 3.8: Keyboard Shortcuts (Ctrl/Cmd+S/R/E, Delete key, Help modal, dark mode support)
 
 ## In Progress
 

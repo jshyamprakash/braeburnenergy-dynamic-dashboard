@@ -16,6 +16,7 @@ export interface WorkflowToolbarProps {
   onExport?: () => void;
   onSettings?: () => void;
   onValidation?: () => void;
+  onShowHelp?: () => void;
 }
 
 export default function WorkflowToolbar({
@@ -32,6 +33,7 @@ export default function WorkflowToolbar({
   onExport,
   onSettings,
   onValidation,
+  onShowHelp,
 }: WorkflowToolbarProps) {
   return (
     <div className="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 flex items-center justify-between">
@@ -247,6 +249,27 @@ export default function WorkflowToolbar({
               strokeLinejoin="round"
               strokeWidth={2}
               d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
+            />
+          </svg>
+        </button>
+
+        {/* Help button */}
+        <button
+          onClick={onShowHelp}
+          className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          title="Keyboard shortcuts help (?)"
+        >
+          <svg
+            className="w-5 h-5 text-gray-600 dark:text-gray-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
             />
           </svg>
         </button>
