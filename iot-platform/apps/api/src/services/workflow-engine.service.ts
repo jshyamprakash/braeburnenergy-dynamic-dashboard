@@ -1,5 +1,5 @@
 import { ulid } from 'ulid';
-import mongoose from 'mongoose';
+import type { Server as SocketIOServer } from 'socket.io';
 import {
   WorkflowExecution,
   type ExecutionTrigger,
@@ -8,6 +8,7 @@ import {
 import { Workflow, type WorkflowNode, type WorkflowEdge } from '../models/workflow.model';
 import { WorkflowService } from './workflow.service';
 import { WorkflowNodeHandlers } from './workflow-node-handlers.service';
+import { broadcastWorkflowExecutionStep, broadcastWorkflowExecutionCompleted } from '../websocket/server';
 import type { QueryExecutionsDTO } from '../schemas/workflow.schema';
 
 /**
@@ -19,10 +20,12 @@ import type { QueryExecutionsDTO } from '../schemas/workflow.schema';
 export class WorkflowEngineService {
   private workflowService: WorkflowService;
   private nodeHandlers: WorkflowNodeHandlers;
+  private io?: SocketIOServer;
 
-  constructor() {
+  constructor(io?: SocketIOServer) {
     this.workflowService = new WorkflowService();
     this.nodeHandlers = new WorkflowNodeHandlers();
+    this.io = io;
   }
 
   /**
@@ -363,22 +366,31 @@ export class WorkflowEngineService {
    * Emit WebSocket event for execution updates
    */
   private emitExecutionEvent(eventName: string, data: any) {
-    // Note: Socket.io instance will be injected in real implementation
-    // For now, this is a placeholder
-    // In server.ts, we'll pass the io instance to this service
+    if (!this.io) {
+      console.warn(`[WebSocket] Socket.io not initialized, event ${eventName} not broadcast`);
+      return;
+    }
 
-    // Example:
-    // this.io.to(`workflow:${data.workflowId}`).emit(eventName, data);
-    // this.io.to(`org:${data.orgId}`).emit(eventName, data);
+    // Emit start events (not in broadcast functions, emit directly)
+    if (eventName === 'workflow:execution:started') {
+      this.io.to(`workflow:${data.workflowId}`).emit(eventName, data);
+      this.io.to(`org:${data.orgId}`).emit(eventName, data);
+      console.log(`[WS] Workflow started: ${data.workflowId}`);
+      return;
+    }
+
+    // Emit step events (running, completed, failed)
+    if (eventName === 'workflow:execution:step') {
+      broadcastWorkflowExecutionStep(this.io, data);
+      return;
+    }
+
+    // Emit completion events (completed, failed)
+    if (eventName === 'workflow:execution:completed' || eventName === 'workflow:execution:failed') {
+      broadcastWorkflowExecutionCompleted(this.io, data);
+      return;
+    }
 
     console.log(`[WebSocket] ${eventName}:`, data);
-  }
-
-  /**
-   * Set Socket.io instance for WebSocket broadcasting
-   */
-  setSocketInstance(io: any) {
-    // Store io instance for emitExecutionEvent
-    // this.io = io;
   }
 }

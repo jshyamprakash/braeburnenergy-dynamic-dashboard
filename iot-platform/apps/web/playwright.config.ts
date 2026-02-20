@@ -54,13 +54,8 @@ export default defineConfig({
   ],
 
   // Run your local dev server before starting the tests
+  // Note: API server not started here - all API calls are mocked with page.route()
   webServer: [
-    {
-      command: 'cd ../api && pnpm dev',
-      url: 'http://localhost:3001/health',
-      timeout: 120 * 1000,
-      reuseExistingServer: !process.env.CI,
-    },
     {
       command: 'pnpm dev',
       url: 'http://localhost:3000',

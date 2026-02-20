@@ -96,7 +96,9 @@ export function createApiError(
     case 403:
       return new ForbiddenError(message);
     case 404:
-      return new NotFoundError(message);
+      // NotFoundError constructor appends " not found" — use ApiError directly
+      // to avoid double-appending when message already contains the full text.
+      return new ApiError(message, 404, 'NOT_FOUND');
     case 500:
     case 502:
     case 503:

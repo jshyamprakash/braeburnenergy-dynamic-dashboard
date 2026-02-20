@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit';
 import type { Node, Edge, Connection } from 'reactflow';
+import type { WorkflowExecutionStepEvent, WorkflowExecutionCompletedEvent } from '@repo/types';
 import { apiClient } from '@/lib/api-client';
 
 /**
@@ -56,6 +57,17 @@ export interface WorkflowState {
   // Execution
   currentExecutionId: string | null;
   executionStatus: 'idle' | 'running' | 'completed' | 'failed';
+
+  // Execution streaming (real-time updates)
+  executionLog: WorkflowExecutionStepEvent[];
+  isStreaming: boolean;
+  currentNodeId: string | null;
+  executionError: string | null;
+
+  // Execution history
+  executionHistory: any[];
+  executionHistoryTotal: number;
+  executionHistoryLoading: boolean;
 }
 
 const initialState: WorkflowState = {
@@ -81,6 +93,15 @@ const initialState: WorkflowState = {
 
   currentExecutionId: null,
   executionStatus: 'idle',
+
+  executionLog: [],
+  isStreaming: false,
+  currentNodeId: null,
+  executionError: null,
+
+  executionHistory: [],
+  executionHistoryTotal: 0,
+  executionHistoryLoading: false,
 };
 
 /**
@@ -131,6 +152,33 @@ export const executeWorkflow = createAsyncThunk<{ executionId: string }, { workf
     const response = await apiClient.post<{ executionId: string }>(`/workflows/${workflowId}/execute`, {
       inputData: inputData || {},
     });
+    return response.data;
+  }
+);
+
+// Load execution history (paginated)
+export const loadExecutionHistory = createAsyncThunk<
+  { executions: any[]; total: number },
+  { workflowId: string; limit?: number; offset?: number }
+>(
+  'workflow/loadExecutionHistory',
+  async ({ workflowId, limit = 10, offset = 0 }) => {
+    const response = await apiClient.get<{
+      data: any[];
+      pagination: { total: number };
+    }>(`/workflows/${workflowId}/executions?limit=${limit}&offset=${offset}`);
+    return {
+      executions: response.data.data,
+      total: response.data.pagination.total,
+    };
+  }
+);
+
+// Load single execution detail
+export const loadExecutionDetail = createAsyncThunk<any, string>(
+  'workflow/loadExecutionDetail',
+  async (executionId: string) => {
+    const response = await apiClient.get<any>(`/executions/${executionId}`);
     return response.data;
   }
 );
@@ -253,12 +301,14 @@ export const workflowSlice = createSlice({
     // Add edge
     addEdge: (state, action: PayloadAction<Edge | Connection>) => {
       const edge = action.payload as Edge;
-      // Ensure edge has an ID
-      if (!edge.id) {
-        edge.id = `e-${edge.source}-${edge.target}`;
+      // Include source/target handle in ID to allow multiple edges between the same pair of nodes
+      const handleSuffix = [edge.sourceHandle, edge.targetHandle].filter(Boolean).join('-');
+      edge.id = `e-${edge.source}-${edge.target}${handleSuffix ? `-${handleSuffix}` : ''}`;
+      // Deduplicate — don't add if same ID already exists
+      if (!state.edges.some(e => e.id === edge.id)) {
+        state.edges.push(edge);
+        state.isDirty = true;
       }
-      state.edges.push(edge);
-      state.isDirty = true;
     },
 
     // Remove edge
@@ -291,6 +341,49 @@ export const workflowSlice = createSlice({
     // Set execution status
     setExecutionStatus: (state, action: PayloadAction<'idle' | 'running' | 'completed' | 'failed'>) => {
       state.executionStatus = action.payload;
+    },
+
+    // Add execution log entry (per-node step)
+    addExecutionLogEntry: (state, action: PayloadAction<WorkflowExecutionStepEvent>) => {
+      state.executionLog.push(action.payload);
+      state.currentNodeId = action.payload.nodeId;
+
+      // Update node execution status
+      const node = state.nodes.find(n => n.id === action.payload.nodeId);
+      if (node) {
+        node.data.executionStatus = action.payload.status;
+      }
+    },
+
+    // Start execution stream
+    startExecutionStream: (state, action: PayloadAction<string>) => {
+      state.currentExecutionId = action.payload;
+      state.isStreaming = true;
+      state.executionLog = [];
+      state.currentNodeId = null;
+      state.executionError = null;
+      state.executionStatus = 'running';
+    },
+
+    // Complete execution stream
+    completeExecutionStream: (state, action: PayloadAction<{ status: 'completed' | 'failed'; error?: string }>) => {
+      state.isStreaming = false;
+      state.executionStatus = action.payload.status;
+      state.executionError = action.payload.error || null;
+    },
+
+    // Clear execution log
+    clearExecutionLog: state => {
+      state.executionLog = [];
+      state.currentNodeId = null;
+      state.executionError = null;
+      state.currentExecutionId = null;
+      state.executionStatus = 'idle';
+
+      // Reset all nodes' execution status to idle
+      state.nodes.forEach(node => {
+        node.data.executionStatus = 'idle';
+      });
     },
 
     // Mark as saved
@@ -342,13 +435,44 @@ export const workflowSlice = createSlice({
     // Execute workflow
     builder.addCase(executeWorkflow.pending, state => {
       state.executionStatus = 'running';
+      state.isStreaming = true;
+      state.executionLog = [];
+      state.executionError = null;
     });
     builder.addCase(executeWorkflow.fulfilled, (state, action) => {
       state.currentExecutionId = action.payload.executionId;
-      state.executionStatus = 'running'; // Will be updated by WebSocket
+      state.executionStatus = 'running';
+      state.isStreaming = true;
     });
-    builder.addCase(executeWorkflow.rejected, state => {
+    builder.addCase(executeWorkflow.rejected, (state, action) => {
       state.executionStatus = 'failed';
+      state.isStreaming = false;
+      state.executionError = action.error.message || 'Execution failed';
+    });
+
+    // Load execution history
+    builder.addCase(loadExecutionHistory.pending, state => {
+      state.executionHistoryLoading = true;
+    });
+    builder.addCase(loadExecutionHistory.fulfilled, (state, action) => {
+      state.executionHistory = action.payload.executions;
+      state.executionHistoryTotal = action.payload.total;
+      state.executionHistoryLoading = false;
+    });
+    builder.addCase(loadExecutionHistory.rejected, state => {
+      state.executionHistoryLoading = false;
+    });
+
+    // Load execution detail (repopulates live log)
+    builder.addCase(loadExecutionDetail.pending, state => {
+      state.isStreaming = false;
+    });
+    builder.addCase(loadExecutionDetail.fulfilled, (state, action) => {
+      // Populate execution log from historical data
+      state.executionLog = action.payload.executionLog || [];
+      state.currentExecutionId = action.payload.executionId;
+      state.executionStatus = action.payload.status;
+      state.executionError = action.payload.error?.message || null;
     });
 
     // Auto-save workflow
@@ -384,7 +508,22 @@ export const {
   toggleEditMode,
   setValidationErrors,
   setExecutionStatus,
+  addExecutionLogEntry,
+  startExecutionStream,
+  completeExecutionStream,
+  clearExecutionLog,
   markAsSaved,
 } = workflowSlice.actions;
 
 export default workflowSlice.reducer;
+
+/**
+ * Default configurations for new node types (ADR-017).
+ * Used by NodePalette and NodeConfigPanel to populate initial config.
+ */
+export const defaultNodeConfig: Record<string, Record<string, any>> = {
+  'data:modbusRead': { gatewayId: '', registerName: '', outputField: 'modbusData' },
+  'data:modbusWrite': { gatewayId: '', startAddress: 0, values: [0] },
+  'data:queryDeviceStates': { deviceId: '', startTime: '', endTime: '', limit: 100, outputField: 'deviceStates' },
+  'logic:function': { code: '// result.value = data.value * 2;', outputField: 'computed' },
+};

@@ -3,7 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/lib/store';
-import { loadWorkflow, saveWorkflow, resetWorkflow, executeWorkflow, removeNode } from '@/lib/store/slices/workflowSlice';
+import { loadWorkflow, saveWorkflow, resetWorkflow, executeWorkflow, removeNode, addExecutionLogEntry, completeExecutionStream, clearExecutionLog, setNodes, setEdges, updateMetadata, addNode, selectNode } from '@/lib/store/slices/workflowSlice';
+import { useWorkflowExecutionUpdates } from '@/lib/hooks/useWebSocket';
+import ExecutionPanel from '@/components/workflow/ExecutionPanel';
 import WorkflowCanvas from '@/components/workflow/WorkflowCanvas';
 import NodePalette from '@/components/workflow/NodePalette';
 import NodeConfigPanel from '@/components/workflow/NodeConfigPanel';
@@ -16,6 +18,9 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { useWorkflowKeyboardShortcuts } from '@/hooks/useWorkflowKeyboardShortcuts';
 import { exportWorkflowToJSON } from '@/lib/utils/workflow-export';
 import { toast } from 'sonner';
+import NodeContextMenu from '@/components/workflow/NodeContextMenu';
+import { ReactFlowProvider } from 'reactflow';
+import { ulid } from 'ulid';
 
 /**
  * Workflow Builder Page
@@ -51,7 +56,9 @@ function WorkflowBuilderPage() {
   const [isExecutionModalOpen, setIsExecutionModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isValidationPanelOpen, setIsValidationPanelOpen] = useState(false);
+  const [isExecutionPanelOpen, setIsExecutionPanelOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; nodeId: string; nodeData: any } | null>(null);
   const isNewWorkflow = params.workflowId === 'new';
 
   // Load workflow on mount (if editing existing)
@@ -68,12 +75,57 @@ function WorkflowBuilderPage() {
     };
   }, [dispatch, params.workflowId, isNewWorkflow]);
 
+  // Load pending template on mount
+  useEffect(() => {
+    if (!isNewWorkflow) return; // Only for new workflows
+
+    const pendingTemplate = sessionStorage.getItem('pendingTemplate');
+    if (!pendingTemplate) return;
+
+    try {
+      const template = JSON.parse(pendingTemplate);
+      // Dispatch Redux actions to load template
+      dispatch(setNodes(template.nodes || []));
+      dispatch(setEdges(template.edges || []));
+      if (template.name) {
+        dispatch(updateMetadata({ name: template.name }));
+      }
+      // Clear sessionStorage
+      sessionStorage.removeItem('pendingTemplate');
+    } catch (err) {
+      console.error('Failed to load template:', err);
+    }
+  }, [dispatch, isNewWorkflow]);
+
   // Show toast on sync errors
   useEffect(() => {
     if (syncError) {
       toast.error(syncError);
     }
   }, [syncError]);
+
+  // Subscribe to workflow execution updates
+  useWorkflowExecutionUpdates(
+    workflowId, // Only subscribe when we have a workflow ID
+    // Handle step updates
+    (step) => {
+      dispatch(addExecutionLogEntry(step));
+    },
+    // Handle completion
+    (completion) => {
+      dispatch(completeExecutionStream({
+        status: completion.status,
+        error: completion.error?.message,
+      }));
+    }
+  );
+
+  // Clear execution on unmount
+  useEffect(() => {
+    return () => {
+      dispatch(clearExecutionLog());
+    };
+  }, [dispatch]);
 
   // Handle save
   const handleSave = async () => {
@@ -177,6 +229,45 @@ function WorkflowBuilderPage() {
     }
   };
 
+  const handleNodeContextMenu = (event: React.MouseEvent, node: any) => {
+    const canvas = document.querySelector(".react-flow__canvas");
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    setContextMenu({
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
+      nodeId: node.id,
+      nodeData: node.data,
+    });
+  };
+
+  const handleDuplicateNode = (nodeId: string) => {
+    const nodeToClone = nodes.find(n => n.id === nodeId);
+    if (!nodeToClone) return;
+    const newNode = {
+      ...nodeToClone,
+      id: ulid(),
+      position: {
+        x: nodeToClone.position.x + 50,
+        y: nodeToClone.position.y + 50,
+      },
+    };
+    dispatch(addNode(newNode));
+    toast.success('Node duplicated');
+  };
+
+  const handleDeleteContextNode = (nodeId: string) => {
+    const node = nodes.find(n => n.id === nodeId);
+    if (node) {
+      dispatch(removeNode(nodeId));
+      toast.success(`Deleted node: ${node.data.label || nodeId}`);
+    }
+  };
+
+  const handleConfigureNode = (nodeId: string) => {
+    dispatch(selectNode(nodeId));
+  };
+
   // Setup keyboard shortcuts
   useWorkflowKeyboardShortcuts({
     onSave: handleSave,
@@ -187,6 +278,7 @@ function WorkflowBuilderPage() {
   });
 
   return (
+    <ReactFlowProvider>
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       {/* Toolbar */}
       <WorkflowToolbar
@@ -269,7 +361,7 @@ function WorkflowBuilderPage() {
               </div>
             </div>
           ) : (
-            <WorkflowCanvas />
+            <WorkflowCanvas onNodeContextMenu={handleNodeContextMenu} />
           )}
         </div>
 
@@ -282,7 +374,30 @@ function WorkflowBuilderPage() {
         isOpen={isValidationPanelOpen}
         onToggle={() => setIsValidationPanelOpen(!isValidationPanelOpen)}
       />
+
+      {/* Execution Panel (bottom drawer) */}
+      <ExecutionPanel
+        isOpen={isExecutionPanelOpen}
+        onToggle={() => setIsExecutionPanelOpen(!isExecutionPanelOpen)}
+        workflowId={workflowId}
+      />
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <NodeContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          nodeId={contextMenu.nodeId}
+          nodeData={contextMenu.nodeData}
+          executionStatus={nodes.find(n => n.id === contextMenu.nodeId)?.data?.executionStatus}
+          onClose={() => setContextMenu(null)}
+          onConfigure={handleConfigureNode}
+          onDuplicate={handleDuplicateNode}
+          onDelete={handleDeleteContextNode}
+        />
+      )}
     </div>
+    </ReactFlowProvider>
   );
 }
 

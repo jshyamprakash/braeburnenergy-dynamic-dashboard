@@ -85,10 +85,16 @@ class ApiClient {
     return this.refreshPromise;
   }
 
+  /**
+   * Core fetch wrapper.
+   * @param rawBody - if true, returns the full response body instead of just body.data
+   *                  (needed for paginated responses that also carry body.pagination)
+   */
   private async request<T>(
     endpoint: string,
     options?: RequestInit,
-    retry = true
+    retry = true,
+    rawBody = false
   ): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
 
@@ -114,7 +120,7 @@ class ApiClient {
         try {
           await this.refreshAccessToken();
           // Retry the original request with new token
-          return this.request<T>(endpoint, options, false);
+          return this.request<T>(endpoint, options, false, rawBody);
         } catch (refreshError) {
           // Refresh failed - will redirect to login in refreshAccessToken
           throw createApiError(401, 'Authentication failed. Please login again.');
@@ -145,7 +151,8 @@ class ApiClient {
         throw createApiError(response.status, message, data.error);
       }
 
-      return data.data;
+      // rawBody callers (e.g. getPaginated) need { data, pagination }, not just data.data
+      return rawBody ? data : data.data;
     } catch (error) {
       // Network errors (no response from server)
       if (error instanceof TypeError && error.message.includes('fetch')) {
@@ -162,49 +169,15 @@ class ApiClient {
     return { data };
   }
 
-  // Special method for paginated responses that preserves pagination metadata
+  // Special method for paginated responses.
+  // Routes through request() so 401 token-refresh retry is handled automatically.
   async getPaginated<T>(endpoint: string): Promise<{ data: T[]; pagination: any }> {
-    const url = `${this.baseURL}${endpoint}`;
-
-    try {
-      // Get access token and add to headers
-      const accessToken = this.getAccessToken();
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-
-      if (accessToken) {
-        headers['Authorization'] = `Bearer ${accessToken}`;
-      }
-
-      const response = await fetch(url, {
-        method: 'GET',
-        headers,
-      });
-
-      if (!response.ok) {
-        const message = getErrorMessage(response.status);
-        throw createApiError(response.status, message);
-      }
-
-      const result = await response.json();
-
-      if (!result.success) {
-        const message = result.error?.message || 'Request failed';
-        throw createApiError(response.status, message, result.error);
-      }
-
-      // Return both data and pagination from the backend response
-      return {
-        data: result.data,
-        pagination: result.pagination,
-      };
-    } catch (error) {
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        throw new NetworkError();
-      }
-      throw error;
-    }
+    return this.request<{ data: T[]; pagination: any }>(
+      endpoint,
+      { method: 'GET' },
+      true,
+      /* rawBody */ true
+    );
   }
 
   async post<T>(endpoint: string, body: unknown): Promise<{ data: T }> {

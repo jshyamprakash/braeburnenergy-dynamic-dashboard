@@ -4,6 +4,7 @@ import { memo } from 'react';
 import { Handle, Position, type NodeProps } from 'reactflow';
 import { useAppSelector } from '@/lib/store';
 import NodeErrorBadge from '../NodeErrorBadge';
+import StatusBadge from './StatusBadge';
 
 /**
  * Trigger Node Component
@@ -16,6 +17,7 @@ export interface TriggerNodeData {
   label?: string;
   description?: string;
   config: Record<string, any>;
+  executionStatus?: 'idle' | 'running' | 'completed' | 'failed';
 }
 
 function TriggerNode({ data, selected, id }: NodeProps<TriggerNodeData>) {
@@ -24,7 +26,7 @@ function TriggerNode({ data, selected, id }: NodeProps<TriggerNodeData>) {
   return (
     <div
       className={`
-        relative px-4 py-3 rounded-lg border-2 shadow-lg min-w-[200px]
+        relative px-3 py-2 rounded-lg border-2 shadow-lg min-w-[160px]
         bg-green-50 dark:bg-green-900/20
         border-green-500 dark:border-green-400
         ${selected ? 'ring-2 ring-green-500 ring-offset-2' : ''}
@@ -33,45 +35,18 @@ function TriggerNode({ data, selected, id }: NodeProps<TriggerNodeData>) {
       `}
     >
       {hasError && <NodeErrorBadge />}
-      {/* Icon */}
-      <div className="flex items-center gap-2 mb-1">
-        <div className="w-6 h-6 rounded-full bg-green-500 dark:bg-green-400 flex items-center justify-center">
-          <svg
-            className="w-4 h-4 text-white dark:text-black"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M13 10V3L4 14h7v7l9-11h-7z"
-            />
-          </svg>
-        </div>
-        <span className="font-semibold text-sm text-green-900 dark:text-green-100">
-          Trigger
-        </span>
-      </div>
-
-      {/* Label */}
-      <div className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
+      <StatusBadge status={data.executionStatus} />
+      {/* Label only */}
+      <div className="text-xs font-medium text-gray-900 dark:text-gray-100">
         {data.label || 'Untitled Trigger'}
       </div>
 
-      {/* Description */}
-      {data.description && (
-        <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-          {data.description}
-        </div>
-      )}
-
-      {/* Output Handle */}
+      {/* Output Handle — bottom centre, diamond */}
       <Handle
         type="source"
-        position={Position.Right}
-        className="w-3 h-3 !bg-green-500 dark:!bg-green-400 !border-2 !border-white dark:!border-gray-800"
+        position={Position.Bottom}
+        style={{ transform: 'translate(-50%, 20%) rotate(45deg)' }}
+        className="!w-2.5 !h-2.5 !rounded-none !bg-green-500 dark:!bg-green-400 !border-2 !border-white dark:!border-gray-800"
       />
     </div>
   );

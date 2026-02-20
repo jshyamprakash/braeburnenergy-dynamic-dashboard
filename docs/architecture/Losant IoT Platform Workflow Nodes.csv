@@ -1,0 +1,183 @@
+Node Name,Category,Functionality,Platform Compatibility,Description
+Amazon SQS Trigger,Triggers,Fires a workflow upon receiving an Amazon SQS message,Cloud,The Amazon SQS Trigger fires a workflow whenever a Losant integration receives an Amazon Simple Queue Service (SQS) message.
+Application: Sync Trigger,Triggers,Fires a workflow when Gateway Edge Agent configuration or peripherals change,Gateway Edge Agent,"The Application: Sync Trigger fires a workflow whenever the Gateway Edge Agent receives updated peripherals, global values, or changes to its Edge Compute device configuration."
+Azure Event Hubs Trigger,Triggers,Fires a workflow upon receiving an Azure Event Hubs message,Cloud,The Azure Event Hubs Trigger fires a workflow whenever a Losant integration receives an Azure Event Hubs message.
+Beckhoff Trigger,Triggers,Fires a workflow when Beckhoff TwinCAT PLC symbols receive new values,Gateway Edge Agent,The Beckhoff Trigger fires a workflow whenever monitored symbols on a Beckhoff TwinCAT PLC receive new values.
+Data Table Trigger,Triggers,Fires a workflow when Data Table rows are modified,Cloud,"The Data Table Trigger fires a workflow whenever a row is added, updated, or removed from a Losant Data Table."
+Device: Command Trigger,Triggers,Fires a workflow when an Edge or Embedded device receives an MQTT command,"Gateway Edge Agent, Embedded Edge Agent",The Device: Command Trigger fires a workflow whenever its Edge Compute or Embedded Device receives a command over the MQTT broker.
+Device: Connect Trigger,Triggers,Fires a workflow when devices connect to the platform,Cloud,The Device: Connect Trigger fires a workflow whenever one or more devices connect to the Losant Platform.
+Device: Create Trigger Node,Triggers,Fires a workflow when a new device is created,Cloud,The Device: Create Trigger fires a workflow whenever a device is created within your application.
+Device: Disconnect Trigger,Triggers,Fires a workflow when devices disconnect from the platform,Cloud,The Device: Disconnect Trigger fires a workflow whenever one or more devices disconnect from the Losant Platform.
+Device: Inactive Trigger,Triggers,Fires a workflow when devices fail to report state for a set period,Cloud,The Device: Inactive Trigger fires a workflow whenever one or more devices do not report state for the configured period of time.
+Device: Startup Trigger,Triggers,Fires a workflow when the Gateway Edge Agent starts,Gateway Edge Agent,The Device: Startup Trigger fires a workflow whenever the Gateway Edge Agent starts or restarts.
+Device: State Trigger,Triggers,Fires a workflow when a device reports state to the cloud,Cloud,The Device: State Trigger fires a workflow whenever a device reports state to the Losant cloud platform.
+Direct Trigger,Triggers,Fires an Embedded Workflow via method invocation,Embedded Edge Agent,"The Direct Trigger fires an Embedded Workflow whenever the ""eea_direct_trigger"" method is invoked within the Embedded Edge Agent."
+EEA: Init Trigger,Triggers,Fires a workflow when the EEA init function is called,Embedded Edge Agent,"The EEA: Init Trigger fires a workflow whenever the ""eea_init"" function is called within the Embedded Edge Agent."
+Email Trigger,Triggers,Fires a workflow upon receiving an email,Cloud,The Email Trigger fires a workflow whenever your application receives an email at its address or a subaddress.
+Endpoint Trigger,Triggers,Fires a workflow when an Experience Endpoint receives an HTTP request,Cloud,The Endpoint Trigger fires a workflow when the selected Experience Endpoint receives an HTTP request.
+Event Trigger,Triggers,Fires a workflow when an event is created or updated,Cloud,The Event Trigger fires a workflow whenever an event matching the criteria defined in the trigger's configuration is created or changes state.
+File Tail Trigger,Triggers,Monitors and analyzes logs/files on the agent,Gateway Edge Agent,The File Tail Trigger allows you to monitor and analyze logs and other files on the Gateway Edge Agent's container or host file system.
+File Trigger,Triggers,Fires a workflow on Application File changes,Cloud,"The File Trigger allows you to fire a workflow when a file is created, modified, or deleted from a directory in your Application Files."
+File Watch Trigger,Triggers,Fires a workflow when local files or directories change,Gateway Edge Agent,The File Watch Trigger fires a workflow whenever the file or directory changes are observed on the Gateway Edge Agent.
+GCP Pub/Sub Trigger,Triggers,Fires a workflow when a GCP Pub/Sub message is received,Cloud,The GCP Pub/Sub Trigger fires a workflow whenever a message is sent to a Losant GCP Pub/Sub integration.
+HTTP Request Trigger,Triggers,Fires a workflow on local web server requests,Gateway Edge Agent,The HTTP Request Trigger fires a workflow whenever the Gateway Edge Agent receives a request on its local web server.
+Job: Complete Trigger,Triggers,Fires a workflow when a Resource Job finishes,Cloud,The Job: Complete Trigger fires a workflow whenever a Resource Job completes all iterations or is canceled during execution.
+Job: Iteration Trigger,Triggers,Fires a workflow at the start of a Resource Job iteration,Cloud,The Job: Iteration Trigger fires a workflow whenever an iteration of a Resource Job begins.
+Job: Timeout Trigger,Triggers,Fires a workflow when a Resource Job iteration times out,Cloud,The Job: Iteration Timeout Trigger fires a workflow whenever an iteration of a Resource Job is not acknowledged before the Resource Job’s configured timeout.
+MQTT Trigger,Triggers,Fires a workflow on MQTT message publication,"Cloud, Gateway Edge Agent","The MQTT Trigger fires a workflow whenever a message is published to a topic on the Losant MQTT Broker, the Gateway Edge Agent Local Broker, an external broker, or an MQTT integration."
+Notebook Trigger,Triggers,Fires a workflow when a Notebook execution completes,Cloud,"The Notebook Trigger fires a workflow whenever the selected Losant Notebook has completed an execution, either successfully or with errors."
+OPC UA Trigger,Triggers,Fires a workflow on OPC UA node value changes,Gateway Edge Agent,The OPC UA Trigger fires a workflow whenever an Edge Compute Device receives a change message on the configured OPC UA monitored node.
+Particle Trigger,Triggers,Fires a workflow when a Particle integration event is received,Cloud,The Particle Trigger fires a workflow whenever an event is received on the Losant Particle integration.
+Redis Trigger,Triggers,Fires a workflow on Redis Pub/Sub channel messages,Gateway Edge Agent,The Redis Trigger fires a workflow whenever the Edge Compute Device receives a message on the configured Redis Pub/Sub channel.
+Serial Trigger,Triggers,Fires a workflow when data is received over Serial,Gateway Edge Agent,The Serial Trigger fires a workflow whenever the Edge Compute Device receives data over a Serial connection.
+SNMP Trap: Trigger,Triggers,Fires a workflow on SNMP traps or inform requests,Gateway Edge Agent,The SNMP: Trap Trigger fires a workflow whenever the Edge Compute Device receives an SNMP trap message or an SNMP inform request.
+Timer Trigger,Triggers,Fires a workflow on a scheduled interval,"Cloud, Gateway Edge Agent, Embedded Edge Agent",The Timer Trigger fires a workflow on a scheduled interval.
+UDP Message Trigger,Triggers,Fires a workflow on received UDP datagrams,Gateway Edge Agent,The UDP Message Trigger fires a workflow whenever the Edge Compute Device receives a UDP datagram on the configured port.
+Virtual Button Trigger,Triggers,Fires a workflow when the virtual button is clicked,"Cloud, Gateway Edge Agent","The Virtual Button Trigger fires a workflow when the ""virtual button"" is pressed."
+Webhook Trigger,Triggers,Fires a workflow on Webhook HTTP or WebSocket requests,Cloud,The Webhook Trigger fires a workflow whenever a Losant webhook receives an HTTP request or WebSocket message.
+WebSocket Trigger,Triggers,Fires a workflow on WebSocket integration messages,Cloud,The WebSocket Trigger fires a workflow whenever a Losant WebSocket integration receives a message.
+Workflow Error Trigger,Triggers,Fires a workflow when an error occurs in another workflow,"Cloud, Gateway Edge Agent",The Workflow Error Trigger fires a workflow whenever a halting error occurs in a separate workflow execution.
+Array Node,Logic Nodes,Performs operations on payload arrays,"Cloud, Gateway Edge Agent, Embedded Edge Agent",The Array Node performs operations against an array-type value on the payload.
+Base64: Decode Node,Logic Nodes,Decodes Base64 to binary,"Cloud, Gateway Edge Agent",The Base64: Decode Node takes a Base64-encoded string and decodes it as a binary array.
+Base64: Encode Node,Logic Nodes,Encodes data to Base64,"Cloud, Gateway Edge Agent",The Base64: Encode Node takes a string or binary array and encodes it to a Base64 string.
+CBOR: Decode Node,Logic Nodes,Decodes CBOR to JSON,"Cloud, Gateway Edge Agent",The CBOR: Decode Node takes a CBOR-encoded value on the payload and converts it into a JSON object.
+CBOR: Encode Node,Logic Nodes,Encodes JSON to CBOR,"Cloud, Gateway Edge Agent",The CBOR: Encode Node converts a JSON object into Concise Binary Object Representation format.
+Conditional Node,Logic Nodes,Branches workflow based on expressions,"Cloud, Gateway Edge Agent, Embedded Edge Agent",The Conditional Node branches a workflow based on the result of an expression.
+CSV: Decode Node,Logic Nodes,Decodes CSV to object array,"Cloud, Gateway Edge Agent",The CSV: Decode takes a CSV string and decodes it into an object array.
+CSV: Encode Node,Logic Nodes,Encodes object array to CSV,"Cloud, Gateway Edge Agent",The CSV: Encode Node takes an object array and encodes it into a CSV string.
+Date/Time Node,Logic Nodes,Parses and manipulates dates,"Cloud, Gateway Edge Agent",The Date/Time Node allows for parsing and manipulating dates and timestamps.
+Delay Node,Logic Nodes,Pauses workflow execution,"Cloud, Gateway Edge Agent",The Delay Node pauses a workflow execution for a short period of time.
+Fast Fourier Transform Node,Logic Nodes,Converts data points to frequency domain,"Cloud, Gateway Edge Agent",The Fast Fourier Transform Node takes an array of data points from one domain and converts it into a frequency representation using a fast Fourier transform algorithm.
+Function Node,Logic Nodes,Executes custom JavaScript,"Cloud, Gateway Edge Agent","The Function Node allows execution of arbitrary, user-defined JavaScript."
+Generate ID Node,Logic Nodes,"Creates UUID, Object, or Nano IDs","Cloud, Gateway Edge Agent","The Generate ID Node creates IDs in UUID, Object ID, or Nano ID format."
+Geofence Node,Logic Nodes,Branches workflow based on geographic area,"Cloud, Gateway Edge Agent",The Geofence Node branches a workflow based on whether a given geographic point is within a defined area.
+Hash Node,Logic Nodes,Generates cryptographic hashes,"Cloud, Gateway Edge Agent",The Hash Node creates a cryptographic hash through a variety of algorithms.
+HTML/XML Parser Node,Logic Nodes,Parses HTML/XML into a tree,"Cloud, Gateway Edge Agent",The HTML/XML Parser Node takes an HTML or XML document string and parses it into a traversable tree.
+JSON Decode Node,Logic Nodes,Parses JSON string to object,"Cloud, Gateway Edge Agent",The JSON: Decode Node takes a JSON string and parses it into an object.
+JSON Encode Node,Logic Nodes,Converts object to JSON string,"Cloud, Gateway Edge Agent",The JSON: Encode Node takes an object and converts it into a JSON string.
+JWT: Create Node,Logic Nodes,Generates JSON Web Tokens,"Cloud, Gateway Edge Agent","The JWT: Create Node generates a JSON Web Token from a JSON payload, optional headers, and a secret."
+JWT: Decode Node,Logic Nodes,Decodes JSON Web Tokens,"Cloud, Gateway Edge Agent",The JWT: Decode Node takes a JSON Web Token and decodes it to an object.
+JWT: Verify Node,Logic Nodes,Validates JSON Web Tokens,"Cloud, Gateway Edge Agent",The JWT: Verify Node branches a workflow based on whether a provided JSON Web Token is valid.
+Latch Node,Logic Nodes,Provides one-time workflow branching,"Cloud, Gateway Edge Agent","The Latch Node allows for easy ""one-time"" branching of a workflow, with the ability to reset the branch condition."
+Loop Node,Logic Nodes,Iterates over payload values,"Cloud, Gateway Edge Agent, Embedded Edge Agent","The Loop Node allows for iterating over values on your payload, or for performing a certain operation a set number of times."
+Math Node,Logic Nodes,Performs mathematical calculations,"Cloud, Gateway Edge Agent, Embedded Edge Agent",The Math Node performs expression-based mathematical calculations.
+Mutate Node,Logic Nodes,Modifies payload values,"Cloud, Gateway Edge Agent, Embedded Edge Agent","The Mutate Node modifies, moves, copies, or removes values from a workflow payload."
+Object Node,Logic Nodes,Operations on objects/arrays,"Cloud, Gateway Edge Agent",The Object Node performs operations against objects or arrays on the payload.
+On Change Node,Logic Nodes,Branches based on value changes,"Cloud, Gateway Edge Agent",The On Change Node branches a workflow based on whether a value has changed since previous executions of the workflow.
+Random Number Node,Logic Nodes,Generates random integers,"Cloud, Gateway Edge Agent, Embedded Edge Agent",The Random Number Node generates a random integer within a range of your choosing.
+Root Mean Square Node,Logic Nodes,Calculates RMS for numbers,"Cloud, Gateway Edge Agent",The Root Mean Square Node calculates the root mean square (RMS) of an array of numbers.
+Rust Function Node,Logic Nodes,Executes custom Rust code,Embedded Edge Agent,The Rust Function Node allows for execution of user-defined Rust code.
+String Node,Logic Nodes,Manipulates string values,"Cloud, Gateway Edge Agent",The String Node allows for manipulating string values.
+Switch Node,Logic Nodes,Branches across multiple paths,"Cloud, Gateway Edge Agent, Embedded Edge Agent",The Switch Node branches across many different paths based on matching a switch statement against various case values.
+Throttle Node,Logic Nodes,Branches based on elapsed time,"Cloud, Gateway Edge Agent",The Throttle Node branches a workflow based on the amount of time that has passed since the last execution of the node.
+Time Range Node,Logic Nodes,Branches based on time windows,"Cloud, Gateway Edge Agent",The Time Range Node branches based on whether a given timestamp is within a provided time range.
+Validate Payload Node,Logic Nodes,Validates payload against JSON schema,"Cloud, Gateway Edge Agent",The Validate Payload Node branches a workflow based on whether a given value validates against a provided JSON schema.
+Access Key: Create Node,Data Nodes,Generates MQTT Access Keys,Cloud,The Access Key: Create Node generates a new Access Key for authenticating against the Losant MQTT Broker.
+Agent Config: Get Node,Data Nodes,Retrieves Gateway Edge Agent config,Gateway Edge Agent,The Agent Config: Get Node retrieves configuration settings for an instance of the Gateway Edge Agent.
+Agent Config: Set Node,Data Nodes,Updates Gateway Edge Agent config,Gateway Edge Agent,The Agent Config: Set Node changes configuration settings for an instance of the Gateway Edge Agent.
+Allen-Bradley: Read Node,Data Nodes,Reads Allen-Bradley PLC tags,Gateway Edge Agent,The Allen-Bradley: Read Node reads multiple tags from an Allen-Bradley CompactLogix or ControlLogix programmable logic controller (PLC).
+Allen-Bradley: Write Node,Data Nodes,Writes Allen-Bradley PLC tags,Gateway Edge Agent,The Allen-Bradley: Write Node writes to multiple tags on an Allen-Bradley CompactLogix or ControlLogix programmable logic controller (PLC).
+AWS Lambda Node,Data Nodes,Executes AWS Lambda functions,Cloud,The AWS: Lambda Node executes an AWS Lambda function and optionally returns the result.
+AWS S3: Get Node,Data Nodes,Retrieves files from Amazon S3,Cloud,The AWS S3: Get Node retrieves a file and its metadata from an Amazon S3 bucket.
+AWS S3: Put Node,Data Nodes,Uploads files to Amazon S3,Cloud,The AWS S3: Put Node uploads a file into an Amazon S3 bucket.
+Azure Blob: Get Node,Data Nodes,Retrieves files from Azure Blob Storage,Cloud,The Azure Blob: Get Node retrieves a file and its metadata from an Azure Blob Storage container.
+Azure Blob: Put Node,Data Nodes,Uploads files to Azure Blob Storage,Cloud,The Azure Blob: Put Node uploads a file to an Azure Blob Storage container.
+Azure: Function Node,Data Nodes,Executes Azure Functions,Cloud,The Azure: Function Node executes an Azure Function and optionally returns the result.
+Azure: Table Storage Node,Data Nodes,Entity operations on Azure Data Tables,Cloud,The Azure: Table Storage Node allows you to perform entity operations on an Azure Data Table.
+BACnet: Read Node,Data Nodes,Reads BACnet device properties,Gateway Edge Agent,The BACnet: Read Node reads multiple properties across multiple objects from a BACnet device.
+BACnet: Who-Is Node,Data Nodes,Discovers BACnet-compatible devices,Gateway Edge Agent,The BACnet: Who-Is Node broadcasts a Who-Is message and awaits I-Am replies from BACnet-compatible devices on a network.
+BACnet: Write Node,Data Nodes,Writes BACnet device properties,Gateway Edge Agent,The BACnet: Write Node writes multiple properties in multiple objects on a BACnet device.
+Beckhoff: Read Node,Data Nodes,Reads Beckhoff TwinCAT PLC symbols,Gateway Edge Agent,The Beckhoff: Read Node reads multiple symbol values from a Beckhoff TwinCAT PLC.
+Beckhoff: Write Node,Data Nodes,Writes Beckhoff TwinCAT PLC symbols,Gateway Edge Agent,The Beckhoff: Write Node allows for writing values to one or more symbols on a Beckhoff TwinCAT PLC.
+Data: Gauge Query Node,Data Nodes,Retrieves aggregate state data,Cloud,The Data: Gauge Query Node retrieves aggregate state data for one or more attributes across one or more devices.
+Data: Time Series Node,Data Nodes,Retrieves historical state data,Cloud,The Data: Time Series Node retrieves state data across a time period for one or more attributes across one or more devices.
+Device: Create Node,Data Nodes,Adds a new device,Cloud,The Device: Create Node adds a new device to a Losant application.
+Device: Delete Node,Data Nodes,Removes devices,Cloud,The Device: Delete Node removes one or more devices from a Losant application.
+Device: Get Node,Data Nodes,Retrieves device information,Cloud,The Device: Get Node retrieves one or more devices from a Losant application.
+Device: Update Node,Data Nodes,Updates device information,Cloud,The Device: Update Node updates an existing device within a Losant application.
+Event: Create Node,Data Nodes,Generates a new event,Cloud,The Event: Create Node generates a new event within a Losant application.
+Event: Delete Node,Data Nodes,Removes events,Cloud,The Event: Delete Node removes one or more events from a Losant application.
+Event: Get Node,Data Nodes,Retrieves event information,Cloud,The Event: Get Node retrieves one or more events from a Losant application.
+Event: Update Node,Data Nodes,Updates existing events,Cloud,The Event: Update Node updates one or more existing events within a Losant application.
+File: Create Node,Data Nodes,Creates Application Files,Cloud,The File: Create Node creates a file within a Losant application's files.
+File: Get Node,Data Nodes,Retrieves Application Files,Cloud,"The File: Get Node retrieves a Losant Application File, including its meta information and either its contents or a URL to download the contents."
+File: Read Node,Data Nodes,Reads file from disk,Gateway Edge Agent,The File: Read Node retrieves a file from disk on an Edge Compute Device.
+File: Write Node,Data Nodes,Writes file to disk,Gateway Edge Agent,The File: Write Node writes a file to disk on an Edge Compute Device.
+FTP: Get Node,Data Nodes,Retrieves files via FTP/SFTP,"Cloud, Gateway Edge Agent",The FTP: Get Node retrieves a file from an FTP or SFTP server.
+FTP: Put Node,Data Nodes,Uploads files via FTP/SFTP,"Cloud, Gateway Edge Agent",The FTP: Put Node uploads a file to an FTP or SFTP server.
+GCP Storage: Get Node,Data Nodes,Retrieves files from GCP Storage,Cloud,The GCP Storage: Get Node retrieves a file and its metadata from a Google Cloud Storage bucket.
+GCP Storage: Put Node,Data Nodes,Uploads files to GCP Storage,Cloud,The GCP Storage: Put Node uploads a file to a Google Cloud Storage bucket.
+GCP: BigQuery Node,Data Nodes,Requests to Google BigQuery,Cloud,The GCP: BigQuery Node makes requests to a Google BigQuery table.
+GCP: Function Node,Data Nodes,Executes Google Cloud Functions,Cloud,The GCP: Function Node executes a Google Cloud Function and optionally returns a result.
+GCP ML Node,Data Nodes,Retrieves Google ML predictions,Cloud,The GCP: ML Node sends data to Google ML and retrieves predictions based on models in that service.
+HTTP Node,Data Nodes,Makes external HTTP requests,"Cloud, Gateway Edge Agent",The HTTP Node makes arbitrary HTTP requests to third-party services.
+Loggly: Write Node,Data Nodes,Sends messages to Loggly,Cloud,The Loggly: Write Node sends one or more messages to SolarWinds Loggly.
+Losant API Node,Data Nodes,Requests to the Losant API,"Cloud, Gateway Edge Agent",The Losant API Node makes application-scoped requests against the Losant API.
+Modbus: Read Node,Data Nodes,Reads Modbus PLC registers,Gateway Edge Agent,The Modbus: Read Node reads multiple registers from Modbus-enabled PLCs.
+Modbus: Write Node,Data Nodes,Writes Modbus PLC registers,Gateway Edge Agent,The Modbus: Write Node writes to multiple registers on Modbus-enabled PLCs.
+MongoDB Node,Data Nodes,Queries MongoDB databases,"Cloud, Gateway Edge Agent",The MongoDB Node runs queries against a MongoDB database.
+OPC UA: Browse Node,Data Nodes,Browses OPC UA node folders,Gateway Edge Agent,The OPC UA: Browse Node allows for browsing node folders on an OPC UA Server.
+OPC UA: Call Node,Data Nodes,Calls OPC UA methods,Gateway Edge Agent,The OPC UA: Call Node calls a method on an object within an OPC UA Server and connected programmable logic controller (PLC).
+OPC UA: Read Node,Data Nodes,Retrieves OPC UA node values,Gateway Edge Agent,The OPC UA: Read Node retrieves multiple node values from an OPC UA Server and connected programmable logic controller (PLC).
+OPC UA: Write Node,Data Nodes,Writes OPC UA node values,Gateway Edge Agent,The OPC UA: Write Node writes multiple node values to an OPC UA Server and connected programmable logic controller (PLC).
+Peripheral: Get Node,Data Nodes,Retrieves associated Peripherals,Gateway Edge Agent,The Peripheral: Get Node retrieves one or more of an Edge Compute Device's associated Peripheral Devices.
+Redis Node,Data Nodes,Queries or updates Redis,Gateway Edge Agent,The Redis Node queries or updates values in a Redis database.
+Registered Function Node,Data Nodes,Invokes Embedded Device functions,Embedded Edge Agent,The Registered Function Node invokes a registered function defined on an Embedded Device.
+Run Executable Node,Data Nodes,Runs scripts/processes locally,Gateway Edge Agent,The Run Executable Node runs a script or process locally on an Edge Compute Device.
+Salesforce Cases Node,Data Nodes,CRUD operations on Salesforce cases,Cloud,"The Salesforce Cases Node accesses the Salesforce Service Cloud to create, read, update, or delete cases in their CRM platform."
+Serial: Write Node,Data Nodes,Writes to serial ports,Gateway Edge Agent,The Serial: Write Node writes values to a specified serial port.
+ServiceNow Node,Data Nodes,CRUD operations on ServiceNow tables,Cloud,"The ServiceNow Node create, updates, and retrieves records from tables in the ServiceNow platform."
+Siemens S7: Read Node,Data Nodes,Reads Siemens S7 PLC values,Gateway Edge Agent,The Siemens S7: Read Node allows you to read one or more values from a PLC that supports the Siemens S7 protocol.
+Siemens S7: Write Node,Data Nodes,Writes Siemens S7 PLC values,Gateway Edge Agent,The Siemens S7: Write Node allows you to write one or more values to a PLC that supports the Siemens S7 protocol.
+SNMP: Get Subtree Node,Data Nodes,Reads SNMP OID subtrees,Gateway Edge Agent,The SNMP: Get Subtree Node reads values beneath a root OID on an SNMP device.
+SNMP: Read Node,Data Nodes,Reads specific SNMP OIDs,Gateway Edge Agent,The SNMP: Read Node reads values from multiple OIDs on an SNMP device.
+SNMP: Write Node,Data Nodes,Writes to SNMP OIDs,Gateway Edge Agent,The SNMP: Write Node writes values to one or more OIDs on an SNMP device.
+Snowflake Node,Data Nodes,Executes SQL on Snowflake,Cloud,The Snowflake Node allows for executing a SQL query against a Snowflake table.
+SQL Node,Data Nodes,Queries or updates SQL databases,"Cloud, Gateway Edge Agent",The SQL Node queries or updates values in an SQL database.
+Storage: Get Value Node,Data Nodes,Retrieves stored workflow values,"Cloud, Gateway Edge Agent",The Storage: Get Value Node retrieves a value set by a Storage: Set Value Node in a previous workflow execution.
+Storage: Set Value Node,Data Nodes,Stores values for future executions,"Cloud, Gateway Edge Agent",The Storage: Set Value Node stores a value for use in a subsequent workflow execution.
+Table: Delete Rows Node,Data Nodes,Deletes Data Table rows,Cloud,The Table: Delete Rows Node deletes one or more rows from a Losant Data Table.
+Table: Get Rows Node,Data Nodes,Retrieves Data Table rows,Cloud,The Data Table: Get Rows Node retrieves one or more rows from a Losant Data Table.
+Table: Insert Rows Node,Data Nodes,Adds new Data Table rows,Cloud,The Data Table: Insert Row Node adds one or more new rows to a Losant Data Table.
+Table: Update Row Node,Data Nodes,Updates Data Table rows,Cloud,The Table: Update Row Node updates an existing row in a Losant Data Table.
+TensorFlow: Predict Node,Data Nodes,Runs TensorFlow model predictions,Gateway Edge Agent,The TensorFlow: Predict Node makes predictions against a pretrained TensorFlow model that has been loaded onto an Edge Compute Device.
+Amazon SQS Node,Output Nodes,Publishes messages to Amazon SQS,Cloud,The Amazon SQS Node publishes a message to an Amazon SQS queue.
+Azure Event Hubs Node,Output Nodes,Publishes messages to Azure Event Hub,Cloud,The Azure Event Hubs Node publishes a message to an Azure Event Hub.
+Device: Command Node,Output Nodes,Sends MQTT commands to devices,"Cloud, Gateway Edge Agent",The Device: Command Node sends a command to one or more devices connected to the Losant MQTT Broker.
+Device: State Node,Output Nodes,Records device telemetry data,"Cloud, Gateway Edge Agent, Embedded Edge Agent",The Device: State Node records telemetry data as attributes for a device.
+Edge HTTP Response Node,Output Nodes,Responds to local HTTP requests,Gateway Edge Agent,The HTTP Response Node sends a response to an HTTP request received by an Edge Compute Device's local web server.
+Email Node,Output Nodes,Sends emails via Losant,Cloud,The Email Node sends an email to one or more users through Losant's provided email delivery.
+Experience Endpoint Reply Node,Output Nodes,Responds to Experience Endpoint requests,Cloud,The Endpoint Reply Node sends a response to an Experience Endpoint HTTP request.
+GCP Pub/Sub Node,Output Nodes,Publishes messages to GCP Pub/Sub,Cloud,The GCP (Google Cloud Platform) Pub/Sub Node publishes a message to a Google Pub/Sub topic.
+Job: Acknowledge Node,Output Nodes,Acknowledges Resource Job iterations,Cloud,The Job: Acknowledge Node marks an iteration of a Resource Job as a success or failure.
+Job: Execute Node,Output Nodes,Requests execution of a Resource Job,Cloud,The Job: Execute Node requests an execution of one of your application’s Resource Jobs.
+Mailgun Node,Output Nodes,Sends emails via Mailgun,Cloud,The Mailgun Node sends emails through a given Mailgun account.
+MQTT Node,Output Nodes,Publishes MQTT messages,"Cloud, Gateway Edge Agent","The MQTT Node publishes a message to the Losant MQTT Broker, the Gateway Edge Agent Local Broker, an external broker, or an MQTT integration."
+Notebook: Execute Node,Output Nodes,Initiates Notebook execution,Cloud,The Notebook: Execute Node initiates an execution of a Losant Notebook.
+Particle Device Function Call Node,Output Nodes,Invokes functions on Particle devices,Cloud,The Particle Call Node invokes a remote function on a device within Particle.
+SendGrid Node,Output Nodes,Sends emails via SendGrid,Cloud,The SendGrid Node sends emails through a given SendGrid account.
+Slack Node,Output Nodes,Sends Slack channel messages,Cloud,The Slack Node sends messages to a given channel within a Slack workspace.
+SMS Node,Output Nodes,Sends SMS via Losant,Cloud,The SMS Node sends an SMS message through Losant's provided SMS delivery service.
+Tweet Node,Output Nodes,Posts tweets to Twitter,Cloud,The Tweet Node posts a tweet using the provided Twitter application and account.
+Twilio Node,Output Nodes,Sends SMS via Twilio,Cloud,The Twilio Node sends SMS messages using the configured Twilio account.
+UDP Send Node,Output Nodes,Sends UDP datagrams,Gateway Edge Agent,The UDP Send Node sends a UDP datagram to a given address and port.
+Webhook: Reply Node,Output Nodes,Responds to Webhook requests,Cloud,The Webhook: Reply Node sends a response to an HTTP request received by a Losant Webhook.
+WebSocket Message Node,Output Nodes,Publishes messages to WebSockets,Cloud,The WebSocket Message Node publishes a message to a WebSocket integration.
+WhatsApp Node,Output Nodes,Sends WhatsApp messages,Cloud,The WhatsApp Node allows you to send messages using your WhatsApp Business account.
+Workflow Trigger Node,Output Nodes,Invokes another workflow,"Cloud, Gateway Edge Agent",The Workflow Trigger Node invokes another workflow execution with a custom payload.
+Authenticate Experience User Node,Experience Nodes,Authenticates Experience Users,Cloud,The Authenticate Experience User Node authenticates an email and password against Experience Users in a Losant application.
+Device: Verify Node,Experience Nodes,Verifies device association with users/groups,Cloud,The Device: Verify Node checks whether a given device is associated with an Experience Group or Experience User in a Losant application.
+Generate Experience User Token Node,Experience Nodes,Creates auth tokens for Experience Users,Cloud,The Generate Experience User Token Node creates a token for an Experience User to make authorized requests against Experience Endpoints.
+Group: Create Node,Experience Nodes,Creates a new Experience Group,Cloud,The Group: Create Node adds a new Experience Group to a Losant application.
+Group: Get Node,Experience Nodes,Retrieves Experience Groups,Cloud,The Group: Get Node retrieves one or more Experience Groups from a Losant application.
+Group: Summary Node,Experience Nodes,Retrieves groups in a tree format,Cloud,The Group: Summary Node retrieves Experience Groups in a hierarchical tree format.
+Group: Update Node,Experience Nodes,Updates an Experience Group,Cloud,The Group: Update Node updates an existing Experience Group within a Losant application.
+Group: Verify Node,Experience Nodes,Checks user membership in a group,Cloud,The Group: Verify Node checks whether a given Experience User is a member of an Experience Group or any of the group's children.
+SAML: Login URL Node,Experience Nodes,Generates SAML SSO login URLs,Cloud,The SAML: Login URL Node creates a login URL for a Security Assertion Markup Language 2.0 (SAML) single sign-on (SSO) identity provider.
+SAML: Verify Node,Experience Nodes,Verifies SAML provider response data,Cloud,The SAML: Verify Node verifies and extracts response data from a Security Assertion Markup Language 2.0 (SAML) single sign-on (SSO) identity provider.
+User: Create Node,Experience Nodes,Creates a new Experience User,Cloud,The User: Create Node adds a new Experience User to a Losant application.
+User: Delete Node,Experience Nodes,Deletes an Experience User,Cloud,The User: Delete Node removes an Experience User from a Losant application.
+User: Get Node,Experience Nodes,Retrieves Experience Users,Cloud,The User: Get Node retrieves one or more Experience Users from a Losant application.
+User: Update Node,Experience Nodes,Updates an Experience User,Cloud,The User: Update Node updates an existing Experience User within a Losant application.
+Debug Node,Debugging Nodes,Outputs current payload and timing data,"Cloud, Gateway Edge Agent, Embedded Edge Agent",The Debug Node prints out the current payload and execution timing info at the point of invocation within a workflow run.
+Throw Error Node,Debugging Nodes,Halts execution and logs an error,"Cloud, Gateway Edge Agent","The Throw Error Node halts a workflow execution, logs the provided error message, and fires any associated Workflow Error Triggers."

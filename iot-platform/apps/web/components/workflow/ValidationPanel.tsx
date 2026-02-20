@@ -144,7 +144,7 @@ export default function ValidationPanel({ isOpen, onToggle }: ValidationPanelPro
 
                 {/* Navigate arrow */}
                 <svg className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 5l7 7-7 7" />
                 </svg>
               </div>
             </button>

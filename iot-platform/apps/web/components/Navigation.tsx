@@ -19,6 +19,9 @@ export function Navigation() {
     { href: '/dashboard', label: 'Dashboard' },
     { href: '/dashboard-builder', label: 'Builder' },
     { href: '/dashboard-demo', label: 'Demo' },
+    { href: '/guide', label: 'Guide' },
+    { href: '/retention-policies', label: 'Retention' },
+    { href: '/organizations', label: 'Organizations' },
     { href: '/websocket-test', label: 'WebSocket' },
   ];
 

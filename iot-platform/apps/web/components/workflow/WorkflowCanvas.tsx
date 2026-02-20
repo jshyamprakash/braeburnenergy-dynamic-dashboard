@@ -1,13 +1,12 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import ReactFlow, {
   Background,
   Controls,
   MiniMap,
   useNodesState,
   useEdgesState,
-  addEdge,
   type Connection,
   type NodeTypes,
 } from 'reactflow';
@@ -22,6 +21,10 @@ import ConditionNode from './nodes/ConditionNode';
 import ActionNode from './nodes/ActionNode';
 import TransformNode from './nodes/TransformNode';
 
+interface WorkflowCanvasProps {
+  onNodeContextMenu?: (event: React.MouseEvent, node: any) => void;
+}
+
 /**
  * Workflow Canvas Component
  *
@@ -29,13 +32,17 @@ import TransformNode from './nodes/TransformNode';
  * Supports drag-and-drop, node connection, and real-time updates.
  */
 
-export default function WorkflowCanvas() {
+export default function WorkflowCanvas({ onNodeContextMenu }: WorkflowCanvasProps) {
   const dispatch = useAppDispatch();
   const { nodes: storeNodes, edges: storeEdges } = useAppSelector(state => state.workflow);
 
   // Local React Flow state (synced with Redux)
   const [localNodes, setLocalNodes, onNodesChange] = useNodesState(storeNodes);
   const [localEdges, setLocalEdges, onEdgesChange] = useEdgesState(storeEdges);
+
+  // Ref to always hold the latest localNodes for drag stop (avoids stale closure)
+  const localNodesRef = useRef(localNodes);
+  localNodesRef.current = localNodes;
 
   // Custom node types mapping
   const nodeTypes: NodeTypes = useMemo(
@@ -48,36 +55,44 @@ export default function WorkflowCanvas() {
     []
   );
 
-  // Sync local nodes to Redux
+  // Sync local nodes to Redux - skip during drag to prevent stutter
   const handleNodesChange = useCallback(
     (changes: any) => {
       onNodesChange(changes);
-      // Sync to Redux after a short delay to avoid excessive updates
-      setTimeout(() => {
-        dispatch(setNodes(localNodes));
-      }, 100);
+      // Don't dispatch position changes to Redux during drag - onNodeDragStop handles that
     },
-    [dispatch, localNodes, onNodesChange]
+    [onNodesChange]
   );
 
-  // Sync local edges to Redux
+  // Sync node positions to Redux only when drag completes (eliminates drag stutter)
+  // Use localNodesRef (all nodes) instead of the nodes param (may only contain dragged nodes)
+  // This prevents multi-selected nodes from disappearing when one node is clicked
+  const handleNodeDragStop = useCallback(
+    () => {
+      dispatch(setNodes(localNodesRef.current));
+    },
+    [dispatch]
+  );
+
+  // Sync local edges to Redux (edge removes via keyboard delete)
   const handleEdgesChange = useCallback(
     (changes: any) => {
       onEdgesChange(changes);
-      setTimeout(() => {
-        dispatch(setEdges(localEdges));
-      }, 100);
+      const removals = changes.filter((c: any) => c.type === 'remove');
+      if (removals.length > 0) {
+        const removedIds = new Set(removals.map((c: any) => c.id));
+        dispatch(setEdges(storeEdges.filter((e: any) => !removedIds.has(e.id))));
+      }
     },
-    [dispatch, localEdges, onEdgesChange]
+    [dispatch, storeEdges, onEdgesChange]
   );
 
-  // Handle new connection
+  // Handle new connection — dispatch to Redux only; useEffect syncs to localEdges
   const handleConnect = useCallback(
     (connection: Connection) => {
       dispatch(addWorkflowEdge(connection));
-      setLocalEdges(eds => addEdge(connection, eds));
     },
-    [dispatch, setLocalEdges]
+    [dispatch]
   );
 
   // Handle node selection
@@ -93,14 +108,24 @@ export default function WorkflowCanvas() {
     dispatch(selectNode(null));
   }, [dispatch]);
 
-  // Sync store nodes/edges to local state when they change
-  useMemo(() => {
-    setLocalNodes(storeNodes);
-  }, [storeNodes, setLocalNodes]);
+  // Handle node context menu
+  const handleContextMenu = useCallback(
+    (event: React.MouseEvent, node: any) => {
+      event.preventDefault();
+      onNodeContextMenu?.(event, node);
+    },
+    [onNodeContextMenu]
+  );
 
-  useMemo(() => {
+  // Sync store nodes/edges to local React Flow state when Redux changes
+  // useEffect (not useMemo) is correct here — this is a side effect, not a computation
+  useEffect(() => {
+    setLocalNodes(storeNodes);
+  }, [storeNodes]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
     setLocalEdges(storeEdges);
-  }, [storeEdges, setLocalEdges]);
+  }, [storeEdges]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="w-full h-full">
@@ -109,10 +134,13 @@ export default function WorkflowCanvas() {
         edges={localEdges}
         onNodesChange={handleNodesChange}
         onEdgesChange={handleEdgesChange}
+        onNodeDragStop={handleNodeDragStop}
         onConnect={handleConnect}
         onNodeClick={handleNodeClick}
         onPaneClick={handlePaneClick}
+        onNodeContextMenu={handleContextMenu}
         nodeTypes={nodeTypes}
+        deleteKeyCode={['Backspace', 'Delete']}
         fitView
         attributionPosition="bottom-left"
         className="bg-gray-50 dark:bg-gray-900"

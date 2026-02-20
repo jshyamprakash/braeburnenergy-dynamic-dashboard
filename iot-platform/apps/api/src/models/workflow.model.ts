@@ -16,24 +16,30 @@ export type NodeType =
   | 'trigger:manual'
   | 'trigger:alarmTriggered'
   | 'trigger:webhook'
-  // Conditions
+  // Conditions (legacy — frozen, use logic:* for new nodes)
   | 'condition:comparison'
   | 'condition:threshold'
   | 'condition:ifElse'
   | 'condition:timeBased'
   | 'condition:deviceStatus'
-  // Actions
+  // Actions (legacy — frozen, use output:* for new nodes)
   | 'action:sendNotification'
   | 'action:updateDevice'
   | 'action:createAlarm'
   | 'action:callWebhook'
   | 'action:logMessage'
   | 'action:updateVariable'
-  // Transformations
+  // Transformations (legacy — frozen, use data:* for new nodes)
   | 'transform:mathOperation'
   | 'transform:stringOperation'
   | 'transform:aggregation'
-  | 'transform:dataMapping';
+  | 'transform:dataMapping'
+  // Data (new taxonomy — ADR-017)
+  | 'data:modbusRead'
+  | 'data:modbusWrite'
+  | 'data:queryDeviceStates'
+  // Logic (new taxonomy — ADR-017)
+  | 'logic:function';
 
 export interface WorkflowNode {
   id: string;                      // ULID
@@ -128,11 +134,17 @@ const workflowNodeSchema = new Schema<WorkflowNode>({
       'action:callWebhook',
       'action:logMessage',
       'action:updateVariable',
-      // Transformations
+      // Transformations (legacy)
       'transform:mathOperation',
       'transform:stringOperation',
       'transform:aggregation',
       'transform:dataMapping',
+      // Data (ADR-017)
+      'data:modbusRead',
+      'data:modbusWrite',
+      'data:queryDeviceStates',
+      // Logic (ADR-017)
+      'logic:function',
     ],
   },
   position: {

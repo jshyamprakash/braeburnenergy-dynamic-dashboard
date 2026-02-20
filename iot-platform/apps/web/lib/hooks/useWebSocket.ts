@@ -161,3 +161,44 @@ export function useDeviceUpdates(onUpdate: (event: WebSocketEvent) => void) {
     };
   }, [socket, isConnected, onUpdate]);
 }
+
+// Hook for subscribing to workflow execution updates
+export function useWorkflowExecutionUpdates(
+  workflowId: string | null,
+  onStepUpdate: (step: any) => void,
+  onComplete: (completion: any) => void
+) {
+  const { socket, isConnected } = useWebSocket();
+
+  useEffect(() => {
+    if (!socket || !isConnected || !workflowId) return;
+
+    console.log(`[WebSocket] Subscribing to workflow execution: ${workflowId}`);
+
+    // Subscribe to workflow room
+    socket.emit('subscribe:workflow', workflowId);
+
+    // Listen for step updates
+    const handleStepUpdate = (step: any) => {
+      console.log('[WebSocket] Received workflow step:', step);
+      onStepUpdate(step);
+    };
+
+    // Listen for completion
+    const handleCompletion = (completion: any) => {
+      console.log('[WebSocket] Workflow execution completed:', completion);
+      onComplete(completion);
+    };
+
+    socket.on('workflow:execution:step', handleStepUpdate);
+    socket.on('workflow:execution:completed', handleCompletion);
+
+    // Cleanup
+    return () => {
+      console.log(`[WebSocket] Unsubscribing from workflow: ${workflowId}`);
+      socket.emit('unsubscribe:workflow', workflowId);
+      socket.off('workflow:execution:step', handleStepUpdate);
+      socket.off('workflow:execution:completed', handleCompletion);
+    };
+  }, [socket, isConnected, workflowId, onStepUpdate, onComplete]);
+}

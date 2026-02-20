@@ -183,13 +183,7 @@ export default function NodeConfigPanel() {
   }, [selectedNode?.id]);
 
   if (!selectedNode) {
-    return (
-      <div className="w-80 border-l border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-6 flex items-center justify-center">
-        <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
-          Select a node to configure
-        </p>
-      </div>
-    );
+    return null;
   }
 
   const handleFieldChange = (key: string, value: any) => {
@@ -313,6 +307,14 @@ export default function NodeConfigPanel() {
           </div>
         ) : (
           <div className="p-6 space-y-4">
+            {selectedNode.data?.description && (
+              <div>
+                <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">Description</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400 bg-gray-200 dark:bg-gray-800 px-2 py-1.5 rounded leading-relaxed">
+                  {selectedNode.data.description}
+                </p>
+              </div>
+            )}
             <div>
               <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">Node ID</p>
               <p className="text-xs text-gray-600 dark:text-gray-400 font-mono bg-gray-200 dark:bg-gray-800 px-2 py-1 rounded">

@@ -1,5 +1,10 @@
+import vm from 'vm';
 import { WorkflowNode } from '../models/workflow.model';
+import { ModbusGateway } from '../models/modbus-gateway.model';
+import { ModbusClientService } from './modbus-client.service';
 import { DeviceService } from './device.service';
+import { deviceStateService } from './device-state.service';
+import { modbusGatewayManager } from './modbus-gateway-manager.service';
 
 /**
  * Node execution result
@@ -76,6 +81,18 @@ export class WorkflowNodeHandlers {
         return this.executeTransformAggregation(config, context);
       case 'transform:dataMapping':
         return this.executeTransformDataMapping(config, context);
+
+      // Data (ADR-017)
+      case 'data:modbusRead':
+        return this.executeDataModbusRead(config, context);
+      case 'data:modbusWrite':
+        return this.executeDataModbusWrite(config, context);
+      case 'data:queryDeviceStates':
+        return this.executeDataQueryDeviceStates(config, context);
+
+      // Logic (ADR-017)
+      case 'logic:function':
+        return this.executeLogicFunction(config, context);
 
       default:
         throw new Error(`Unknown node type: ${node.type}`);
@@ -440,6 +457,92 @@ export class WorkflowNodeHandlers {
     }
 
     return { output };
+  }
+
+  // ==========================================================================
+  // Data Nodes (ADR-017)
+  // ==========================================================================
+
+  private async executeDataModbusRead(config: any, context: any): Promise<NodeExecutionResult> {
+    const { gatewayId, registerName, outputField = 'modbusData' } = config;
+
+    const value = await modbusGatewayManager.readRegister(gatewayId, registerName);
+
+    return {
+      output: {
+        ...context.currentData,
+        [outputField]: value,
+      },
+    };
+  }
+
+  private async executeDataModbusWrite(config: any, context: any): Promise<NodeExecutionResult> {
+    const { gatewayId, startAddress, values } = config;
+
+    const gateway = await ModbusGateway.findById(gatewayId).lean();
+    if (!gateway) {
+      throw new Error(`Modbus gateway not found: ${gatewayId}`);
+    }
+
+    const client = new ModbusClientService();
+    await client.connect(gateway.connection);
+    try {
+      await client.writeRegisters(startAddress, values);
+    } finally {
+      await client.disconnect();
+    }
+
+    return {
+      output: {
+        ...context.currentData,
+        modbusWriteSuccess: true,
+        writtenAddress: startAddress,
+        writtenValues: values,
+      },
+    };
+  }
+
+  private async executeDataQueryDeviceStates(config: any, context: any): Promise<NodeExecutionResult> {
+    const { deviceId, startTime, endTime, limit = 100, outputField = 'deviceStates' } = config;
+
+    const DEFAULT_ORG_ID = 'aaaaaaaaaaaaaaaaaaaaaaaa';
+
+    const result = await deviceStateService.getStates(DEFAULT_ORG_ID, deviceId, {
+      startTime: startTime ? new Date(startTime) : undefined,
+      endTime: endTime ? new Date(endTime) : undefined,
+      limit: Number(limit) || 100,
+      offset: 0,
+      sortOrder: 'desc',
+    });
+
+    return {
+      output: {
+        ...context.currentData,
+        [outputField]: result.data,
+      },
+    };
+  }
+
+  // ==========================================================================
+  // Logic Nodes (ADR-017)
+  // ==========================================================================
+
+  private async executeLogicFunction(config: any, context: any): Promise<NodeExecutionResult> {
+    const { code, outputField = 'computed' } = config;
+
+    const sandbox = {
+      data: { ...context.currentData },
+      result: {} as Record<string, any>,
+    };
+
+    vm.runInNewContext(code, sandbox, { timeout: 3000 });
+
+    return {
+      output: {
+        ...context.currentData,
+        [outputField]: sandbox.result,
+      },
+    };
   }
 
   // ==========================================================================

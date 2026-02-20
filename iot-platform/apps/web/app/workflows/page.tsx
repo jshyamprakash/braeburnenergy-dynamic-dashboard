@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api-client';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import ImportWorkflowButton from '@/components/workflow/ImportWorkflowButton';
+import TemplatePickerModal from '@/components/workflow/TemplatePickerModal';
 import { toast } from 'sonner';
 
 /**
@@ -33,6 +34,7 @@ function WorkflowsListPage() {
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
 
   // Load workflows
   useEffect(() => {
@@ -55,6 +57,14 @@ function WorkflowsListPage() {
   };
 
   const handleCreate = () => {
+    router.push('/workflows/new');
+  };
+
+  const handleTemplateSelect = (template: any) => {
+    // Store template in sessionStorage
+    sessionStorage.setItem('pendingTemplate', JSON.stringify(template));
+    setIsTemplateModalOpen(false);
+    // Navigate to new workflow page
     router.push('/workflows/new');
   };
 
@@ -181,6 +191,25 @@ function WorkflowsListPage() {
                 />
               </svg>
               New Workflow
+            </button>
+            <button
+              onClick={() => setIsTemplateModalOpen(true)}
+              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 10V3L4 14h7v7l9-11h-7z"
+                />
+              </svg>
+              From Template
             </button>
             <ImportWorkflowButton variant="secondary" />
           </div>
@@ -396,6 +425,13 @@ function WorkflowsListPage() {
           </div>
         )}
       </div>
+
+      {/* Template Picker Modal */}
+      <TemplatePickerModal
+        isOpen={isTemplateModalOpen}
+        onClose={() => setIsTemplateModalOpen(false)}
+        onSelect={handleTemplateSelect}
+      />
     </div>
   );
 }

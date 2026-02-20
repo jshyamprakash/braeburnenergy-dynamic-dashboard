@@ -85,6 +85,28 @@ export function createWebSocketServer(httpServer?: HTTPServer) {
       });
     });
 
+    // Subscribe to workflow execution updates
+    socket.on('subscribe:workflow', (workflowId: string) => {
+      socket.join(`workflow:${workflowId}`);
+      console.log(`[WS] Client ${socket.id} subscribed to workflow ${workflowId}`);
+
+      socket.emit('subscribed', {
+        workflowId,
+        timestamp: new Date().toISOString(),
+      });
+    });
+
+    // Unsubscribe from workflow execution updates
+    socket.on('unsubscribe:workflow', (workflowId: string) => {
+      socket.leave(`workflow:${workflowId}`);
+      console.log(`[WS] Client ${socket.id} unsubscribed from workflow ${workflowId}`);
+
+      socket.emit('unsubscribed', {
+        workflowId,
+        timestamp: new Date().toISOString(),
+      });
+    });
+
     // Ping/Pong for connection health
     socket.on('ping', () => {
       socket.emit('pong', {
@@ -156,4 +178,46 @@ export async function getDeviceSubscribers(
 ): Promise<string[]> {
   const room = io.sockets.adapter.rooms.get(`device:${deviceId}`);
   return room ? Array.from(room) : [];
+}
+
+/**
+ * Broadcast workflow execution step event
+ */
+export function broadcastWorkflowExecutionStep(
+  io: SocketIOServer,
+  data: {
+    executionId: string;
+    workflowId: string;
+    orgId: string;
+    nodeId: string;
+    nodeType: string;
+    status: 'running' | 'completed' | 'failed';
+    output?: any;
+    error?: string;
+    duration?: number;
+  }
+) {
+  io.to(`workflow:${data.workflowId}`).emit('workflow:execution:step', data);
+  io.to(`org:${data.orgId}`).emit('workflow:execution:step', data);
+  console.log(`[WS] Workflow step: ${data.workflowId}/${data.nodeId} - ${data.status}`);
+}
+
+/**
+ * Broadcast workflow execution completion
+ */
+export function broadcastWorkflowExecutionCompleted(
+  io: SocketIOServer,
+  data: {
+    executionId: string;
+    workflowId: string;
+    orgId: string;
+    status: 'completed' | 'failed';
+    duration: number;
+    outputData?: any;
+    error?: { message: string; nodeId: string };
+  }
+) {
+  io.to(`workflow:${data.workflowId}`).emit('workflow:execution:completed', data);
+  io.to(`org:${data.orgId}`).emit('workflow:execution:completed', data);
+  console.log(`[WS] Workflow ${data.status}: ${data.workflowId}`);
 }

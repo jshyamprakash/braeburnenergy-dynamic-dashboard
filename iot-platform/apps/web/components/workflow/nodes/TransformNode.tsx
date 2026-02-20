@@ -4,6 +4,7 @@ import { memo } from 'react';
 import { Handle, Position, type NodeProps } from 'reactflow';
 import { useAppSelector } from '@/lib/store';
 import NodeErrorBadge from '../NodeErrorBadge';
+import StatusBadge from './StatusBadge';
 
 /**
  * Transform Node Component
@@ -16,6 +17,7 @@ export interface TransformNodeData {
   label?: string;
   description?: string;
   config: Record<string, any>;
+  executionStatus?: 'idle' | 'running' | 'completed' | 'failed';
 }
 
 function TransformNode({ data, selected, id }: NodeProps<TransformNodeData>) {
@@ -25,7 +27,7 @@ function TransformNode({ data, selected, id }: NodeProps<TransformNodeData>) {
   return (
     <div
       className={`
-        relative px-4 py-3 rounded-lg border-2 shadow-lg min-w-[200px]
+        relative px-3 py-2 rounded-lg border-2 shadow-lg min-w-[160px]
         bg-purple-50 dark:bg-purple-900/20
         border-purple-500 dark:border-purple-400
         ${selected ? 'ring-2 ring-purple-500 ring-offset-2' : ''}
@@ -34,52 +36,26 @@ function TransformNode({ data, selected, id }: NodeProps<TransformNodeData>) {
       `}
     >
       {hasError && <NodeErrorBadge />}
-      {/* Input Handle */}
+      <StatusBadge status={data.executionStatus} />
+      {/* Input Handle — top centre, diamond */}
       <Handle
         type="target"
-        position={Position.Left}
-        className="w-3 h-3 !bg-purple-500 dark:!bg-purple-400 !border-2 !border-white dark:!border-gray-800"
+        position={Position.Top}
+        style={{ transform: 'translate(-50%, -20%) rotate(45deg)' }}
+        className="!w-2.5 !h-2.5 !rounded-none !bg-purple-500 dark:!bg-purple-400 !border-2 !border-white dark:!border-gray-800"
       />
 
-      {/* Icon */}
-      <div className="flex items-center gap-2 mb-1">
-        <div className="w-6 h-6 rounded-full bg-purple-500 dark:bg-purple-400 flex items-center justify-center">
-          <svg
-            className="w-4 h-4 text-white dark:text-black"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
-            />
-          </svg>
-        </div>
-        <span className="font-semibold text-sm text-purple-900 dark:text-purple-100">
-          Transform
-        </span>
-      </div>
-
-      {/* Label */}
-      <div className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
+      {/* Label only */}
+      <div className="text-xs font-medium text-gray-900 dark:text-gray-100">
         {data.label || 'Untitled Transform'}
       </div>
 
-      {/* Description */}
-      {data.description && (
-        <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-          {data.description}
-        </div>
-      )}
-
-      {/* Output Handle */}
+      {/* Output Handle — bottom centre, diamond */}
       <Handle
         type="source"
-        position={Position.Right}
-        className="w-3 h-3 !bg-purple-500 dark:!bg-purple-400 !border-2 !border-white dark:!border-gray-800"
+        position={Position.Bottom}
+        style={{ transform: 'translate(-50%, 20%) rotate(45deg)' }}
+        className="!w-2.5 !h-2.5 !rounded-none !bg-purple-500 dark:!bg-purple-400 !border-2 !border-white dark:!border-gray-800"
       />
     </div>
   );

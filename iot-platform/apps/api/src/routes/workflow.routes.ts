@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { workflowController } from '../controllers/workflow.controller';
+import { WorkflowController } from '../controllers/workflow.controller';
 import {
   createWorkflowSchema,
   updateWorkflowSchema,
@@ -12,6 +12,7 @@ import {
 import { zodToSwagger, successResponse, paginatedResponse, errorResponse } from '../utils/swagger';
 import { requireAuth } from '../middleware/auth.middleware';
 import { requirePermission } from '../middleware/rbac.middleware';
+import { WORKFLOW_TEMPLATES } from '../data/workflow-templates';
 
 /**
  * Workflow Routes
@@ -19,6 +20,41 @@ import { requirePermission } from '../middleware/rbac.middleware';
  * Registers all workflow-related HTTP endpoints with OpenAPI documentation
  */
 export async function workflowRoutes(fastify: FastifyInstance) {
+  // Create controller with Socket.io instance
+  const workflowController = new WorkflowController((fastify as any).io);
+
+  // Get workflow templates
+  fastify.get('/workflow-templates', {
+    schema: {
+      tags: ['Workflows'],
+      summary: 'List workflow templates',
+      description: 'Get all available starter workflow templates',
+      response: {
+        200: successResponse(
+          {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                name: { type: 'string' },
+                description: { type: 'string' },
+                icon: { type: 'string' },
+                tags: { type: 'array', items: { type: 'string' } },
+                nodes: { type: 'array', items: { type: 'object' } },
+                edges: { type: 'array', items: { type: 'object' } },
+              },
+            },
+          },
+          'Templates retrieved successfully'
+        ),
+      },
+    },
+    handler: async (request, reply) => {
+      return reply.send({ success: true, data: WORKFLOW_TEMPLATES });
+    },
+  });
+
   // Create workflow
   fastify.post('/workflows', {
     schema: {

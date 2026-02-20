@@ -134,3 +134,51 @@ export interface WebSocketConnectionEvent {
   status: 'connected' | 'disconnected' | 'error';
   message?: string;
 }
+
+/**
+ * Workflow node type union — kept in sync with workflow.model.ts (ADR-017)
+ */
+export type NodeType =
+  | 'trigger:deviceStateChange' | 'trigger:scheduled' | 'trigger:manual'
+  | 'trigger:alarmTriggered' | 'trigger:webhook'
+  | 'condition:comparison' | 'condition:threshold' | 'condition:ifElse'
+  | 'condition:timeBased' | 'condition:deviceStatus'
+  | 'action:sendNotification' | 'action:updateDevice' | 'action:createAlarm'
+  | 'action:callWebhook' | 'action:logMessage' | 'action:updateVariable'
+  | 'transform:mathOperation' | 'transform:stringOperation'
+  | 'transform:aggregation' | 'transform:dataMapping'
+  | 'data:modbusRead' | 'data:modbusWrite' | 'data:queryDeviceStates'
+  | 'logic:function';
+
+/**
+ * Workflow execution step event (per-node progress)
+ */
+export interface WorkflowExecutionStepEvent {
+  executionId: string;
+  workflowId: string;
+  orgId: string;
+  nodeId: string;
+  nodeType: string;
+  status: 'running' | 'completed' | 'failed';
+  output?: any;
+  error?: string;
+  duration?: number;
+  timestamp?: Date | string;
+}
+
+/**
+ * Workflow execution completion event
+ */
+export interface WorkflowExecutionCompletedEvent {
+  executionId: string;
+  workflowId: string;
+  orgId: string;
+  status: 'completed' | 'failed';
+  duration: number;
+  outputData?: any;
+  error?: {
+    message: string;
+    nodeId: string;
+  };
+  timestamp?: Date | string;
+}

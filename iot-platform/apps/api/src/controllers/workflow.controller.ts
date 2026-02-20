@@ -1,4 +1,5 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
+import type { Server as SocketIOServer } from 'socket.io';
 import { WorkflowService } from '../services/workflow.service';
 import { WorkflowEngineService } from '../services/workflow-engine.service';
 import {
@@ -40,9 +41,9 @@ export class WorkflowController {
   private workflowService: WorkflowService;
   private engineService: WorkflowEngineService;
 
-  constructor() {
+  constructor(io?: SocketIOServer) {
     this.workflowService = new WorkflowService();
-    this.engineService = new WorkflowEngineService();
+    this.engineService = new WorkflowEngineService(io);
   }
 
   /**
@@ -442,6 +443,3 @@ export class WorkflowController {
     }
   }
 }
-
-// Export singleton instance
-export const workflowController = new WorkflowController();
