@@ -90,6 +90,7 @@
 - Application Management UI (Frontend) — /applications page with CRUD modals, sidebar nav, Device/Workflow form integration, no-apps banner
 - Workflow Variable Binding from Device Attributes (ADR-023 Rule 3) — applicationId in Redux, device schema auto-fetch, datalist field suggestions, VariablePicker device schema section
 - Application Detail Page + Context Selector Cleanup (ADR-024) — /applications/[applicationId] hub with Devices/Workflows/Dashboards tabs, scoped entity filtering, applicationId as prop from route context, remove form selectors
+- Application RBAC Fix + Dashboard List/Detail UI (ADR-025) — Fixed application RBAC permissions, created /dashboards list page, /dashboards/[dashboardId] detail/builder page, updated sidebar nav, integrated dashboards tab in Application Detail page
 
 ## In Progress
 
