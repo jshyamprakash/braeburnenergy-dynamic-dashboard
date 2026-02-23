@@ -6,6 +6,7 @@ import { apiClient } from '@/lib/api-client';
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { Copy, Trash2, Edit2, Plus, ToggleLeft, ToggleRight } from 'lucide-react';
+import Link from 'next/link';
 import type { Application, PaginatedResponse } from '@repo/types';
 
 interface AppStats {
@@ -381,7 +382,14 @@ function ApplicationsContent() {
                   key={app.applicationId}
                   className="border-b border-gray-200 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
                 >
-                  <td className="px-4 py-3 font-medium">{app.name}</td>
+                  <td className="px-4 py-3 font-medium">
+                    <Link
+                      href={`/applications/${app.applicationId}`}
+                      className="text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                    >
+                      {app.name}
+                    </Link>
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <code className="text-sm bg-gray-100 px-2 py-1 rounded dark:bg-gray-800">

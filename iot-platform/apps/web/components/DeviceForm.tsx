@@ -3,15 +3,14 @@
 import { useState, useEffect } from 'react';
 import { Modal } from './Modal';
 import { useCreateDevice, useUpdateDevice } from '@/lib/hooks/useDevices';
-import { apiClient } from '@/lib/api-client';
-import { toast } from 'sonner';
-import type { Device, Application, PaginatedResponse } from '@repo/types';
+import type { Device } from '@repo/types';
 
 interface DeviceFormProps {
   isOpen: boolean;
   onClose: () => void;
   device?: Device | null; // If provided, it's edit mode
   onSuccess?: () => void;
+  applicationId?: string; // ADR-024: Application context from route (no selector)
 }
 
 type KVRow = { key: string; value: string };
@@ -34,49 +33,25 @@ function attrRowsFromRecord(record: Record<string, string> | null | undefined): 
   }));
 }
 
-export function DeviceForm({ isOpen, onClose, device, onSuccess }: DeviceFormProps) {
+export function DeviceForm({ isOpen, onClose, device, onSuccess, applicationId }: DeviceFormProps) {
   const isEditMode = !!device;
 
   const [name, setName] = useState('');
   const [tagRows, setTagRows] = useState<KVRow[]>([]);
   const [attrRows, setAttrRows] = useState<AttrRow[]>([]);
-  const [applicationId, setApplicationId] = useState('');
-  const [applications, setApplications] = useState<Application[]>([]);
-  const [loadingApps, setLoadingApps] = useState(false);
 
   const createDevice = useCreateDevice();
   const updateDevice = useUpdateDevice(device?.deviceId || '');
-
-  // Fetch applications on mount
-  useEffect(() => {
-    if (isOpen) {
-      fetchApplications();
-    }
-  }, [isOpen]);
-
-  const fetchApplications = async () => {
-    setLoadingApps(true);
-    try {
-      const response = await apiClient.get<any>('/applications?limit=100&offset=0');
-      setApplications(response.data || []);
-    } catch (error) {
-      toast.error('Failed to fetch applications');
-    } finally {
-      setLoadingApps(false);
-    }
-  };
 
   useEffect(() => {
     if (device) {
       setName(device.name);
       setTagRows(kvRowsFromRecord(device.tags as any));
       setAttrRows(attrRowsFromRecord(device.attributes as any));
-      setApplicationId((device as any).applicationId || '');
     } else {
       setName('');
       setTagRows([]);
       setAttrRows([]);
-      setApplicationId('');
     }
   }, [device, isOpen]);
 
@@ -116,7 +91,7 @@ export function DeviceForm({ isOpen, onClose, device, onSuccess }: DeviceFormPro
         name: name.trim(),
         tags: tagsRecord,
         attributes: Object.keys(attrsRecord).length > 0 ? attrsRecord : undefined,
-        ...(applicationId && { applicationId }),
+        ...(applicationId && { applicationId }), // ADR-024: Application context from props
       };
 
       if (isEditMode) {
@@ -156,27 +131,6 @@ export function DeviceForm({ isOpen, onClose, device, onSuccess }: DeviceFormPro
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
             required
           />
-        </div>
-
-        {/* Application Selection */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Application <span className="text-xs text-gray-500 font-normal">(optional, scopes this device to an application)</span>
-          </label>
-          <select
-            value={applicationId}
-            onChange={(e) => setApplicationId(e.target.value)}
-            disabled={loadingApps}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
-          >
-            <option value="">-- No Application --</option>
-            {applications.map((app) => (
-              <option key={app.applicationId} value={app.applicationId}>
-                {app.name}
-              </option>
-            ))}
-          </select>
-          {loadingApps && <p className="text-xs text-gray-500 mt-1">Loading applications...</p>}
         </div>
 
         {/* Tags — key-value static metadata */}

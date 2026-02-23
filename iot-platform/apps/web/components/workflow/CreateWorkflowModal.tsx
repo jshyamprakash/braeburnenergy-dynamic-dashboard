@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { apiClient } from '@/lib/api-client';
-import type { Workflow, Application, PaginatedResponse } from '@repo/types';
+import type { Workflow } from '@repo/types';
 
 export type WorkflowType = 'Application' | 'Experience' | 'Embedded' | 'Edge';
 
@@ -13,20 +13,19 @@ export interface CreateWorkflowModalProps {
   workflowData?: Partial<Workflow> | null;
   onClose: () => void;
   onSuccess: (workflow: Workflow) => void;
+  applicationId?: string; // ADR-024: Application context from route
 }
 
 interface FormData {
   name: string;
   type: WorkflowType;
   description: string;
-  applicationId?: string;
 }
 
 const INITIAL_FORM_STATE: FormData = {
   name: '',
   type: 'Application',
   description: '',
-  applicationId: '',
 };
 
 export default function CreateWorkflowModal({
@@ -35,32 +34,12 @@ export default function CreateWorkflowModal({
   workflowData,
   onClose,
   onSuccess,
+  applicationId,
 }: CreateWorkflowModalProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [showUnsavedWarning, setShowUnsavedWarning] = useState(false);
   const [formData, setFormData] = useState<FormData>(INITIAL_FORM_STATE);
-  const [applications, setApplications] = useState<Application[]>([]);
-  const [loadingApps, setLoadingApps] = useState(false);
-
-  // Fetch applications on mount
-  useEffect(() => {
-    if (isOpen) {
-      fetchApplications();
-    }
-  }, [isOpen]);
-
-  const fetchApplications = async () => {
-    setLoadingApps(true);
-    try {
-      const response = await apiClient.get<any>('/applications?limit=100&offset=0');
-      setApplications(response.data || []);
-    } catch (error) {
-      toast.error('Failed to fetch applications');
-    } finally {
-      setLoadingApps(false);
-    }
-  };
 
   // Initialize form from workflow data (for edit mode)
   useEffect(() => {
@@ -70,7 +49,6 @@ export default function CreateWorkflowModal({
           name: workflowData.name || '',
           type: (workflowData.type as WorkflowType) || 'Application',
           description: workflowData.description || '',
-          applicationId: (workflowData as any).applicationId || '',
         });
       } else {
         setFormData(INITIAL_FORM_STATE);
@@ -92,11 +70,6 @@ export default function CreateWorkflowModal({
 
   const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setFormData((prev) => ({ ...prev, description: e.target.value }));
-    setHasChanges(true);
-  };
-
-  const handleApplicationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setFormData((prev) => ({ ...prev, applicationId: e.target.value }));
     setHasChanges(true);
   };
 
@@ -146,10 +119,8 @@ export default function CreateWorkflowModal({
           ],
           edges: [],
           isEnabled: false,
+          ...(applicationId && { applicationId }), // ADR-024: Application context from props
         };
-        if (formData.applicationId) {
-          createPayload.applicationId = formData.applicationId;
-        }
         response = await apiClient.post<Workflow>('/workflows', createPayload);
         toast.success('Workflow created successfully');
       } else if (mode === 'edit' && workflowData?.workflowId) {
@@ -158,10 +129,8 @@ export default function CreateWorkflowModal({
           name: formData.name,
           type: formData.type,
           description: formData.description,
+          ...(applicationId && { applicationId }), // ADR-024: Application context from props
         };
-        if (formData.applicationId) {
-          updatePayload.applicationId = formData.applicationId;
-        }
         response = await apiClient.patch<Workflow>(
           `/workflows/${workflowData.workflowId}`,
           updatePayload
@@ -278,29 +247,6 @@ export default function CreateWorkflowModal({
               </select>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 Choose the deployment target or use case for this workflow
-              </p>
-            </div>
-
-            {/* Application Selection */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Application
-              </label>
-              <select
-                value={formData.applicationId || ''}
-                onChange={handleApplicationChange}
-                disabled={loadingApps}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-              >
-                <option value="">-- No Application --</option>
-                {applications.map((app) => (
-                  <option key={app.applicationId} value={app.applicationId}>
-                    {app.name}
-                  </option>
-                ))}
-              </select>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                {loadingApps ? 'Loading applications...' : 'Optional, scopes this workflow to an application'}
               </p>
             </div>
 
