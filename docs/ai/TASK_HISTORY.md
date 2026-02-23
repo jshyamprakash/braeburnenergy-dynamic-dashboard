@@ -89,6 +89,7 @@
   - Tests ready for next session (optional Tasks #9-11)
 - Application Management UI (Frontend) — /applications page with CRUD modals, sidebar nav, Device/Workflow form integration, no-apps banner
 - Workflow Variable Binding from Device Attributes (ADR-023 Rule 3) — applicationId in Redux, device schema auto-fetch, datalist field suggestions, VariablePicker device schema section
+- Application Detail Page + Context Selector Cleanup (ADR-024) — /applications/[applicationId] hub with Devices/Workflows/Dashboards tabs, scoped entity filtering, applicationId as prop from route context, remove form selectors
 
 ## In Progress
 
