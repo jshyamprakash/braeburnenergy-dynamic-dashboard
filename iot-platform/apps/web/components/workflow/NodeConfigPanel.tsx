@@ -5,6 +5,7 @@ import { useAppDispatch, useAppSelector } from '@/lib/store';
 import { updateNode, triggerAutoSave } from '@/lib/store/slices/workflowSlice';
 import { apiClient } from '@/lib/api-client';
 import { getAvailableVariables, getDeviceAttributeVariables } from '@/lib/utils/workflow-variables';
+import { useDevices } from '@/lib/hooks/useDevices';
 import VariablePicker from './VariablePicker';
 
 /**
@@ -18,7 +19,7 @@ import VariablePicker from './VariablePicker';
 interface FieldConfig {
   key: string;
   label: string;
-  type: 'text' | 'number' | 'select' | 'textarea' | 'checkbox' | 'device-field';
+  type: 'text' | 'number' | 'select' | 'textarea' | 'checkbox' | 'device-field' | 'device-select' | 'mapping-list';
   placeholder?: string;
   options?: Array<{ value: string | number; label: string }>;
   required?: boolean;
@@ -33,7 +34,7 @@ const NODE_CONFIG_SCHEMAS: Record<string, FieldConfig[]> = {
   'trigger:deviceStateChange': [
     { key: 'label', label: 'Node Label', type: 'text', placeholder: 'e.g., Temperature Changed', required: true },
     { key: 'description', label: 'Description', type: 'textarea' },
-    { key: 'deviceId', label: 'Device ID', type: 'text', placeholder: 'Device ID to monitor', required: true },
+    { key: 'deviceId', label: 'Device ID', type: 'device-select', placeholder: 'Select a device', required: true },
     { key: 'field', label: 'Field Name', type: 'device-field', placeholder: 'e.g., temperature', required: true },
   ],
   'trigger:scheduled': [
@@ -96,7 +97,7 @@ const NODE_CONFIG_SCHEMAS: Record<string, FieldConfig[]> = {
   'action:updateDeviceState': [
     { key: 'label', label: 'Node Label', type: 'text', placeholder: 'e.g., Update Device', required: true },
     { key: 'description', label: 'Description', type: 'textarea' },
-    { key: 'deviceId', label: 'Device ID', type: 'text', placeholder: 'Target device', required: true },
+    { key: 'deviceId', label: 'Device ID', type: 'device-select', placeholder: 'Select a device', required: true },
     { key: 'field', label: 'Field Name', type: 'text', placeholder: 'e.g., status', required: true },
     { key: 'value', label: 'New Value', type: 'text', placeholder: 'Value to set', required: true },
   ],
@@ -135,13 +136,7 @@ const NODE_CONFIG_SCHEMAS: Record<string, FieldConfig[]> = {
   'action:writeDeviceState': [
     { key: 'label', label: 'Node Label', type: 'text', placeholder: 'e.g., Structure Telemetry', required: true },
     { key: 'description', label: 'Description', type: 'textarea' },
-    {
-      key: 'mappings',
-      label: 'Field Mappings (JSON)',
-      type: 'textarea',
-      placeholder: '[{"key":"temperature","expression":"{{trigger.value}}"},{"key":"unit","expression":"celsius"}]',
-      required: true,
-    },
+    { key: 'mappings', label: 'Field Mappings', type: 'mapping-list', required: true },
   ],
   'transform:mapData': [
     { key: 'label', label: 'Node Label', type: 'text', placeholder: 'e.g., Transform Data', required: true },
@@ -187,7 +182,7 @@ const NODE_CONFIG_SCHEMAS: Record<string, FieldConfig[]> = {
   'data:queryDeviceStates': [
     { key: 'label', label: 'Node Label', type: 'text', placeholder: 'e.g., Query Device Data', required: true },
     { key: 'description', label: 'Description', type: 'textarea' },
-    { key: 'deviceId', label: 'Device ID', type: 'text', placeholder: 'Device to query', required: true },
+    { key: 'deviceId', label: 'Device ID', type: 'device-select', placeholder: 'Select a device', required: true },
     { key: 'startTime', label: 'Start Time (ISO 8601)', type: 'text', placeholder: '2024-01-01T00:00:00Z', required: false },
     { key: 'endTime', label: 'End Time (ISO 8601)', type: 'text', placeholder: '2024-12-31T23:59:59Z', required: false },
     { key: 'limit', label: 'Result Limit', type: 'number', placeholder: '100', required: false },
@@ -204,6 +199,7 @@ const NODE_CONFIG_SCHEMAS: Record<string, FieldConfig[]> = {
 export default function NodeConfigPanel() {
   const dispatch = useAppDispatch();
   const { nodes, edges, selectedNodeId, applicationId } = useAppSelector(state => state.workflow);
+  const { data: devicesData } = useDevices();
   const [activeTab, setActiveTab] = useState<'config' | 'info'>('config');
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [isVariablePickerOpen, setIsVariablePickerOpen] = useState(false);
@@ -211,6 +207,12 @@ export default function NodeConfigPanel() {
   const [pickerPosition, setPickerPosition] = useState({ x: 0, y: 0 });
   const [deviceAttributes, setDeviceAttributes] = useState<Record<string, string> | null>(null);
   const textFieldRefs = useRef<Record<string, HTMLElement | null>>({});
+
+  type MappingRow = { key: string; expression: string };
+  const [mappingRows, setMappingRows] = useState<MappingRow[]>([]);
+
+  // Extract devices array from useDevices response
+  const devices = devicesData?.devices || [];
 
   // Fetch device attributes from linked application (ADR-023)
   useEffect(() => {
@@ -263,6 +265,12 @@ export default function NodeConfigPanel() {
     }
   }, [selectedNode?.id]);
 
+  // Reset mapping rows when selected node changes
+  useEffect(() => {
+    const rows: MappingRow[] = selectedNode?.data?.config?.mappings || [];
+    setMappingRows(rows);
+  }, [selectedNode?.id]);
+
   if (!selectedNode) {
     return null;
   }
@@ -305,6 +313,24 @@ export default function NodeConfigPanel() {
 
   const getFieldValue = (key: string): any => {
     return formData[key] ?? '';
+  };
+
+  const addMappingRow = () => {
+    const rows = [...mappingRows, { key: '', expression: '' }];
+    setMappingRows(rows);
+    handleFieldChange('config', { ...formData.config, mappings: rows });
+  };
+
+  const removeMappingRow = (i: number) => {
+    const rows = mappingRows.filter((_, idx) => idx !== i);
+    setMappingRows(rows);
+    handleFieldChange('config', { ...formData.config, mappings: rows });
+  };
+
+  const updateMappingRow = (i: number, field: 'key' | 'expression', val: string) => {
+    const rows = mappingRows.map((row, idx) => idx === i ? { ...row, [field]: val } : row);
+    setMappingRows(rows);
+    handleFieldChange('config', { ...formData.config, mappings: rows });
   };
 
   return (
@@ -433,6 +459,72 @@ export default function NodeConfigPanel() {
                       )}
                     </div>
                   )}
+
+                  {field.type === 'device-select' && (
+                    <select
+                      value={getFieldValue(field.key) || ''}
+                      onChange={e => handleFieldChange(field.key, e.target.value)}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Select a device...</option>
+                      {devices.map((device: any) => (
+                        <option key={device.deviceId} value={device.deviceId}>
+                          {device.name} ({device.deviceId.slice(-6)})
+                        </option>
+                      ))}
+                    </select>
+                  )}
+
+                  {field.type === 'mapping-list' && (
+                    <div className="space-y-2">
+                      {/* Column headers */}
+                      <div className="grid grid-cols-[1fr_1fr_auto] gap-1 text-xs font-medium text-gray-500 dark:text-gray-400 px-1">
+                        <span>Attribute</span>
+                        <span>Expression</span>
+                        <span />
+                      </div>
+                      {/* Rows */}
+                      {mappingRows.map((row, i) => (
+                        <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-1 items-center">
+                          <input
+                            type="text"
+                            value={row.key}
+                            onChange={e => updateMappingRow(i, 'key', e.target.value)}
+                            placeholder="e.g., temperature"
+                            list="datalist-mapping-keys"
+                            className="px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          />
+                          <input
+                            type="text"
+                            value={row.expression}
+                            onChange={e => updateMappingRow(i, 'expression', e.target.value)}
+                            placeholder="{{trigger.value}}"
+                            className="px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          />
+                          <button
+                            onClick={() => removeMappingRow(i)}
+                            className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                            title="Remove row"
+                          >✕</button>
+                        </div>
+                      ))}
+                      {/* Attribute datalist from device schema */}
+                      {deviceAttributes && (
+                        <datalist id="datalist-mapping-keys">
+                          {Object.keys(deviceAttributes).map(attr => (
+                            <option key={attr} value={attr} />
+                          ))}
+                        </datalist>
+                      )}
+                      {/* Add row button */}
+                      <button
+                        onClick={addMappingRow}
+                        className="mt-1 w-full px-2 py-1.5 text-xs border border-dashed border-gray-300 dark:border-gray-600 rounded text-gray-500 dark:text-gray-400 hover:border-blue-400 hover:text-blue-500 transition-colors"
+                      >
+                        + Add Mapping
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))
             ) : (
@@ -464,7 +556,7 @@ export default function NodeConfigPanel() {
             <div>
               <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">Position</p>
               <p className="text-xs text-gray-600 dark:text-gray-400 font-mono bg-gray-200 dark:bg-gray-800 px-2 py-1 rounded">
-                X: {selectedNode.position.x.toFixed(0)}, Y: {selectedNode.position.y.toFixed(0)}
+                X: {selectedNode.position?.x?.toFixed(0) ?? '—'}, Y: {selectedNode.position?.y?.toFixed(0) ?? '—'}
               </p>
             </div>
           </div>
