@@ -1,8 +1,10 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '@/lib/store';
 import { updateNode, triggerAutoSave } from '@/lib/store/slices/workflowSlice';
+import { apiClient } from '@/lib/api-client';
+import { getAvailableVariables, getDeviceAttributeVariables } from '@/lib/utils/workflow-variables';
 import VariablePicker from './VariablePicker';
 
 /**
@@ -16,7 +18,7 @@ import VariablePicker from './VariablePicker';
 interface FieldConfig {
   key: string;
   label: string;
-  type: 'text' | 'number' | 'select' | 'textarea' | 'checkbox';
+  type: 'text' | 'number' | 'select' | 'textarea' | 'checkbox' | 'device-field';
   placeholder?: string;
   options?: Array<{ value: string | number; label: string }>;
   required?: boolean;
@@ -32,7 +34,7 @@ const NODE_CONFIG_SCHEMAS: Record<string, FieldConfig[]> = {
     { key: 'label', label: 'Node Label', type: 'text', placeholder: 'e.g., Temperature Changed', required: true },
     { key: 'description', label: 'Description', type: 'textarea' },
     { key: 'deviceId', label: 'Device ID', type: 'text', placeholder: 'Device ID to monitor', required: true },
-    { key: 'field', label: 'Field Name', type: 'text', placeholder: 'e.g., temperature', required: true },
+    { key: 'field', label: 'Field Name', type: 'device-field', placeholder: 'e.g., temperature', required: true },
   ],
   'trigger:scheduled': [
     { key: 'label', label: 'Node Label', type: 'text', placeholder: 'e.g., Daily Report', required: true },
@@ -46,7 +48,7 @@ const NODE_CONFIG_SCHEMAS: Record<string, FieldConfig[]> = {
   'condition:comparison': [
     { key: 'label', label: 'Node Label', type: 'text', placeholder: 'e.g., Temp > 30', required: true },
     { key: 'description', label: 'Description', type: 'textarea' },
-    { key: 'field', label: 'Field Name', type: 'text', placeholder: 'e.g., temperature', required: true },
+    { key: 'field', label: 'Field Name', type: 'device-field', placeholder: 'e.g., temperature', required: true },
     {
       key: 'operator',
       label: 'Operator',
@@ -66,7 +68,7 @@ const NODE_CONFIG_SCHEMAS: Record<string, FieldConfig[]> = {
   'condition:threshold': [
     { key: 'label', label: 'Node Label', type: 'text', placeholder: 'e.g., Normal Range', required: true },
     { key: 'description', label: 'Description', type: 'textarea' },
-    { key: 'field', label: 'Field Name', type: 'text', placeholder: 'e.g., temperature', required: true },
+    { key: 'field', label: 'Field Name', type: 'device-field', placeholder: 'e.g., temperature', required: true },
     { key: 'min', label: 'Minimum', type: 'number', placeholder: '0', required: true },
     { key: 'max', label: 'Maximum', type: 'number', placeholder: '100', required: true },
   ],
@@ -201,13 +203,44 @@ const NODE_CONFIG_SCHEMAS: Record<string, FieldConfig[]> = {
 
 export default function NodeConfigPanel() {
   const dispatch = useAppDispatch();
-  const { nodes, edges, selectedNodeId } = useAppSelector(state => state.workflow);
+  const { nodes, edges, selectedNodeId, applicationId } = useAppSelector(state => state.workflow);
   const [activeTab, setActiveTab] = useState<'config' | 'info'>('config');
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [isVariablePickerOpen, setIsVariablePickerOpen] = useState(false);
   const [pickerField, setPickerField] = useState<string | null>(null);
   const [pickerPosition, setPickerPosition] = useState({ x: 0, y: 0 });
+  const [deviceAttributes, setDeviceAttributes] = useState<Record<string, string> | null>(null);
   const textFieldRefs = useRef<Record<string, HTMLElement | null>>({});
+
+  // Fetch device attributes from linked application (ADR-023)
+  useEffect(() => {
+    if (!applicationId) {
+      setDeviceAttributes(null);
+      return;
+    }
+
+    const fetchDeviceAttributes = async () => {
+      try {
+        const response = await apiClient.get<any>('/devices?limit=100&offset=0');
+        const devices = response.data || [];
+
+        // Filter devices by applicationId and merge their attributes
+        const mergedAttrs: Record<string, string> = {};
+        devices.forEach((device: any) => {
+          if (device.applicationId === applicationId && device.attributes) {
+            Object.assign(mergedAttrs, device.attributes);
+          }
+        });
+
+        setDeviceAttributes(Object.keys(mergedAttrs).length > 0 ? mergedAttrs : null);
+      } catch (error) {
+        // Silently fail - devices may not be available
+        setDeviceAttributes(null);
+      }
+    };
+
+    fetchDeviceAttributes();
+  }, [applicationId]);
 
   // Get selected node
   const selectedNode = useMemo(() => {
@@ -377,6 +410,29 @@ export default function NodeConfigPanel() {
                       className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 dark:bg-gray-700 dark:border-gray-600 rounded focus:ring-2 focus:ring-blue-500"
                     />
                   )}
+
+                  {field.type === 'device-field' && (
+                    <div className="relative">
+                      <input
+                        ref={el => { if (el) textFieldRefs.current[field.key] = el; }}
+                        type="text"
+                        value={getFieldValue(field.key)}
+                        onChange={e => handleFieldChange(field.key, e.target.value)}
+                        placeholder={field.placeholder}
+                        list={`datalist-${field.key}`}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      {deviceAttributes && (
+                        <datalist id={`datalist-${field.key}`}>
+                          {Object.keys(deviceAttributes).map(fieldName => (
+                            <option key={fieldName} value={fieldName}>
+                              {fieldName} ({deviceAttributes[fieldName]})
+                            </option>
+                          ))}
+                        </datalist>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))
             ) : (
@@ -420,6 +476,7 @@ export default function NodeConfigPanel() {
         nodeId={selectedNode.id}
         nodes={nodes}
         edges={edges}
+        deviceAttributes={deviceAttributes}
         isOpen={isVariablePickerOpen}
         onClose={() => setIsVariablePickerOpen(false)}
         onSelect={handleVariableSelect}

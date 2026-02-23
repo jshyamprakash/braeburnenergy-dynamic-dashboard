@@ -88,6 +88,7 @@
   - Zod validation schemas + shared types
   - Tests ready for next session (optional Tasks #9-11)
 - Application Management UI (Frontend) — /applications page with CRUD modals, sidebar nav, Device/Workflow form integration, no-apps banner
+- Workflow Variable Binding from Device Attributes (ADR-023 Rule 3) — applicationId in Redux, device schema auto-fetch, datalist field suggestions, VariablePicker device schema section
 
 ## In Progress
 

@@ -25,6 +25,7 @@ export interface Workflow {
   isEnabled: boolean;
   priority: 'HIGH' | 'MEDIUM' | 'LOW';
   version: number;
+  applicationId?: string; // ADR-023: Application context for device schema binding
   createdAt?: string;
   updatedAt?: string;
 }
@@ -39,6 +40,7 @@ export interface WorkflowState {
   isEnabled: boolean;
   priority: 'HIGH' | 'MEDIUM' | 'LOW';
   version: number;
+  applicationId: string | null; // ADR-023: Application context for device schema binding
 
   // React Flow state
   nodes: Node[];
@@ -84,6 +86,7 @@ const initialState: WorkflowState = {
   isEnabled: false,
   priority: 'MEDIUM',
   version: 1,
+  applicationId: null,
 
   nodes: [],
   edges: [],
@@ -438,6 +441,7 @@ export const workflowSlice = createSlice({
       state.type = action.payload.type || 'Application';
       state.description = action.payload.description || '';
       state.tags = action.payload.tags || [];
+      state.applicationId = action.payload.applicationId || null;
       // Re-map backend nodes to React Flow format:
       // backend stores type='trigger:manual', React Flow renders by type='trigger'
       // Semantic type is stored in data.nodeType for the workflow engine

@@ -2,21 +2,47 @@
  * Workflow Variable Utilities
  *
  * Extract and compute available variables for expression binding.
+ * Supports upstream nodes, user variables, and device schema fields (ADR-023).
  */
 
 /**
- * Get all variables available for a node based on upstream nodes
+ * Convert device attributes to trigger.data.* variables
+ * e.g., { temperature: 'number', pressure: 'string' } → { 'trigger.data.temperature': 'Device field: temperature (number)' }
+ */
+export function getDeviceAttributeVariables(
+  attributes: Record<string, string> | null | undefined
+): Record<string, string> {
+  const variables: Record<string, string> = {};
+  if (!attributes) return variables;
+
+  for (const [fieldName, fieldType] of Object.entries(attributes)) {
+    const key = `trigger.data.${fieldName}`;
+    variables[key] = `Device field: ${fieldName} (${fieldType})`;
+  }
+
+  return variables;
+}
+
+/**
+ * Get all variables available for a node based on upstream nodes, user variables, and device schema
  * Returns { variableName: description } map
  */
 export function getAvailableVariables(
   nodeId: string,
   nodes: any[],
-  edges: any[]
+  edges: any[],
+  deviceAttributes?: Record<string, string> | null
 ): Record<string, string> {
   const variables: Record<string, string> = {};
 
   // Always include trigger output
   variables['trigger'] = 'Trigger node data';
+
+  // Add device schema fields if available (ADR-023)
+  if (deviceAttributes) {
+    const deviceVars = getDeviceAttributeVariables(deviceAttributes);
+    Object.assign(variables, deviceVars);
+  }
 
   // Find all upstream nodes (nodes that connect to this node)
   const upstreamNodeIds = findUpstreamNodes(nodeId, nodes, edges);

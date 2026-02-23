@@ -11,6 +11,7 @@ interface VariablePickerProps {
   isOpen: boolean;
   onClose: () => void;
   position?: { x: number; y: number };
+  deviceAttributes?: Record<string, string> | null;
 }
 
 /**
@@ -25,14 +26,15 @@ export default function VariablePicker({
   isOpen,
   onClose,
   position = { x: 0, y: 0 },
+  deviceAttributes,
 }: VariablePickerProps) {
   const [filter, setFilter] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const availableVars = getAvailableVariables(nodeId, nodes, edges);
+  const availableVars = getAvailableVariables(nodeId, nodes, edges, deviceAttributes);
   const filteredVars = Object.entries(availableVars)
     .filter(([name]) => name.toLowerCase().includes(filter.toLowerCase()))
-    .slice(0, 8); // Show max 8 suggestions
+    .slice(0, 12); // Show max 12 suggestions
 
   // Close on escape
   useEffect(() => {
@@ -76,21 +78,59 @@ export default function VariablePicker({
       />
 
       {/* Variable list */}
-      <div className="max-h-[280px] overflow-y-auto">
+      <div className="max-h-[320px] overflow-y-auto">
         {filteredVars.length > 0 ? (
-          filteredVars.map(([name, description]) => (
-            <button
-              key={name}
-              className="w-full px-3 py-2 text-left text-sm hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors border-b border-gray-100 dark:border-gray-700 last:border-b-0"
-              onClick={() => {
-                onSelect(`{{${name}}}`);
-                onClose();
-              }}
-            >
-              <div className="font-mono text-blue-600 dark:text-blue-400">{`{{${name}}}`}</div>
-              <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{description}</div>
-            </button>
-          ))
+          <>
+            {/* Device Schema section (ADR-023) */}
+            {deviceAttributes && filteredVars.some(([name]) => name.startsWith('trigger.data.')) && (
+              <>
+                <div className="px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+                  Device Schema (from attributes)
+                </div>
+                {filteredVars
+                  .filter(([name]) => name.startsWith('trigger.data.'))
+                  .map(([name, description]) => (
+                    <button
+                      key={name}
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors border-b border-gray-100 dark:border-gray-700"
+                      onClick={() => {
+                        onSelect(`{{${name}}}`);
+                        onClose();
+                      }}
+                    >
+                      <div className="font-mono text-green-600 dark:text-green-400">{`{{${name}}}`}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{description}</div>
+                    </button>
+                  ))}
+              </>
+            )}
+
+            {/* Other variables section */}
+            {filteredVars.some(([name]) => !name.startsWith('trigger.data.')) && (
+              <>
+                {deviceAttributes && filteredVars.some(([name]) => name.startsWith('trigger.data.')) && (
+                  <div className="px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+                    Workflow Variables
+                  </div>
+                )}
+                {filteredVars
+                  .filter(([name]) => !name.startsWith('trigger.data.'))
+                  .map(([name, description]) => (
+                    <button
+                      key={name}
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors border-b border-gray-100 dark:border-gray-700 last:border-b-0"
+                      onClick={() => {
+                        onSelect(`{{${name}}}`);
+                        onClose();
+                      }}
+                    >
+                      <div className="font-mono text-blue-600 dark:text-blue-400">{`{{${name}}}`}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{description}</div>
+                    </button>
+                  ))}
+              </>
+            )}
+          </>
         ) : (
           <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
             No variables available
