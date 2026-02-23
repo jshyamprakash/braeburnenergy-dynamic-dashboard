@@ -39,6 +39,11 @@ const PERMISSIONS: Record<string, UserRole[]> = {
   'organization:update': ['SuperAdmin'],
   'organization:delete': ['SuperAdmin'],
 
+  // Application management
+  'application:create': ['SuperAdmin', 'Admin'],
+  'application:read': ['SuperAdmin', 'Admin', 'Operator', 'Viewer'],
+  'application:manage': ['SuperAdmin', 'Admin'],
+
   // User management
   'user:create': ['SuperAdmin', 'Admin'],
   'user:read': ['SuperAdmin', 'Admin'],
