@@ -17,6 +17,7 @@ import { apiClient } from '@/lib/api-client';
 export interface Workflow {
   workflowId: string;
   name: string;
+  type: 'Application' | 'Experience' | 'Embedded' | 'Edge';
   description?: string;
   tags: string[];
   nodes: Node[];
@@ -32,6 +33,7 @@ export interface WorkflowState {
   // Current workflow
   workflowId: string | null;
   name: string;
+  type: 'Application' | 'Experience' | 'Embedded' | 'Edge';
   description: string;
   tags: string[];
   isEnabled: boolean;
@@ -68,11 +70,15 @@ export interface WorkflowState {
   executionHistory: any[];
   executionHistoryTotal: number;
   executionHistoryLoading: boolean;
+
+  // Debug panel
+  isDebugPanelOpen: boolean;
 }
 
 const initialState: WorkflowState = {
   workflowId: null,
   name: 'Untitled Workflow',
+  type: 'Application',
   description: '',
   tags: [],
   isEnabled: false,
@@ -102,6 +108,8 @@ const initialState: WorkflowState = {
   executionHistory: [],
   executionHistoryTotal: 0,
   executionHistoryLoading: false,
+
+  isDebugPanelOpen: false,
 };
 
 /**
@@ -117,6 +125,22 @@ export const loadWorkflow = createAsyncThunk<Workflow, string>(
   }
 );
 
+// Helper: transform React Flow nodes to backend format
+// React Flow nodes use visual type ('trigger') + data.nodeType for semantic type ('trigger:manual')
+// Backend expects type='trigger:manual' and data without nodeType/executionStatus
+function toBackendNodes(nodes: any[]) {
+  return nodes.map(node => ({
+    id: node.id,
+    type: node.data?.nodeType || node.type, // Use semantic type if available
+    position: node.position,
+    data: {
+      label: node.data?.label,
+      description: node.data?.description,
+      config: node.data?.config || {},
+    },
+  }));
+}
+
 // Save workflow to API (create or update)
 export const saveWorkflow = createAsyncThunk<Workflow, void, { state: { workflow: WorkflowState } }>(
   'workflow/save',
@@ -125,9 +149,10 @@ export const saveWorkflow = createAsyncThunk<Workflow, void, { state: { workflow
 
     const payload = {
       name: state.name,
+      type: state.type,
       description: state.description,
       tags: state.tags,
-      nodes: state.nodes,
+      nodes: toBackendNodes(state.nodes),
       edges: state.edges,
       isEnabled: state.isEnabled,
       priority: state.priority,
@@ -203,9 +228,10 @@ export const autoSaveWorkflow = createAsyncThunk<Workflow | null, void, { state:
 
     const payload = {
       name: state.name,
+      type: state.type,
       description: state.description,
       tags: state.tags,
-      nodes: state.nodes,
+      nodes: toBackendNodes(state.nodes),
       edges: state.edges,
       isEnabled: state.isEnabled,
       priority: state.priority,
@@ -249,11 +275,14 @@ export const workflowSlice = createSlice({
     // Update metadata
     updateMetadata: (
       state,
-      action: PayloadAction<{ name?: string; description?: string; tags?: string[] }>
+      action: PayloadAction<{ name?: string; type?: 'Application' | 'Experience' | 'Embedded' | 'Edge'; description?: string; tags?: string[]; priority?: 'HIGH' | 'MEDIUM' | 'LOW'; isEnabled?: boolean }>
     ) => {
       if (action.payload.name !== undefined) state.name = action.payload.name;
+      if (action.payload.type !== undefined) state.type = action.payload.type;
       if (action.payload.description !== undefined) state.description = action.payload.description;
       if (action.payload.tags !== undefined) state.tags = action.payload.tags;
+      if (action.payload.priority !== undefined) state.priority = action.payload.priority;
+      if (action.payload.isEnabled !== undefined) state.isEnabled = action.payload.isEnabled;
       state.isDirty = true;
     },
 
@@ -391,6 +420,11 @@ export const workflowSlice = createSlice({
       state.isDirty = false;
       state.syncStatus = 'saved';
     },
+
+    // Toggle debug panel
+    toggleDebugPanel: state => {
+      state.isDebugPanelOpen = !state.isDebugPanelOpen;
+    },
   },
   extraReducers: builder => {
     // Load workflow
@@ -401,9 +435,20 @@ export const workflowSlice = createSlice({
     builder.addCase(loadWorkflow.fulfilled, (state, action) => {
       state.workflowId = action.payload.workflowId;
       state.name = action.payload.name;
+      state.type = action.payload.type || 'Application';
       state.description = action.payload.description || '';
       state.tags = action.payload.tags || [];
-      state.nodes = action.payload.nodes || [];
+      // Re-map backend nodes to React Flow format:
+      // backend stores type='trigger:manual', React Flow renders by type='trigger'
+      // Semantic type is stored in data.nodeType for the workflow engine
+      state.nodes = (action.payload.nodes || []).map((node: any) => {
+        const visualType = node.type.split(':')[0]; // 'trigger:manual' → 'trigger'
+        return {
+          ...node,
+          type: visualType,
+          data: { ...node.data, nodeType: node.type },
+        };
+      });
       state.edges = action.payload.edges || [];
       state.isEnabled = action.payload.isEnabled;
       state.priority = action.payload.priority;
@@ -423,7 +468,13 @@ export const workflowSlice = createSlice({
     });
     builder.addCase(saveWorkflow.fulfilled, (state, action) => {
       state.workflowId = action.payload.workflowId;
-      state.version = action.payload.version;
+      if (action.payload.name) state.name = action.payload.name;
+      if (action.payload.type) state.type = action.payload.type;
+      if (action.payload.description) state.description = action.payload.description;
+      if (action.payload.tags) state.tags = action.payload.tags;
+      if (action.payload.isEnabled !== undefined) state.isEnabled = action.payload.isEnabled;
+      if (action.payload.priority) state.priority = action.payload.priority;
+      if (action.payload.version) state.version = action.payload.version;
       state.isDirty = false;
       state.syncStatus = 'saved';
     });
@@ -513,6 +564,7 @@ export const {
   completeExecutionStream,
   clearExecutionLog,
   markAsSaved,
+  toggleDebugPanel,
 } = workflowSlice.actions;
 
 export default workflowSlice.reducer;
@@ -522,8 +574,33 @@ export default workflowSlice.reducer;
  * Used by NodePalette and NodeConfigPanel to populate initial config.
  */
 export const defaultNodeConfig: Record<string, Record<string, any>> = {
-  'data:modbusRead': { gatewayId: '', registerName: '', outputField: 'modbusData' },
-  'data:modbusWrite': { gatewayId: '', startAddress: 0, values: [0] },
-  'data:queryDeviceStates': { deviceId: '', startTime: '', endTime: '', limit: 100, outputField: 'deviceStates' },
-  'logic:function': { code: '// result.value = data.value * 2;', outputField: 'computed' },
+  'data:modbusRead': {
+    label: 'Read Modbus Register',
+    description: '',
+    gatewayId: '',
+    registerName: '',
+    outputField: 'modbusData',
+  },
+  'data:modbusWrite': {
+    label: 'Write Modbus Register',
+    description: '',
+    gatewayId: '',
+    startAddress: 0,
+    values: [],
+  },
+  'data:queryDeviceStates': {
+    label: 'Query Device States',
+    description: '',
+    deviceId: '',
+    startTime: '',
+    endTime: '',
+    limit: 100,
+    outputField: 'deviceStates',
+  },
+  'logic:function': {
+    label: 'Custom Function',
+    description: '',
+    code: 'result.output = data;',
+    outputField: 'computed',
+  },
 };

@@ -204,7 +204,7 @@ export class DeviceService {
       orgId: new mongoose.Types.ObjectId(orgId),
       deviceId: ulid(),
       name: device.name,
-      tags: device.tags || [],
+      tags: device.tags || {},
       attributes: device.attributes || null,
     }));
 

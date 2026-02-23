@@ -6,6 +6,7 @@ import { config } from './config/config';
 import { deviceRoutes } from './routes/device.routes';
 import { deviceStateRoutes } from './routes/device-state.routes';
 import { organizationRoutes } from './routes/organization.routes';
+import { applicationRoutes } from './routes/application.routes';
 import { dashboardRoutes } from './routes/dashboard.routes';
 import { healthRoutes } from './routes/health.routes';
 import { authRoutes } from './routes/auth.routes';
@@ -177,6 +178,7 @@ export async function createServer() {
   await fastify.register(waterQualityRoutes);
   await fastify.register(workflowRoutes);
   await fastify.register(organizationRoutes);
+  await fastify.register(applicationRoutes);
   await fastify.register(dashboardRoutes);
   await fastify.register(deviceRoutes);
   await fastify.register(deviceStateRoutes);

@@ -1,8 +1,10 @@
 'use client';
 
 import Link from 'next/link';
+import { useState, useEffect } from 'react';
 import { useDevices, useDeleteDevice } from '@/lib/hooks/useDevices';
 import { DeviceForm } from '@/components/DeviceForm';
+import { apiClient } from '@/lib/api-client';
 import type { Device } from '@/lib/types';
 import { useAppDispatch, useAppSelector } from '@/lib/store';
 import { openDeviceForm, closeDeviceForm, selectDeviceFormModal } from '@/lib/store/slices/uiSlice';
@@ -11,9 +13,24 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 export default function DevicesPage() {
   const { data, isLoading, error, refetch } = useDevices({ limit: 50 });
   const deleteDevice = useDeleteDevice();
+  const [applicationCount, setApplicationCount] = useState<number | null>(null);
 
   const dispatch = useAppDispatch();
   const deviceFormModal = useAppSelector(selectDeviceFormModal);
+
+  // Check if any applications exist
+  useEffect(() => {
+    const checkApplications = async () => {
+      try {
+        const response = await apiClient.get<any>('/applications?limit=1&offset=0');
+        setApplicationCount((response as any).pagination?.total || 0);
+      } catch (error) {
+        // Silently fail - if applications API is not available, show banner anyway
+        setApplicationCount(0);
+      }
+    };
+    checkApplications();
+  }, []);
 
   const handleCreateClick = () => {
     dispatch(openDeviceForm({ type: 'create' }));
@@ -63,6 +80,31 @@ export default function DevicesPage() {
           </button>
         </div>
 
+        {/* No Applications Banner */}
+        {applicationCount === 0 && (
+          <div className="rounded-lg bg-blue-50 border border-blue-200 p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M18 5v8a2 2 0 01-2 2h-5l-5 4v-4H4a2 2 0 01-2-2V5a2 2 0 012-2h12a2 2 0 012 2zm-11-1a1 1 0 11-2 0 1 1 0 012 0z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-blue-800">
+                  No applications exist yet
+                </h3>
+                <p className="mt-2 text-sm text-blue-700">
+                  Applications are required to scope devices, workflows, and dashboards.{' '}
+                  <Link href="/applications" className="font-semibold underline hover:text-blue-600">
+                    Create an application first
+                  </Link>
+                  .
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="bg-white shadow sm:rounded-lg">
           <div className="px-4 py-5 sm:p-6">
             {data && data.devices.length > 0 ? (
@@ -103,12 +145,12 @@ export default function DevicesPage() {
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-500">
                           <div className="flex flex-wrap gap-1">
-                            {device.tags.map((tag) => (
+                            {Object.entries(device.tags || {}).map(([key, value]) => (
                               <span
-                                key={tag}
+                                key={key}
                                 className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs"
                               >
-                                {tag}
+                                {value ? `${key}: ${value}` : key}
                               </span>
                             ))}
                           </div>

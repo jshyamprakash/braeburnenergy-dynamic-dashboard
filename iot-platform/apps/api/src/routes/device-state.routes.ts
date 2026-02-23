@@ -285,6 +285,36 @@ export async function deviceStateRoutes(fastify: FastifyInstance) {
     preHandler: [requireAuth, requirePermission('device-state:read')],
   }, deviceStateController.count.bind(deviceStateController));
 
+  // Patch device state data (ADR-022: workflow-driven structuring)
+  fastify.patch('/devices/:deviceId/states/:stateId', {
+    schema: {
+      tags: ['Device States'],
+      summary: 'Patch device state data',
+      description: 'Merges structured key-value pairs into an existing DeviceState data field. Used by action:writeDeviceState workflow node.',
+      security: [{ bearerAuth: [] }],
+      params: {
+        type: 'object',
+        properties: {
+          deviceId: { type: 'string' },
+          stateId: { type: 'string' },
+        },
+        required: ['deviceId', 'stateId'],
+      },
+      body: {
+        type: 'object',
+        properties: {
+          data: { type: 'object', additionalProperties: true },
+        },
+        required: ['data'],
+      },
+      response: {
+        200: successResponse({ type: 'object', properties: { patched: { type: 'boolean' } } }, 'State data patched'),
+        404: errorResponse('State not found'),
+      },
+    },
+    preHandler: [requireAuth, requirePermission('device-state:create')],
+  }, deviceStateController.patchData.bind(deviceStateController));
+
   // Delete old states
   fastify.delete('/devices/:deviceId/states/old', {
     schema: {

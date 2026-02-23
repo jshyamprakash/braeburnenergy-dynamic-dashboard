@@ -3,101 +3,118 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { apiClient } from '@/lib/api-client';
+import type { Workflow, Application, PaginatedResponse } from '@repo/types';
 
-export interface WorkflowMetadata {
-  name: string;
-  description: string;
-  tags: string[];
-  priority: 'HIGH' | 'MEDIUM' | 'LOW';
-  isEnabled: boolean;
-}
+export type WorkflowType = 'Application' | 'Experience' | 'Embedded' | 'Edge';
 
-export interface SettingsModalProps {
+export interface CreateWorkflowModalProps {
   isOpen: boolean;
-  workflowId: string | null;
-  currentValues: WorkflowMetadata;
+  mode: 'create' | 'edit';
+  workflowData?: Partial<Workflow> | null;
   onClose: () => void;
-  onSave: (updatedValues: Partial<WorkflowMetadata>) => void;
+  onSuccess: (workflow: Workflow) => void;
 }
 
-export default function SettingsModal({
+interface FormData {
+  name: string;
+  type: WorkflowType;
+  description: string;
+  applicationId?: string;
+}
+
+const INITIAL_FORM_STATE: FormData = {
+  name: '',
+  type: 'Application',
+  description: '',
+  applicationId: '',
+};
+
+export default function CreateWorkflowModal({
   isOpen,
-  workflowId,
-  currentValues,
+  mode,
+  workflowData,
   onClose,
-  onSave,
-}: SettingsModalProps) {
+  onSuccess,
+}: CreateWorkflowModalProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [showUnsavedWarning, setShowUnsavedWarning] = useState(false);
+  const [formData, setFormData] = useState<FormData>(INITIAL_FORM_STATE);
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [loadingApps, setLoadingApps] = useState(false);
 
-  // Form state
-  const [formValues, setFormValues] = useState(currentValues);
-
-  // Initialize form from current values
+  // Fetch applications on mount
   useEffect(() => {
     if (isOpen) {
-      setFormValues(currentValues);
+      fetchApplications();
+    }
+  }, [isOpen]);
+
+  const fetchApplications = async () => {
+    setLoadingApps(true);
+    try {
+      const response = await apiClient.get<any>('/applications?limit=100&offset=0');
+      setApplications(response.data || []);
+    } catch (error) {
+      toast.error('Failed to fetch applications');
+    } finally {
+      setLoadingApps(false);
+    }
+  };
+
+  // Initialize form from workflow data (for edit mode)
+  useEffect(() => {
+    if (isOpen) {
+      if (mode === 'edit' && workflowData) {
+        setFormData({
+          name: workflowData.name || '',
+          type: (workflowData.type as WorkflowType) || 'Application',
+          description: workflowData.description || '',
+          applicationId: (workflowData as any).applicationId || '',
+        });
+      } else {
+        setFormData(INITIAL_FORM_STATE);
+      }
       setHasChanges(false);
     }
-  }, [isOpen, currentValues]);
+  }, [isOpen, mode, workflowData]);
 
   // Handle input changes
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setFormValues((prev) => ({ ...prev, name: value }));
+    setFormData((prev) => ({ ...prev, name: e.target.value }));
+    setHasChanges(true);
+  };
+
+  const handleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setFormData((prev) => ({ ...prev, type: e.target.value as WorkflowType }));
     setHasChanges(true);
   };
 
   const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const value = e.target.value;
-    setFormValues((prev) => ({ ...prev, description: value }));
+    setFormData((prev) => ({ ...prev, description: e.target.value }));
     setHasChanges(true);
   };
 
-  const handlePriorityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value as 'HIGH' | 'MEDIUM' | 'LOW';
-    setFormValues((prev) => ({ ...prev, priority: value }));
-    setHasChanges(true);
-  };
-
-  const handleEnabledChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.checked;
-    setFormValues((prev) => ({ ...prev, isEnabled: value }));
-    setHasChanges(true);
-  };
-
-  const handleTagsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    // Parse comma-separated tags
-    const tags = value.split(',').map((tag) => tag.trim()).filter((tag) => tag.length > 0);
-    setFormValues((prev) => ({ ...prev, tags }));
+  const handleApplicationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setFormData((prev) => ({ ...prev, applicationId: e.target.value }));
     setHasChanges(true);
   };
 
   // Validation
   const validateForm = (): string | null => {
-    if (!formValues.name.trim()) {
+    if (!formData.name.trim()) {
       return 'Workflow name is required';
     }
-    if (formValues.name.length > 100) {
+    if (formData.name.length > 100) {
       return 'Workflow name must be 100 characters or less';
     }
-    if (formValues.description.length > 500) {
+    if (formData.description.length > 500) {
       return 'Description must be 500 characters or less';
-    }
-    if (formValues.tags.length > 50) {
-      return 'Maximum 50 tags allowed';
-    }
-    for (const tag of formValues.tags) {
-      if (tag.length > 100) {
-        return 'Each tag must be 100 characters or less';
-      }
     }
     return null;
   };
 
-  // Handle save
+  // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -109,21 +126,56 @@ export default function SettingsModal({
 
     setIsSaving(true);
     try {
-      // Update workflow via API
-      await apiClient.patch(`/workflows/${workflowId}`, {
-        name: formValues.name,
-        description: formValues.description,
-        tags: formValues.tags,
-        priority: formValues.priority,
-        isEnabled: formValues.isEnabled,
-      });
+      let response;
+      if (mode === 'create') {
+        // Create new workflow with minimal node (trigger)
+        const createPayload: any = {
+          name: formData.name,
+          type: formData.type,
+          description: formData.description,
+          nodes: [
+            {
+              id: '1',
+              type: 'trigger:manual',
+              position: { x: 0, y: 0 },
+              data: {
+                label: 'Manual Trigger',
+                config: {},
+              },
+            },
+          ],
+          edges: [],
+          isEnabled: false,
+        };
+        if (formData.applicationId) {
+          createPayload.applicationId = formData.applicationId;
+        }
+        response = await apiClient.post<Workflow>('/workflows', createPayload);
+        toast.success('Workflow created successfully');
+      } else if (mode === 'edit' && workflowData?.workflowId) {
+        // Update existing workflow
+        const updatePayload: any = {
+          name: formData.name,
+          type: formData.type,
+          description: formData.description,
+        };
+        if (formData.applicationId) {
+          updatePayload.applicationId = formData.applicationId;
+        }
+        response = await apiClient.patch<Workflow>(
+          `/workflows/${workflowData.workflowId}`,
+          updatePayload
+        );
+        toast.success('Workflow updated successfully');
+      } else {
+        throw new Error('Invalid mode or workflow ID');
+      }
 
-      toast.success('Workflow settings updated successfully');
-      onSave(formValues);
+      onSuccess(response.data);
       setHasChanges(false);
       onClose();
     } catch (error: any) {
-      toast.error(error.message || 'Failed to update workflow settings');
+      toast.error(error.message || `Failed to ${mode === 'create' ? 'create' : 'update'} workflow`);
     } finally {
       setIsSaving(false);
     }
@@ -159,6 +211,13 @@ export default function SettingsModal({
 
   if (!isOpen) return null;
 
+  const isEditMode = mode === 'edit';
+  const modalTitle = isEditMode ? 'Edit Workflow' : 'Create New Workflow';
+  const modalDescription = isEditMode
+    ? 'Update workflow name, type, and description'
+    : 'Create a new workflow with basic settings';
+  const submitButtonText = isEditMode ? 'Update Workflow' : 'Create Workflow';
+
   return (
     <>
       {/* Main Modal */}
@@ -170,25 +229,25 @@ export default function SettingsModal({
           {/* Header */}
           <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4 sticky top-0 bg-white dark:bg-gray-800">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-              Workflow Settings
+              {modalTitle}
             </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Edit workflow metadata and properties
+              {modalDescription}
             </p>
           </div>
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
-            {/* Name */}
+            {/* Name Field */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Workflow Name *
               </label>
               <input
                 type="text"
-                value={formValues.name}
+                value={formData.name}
                 onChange={handleNameChange}
-                placeholder="e.g., Temperature Alert Monitor"
+                placeholder="e.g., Temperature Monitor"
                 maxLength={100}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
@@ -197,18 +256,61 @@ export default function SettingsModal({
                   Required, 1-100 characters
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {formValues.name.length}/100
+                  {formData.name.length}/100
                 </p>
               </div>
             </div>
 
-            {/* Description */}
+            {/* Type Dropdown */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Workflow Type *
+              </label>
+              <select
+                value={formData.type}
+                onChange={handleTypeChange}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="Application">Application</option>
+                <option value="Experience">Experience</option>
+                <option value="Embedded">Embedded</option>
+                <option value="Edge">Edge</option>
+              </select>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Choose the deployment target or use case for this workflow
+              </p>
+            </div>
+
+            {/* Application Selection */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Application
+              </label>
+              <select
+                value={formData.applicationId || ''}
+                onChange={handleApplicationChange}
+                disabled={loadingApps}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+              >
+                <option value="">-- No Application --</option>
+                {applications.map((app) => (
+                  <option key={app.applicationId} value={app.applicationId}>
+                    {app.name}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                {loadingApps ? 'Loading applications...' : 'Optional, scopes this workflow to an application'}
+              </p>
+            </div>
+
+            {/* Description Field */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Description
               </label>
               <textarea
-                value={formValues.description}
+                value={formData.description}
                 onChange={handleDescriptionChange}
                 placeholder="Brief description of what this workflow does..."
                 maxLength={500}
@@ -220,59 +322,9 @@ export default function SettingsModal({
                   Optional, max 500 characters
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {formValues.description.length}/500
+                  {formData.description.length}/500
                 </p>
               </div>
-            </div>
-
-            {/* Priority */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Priority
-              </label>
-              <select
-                value={formValues.priority}
-                onChange={handlePriorityChange}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="LOW">Low</option>
-                <option value="MEDIUM">Medium</option>
-                <option value="HIGH">High</option>
-              </select>
-            </div>
-
-            {/* Enabled Toggle */}
-            <div className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                id="enabled"
-                checked={formValues.isEnabled}
-                onChange={handleEnabledChange}
-                className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer"
-              />
-              <label
-                htmlFor="enabled"
-                className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer"
-              >
-                Enable this workflow
-              </label>
-            </div>
-
-            {/* Tags */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Tags
-              </label>
-              <input
-                type="text"
-                value={formValues.tags.join(', ')}
-                onChange={handleTagsChange}
-                placeholder="e.g., temperature, alerts, critical"
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Comma-separated tags for categorization (max 50 tags)
-              </p>
             </div>
           </form>
 
@@ -307,10 +359,10 @@ export default function SettingsModal({
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                     />
                   </svg>
-                  Saving...
+                  {isEditMode ? 'Updating...' : 'Creating...'}
                 </>
               ) : (
-                'Save Changes'
+                submitButtonText
               )}
             </button>
           </div>

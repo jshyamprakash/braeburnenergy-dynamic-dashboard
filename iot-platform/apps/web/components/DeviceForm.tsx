@@ -3,7 +3,9 @@
 import { useState, useEffect } from 'react';
 import { Modal } from './Modal';
 import { useCreateDevice, useUpdateDevice } from '@/lib/hooks/useDevices';
-import type { Device } from '@/lib/types';
+import { apiClient } from '@/lib/api-client';
+import { toast } from 'sonner';
+import type { Device, Application, PaginatedResponse } from '@repo/types';
 
 interface DeviceFormProps {
   isOpen: boolean;
@@ -12,92 +14,109 @@ interface DeviceFormProps {
   onSuccess?: () => void;
 }
 
+type KVRow = { key: string; value: string };
+type AttrRow = { key: string; type: 'number' | 'string' | 'boolean' | 'timestamp' };
+
+const DATA_TYPES = ['number', 'string', 'boolean', 'timestamp'] as const;
+
+function kvRowsFromRecord(record: Record<string, string> | string[] | null | undefined): KVRow[] {
+  if (!record) return [];
+  // Handle legacy string[] format gracefully
+  if (Array.isArray(record)) return record.map(tag => ({ key: tag, value: '' }));
+  return Object.entries(record).map(([key, value]) => ({ key, value }));
+}
+
+function attrRowsFromRecord(record: Record<string, string> | null | undefined): AttrRow[] {
+  if (!record) return [];
+  return Object.entries(record).map(([key, type]) => ({
+    key,
+    type: (DATA_TYPES as readonly string[]).includes(type) ? (type as AttrRow['type']) : 'string',
+  }));
+}
+
 export function DeviceForm({ isOpen, onClose, device, onSuccess }: DeviceFormProps) {
   const isEditMode = !!device;
 
-  // Form state
   const [name, setName] = useState('');
-  const [tags, setTags] = useState<string[]>([]);
-  const [tagInput, setTagInput] = useState('');
-  const [attributes, setAttributes] = useState('{}');
-  const [attributesError, setAttributesError] = useState('');
+  const [tagRows, setTagRows] = useState<KVRow[]>([]);
+  const [attrRows, setAttrRows] = useState<AttrRow[]>([]);
+  const [applicationId, setApplicationId] = useState('');
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [loadingApps, setLoadingApps] = useState(false);
 
-  // Mutations
   const createDevice = useCreateDevice();
   const updateDevice = useUpdateDevice(device?.deviceId || '');
 
-  // Initialize form with device data in edit mode
+  // Fetch applications on mount
+  useEffect(() => {
+    if (isOpen) {
+      fetchApplications();
+    }
+  }, [isOpen]);
+
+  const fetchApplications = async () => {
+    setLoadingApps(true);
+    try {
+      const response = await apiClient.get<any>('/applications?limit=100&offset=0');
+      setApplications(response.data || []);
+    } catch (error) {
+      toast.error('Failed to fetch applications');
+    } finally {
+      setLoadingApps(false);
+    }
+  };
+
   useEffect(() => {
     if (device) {
       setName(device.name);
-      setTags(device.tags || []);
-      setAttributes(JSON.stringify(device.attributes || {}, null, 2));
+      setTagRows(kvRowsFromRecord(device.tags as any));
+      setAttrRows(attrRowsFromRecord(device.attributes as any));
+      setApplicationId((device as any).applicationId || '');
     } else {
-      // Reset form for create mode
       setName('');
-      setTags([]);
-      setTagInput('');
-      setAttributes('{}');
-      setAttributesError('');
+      setTagRows([]);
+      setAttrRows([]);
+      setApplicationId('');
     }
   }, [device, isOpen]);
 
-  // Validate JSON
-  const validateJSON = (value: string): boolean => {
-    try {
-      JSON.parse(value);
-      setAttributesError('');
-      return true;
-    } catch (error) {
-      setAttributesError('Invalid JSON format');
-      return false;
-    }
-  };
+  // Tags helpers
+  const addTagRow = () => setTagRows(r => [...r, { key: '', value: '' }]);
+  const removeTagRow = (i: number) => setTagRows(r => r.filter((_, idx) => idx !== i));
+  const updateTagRow = (i: number, field: 'key' | 'value', val: string) =>
+    setTagRows(r => r.map((row, idx) => idx === i ? { ...row, [field]: val } : row));
 
-  // Add tag
-  const handleAddTag = () => {
-    const trimmedTag = tagInput.trim();
-    if (trimmedTag && !tags.includes(trimmedTag)) {
-      setTags([...tags, trimmedTag]);
-      setTagInput('');
-    }
-  };
+  // Attributes helpers
+  const addAttrRow = () => setAttrRows(r => [...r, { key: '', type: 'string' }]);
+  const removeAttrRow = (i: number) => setAttrRows(r => r.filter((_, idx) => idx !== i));
+  const updateAttrRow = (i: number, field: 'key' | 'type', val: string) =>
+    setAttrRows(r => r.map((row, idx) => idx === i ? { ...row, [field]: val } : row));
 
-  // Remove tag
-  const handleRemoveTag = (tagToRemove: string) => {
-    setTags(tags.filter((tag) => tag !== tagToRemove));
-  };
-
-  // Handle tag input key press
-  const handleTagKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleAddTag();
-    }
-  };
-
-  // Submit form
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Validate name
     if (!name.trim()) {
       alert('Please enter a device name');
       return;
     }
 
-    // Validate JSON
-    if (!validateJSON(attributes)) {
-      return;
+    // Build tags record (skip rows with empty keys)
+    const tagsRecord: Record<string, string> = {};
+    for (const row of tagRows) {
+      if (row.key.trim()) tagsRecord[row.key.trim()] = row.value;
+    }
+
+    // Build attributes record (skip rows with empty keys)
+    const attrsRecord: Record<string, string> = {};
+    for (const row of attrRows) {
+      if (row.key.trim()) attrsRecord[row.key.trim()] = row.type;
     }
 
     try {
-      const attributesObj = JSON.parse(attributes);
-
       const deviceData = {
         name: name.trim(),
-        tags,
-        attributes: Object.keys(attributesObj).length > 0 ? attributesObj : undefined,
+        tags: tagsRecord,
+        attributes: Object.keys(attrsRecord).length > 0 ? attrsRecord : undefined,
+        ...(applicationId && { applicationId }),
       };
 
       if (isEditMode) {
@@ -139,73 +158,125 @@ export function DeviceForm({ isOpen, onClose, device, onSuccess }: DeviceFormPro
           />
         </div>
 
-        {/* Tags */}
+        {/* Application Selection */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Tags
+            Application <span className="text-xs text-gray-500 font-normal">(optional, scopes this device to an application)</span>
           </label>
-          <div className="flex gap-2 mb-2">
-            <input
-              type="text"
-              value={tagInput}
-              onChange={(e) => setTagInput(e.target.value)}
-              onKeyPress={handleTagKeyPress}
-              placeholder="Enter tag and press Enter"
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-            />
-            <button
-              type="button"
-              onClick={handleAddTag}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
-            >
-              Add
-            </button>
-          </div>
-
-          {/* Tag chips */}
-          {tags.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
-                >
-                  {tag}
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveTag(tag)}
-                    className="text-blue-600 hover:text-blue-800"
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
+          <select
+            value={applicationId}
+            onChange={(e) => setApplicationId(e.target.value)}
+            disabled={loadingApps}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+          >
+            <option value="">-- No Application --</option>
+            {applications.map((app) => (
+              <option key={app.applicationId} value={app.applicationId}>
+                {app.name}
+              </option>
+            ))}
+          </select>
+          {loadingApps && <p className="text-xs text-gray-500 mt-1">Loading applications...</p>}
         </div>
 
-        {/* Attributes (JSON) */}
+        {/* Tags — key-value static metadata */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Attributes (JSON)
-          </label>
-          <textarea
-            value={attributes}
-            onChange={(e) => {
-              setAttributes(e.target.value);
-              validateJSON(e.target.value);
-            }}
-            rows={6}
-            className={`w-full px-3 py-2 border rounded-md font-mono text-sm focus:ring-blue-500 focus:border-blue-500 ${
-              attributesError ? 'border-red-500' : 'border-gray-300'
-            }`}
-            placeholder='{"location": "Lab", "type": "sensor"}'
-          />
-          {attributesError && (
-            <p className="mt-1 text-sm text-red-600">{attributesError}</p>
-          )}
-          <p className="mt-1 text-xs text-gray-500">
-            Enter custom attributes as JSON. Leave as {'{}'} for no attributes.
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-sm font-medium text-gray-700">
+              Tags <span className="text-xs text-gray-500 font-normal">(static metadata key-value pairs)</span>
+            </label>
+            <button
+              type="button"
+              onClick={addTagRow}
+              className="text-xs px-2 py-1 bg-blue-50 text-blue-700 rounded hover:bg-blue-100"
+            >
+              + Add Tag
+            </button>
+          </div>
+          <div className="space-y-2">
+            {tagRows.length === 0 && (
+              <p className="text-xs text-gray-400 italic">No tags — click "+ Add Tag" to add one.</p>
+            )}
+            {tagRows.map((row, i) => (
+              <div key={i} className="flex gap-2 items-center">
+                <input
+                  type="text"
+                  value={row.key}
+                  onChange={e => updateTagRow(i, 'key', e.target.value)}
+                  placeholder="Key (e.g., model)"
+                  className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
+                />
+                <span className="text-gray-400 text-sm">:</span>
+                <input
+                  type="text"
+                  value={row.value}
+                  onChange={e => updateTagRow(i, 'value', e.target.value)}
+                  placeholder="Value (e.g., Acme-X1)"
+                  className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeTagRow(i)}
+                  className="text-red-400 hover:text-red-600 text-lg leading-none px-1"
+                  title="Remove"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Attributes — device data schema (field → type) */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-sm font-medium text-gray-700">
+              Attributes <span className="text-xs text-gray-500 font-normal">(telemetry field → data type)</span>
+            </label>
+            <button
+              type="button"
+              onClick={addAttrRow}
+              className="text-xs px-2 py-1 bg-purple-50 text-purple-700 rounded hover:bg-purple-100"
+            >
+              + Add Field
+            </button>
+          </div>
+          <div className="space-y-2">
+            {attrRows.length === 0 && (
+              <p className="text-xs text-gray-400 italic">No attributes — click "+ Add Field" to define the telemetry schema.</p>
+            )}
+            {attrRows.map((row, i) => (
+              <div key={i} className="flex gap-2 items-center">
+                <input
+                  type="text"
+                  value={row.key}
+                  onChange={e => updateAttrRow(i, 'key', e.target.value)}
+                  placeholder="Field (e.g., temperature)"
+                  className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
+                />
+                <span className="text-gray-400 text-sm">→</span>
+                <select
+                  value={row.type}
+                  onChange={e => updateAttrRow(i, 'type', e.target.value)}
+                  className="px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
+                >
+                  {DATA_TYPES.map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => removeAttrRow(i)}
+                  className="text-red-400 hover:text-red-600 text-lg leading-none px-1"
+                  title="Remove"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+          <p className="mt-1 text-xs text-gray-400">
+            These field definitions are used by the "Write Device State" workflow node for type casting.
           </p>
         </div>
 

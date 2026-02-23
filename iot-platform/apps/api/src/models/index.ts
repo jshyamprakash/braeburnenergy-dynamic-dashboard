@@ -1,4 +1,5 @@
 export { Organization, type IOrganization } from './organization.model';
+export { Application, type IApplication } from './application.model';
 export { Device, type IDevice } from './device.model';
 export { DeviceState, type IDeviceState, type QualityStatus, type IQualityMetadata } from './device-state.model';
 export { User, type IUser, type UserRole } from './user.model';

@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { useState } from 'react';
 
 export interface WorkflowToolbarProps {
   name: string;
@@ -10,13 +10,15 @@ export interface WorkflowToolbarProps {
   isSaving: boolean;
   isExecuting?: boolean;
   executionId?: string | null;
+  isDebugPanelOpen?: boolean;
   onSave: () => void;
   onBack: () => void;
-  onRun?: () => void;
+  onDeploy?: () => void;  // Renamed from onRun
   onExport?: () => void;
-  onSettings?: () => void;
+  onExecutionHistory?: () => void;  // New: open execution history modal
   onValidation?: () => void;
   onShowHelp?: () => void;
+  onDebugToggle?: () => void;  // Toggle debug panel
 }
 
 export default function WorkflowToolbar({
@@ -27,14 +29,17 @@ export default function WorkflowToolbar({
   isSaving,
   isExecuting,
   executionId,
+  isDebugPanelOpen,
   onSave,
   onBack,
-  onRun,
+  onDeploy,
   onExport,
-  onSettings,
+  onExecutionHistory,
   onValidation,
   onShowHelp,
+  onDebugToggle,
 }: WorkflowToolbarProps) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   return (
     <div className="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 flex items-center justify-between">
       <div className="flex items-center gap-4">
@@ -123,73 +128,6 @@ export default function WorkflowToolbar({
           </div>
         )}
 
-        {/* Run button */}
-        <button
-          onClick={onRun}
-          disabled={validationErrors.length > 0 || isExecuting}
-          className={`
-            px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2
-            ${
-              validationErrors.length === 0 && !isExecuting
-                ? 'bg-green-600 hover:bg-green-700 text-white'
-                : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
-            }
-          `}
-          title="Execute workflow (Ctrl+R)"
-        >
-          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M8 5v14l11-7z" />
-          </svg>
-          Run
-        </button>
-
-        {/* Validation button */}
-        {validationErrors.length > 0 && (
-          <button
-            onClick={onValidation}
-            className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors relative"
-            title="Show validation errors (Ctrl+Shift+M)"
-          >
-            <svg
-              className="w-5 h-5 text-red-600 dark:text-red-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-red-600 rounded-full">
-              {validationErrors.length}
-            </span>
-          </button>
-        )}
-
-        {/* Export dropdown (placeholder) */}
-        <button
-          onClick={onExport}
-          className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-          title="Export workflow"
-        >
-          <svg
-            className="w-5 h-5 text-gray-600 dark:text-gray-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-            />
-          </svg>
-        </button>
-
         {/* Save button */}
         <button
           onClick={onSave}
@@ -232,47 +170,140 @@ export default function WorkflowToolbar({
           )}
         </button>
 
-        {/* Settings button */}
+        {/* Deploy button */}
         <button
-          onClick={onSettings}
-          className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-          title="Workflow settings"
+          onClick={onDeploy}
+          disabled={validationErrors.length > 0 || isExecuting}
+          className={`
+            px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2
+            ${
+              validationErrors.length === 0 && !isExecuting
+                ? 'bg-green-600 hover:bg-green-700 text-white'
+                : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+            }
+          `}
+          title="Deploy workflow (Ctrl+D)"
         >
-          <svg
-            className="w-5 h-5 text-gray-600 dark:text-gray-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
-            />
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z" />
           </svg>
+          Deploy
         </button>
 
-        {/* Help button */}
+        {/* Debug button */}
         <button
-          onClick={onShowHelp}
-          className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-          title="Keyboard shortcuts help (?)"
+          onClick={onDebugToggle}
+          className={`
+            px-3 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2
+            ${
+              isDebugPanelOpen
+                ? 'bg-purple-600 hover:bg-purple-700 text-white shadow-lg'
+                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+            }
+          `}
+          title="Toggle debug panel (show execution context)"
         >
-          <svg
-            className="w-5 h-5 text-gray-600 dark:text-gray-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
+          <span className="text-sm">Debug</span>
         </button>
+
+        {/* Menu button (⋮) */}
+        <div className="relative">
+          <button
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            title="More options"
+          >
+            <svg
+              className="w-5 h-5 text-gray-600 dark:text-gray-400"
+              fill="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path d="M12 8c1.1 0 2-0.9 2-2s-0.9-2-2-2-2 0.9-2 2 0.9 2 2 2zm0 2c-1.1 0-2 0.9-2 2s0.9 2 2 2 2-0.9 2-2-0.9-2-2-2zm0 6c-1.1 0-2 0.9-2 2s0.9 2 2 2 2-0.9 2-2-0.9-2-2-2z" />
+            </svg>
+          </button>
+
+          {/* Dropdown menu */}
+          {isMenuOpen && (
+            <div className="absolute right-0 mt-1 w-48 bg-white dark:bg-gray-700 rounded-lg shadow-lg border border-gray-200 dark:border-gray-600 py-1 z-10">
+              <button
+                onClick={() => {
+                  onExport?.();
+                  setIsMenuOpen(false);
+                }}
+                className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
+                Export JSON
+              </button>
+
+              <button
+                onClick={() => {
+                  onExecutionHistory?.();
+                  setIsMenuOpen(false);
+                }}
+                className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                Execution History
+              </button>
+
+              {validationErrors.length > 0 && (
+                <button
+                  onClick={() => {
+                    onValidation?.();
+                    setIsMenuOpen(false);
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  Validation Errors ({validationErrors.length})
+                </button>
+              )}
+
+              <button
+                onClick={() => {
+                  onShowHelp?.();
+                  setIsMenuOpen(false);
+                }}
+                className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors flex items-center gap-2 border-t border-gray-200 dark:border-gray-600"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                Help (?)
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

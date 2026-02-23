@@ -321,6 +321,28 @@ export class DeviceStateService {
     }));
   }
 
+  /**
+   * Patch a DeviceState's data field with structured key-value pairs (ADR-022)
+   * Used by action:writeDeviceState workflow node to overlay typed values
+   */
+  async patchData(
+    deviceId: string,
+    stateId: string,
+    patch: Record<string, any>
+  ): Promise<boolean> {
+    const setFields: Record<string, any> = {};
+    for (const [key, value] of Object.entries(patch)) {
+      setFields[`data.${key}`] = value;
+    }
+
+    const result = await DeviceState.updateOne(
+      { _id: new mongoose.Types.ObjectId(stateId), 'metadata.deviceId': deviceId },
+      { $set: setFields }
+    );
+
+    return result.modifiedCount > 0;
+  }
+
   // =========================================================================
   // Helper Methods
   // =========================================================================

@@ -28,6 +28,66 @@
 - Data Retention Policy UI (/retention-policies page, 4 category stat cards, policies table, storage tier bar visualization, create/edit/delete modals, SuperAdmin CRUD)
 - Multi-Tenancy Organization UI (/organizations page, organizations table with pagination/search, per-org device+state stats, create/edit/delete modals, SuperAdmin CRUD, slug auto-generation)
 - Profile & Account Settings Page (/profile page, profile info section, change password form with 5-check strength indicator, active sessions table, logout all devices modal, session refresh on password change)
+- Workflow Node Taxonomy Alignment (Losant 5-category model, 4 Tier 1 nodes: data:modbusRead/Write/queryDeviceStates, logic:function)
+- NodeConfigPanel Schemas for New Taxonomy Nodes (4 schema entries + defaultNodeConfig updates)
+- Alarm Management Dashboard (Redux alarmSlice, /alarms & /alarm-rules pages, ISA-18.2 state machine, role-based actions)
+- Audit Log Viewer (EPA 21 CFR Part 11 compliant, statistics bar, filter bar, paginated table, detail panel, CSV export)
+- Workflow Section Sidebar Navigation (ADR-018: Losant-style context-sensitive sidebar, 3 sub-routes: /executions, /settings, execution history table with expandable logs, workflow metadata form)
+- ADR-019 Phase 1: Global Sidebar Navigation (persistent left sidebar with collapsible menu, 13 nav items, TopBar with theme toggle + user menu, flex layout refactoring, localStorage persistence)
+- ADR-019 Phase 2: Workflow CRUD + Canvas Refactor (15/15 tasks — COMPLETE)
+  - Backend: Workflow type field (Application|Experience|Embedded|Edge)
+  - CreateWorkflowModal: Modal-based create/edit (name, type, description)
+  - SettingsPanel: Right-side settings (metadata + Redux sync)
+  - ExecutionHistoryModal: Execution list viewer with step logs
+  - WorkflowToolbar: [Save] [Deploy] [⋮] menu refactored
+  - Canvas layout: 3-column (NodePalette | Canvas | SettingsPanel/NodeConfigPanel)
+  - Save button: PATCH with metadata + nodes/edges, clears isDirty
+  - Deploy button: POST execute + ExecutionHistoryModal wired
+  - ADR-018 cleanup: Deprecated sub-routes + components deleted
+- Workflow UI Polish (bug fixes + hyperlinks)
+  - Fixed: Save failure when nodes added (node type mismatch + missing type field)
+  - Fixed: Workflow list name now clickable link to open canvas
+  - Fixed: Edit button opens canvas instead of metadata modal
+  - Fixed: After creating workflow, auto-navigate to canvas
+  - UX: Workflow names show as blue underlined hyperlinks
+- Workflow Data & Variable Binding (7/10 tasks — CORE COMPLETE)
+  - Backend: resolveExpression() utility for {{variable}} syntax
+  - Backend: Context piping — each node output stored under nodeId key
+  - Backend: Expression resolution in node config before handler execution
+  - Backend: action:updateVariable handler (already existed, verified working)
+  - Frontend: workflow-variables.ts utility (extract upstream variables, user variables)
+  - Frontend: VariablePicker dropdown component (search, filter, insert)
+  - Frontend: Integrated VariablePicker into NodeConfigPanel (detects {{ , shows dropdown)
+- Workflow Execution Context Debugger (6/10 core tasks — FUNCTIONAL)
+  - Redux: isDebugPanelOpen state + toggleDebugPanel action
+  - Toolbar: Purple Debug button (inactive gray, active purple with shadow)
+  - Panel scaffold: Bottom drawer with 3 tabs (Variables, Steps, Tester)
+  - Variables tab: Extracted variables table from execution log
+  - Steps tab: Expandable steps showing JSON output details
+  - Builder integration: Wired panel toggle + auto-open ready
+- Workflow Real-Time Auto-Trigger (ADR-020 — 11/11 tasks COMPLETE)
+  - Workflow model: triggerType field + compound index (orgId, isEnabled, triggerType)
+  - WorkflowService: findTriggerWorkflows() query method with filter support
+  - WorkflowTriggerDispatcher: Fire-and-forget dispatch service (no circular deps)
+  - Device state integration: dispatchDeviceStateChange() per-field dispatch after state save
+  - Alarm integration: dispatchAlarmTriggered() dispatch after alarm creation
+  - Backend wiring: Dispatcher instantiated in index.ts after Socket.io setup
+  - Integration tests: 11 test cases covering device state + alarm triggers + filter matching
+- triggerType Auto-Population Bug Fix (CRITICAL — 9/9 tasks COMPLETE)
+  - WorkflowService.create(): Calls extractTriggerType(nodes) before save
+  - WorkflowService.update(): Re-derives triggerType when nodes change
+  - Unit tests: 3 tests covering create/update/no-update paths (workflow.service.test.ts)
+  - Backfill script: One-time script to populate existing workflows (scripts/backfill-trigger-type.ts)
+  - Fix enables ADR-020 dispatcher to find and execute matching workflows
+
+- ADR-023 + Backend Application Model Foundation (8/12 core tasks — POC complete)
+  - Application Mongoose model (ULID, slug, description, isActive, timestamps)
+  - ApplicationService: CRUD with auto-slug generation, slug uniqueness, delete guards
+  - ApplicationController: 5 routes with Swagger documentation
+  - applicationId FK added to Device, Workflow, Dashboard models
+  - Zod validation schemas + shared types
+  - Tests ready for next session (optional Tasks #9-11)
+- Application Management UI (Frontend) — /applications page with CRUD modals, sidebar nav, Device/Workflow form integration, no-apps banner
 
 ## In Progress
 

@@ -3,6 +3,9 @@ import { createWebSocketServer } from './websocket/server';
 import { validateConfig, config } from './config/config';
 import { connectDB, disconnectDB } from './lib/mongoose';
 import { initializeTimeSeriesCollections } from './models';
+import { WorkflowService } from './services/workflow.service';
+import { WorkflowEngineService } from './services/workflow-engine.service';
+import { WorkflowTriggerDispatcher } from './services/workflow-trigger-dispatcher.service';
 
 /**
  * Application Entry Point
@@ -31,6 +34,17 @@ async function main() {
 
     // Make WebSocket server available to routes (before starting)
     fastify.decorate('io', io);
+
+    // Initialize workflow trigger dispatcher for auto-triggering workflows
+    console.log('⚙️  Initializing workflow trigger dispatcher...');
+    const workflowService = new WorkflowService();
+    const workflowEngineService = new WorkflowEngineService(io);
+    const triggerDispatcher = new WorkflowTriggerDispatcher(
+      workflowService,
+      workflowEngineService,
+      fastify.log as any
+    );
+    fastify.decorate('triggerDispatcher', triggerDispatcher);
 
     // Now start the server
     await fastify.listen({

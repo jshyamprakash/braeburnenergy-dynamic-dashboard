@@ -101,6 +101,12 @@ export const createWorkflowSchema = z.object({
     .max(100, 'Workflow name must be less than 100 characters')
     .describe('Human-readable workflow name'),
 
+  type: z
+    .enum(['Application', 'Experience', 'Embedded', 'Edge'])
+    .optional()
+    .default('Application')
+    .describe('Workflow type'),
+
   description: z
     .string()
     .max(500, 'Description must be less than 500 characters')
@@ -150,6 +156,11 @@ export const createWorkflowSchema = z.object({
     .default(300),
 
   schedule: workflowScheduleSchema.optional(),
+
+  applicationId: z
+    .string()
+    .optional()
+    .describe('Application ID (ULID) — FK to Application (ADR-023)'),
 });
 
 export type CreateWorkflowDTO = z.infer<typeof createWorkflowSchema>;
@@ -168,6 +179,11 @@ export const updateWorkflowSchema = z.object({
     .min(1, 'Workflow name cannot be empty')
     .max(100, 'Workflow name must be less than 100 characters')
     .optional(),
+
+  type: z
+    .enum(['Application', 'Experience', 'Embedded', 'Edge'])
+    .optional()
+    .describe('Workflow type'),
 
   description: z
     .string()
@@ -197,6 +213,11 @@ export const updateWorkflowSchema = z.object({
   timeoutSeconds: z.number().min(1).max(3600).optional(),
 
   schedule: workflowScheduleSchema.optional(),
+
+  applicationId: z
+    .string()
+    .optional()
+    .describe('Application ID (ULID) — FK to Application'),
 });
 
 export type UpdateWorkflowDTO = z.infer<typeof updateWorkflowSchema>;

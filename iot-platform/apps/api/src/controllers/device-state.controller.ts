@@ -89,7 +89,7 @@ export class DeviceStateController {
       // Evaluate alarm conditions (ISA-18.2)
       const triggeredAlarms = await this.alarmService.evaluateDeviceState(
         deviceId,
-        device.tags,
+        Object.keys(device.tags || {}),
         validatedData.data as Record<string, any>,
         state._id.toString(),
         validatedData.timestamp ? new Date(validatedData.timestamp) : new Date()
@@ -105,6 +105,30 @@ export class DeviceStateController {
           },
           'Alarms triggered'
         );
+      }
+
+      // Dispatch to trigger workflows (fire-and-forget)
+      const triggerDispatcher = (request.server as any).triggerDispatcher;
+      if (triggerDispatcher) {
+        // Dispatch for each field in the state data
+        for (const [field, value] of Object.entries(validatedData.data as Record<string, any>)) {
+          triggerDispatcher.dispatchDeviceStateChange(
+            DEFAULT_ORG_ID,
+            deviceId,
+            field,
+            value,
+            state
+          ).catch((err: any) => {
+            request.log.error(err, `Workflow trigger dispatch failed for field ${field}`);
+          });
+        }
+
+        // Dispatch triggered alarms to workflow engine
+        for (const alarm of triggeredAlarms) {
+          triggerDispatcher.dispatchAlarmTriggered(DEFAULT_ORG_ID, alarm).catch((err: any) => {
+            request.log.error(err, `Workflow alarm dispatch failed for alarm ${alarm._id}`);
+          });
+        }
       }
 
       // Broadcast to WebSocket subscribers
@@ -455,6 +479,35 @@ export class DeviceStateController {
         success: false,
         error: 'Internal server error',
       });
+    }
+  }
+
+  /**
+   * PATCH /devices/:deviceId/states/:stateId
+   * Patch device state data with structured key-value pairs (ADR-022)
+   */
+  async patchData(
+    request: FastifyRequest<{ Params: { deviceId: string; stateId: string }; Body: { data: Record<string, any> } }>,
+    reply: FastifyReply
+  ) {
+    try {
+      const { deviceId, stateId } = request.params;
+      const { data } = request.body;
+
+      if (!data || Object.keys(data).length === 0) {
+        return reply.code(400).send({ success: false, error: 'data cannot be empty' });
+      }
+
+      const patched = await deviceStateService.patchData(deviceId, stateId, data);
+
+      if (!patched) {
+        return reply.code(404).send({ success: false, error: 'State not found or no changes made' });
+      }
+
+      return reply.code(200).send({ success: true, data: { patched } });
+    } catch (error) {
+      request.log.error(error, 'Error patching device state');
+      return reply.code(500).send({ success: false, error: 'Internal server error' });
     }
   }
 

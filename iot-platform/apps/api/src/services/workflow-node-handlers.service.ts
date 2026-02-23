@@ -16,6 +16,46 @@ export interface NodeExecutionResult {
 }
 
 /**
+ * Resolve template expressions
+ * Replaces {{varName}} or {{path.to.value}} with resolved context values
+ * Returns original value if it's not a string or has no expressions
+ *
+ * @param value - Template string or any value
+ * @param context - Workflow execution context
+ * @returns Resolved value
+ */
+export function resolveExpression(value: any, context: Record<string, any>): any {
+  // Non-strings pass through as-is
+  if (typeof value !== 'string') return value;
+
+  // Replace all {{...}} expressions
+  return value.replace(/\{\{([^}]+)\}\}/g, (_match, path) => {
+    // Resolve dot-notation path (e.g., "trigger.temperature" → context.trigger.temperature)
+    const parts = path.trim().split('.');
+    let resolved: any = context;
+
+    for (const part of parts) {
+      if (resolved == null) return _match; // Return original if path breaks
+      resolved = resolved[part];
+    }
+
+    // Convert to string if resolved, else return original match
+    return resolved != null ? String(resolved) : _match;
+  });
+}
+
+/**
+ * Cast a resolved expression value to the specified type (ADR-022)
+ * Supported types: "number", "string", "boolean", "timestamp"
+ */
+function castValue(value: any, type?: string): any {
+  if (type === 'number') return Number(value);
+  if (type === 'boolean') return Boolean(value);
+  if (type === 'timestamp') return new Date(value).toISOString();
+  return String(value); // default: string
+}
+
+/**
  * WorkflowNodeHandlers
  *
  * Implements execution logic for each node type:
@@ -93,6 +133,10 @@ export class WorkflowNodeHandlers {
       // Logic (ADR-017)
       case 'logic:function':
         return this.executeLogicFunction(config, context);
+
+      // Action: write structured data back to DeviceState (ADR-022)
+      case 'action:writeDeviceState':
+        return this.executeActionWriteDeviceState(config, context);
 
       default:
         throw new Error(`Unknown node type: ${node.type}`);
@@ -256,7 +300,7 @@ export class WorkflowNodeHandlers {
 
     try {
       await this.deviceService.update(DEFAULT_ORG_ID, deviceId, {
-        attributes: updates,
+        attributes: updates as Record<string, 'string' | 'number' | 'boolean' | 'timestamp'>,
       });
 
       return {
@@ -541,6 +585,50 @@ export class WorkflowNodeHandlers {
       output: {
         ...context.currentData,
         [outputField]: sandbox.result,
+      },
+    };
+  }
+
+  // ==========================================================================
+  // Action: writeDeviceState (ADR-022)
+  // ==========================================================================
+
+  /**
+   * Write structured key-value output back to the originating DeviceState document.
+   * Config: { mappings: [{ key: string, expression: string }] }
+   * Context must contain trigger.stateId and trigger.deviceId
+   */
+  private async executeActionWriteDeviceState(config: any, context: any): Promise<NodeExecutionResult> {
+    const { mappings = [] } = config;
+
+    const stateId = context.trigger?.stateId ?? context.currentData?.stateId;
+    const deviceId = context.trigger?.deviceId ?? context.currentData?.deviceId;
+
+    if (!stateId || !deviceId) {
+      throw new Error('action:writeDeviceState requires stateId and deviceId in trigger context');
+    }
+
+    // Resolve each mapping expression
+    const patch: Record<string, any> = {};
+    for (const mapping of mappings) {
+      const { key, expression } = mapping;
+      if (!key) continue;
+      const resolved = resolveExpression(expression, context);
+      // Cast value using device attributes schema if available
+      const attrType = context.deviceAttributes?.[key];
+      patch[key] = castValue(resolved, attrType);
+    }
+
+    if (Object.keys(patch).length === 0) {
+      return { output: context.currentData };
+    }
+
+    const patched = await deviceStateService.patchData(deviceId, stateId, patch);
+
+    return {
+      output: {
+        ...context.currentData,
+        writeDeviceStateResult: { patched, stateId, keys: Object.keys(patch) },
       },
     };
   }

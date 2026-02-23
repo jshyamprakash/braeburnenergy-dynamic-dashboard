@@ -1,8 +1,9 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/lib/store';
 import { updateNode, triggerAutoSave } from '@/lib/store/slices/workflowSlice';
+import VariablePicker from './VariablePicker';
 
 /**
  * Node Configuration Panel
@@ -129,6 +130,17 @@ const NODE_CONFIG_SCHEMAS: Record<string, FieldConfig[]> = {
       { value: 'error', label: 'Error' },
     ], required: true },
   ],
+  'action:writeDeviceState': [
+    { key: 'label', label: 'Node Label', type: 'text', placeholder: 'e.g., Structure Telemetry', required: true },
+    { key: 'description', label: 'Description', type: 'textarea' },
+    {
+      key: 'mappings',
+      label: 'Field Mappings (JSON)',
+      type: 'textarea',
+      placeholder: '[{"key":"temperature","expression":"{{trigger.value}}"},{"key":"unit","expression":"celsius"}]',
+      required: true,
+    },
+  ],
   'transform:mapData': [
     { key: 'label', label: 'Node Label', type: 'text', placeholder: 'e.g., Transform Data', required: true },
     { key: 'description', label: 'Description', type: 'textarea' },
@@ -156,13 +168,46 @@ const NODE_CONFIG_SCHEMAS: Record<string, FieldConfig[]> = {
     { key: 'description', label: 'Description', type: 'textarea' },
     { key: 'script', label: 'JavaScript Code', type: 'textarea', placeholder: 'return { ...data, processed: true };', required: true },
   ],
+  'data:modbusRead': [
+    { key: 'label', label: 'Node Label', type: 'text', placeholder: 'e.g., Read Pressure', required: true },
+    { key: 'description', label: 'Description', type: 'textarea' },
+    { key: 'gatewayId', label: 'Gateway ID', type: 'text', placeholder: 'Modbus gateway ID', required: true },
+    { key: 'registerName', label: 'Register Name/Address', type: 'text', placeholder: 'e.g., 400001', required: true },
+    { key: 'outputField', label: 'Output Field', type: 'text', placeholder: 'e.g., modbusData', required: false },
+  ],
+  'data:modbusWrite': [
+    { key: 'label', label: 'Node Label', type: 'text', placeholder: 'e.g., Write Setpoint', required: true },
+    { key: 'description', label: 'Description', type: 'textarea' },
+    { key: 'gatewayId', label: 'Gateway ID', type: 'text', placeholder: 'Modbus gateway ID', required: true },
+    { key: 'startAddress', label: 'Start Address', type: 'number', placeholder: '0', required: true },
+    { key: 'values', label: 'Values (JSON)', type: 'textarea', placeholder: '[0, 100, 200]', required: true },
+  ],
+  'data:queryDeviceStates': [
+    { key: 'label', label: 'Node Label', type: 'text', placeholder: 'e.g., Query Device Data', required: true },
+    { key: 'description', label: 'Description', type: 'textarea' },
+    { key: 'deviceId', label: 'Device ID', type: 'text', placeholder: 'Device to query', required: true },
+    { key: 'startTime', label: 'Start Time (ISO 8601)', type: 'text', placeholder: '2024-01-01T00:00:00Z', required: false },
+    { key: 'endTime', label: 'End Time (ISO 8601)', type: 'text', placeholder: '2024-12-31T23:59:59Z', required: false },
+    { key: 'limit', label: 'Result Limit', type: 'number', placeholder: '100', required: false },
+    { key: 'outputField', label: 'Output Field', type: 'text', placeholder: 'e.g., deviceStates', required: false },
+  ],
+  'logic:function': [
+    { key: 'label', label: 'Node Label', type: 'text', placeholder: 'e.g., Compute Value', required: true },
+    { key: 'description', label: 'Description', type: 'textarea' },
+    { key: 'code', label: 'JavaScript Code', type: 'textarea', placeholder: 'result.computed = data.temperature * 2;', required: true },
+    { key: 'outputField', label: 'Output Field', type: 'text', placeholder: 'e.g., computed', required: false },
+  ],
 };
 
 export default function NodeConfigPanel() {
   const dispatch = useAppDispatch();
-  const { nodes, selectedNodeId } = useAppSelector(state => state.workflow);
+  const { nodes, edges, selectedNodeId } = useAppSelector(state => state.workflow);
   const [activeTab, setActiveTab] = useState<'config' | 'info'>('config');
   const [formData, setFormData] = useState<Record<string, any>>({});
+  const [isVariablePickerOpen, setIsVariablePickerOpen] = useState(false);
+  const [pickerField, setPickerField] = useState<string | null>(null);
+  const [pickerPosition, setPickerPosition] = useState({ x: 0, y: 0 });
+  const textFieldRefs = useRef<Record<string, HTMLElement | null>>({});
 
   // Get selected node
   const selectedNode = useMemo(() => {
@@ -170,9 +215,12 @@ export default function NodeConfigPanel() {
   }, [nodes, selectedNodeId]);
 
   // Get schema for this node type
+  // selectedNode.type is the visual component type ('trigger', 'action', etc.)
+  // selectedNode.data.nodeType is the semantic workflow type ('trigger:manual', etc.)
   const schema = useMemo(() => {
-    if (!selectedNode || !selectedNode.type) return null;
-    return NODE_CONFIG_SCHEMAS[selectedNode.type as keyof typeof NODE_CONFIG_SCHEMAS] || [];
+    if (!selectedNode) return null;
+    const semanticType = selectedNode.data?.nodeType ?? selectedNode.type;
+    return NODE_CONFIG_SCHEMAS[semanticType as keyof typeof NODE_CONFIG_SCHEMAS] || [];
   }, [selectedNode]);
 
   // Initialize form data when node changes
@@ -192,6 +240,34 @@ export default function NodeConfigPanel() {
     dispatch(updateNode({ id: selectedNode.id, data: updated }));
     // Trigger auto-save with 1-second debounce
     dispatch(triggerAutoSave() as any);
+
+    // Detect {{ to open variable picker
+    if (typeof value === 'string' && value.includes('{{') && !value.includes('}}')) {
+      setPickerField(key);
+      setIsVariablePickerOpen(true);
+      // Position picker near the field
+      const element = textFieldRefs.current[key];
+      if (element) {
+        const rect = element.getBoundingClientRect();
+        setPickerPosition({ x: rect.left, y: rect.bottom + 8 });
+      }
+    }
+  };
+
+  const handleVariableSelect = (variable: string) => {
+    if (!pickerField) return;
+    const currentValue = formData[pickerField] || '';
+    const newValue = currentValue + variable;
+    handleFieldChange(pickerField, newValue);
+    setIsVariablePickerOpen(false);
+    // Move cursor to end of the inserted variable
+    setTimeout(() => {
+      const element = textFieldRefs.current[pickerField];
+      if (element && 'selectionStart' in element) {
+        element.focus();
+        (element as any).selectionStart = (element as any).selectionEnd = newValue.length;
+      }
+    }, 0);
   };
 
   const getFieldValue = (key: string): any => {
@@ -248,6 +324,7 @@ export default function NodeConfigPanel() {
 
                   {field.type === 'text' && (
                     <input
+                      ref={el => { if (el) textFieldRefs.current[field.key] = el; }}
                       type="text"
                       value={getFieldValue(field.key)}
                       onChange={e => handleFieldChange(field.key, e.target.value)}
@@ -268,6 +345,7 @@ export default function NodeConfigPanel() {
 
                   {field.type === 'textarea' && (
                     <textarea
+                      ref={el => { if (el) textFieldRefs.current[field.key] = el; }}
                       value={getFieldValue(field.key)}
                       onChange={e => handleFieldChange(field.key, e.target.value)}
                       placeholder={field.placeholder}
@@ -336,6 +414,17 @@ export default function NodeConfigPanel() {
           </div>
         )}
       </div>
+
+      {/* Variable Picker */}
+      <VariablePicker
+        nodeId={selectedNode.id}
+        nodes={nodes}
+        edges={edges}
+        isOpen={isVariablePickerOpen}
+        onClose={() => setIsVariablePickerOpen(false)}
+        onSelect={handleVariableSelect}
+        position={pickerPosition}
+      />
     </div>
   );
 }

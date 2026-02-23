@@ -6,8 +6,10 @@ export interface Device {
   id: string;              // UUID (internal)
   deviceId: string;        // ULID (user-facing identifier)
   name: string;
-  tags: string[];
-  attributes?: Record<string, any>;
+  /** Static metadata key-value pairs (ADR-021) */
+  tags: Record<string, string>;
+  /** Device data schema: field name → data type (ADR-021) */
+  attributes?: Record<string, string>;
   createdAt: string;
   updatedAt: string;
 }
@@ -15,14 +17,14 @@ export interface Device {
 export interface CreateDeviceInput {
   deviceId?: string;       // Optional ULID (auto-generated if not provided)
   name: string;
-  tags?: string[];
-  attributes?: Record<string, any>;
+  tags?: Record<string, string>;
+  attributes?: Record<string, string>;
 }
 
 export interface UpdateDeviceInput {
   name?: string;
-  tags?: string[];
-  attributes?: Record<string, any>;
+  tags?: Record<string, string>;
+  attributes?: Record<string, string>;
 }
 
 // ============================================================================

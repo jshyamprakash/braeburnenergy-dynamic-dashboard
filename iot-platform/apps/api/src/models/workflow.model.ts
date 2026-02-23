@@ -8,6 +8,7 @@ import { Schema, model, Document, Types } from 'mongoose';
  */
 
 export type WorkflowPriority = 'HIGH' | 'MEDIUM' | 'LOW';
+export type WorkflowType = 'Application' | 'Experience' | 'Embedded' | 'Edge';
 
 export type NodeType =
   // Triggers
@@ -39,7 +40,9 @@ export type NodeType =
   | 'data:modbusWrite'
   | 'data:queryDeviceStates'
   // Logic (new taxonomy — ADR-017)
-  | 'logic:function';
+  | 'logic:function'
+  // Action: write structured data back to DeviceState (ADR-022)
+  | 'action:writeDeviceState';
 
 export interface WorkflowNode {
   id: string;                      // ULID
@@ -72,11 +75,13 @@ export interface IWorkflow extends Document {
   // Identification
   workflowId: string;              // ULID (user-facing)
   name: string;
+  type: WorkflowType;              // Application | Experience | Embedded | Edge
   description?: string;
   tags: string[];
 
   // Multi-tenancy
   orgId: Types.ObjectId;
+  applicationId?: Types.ObjectId;  // Optional FK to Application (ADR-023)
   userId: string;                  // Creator user ID
 
   // Workflow Definition (React Flow format)
@@ -88,6 +93,9 @@ export interface IWorkflow extends Document {
   priority: WorkflowPriority;
   maxConcurrentExecutions: number; // Default: 1
   timeoutSeconds: number;          // Default: 300 (5 minutes)
+
+  // Trigger Type (denormalized from first trigger node for efficient querying)
+  triggerType?: string;            // e.g., 'trigger:deviceStateChange', 'trigger:alarmTriggered'
 
   // Scheduling (for scheduled triggers)
   schedule?: WorkflowSchedule;
@@ -207,6 +215,12 @@ const workflowSchema = new Schema<IWorkflow>({
     trim: true,
     maxlength: 100,
   },
+  type: {
+    type: String,
+    required: true,
+    enum: ['Application', 'Experience', 'Embedded', 'Edge'],
+    default: 'Application',
+  },
   description: {
     type: String,
     maxlength: 500,
@@ -220,6 +234,11 @@ const workflowSchema = new Schema<IWorkflow>({
     type: Schema.Types.ObjectId,
     ref: 'Organization',
     required: true,
+    index: true,
+  },
+  applicationId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Application',
     index: true,
   },
   userId: {
@@ -263,6 +282,10 @@ const workflowSchema = new Schema<IWorkflow>({
     min: 1,
     max: 3600,
   },
+  triggerType: {
+    type: String,
+    index: true,
+  },
   schedule: workflowScheduleSchema,
   executionCount: {
     type: Number,
@@ -290,5 +313,15 @@ workflowSchema.index({ orgId: 1, isEnabled: 1, updatedAt: -1 });
 workflowSchema.index({ userId: 1, updatedAt: -1 });
 workflowSchema.index({ tags: 1, isEnabled: 1 });
 workflowSchema.index({ orgId: 1, 'nodes.type': 1, isEnabled: 1 }); // For trigger-based queries
+workflowSchema.index({ orgId: 1, isEnabled: 1, triggerType: 1 }); // For auto-trigger dispatcher queries
+
+/**
+ * Extract trigger type from first trigger node in workflow.
+ * Returns 'trigger:deviceStateChange' | 'trigger:scheduled' | etc., or null if no trigger found.
+ */
+export function extractTriggerType(nodes: WorkflowNode[]): string | null {
+  const triggerNode = nodes.find(node => node.type.startsWith('trigger:'));
+  return triggerNode ? triggerNode.type : null;
+}
 
 export const Workflow = model<IWorkflow>('Workflow', workflowSchema);

@@ -1,6 +1,6 @@
 import { ulid } from 'ulid';
 import mongoose from 'mongoose';
-import { Workflow, type WorkflowNode, type WorkflowEdge } from '../models/workflow.model';
+import { Workflow, extractTriggerType, type WorkflowNode, type WorkflowEdge } from '../models/workflow.model';
 import type {
   CreateWorkflowDTO,
   UpdateWorkflowDTO,
@@ -42,6 +42,7 @@ export class WorkflowService {
       maxConcurrentExecutions: data.maxConcurrentExecutions || 1,
       timeoutSeconds: data.timeoutSeconds || 300,
       schedule: data.schedule,
+      triggerType: extractTriggerType(data.nodes),
       executionCount: 0,
       version: 1,
     });
@@ -95,7 +96,11 @@ export class WorkflowService {
     if (data.name !== undefined) updateData.name = data.name;
     if (data.description !== undefined) updateData.description = data.description;
     if (data.tags !== undefined) updateData.tags = data.tags;
-    if (data.nodes !== undefined) updateData.nodes = data.nodes;
+    if (data.nodes !== undefined) {
+      updateData.nodes = data.nodes;
+      // Re-derive triggerType when nodes change
+      updateData.triggerType = extractTriggerType(data.nodes);
+    }
     if (data.edges !== undefined) updateData.edges = data.edges;
     if (data.isEnabled !== undefined) updateData.isEnabled = data.isEnabled;
     if (data.priority !== undefined) updateData.priority = data.priority;
@@ -236,6 +241,41 @@ export class WorkflowService {
       workflowId,
     });
     return count > 0;
+  }
+
+  /**
+   * Find enabled workflows that match a trigger type with optional filters
+   * Used by WorkflowTriggerDispatcher for auto-trigger matching
+   */
+  async findTriggerWorkflows(
+    orgId: string,
+    triggerType: string,
+    filters?: {
+      deviceId?: string;
+      field?: string;
+    }
+  ) {
+    const filter: any = {
+      orgId: new mongoose.Types.ObjectId(orgId),
+      isEnabled: true,
+      triggerType,
+    };
+
+    // If filters provided, match trigger node config
+    // For deviceStateChange triggers: filter by config.deviceId and/or config.field
+    if (filters?.deviceId || filters?.field) {
+      // Build filter for trigger node's config matching
+      if (filters.deviceId && filters.field) {
+        filter['nodes.data.config.deviceId'] = filters.deviceId;
+        filter['nodes.data.config.field'] = filters.field;
+      } else if (filters.deviceId) {
+        filter['nodes.data.config.deviceId'] = filters.deviceId;
+      } else if (filters.field) {
+        filter['nodes.data.config.field'] = filters.field;
+      }
+    }
+
+    return Workflow.find(filter).lean();
   }
 
   /**

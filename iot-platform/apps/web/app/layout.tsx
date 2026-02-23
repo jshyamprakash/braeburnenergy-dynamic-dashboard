@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Providers } from "@/lib/providers";
-import { Navigation } from "@/components/Navigation";
+import { TopBar } from "@/components/navigation/TopBar";
+import { Sidebar } from "@/components/navigation/Sidebar";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -29,10 +30,16 @@ export default function RootLayout({
           <AuthProvider>
             <ErrorBoundary>
               <Providers>
-                <Navigation />
-                <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                  {children}
-                </main>
+                {/* Top Bar */}
+                <TopBar />
+
+                {/* Main Layout: Sidebar + Content */}
+                <div className="flex h-[calc(100vh-64px)]">
+                  <Sidebar />
+                  <main className="flex-1 overflow-auto px-4 sm:px-6 lg:px-8 py-8">
+                    {children}
+                  </main>
+                </div>
               </Providers>
             </ErrorBoundary>
             <Toaster position="top-right" richColors />

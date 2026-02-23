@@ -139,6 +139,15 @@ const NODE_TYPES: NodeTypeConfig[] = [
     icon: '📝',
     defaultConfig: { message: '', level: 'info' },
   },
+  {
+    type: 'action:writeDeviceState',
+    category: 'action',
+    visualType: 'action',
+    label: 'Write Device State',
+    description: 'Write structured data back to the triggering DeviceState',
+    icon: '💾',
+    defaultConfig: { mappings: [] },
+  },
 
   // Transformations
   {

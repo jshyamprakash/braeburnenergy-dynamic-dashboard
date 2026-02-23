@@ -195,18 +195,12 @@ class ModbusGatewayManagerService {
       // Create new device
       const newDevice = await deviceService.create(orgId, {
         name: deviceName,
-        tags: [
-          'modbus',
-          gateway.protocol,
-          ...(gateway.deviceMapping.defaultTags || []),
-        ],
+        tags: {
+          protocol: gateway.protocol,
+          source: 'modbus',
+        },
         attributes: {
-          modbusGatewayId: gateway._id.toString(),
-          modbusGatewayName: gateway.name,
-          registerName: register.name,
-          registerAddress: register.address,
-          registerType: register.type,
-          dataType: register.dataType,
+          value: register.dataType as 'number' | 'string' | 'boolean' | 'timestamp',
         },
       });
 

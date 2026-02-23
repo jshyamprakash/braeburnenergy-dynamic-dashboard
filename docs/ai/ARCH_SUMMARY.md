@@ -6,7 +6,7 @@
 - Fastify 4.25.2 (92 TS files: 14 controllers, 22 services, 18 models)
 - Next.js 16.1.6 + React 19.2.4 + App Router
 - Tailwind CSS 4.1.18 (`@import "tailwindcss"` syntax, `darkMode: 'class'`)
-- Redux Toolkit 2.11.2 (5 slices: auth, ui, dashboard, websocket, workflow)
+- Redux Toolkit 2.11.2 (6 slices: auth, ui, dashboard, websocket, workflow, alarm)
 - React Query 5.90.20 (device queries only, being phased out)
 - React Flow 11.11.4 (visual workflow editor)
 - Socket.io 4.6.0 (WebSocket)
@@ -46,14 +46,15 @@
   - uiSlice: theme, modals, notifications
   - dashboardSlice: layouts with hybrid storage (localStorage + MongoDB)
   - websocketSlice: connection state, subscriptions, updates
-  - workflowSlice: nodes, edges, execution state (NEW!)
+  - workflowSlice: nodes, edges, execution state
+  - alarmSlice: alarm instances, rules, statistics, filters (NEW!)
 - React Query: Only for device/deviceState queries (being phased out)
 - Protected routes: ProtectedRoute wrapper with returnUrl
 - API client: Generic type parameters REQUIRED: `apiClient.get<T>()`
 - Named imports for named exports (no default mismatch)
 - Tailwind: `darkMode: 'class'` REQUIRED for next-themes
 
-## Visual Workflow Editor (Week 2 Complete)
+## Visual Workflow Editor (Week 3 - Sidebar Navigation)
 - Backend: Workflow + WorkflowExecution Mongoose models
 - 19 node types: 5 triggers, 5 conditions, 6 actions, 4 transforms
 - WorkflowService: CRUD with cycle detection, orphan validation
@@ -61,7 +62,12 @@
 - React Flow canvas: Background, Controls, MiniMap
 - 4 custom nodes: TriggerNode, ConditionNode, ActionNode, TransformNode
 - Redux workflowSlice: state management with typed async thunks
-- Routes: /workflows (list), /workflows/:id (builder)
+- Routes (ADR-018 context-sensitive sidebar):
+  - /workflows (list with CRUD, create/edit/delete/execute/toggle)
+  - /workflows/:id (canvas: visual editor + toolbar)
+  - /workflows/:id/executions (history table with expandable logs)
+  - /workflows/:id/settings (metadata form: name, description, tags, priority, enabled toggle)
+- Sidebar layout: 220px left nav with Canvas/Executions/Settings tabs (Losant pattern)
 - RBAC: workflow:create, workflow:read, workflow:execute permissions
 
 ## Compliance (Fully Implemented)

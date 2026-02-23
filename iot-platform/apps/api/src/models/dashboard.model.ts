@@ -53,6 +53,7 @@ export interface IDashboardBlock {
 export interface IDashboard extends Document {
   userId: string;
   organizationId: string;
+  applicationId?: string; // Optional FK to Application (ADR-023)
   dashboardId: string;
   name: string;
   description?: string;
@@ -77,6 +78,10 @@ const DashboardSchema = new Schema<IDashboard>(
     organizationId: {
       type: String,
       required: true,
+      index: true,
+    },
+    applicationId: {
+      type: String,
       index: true,
     },
     dashboardId: {

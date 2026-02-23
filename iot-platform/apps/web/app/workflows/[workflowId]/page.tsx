@@ -3,17 +3,18 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/lib/store';
-import { loadWorkflow, saveWorkflow, resetWorkflow, executeWorkflow, removeNode, addExecutionLogEntry, completeExecutionStream, clearExecutionLog, setNodes, setEdges, updateMetadata, addNode, selectNode } from '@/lib/store/slices/workflowSlice';
+import { loadWorkflow, saveWorkflow, resetWorkflow, executeWorkflow, removeNode, addExecutionLogEntry, completeExecutionStream, clearExecutionLog, setNodes, setEdges, updateMetadata, addNode, selectNode, toggleDebugPanel } from '@/lib/store/slices/workflowSlice';
 import { useWorkflowExecutionUpdates } from '@/lib/hooks/useWebSocket';
-import ExecutionPanel from '@/components/workflow/ExecutionPanel';
 import WorkflowCanvas from '@/components/workflow/WorkflowCanvas';
 import NodePalette from '@/components/workflow/NodePalette';
 import NodeConfigPanel from '@/components/workflow/NodeConfigPanel';
+import SettingsPanel from '@/components/workflow/SettingsPanel';
 import WorkflowToolbar from '@/components/workflow/WorkflowToolbar';
 import ExecutionInputModal from '@/components/workflow/ExecutionInputModal';
-import SettingsModal from '@/components/workflow/SettingsModal';
+import ExecutionHistoryModal from '@/components/workflow/ExecutionHistoryModal';
 import ValidationPanel from '@/components/workflow/ValidationPanel';
 import KeyboardShortcutsHelp from '@/components/workflow/KeyboardShortcutsHelp';
+import ContextDebugPanel from '@/components/workflow/ContextDebugPanel';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { useWorkflowKeyboardShortcuts } from '@/hooks/useWorkflowKeyboardShortcuts';
 import { exportWorkflowToJSON } from '@/lib/utils/workflow-export';
@@ -21,6 +22,7 @@ import { toast } from 'sonner';
 import NodeContextMenu from '@/components/workflow/NodeContextMenu';
 import { ReactFlowProvider } from 'reactflow';
 import { ulid } from 'ulid';
+import type { Workflow } from '@repo/types';
 
 /**
  * Workflow Builder Page
@@ -36,6 +38,7 @@ function WorkflowBuilderPage() {
   const {
     workflowId,
     name,
+    type,
     description,
     tags,
     nodes,
@@ -50,13 +53,14 @@ function WorkflowBuilderPage() {
     currentExecutionId,
     executionStatus,
     selectedNodeId,
+    isDebugPanelOpen,
+    executionLog,
   } = useAppSelector(state => state.workflow);
 
   const [isSaving, setIsSaving] = useState(false);
   const [isExecutionModalOpen, setIsExecutionModalOpen] = useState(false);
-  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isExecutionHistoryModalOpen, setIsExecutionHistoryModalOpen] = useState(false);
   const [isValidationPanelOpen, setIsValidationPanelOpen] = useState(false);
-  const [isExecutionPanelOpen, setIsExecutionPanelOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; nodeId: string; nodeData: any } | null>(null);
   const isNewWorkflow = params.workflowId === 'new';
@@ -206,18 +210,6 @@ function WorkflowBuilderPage() {
     }
   };
 
-  const handleSettings = () => {
-    setIsSettingsModalOpen(true);
-  };
-
-  const handleSettingsSave = (updatedValues: any) => {
-    // Redux state will be updated by the modal's API call
-    // Just refresh the workflow to ensure state is in sync
-    if (workflowId) {
-      dispatch(loadWorkflow(workflowId));
-    }
-  };
-
   // Handle delete selected node
   const handleDeleteNode = () => {
     if (selectedNodeId) {
@@ -230,12 +222,9 @@ function WorkflowBuilderPage() {
   };
 
   const handleNodeContextMenu = (event: React.MouseEvent, node: any) => {
-    const canvas = document.querySelector(".react-flow__canvas");
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
     setContextMenu({
-      x: event.clientX - rect.left,
-      y: event.clientY - rect.top,
+      x: event.clientX,
+      y: event.clientY,
       nodeId: node.id,
       nodeData: node.data,
     });
@@ -271,7 +260,7 @@ function WorkflowBuilderPage() {
   // Setup keyboard shortcuts
   useWorkflowKeyboardShortcuts({
     onSave: handleSave,
-    onRun: handleRun,
+    onRun: handleRun,  // For keyboard shortcuts (Ctrl+R)
     onExport: handleExport,
     onDelete: handleDeleteNode,
     onShowHelp: () => setIsHelpOpen(true),
@@ -289,13 +278,15 @@ function WorkflowBuilderPage() {
         isSaving={isSaving}
         isExecuting={executionStatus === 'running'}
         executionId={currentExecutionId}
+        isDebugPanelOpen={isDebugPanelOpen}
         onSave={handleSave}
         onBack={handleBack}
-        onRun={handleRun}
+        onDeploy={handleRun}
         onExport={handleExport}
-        onSettings={handleSettings}
+        onExecutionHistory={() => setIsExecutionHistoryModalOpen(true)}
         onValidation={() => setIsValidationPanelOpen(true)}
         onShowHelp={() => setIsHelpOpen(true)}
+        onDebugToggle={() => dispatch(toggleDebugPanel())}
       />
 
       {/* Execution Input Modal */}
@@ -307,25 +298,16 @@ function WorkflowBuilderPage() {
         onExecute={handleExecute}
       />
 
-      {/* Settings Modal */}
-      <SettingsModal
-        isOpen={isSettingsModalOpen}
-        workflowId={workflowId}
-        currentValues={{
-          name,
-          description,
-          tags,
-          priority,
-          isEnabled,
-        }}
-        onClose={() => setIsSettingsModalOpen(false)}
-        onSave={handleSettingsSave}
-      />
-
       {/* Keyboard Shortcuts Help Modal */}
       <KeyboardShortcutsHelp
         isOpen={isHelpOpen}
         onClose={() => setIsHelpOpen(false)}
+      />
+
+      {/* Execution History Modal */}
+      <ExecutionHistoryModal
+        isOpen={isExecutionHistoryModalOpen}
+        onClose={() => setIsExecutionHistoryModalOpen(false)}
       />
 
       {/* Main content */}
@@ -365,21 +347,42 @@ function WorkflowBuilderPage() {
           )}
         </div>
 
-        {/* Configuration panel (right sidebar) */}
-        <NodeConfigPanel />
+        {/* Right panel: Settings or Node Config */}
+        {selectedNodeId ? (
+          <NodeConfigPanel />
+        ) : (
+          <SettingsPanel
+            workflow={{
+              workflowId: workflowId || '',
+              name,
+              type,
+              description: description || '',
+              tags: tags || [],
+              nodes: nodes as any,
+              edges: edges as any,
+              isEnabled: isEnabled || false,
+              priority: priority || 'MEDIUM',
+              maxConcurrentExecutions: 1,
+              timeoutSeconds: 300,
+              executionCount: 0,
+              version: version || 1,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            }}
+            isDirty={isDirty}
+            onSave={(updates) => {
+              dispatch(updateMetadata(updates));
+              toast.success('Settings updated');
+            }}
+            isSaving={isSaving}
+          />
+        )}
       </div>
 
       {/* Validation Panel (bottom drawer) */}
       <ValidationPanel
         isOpen={isValidationPanelOpen}
         onToggle={() => setIsValidationPanelOpen(!isValidationPanelOpen)}
-      />
-
-      {/* Execution Panel (bottom drawer) */}
-      <ExecutionPanel
-        isOpen={isExecutionPanelOpen}
-        onToggle={() => setIsExecutionPanelOpen(!isExecutionPanelOpen)}
-        workflowId={workflowId}
       />
 
       {/* Context Menu */}
@@ -396,6 +399,15 @@ function WorkflowBuilderPage() {
           onDelete={handleDeleteContextNode}
         />
       )}
+
+      {/* Context Debug Panel */}
+      <ContextDebugPanel
+        isOpen={isDebugPanelOpen}
+        onClose={() => dispatch(toggleDebugPanel())}
+        executionLog={executionLog}
+        executionStatus={executionStatus}
+        nodes={nodes}
+      />
     </div>
     </ReactFlowProvider>
   );

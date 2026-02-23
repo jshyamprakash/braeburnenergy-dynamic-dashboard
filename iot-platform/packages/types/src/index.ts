@@ -15,8 +15,10 @@ export interface Device {
   id: string;
   deviceId: string;  // ULID - user-facing identifier
   name: string;
-  tags: string[];
-  attributes: Record<string, any> | null;
+  /** Static metadata key-value pairs (ADR-021) */
+  tags: Record<string, string>;
+  /** Device data schema: field name → data type (ADR-021) */
+  attributes: Record<string, string> | null;
   orgId?: string;
   createdAt: string | Date;
   updatedAt: string | Date;
@@ -45,6 +47,29 @@ export interface Organization {
   settings: Record<string, any> | null;
   createdAt: string | Date;
   updatedAt: string | Date;
+}
+
+/**
+ * Application - Top-level project container per ADR-023
+ */
+export interface Application {
+  id: string;
+  applicationId: string;  // ULID - user-facing identifier
+  orgId: string;
+  name: string;
+  description?: string;
+  slug: string;
+  isActive: boolean;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+}
+
+/**
+ * Create Application input
+ */
+export interface CreateApplicationInput {
+  name: string;
+  description?: string;
 }
 
 // ===========================
@@ -149,6 +174,77 @@ export type NodeType =
   | 'transform:aggregation' | 'transform:dataMapping'
   | 'data:modbusRead' | 'data:modbusWrite' | 'data:queryDeviceStates'
   | 'logic:function';
+
+/**
+ * Workflow type (deployment target/use case)
+ */
+export type WorkflowType = 'Application' | 'Experience' | 'Embedded' | 'Edge';
+
+/**
+ * Workflow priority level
+ */
+export type WorkflowPriority = 'HIGH' | 'MEDIUM' | 'LOW';
+
+/**
+ * Workflow node (canvas element)
+ */
+export interface WorkflowNode {
+  id: string;
+  type: NodeType;
+  position: { x: number; y: number };
+  data: {
+    label?: string;
+    description?: string;
+    config: Record<string, any>;
+  };
+}
+
+/**
+ * Workflow edge (connection between nodes)
+ */
+export interface WorkflowEdge {
+  id: string;
+  source: string;
+  target: string;
+  sourceHandle?: string;
+  targetHandle?: string;
+  label?: string;
+  type?: 'default' | 'smoothstep' | 'step';
+}
+
+/**
+ * Workflow schedule (for scheduled triggers)
+ */
+export interface WorkflowSchedule {
+  cronExpression?: string;
+  timezone?: string;
+  nextRunAt?: string | Date;
+}
+
+/**
+ * Workflow definition and metadata
+ */
+export interface Workflow {
+  workflowId: string;  // ULID - user-facing identifier
+  name: string;
+  type: WorkflowType;
+  description?: string;
+  tags: string[];
+  nodes: WorkflowNode[];
+  edges: WorkflowEdge[];
+  isEnabled: boolean;
+  priority: WorkflowPriority;
+  maxConcurrentExecutions: number;
+  timeoutSeconds: number;
+  schedule?: WorkflowSchedule;
+  executionCount: number;
+  lastExecutedAt?: string | Date;
+  lastExecutionStatus?: 'completed' | 'failed' | 'timeout' | 'cancelled';
+  lastExecutionDuration?: number;
+  version: number;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+}
 
 /**
  * Workflow execution step event (per-node progress)

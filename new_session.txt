@@ -4,5 +4,3 @@ Re-anchor to repository.
 Generate next task.
 Start next task.
 Task complete.
-
-Next command:  Start next task

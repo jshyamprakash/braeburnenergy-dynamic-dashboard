@@ -94,12 +94,12 @@ export default function DeviceDetailPage() {
             <div>
               <dt className="text-sm font-medium text-gray-500">Tags</dt>
               <dd className="mt-1 flex flex-wrap gap-1">
-                {device.tags.map((tag) => (
+                {Object.entries(device.tags || {}).map(([key, value]) => (
                   <span
-                    key={tag}
+                    key={key}
                     className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs"
                   >
-                    {tag}
+                    {value ? `${key}: ${value}` : key}
                   </span>
                 ))}
               </dd>

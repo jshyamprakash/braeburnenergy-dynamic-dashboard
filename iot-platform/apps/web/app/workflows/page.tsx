@@ -6,7 +6,9 @@ import { apiClient } from '@/lib/api-client';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import ImportWorkflowButton from '@/components/workflow/ImportWorkflowButton';
 import TemplatePickerModal from '@/components/workflow/TemplatePickerModal';
+import CreateWorkflowModal from '@/components/workflow/CreateWorkflowModal';
 import { toast } from 'sonner';
+import type { Workflow } from '@repo/types';
 
 /**
  * Workflows List Page
@@ -15,26 +17,15 @@ import { toast } from 'sonner';
  * URL: /workflows
  */
 
-interface Workflow {
-  workflowId: string;
-  name: string;
-  description?: string;
-  tags: string[];
-  isEnabled: boolean;
-  priority: 'HIGH' | 'MEDIUM' | 'LOW';
-  executionCount: number;
-  lastExecutedAt?: string;
-  lastExecutionStatus?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
 function WorkflowsListPage() {
   const router = useRouter();
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>(null);
+  const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
 
   // Load workflows
   useEffect(() => {
@@ -57,7 +48,16 @@ function WorkflowsListPage() {
   };
 
   const handleCreate = () => {
-    router.push('/workflows/new');
+    setSelectedWorkflow(null);
+    setModalMode('create');
+    setIsCreateModalOpen(true);
+  };
+
+  const handleCreateSuccess = (workflow: Workflow) => {
+    // Refresh workflows list
+    loadWorkflows();
+    // Navigate to the workflow editor
+    router.push(`/workflows/${workflow.workflowId}`);
   };
 
   const handleTemplateSelect = (template: any) => {
@@ -112,9 +112,9 @@ function WorkflowsListPage() {
     }
   };
 
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return 'Never';
-    return new Date(dateString).toLocaleString();
+  const formatDate = (date?: string | Date) => {
+    if (!date) return 'Never';
+    return new Date(date).toLocaleString();
   };
 
   const getPriorityColor = (priority: string) => {
@@ -190,7 +190,7 @@ function WorkflowsListPage() {
                   d="M12 4v16m8-8H4"
                 />
               </svg>
-              New Workflow
+              Add Workflow
             </button>
             <button
               onClick={() => setIsTemplateModalOpen(true)}
@@ -248,7 +248,7 @@ function WorkflowsListPage() {
               onClick={handleCreate}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
             >
-              Create Workflow
+              Add Workflow
             </button>
           </div>
         ) : (
@@ -260,16 +260,13 @@ function WorkflowsListPage() {
                     Name
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                    Type
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wider">
                     Status
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-                    Priority
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-                    Executions
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-                    Last Run
+                    Created
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wider">
                     Actions
@@ -283,8 +280,11 @@ function WorkflowsListPage() {
                     className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                   >
                     <td className="px-6 py-4">
-                      <div>
-                        <div className="font-medium text-gray-900 dark:text-gray-100">
+                      <button
+                        className="text-left group"
+                        onClick={() => handleEdit(workflow.workflowId)}
+                      >
+                        <div className="font-medium text-blue-600 dark:text-blue-400 underline underline-offset-2 decoration-blue-400/50 group-hover:decoration-blue-600 dark:group-hover:decoration-blue-400 transition-colors">
                           {workflow.name}
                         </div>
                         {workflow.description && (
@@ -292,19 +292,12 @@ function WorkflowsListPage() {
                             {workflow.description}
                           </div>
                         )}
-                        {workflow.tags.length > 0 && (
-                          <div className="flex gap-1 mt-1">
-                            {workflow.tags.slice(0, 3).map(tag => (
-                              <span
-                                key={tag}
-                                className="px-2 py-0.5 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded"
-                              >
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                      </button>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="px-2.5 py-1 text-xs font-medium rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+                        {workflow.type}
+                      </span>
                     </td>
                     <td className="px-6 py-4">
                       <button
@@ -323,33 +316,8 @@ function WorkflowsListPage() {
                         {workflow.isEnabled ? 'Enabled' : 'Disabled'}
                       </button>
                     </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`px-2.5 py-1 text-xs font-medium rounded-full ${getPriorityColor(
-                          workflow.priority
-                        )}`}
-                      >
-                        {workflow.priority}
-                      </span>
-                    </td>
                     <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
-                      {workflow.executionCount}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900 dark:text-gray-100">
-                        {formatDate(workflow.lastExecutedAt)}
-                      </div>
-                      {workflow.lastExecutionStatus && (
-                        <div
-                          className={`text-xs mt-0.5 ${
-                            workflow.lastExecutionStatus === 'completed'
-                              ? 'text-green-600 dark:text-green-400'
-                              : 'text-red-600 dark:text-red-400'
-                          }`}
-                        >
-                          {workflow.lastExecutionStatus}
-                        </div>
-                      )}
+                      {formatDate(workflow.createdAt)}
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
@@ -381,7 +349,7 @@ function WorkflowsListPage() {
                         <button
                           onClick={() => handleEdit(workflow.workflowId)}
                           className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
-                          title="Edit"
+                          title="Edit Canvas"
                         >
                           <svg
                             className="w-4 h-4 text-blue-600 dark:text-blue-400"
@@ -425,6 +393,15 @@ function WorkflowsListPage() {
           </div>
         )}
       </div>
+
+      {/* Create/Edit Workflow Modal */}
+      <CreateWorkflowModal
+        isOpen={isCreateModalOpen}
+        mode={modalMode}
+        workflowData={selectedWorkflow}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSuccess={handleCreateSuccess}
+      />
 
       {/* Template Picker Modal */}
       <TemplatePickerModal

@@ -21,24 +21,23 @@ export const ulidSchema = z
   .describe('ULID identifier (26 characters, time-sortable)');
 
 /**
- * Device attributes schema
- * Flexible JSON object for custom device metadata
+ * Device attributes schema (ADR-021)
+ * Maps field name → data type string ("number"|"string"|"boolean"|"timestamp")
+ * Defines the expected telemetry schema for this device
  */
 export const deviceAttributesSchema = z
-  .record(z.unknown())
+  .record(z.enum(['number', 'string', 'boolean', 'timestamp']))
   .optional()
-  .describe('Custom device attributes (key-value pairs)');
+  .describe('Device data schema: field name → data type (number|string|boolean|timestamp)');
 
 /**
- * Device tags schema
- * Array of strings for categorization and filtering
+ * Device tags schema (ADR-021)
+ * Key-value static metadata pairs (e.g. { model: "X1", mfg: "Acme" })
  */
 export const deviceTagsSchema = z
-  .array(z.string().min(1).max(100))
-  .max(50)
+  .record(z.string().max(255))
   .optional()
-  .default([])
-  .describe('Device tags for categorization (max 50 tags, 100 chars each)');
+  .describe('Static metadata key-value pairs (max 255 chars per value)');
 
 // ============================================================================
 // Create Device
@@ -58,6 +57,11 @@ export const createDeviceSchema = z.object({
   tags: deviceTagsSchema,
 
   attributes: deviceAttributesSchema,
+
+  applicationId: z
+    .string()
+    .optional()
+    .describe('Application ID (ULID) — FK to Application (ADR-023)'),
 });
 
 export type CreateDeviceDTO = z.infer<typeof createDeviceSchema>;
@@ -80,6 +84,11 @@ export const updateDeviceSchema = z.object({
   tags: deviceTagsSchema,
 
   attributes: deviceAttributesSchema,
+
+  applicationId: z
+    .string()
+    .optional()
+    .describe('Application ID (ULID) — FK to Application'),
 });
 
 export type UpdateDeviceDTO = z.infer<typeof updateDeviceSchema>;
@@ -113,7 +122,7 @@ export const queryDevicesSchema = z.object({
     .string()
     .transform((val) => val.split(',').map((t) => t.trim()).filter(Boolean))
     .optional()
-    .describe('Filter by tags (comma-separated)'),
+    .describe('Filter by tag keys (comma-separated)'),
 
   search: z
     .string()

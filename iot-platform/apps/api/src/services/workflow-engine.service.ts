@@ -7,7 +7,7 @@ import {
 } from '../models/workflow-execution.model';
 import { Workflow, type WorkflowNode, type WorkflowEdge } from '../models/workflow.model';
 import { WorkflowService } from './workflow.service';
-import { WorkflowNodeHandlers } from './workflow-node-handlers.service';
+import { WorkflowNodeHandlers, resolveExpression } from './workflow-node-handlers.service';
 import { broadcastWorkflowExecutionStep, broadcastWorkflowExecutionCompleted } from '../websocket/server';
 import type { QueryExecutionsDTO } from '../schemas/workflow.schema';
 
@@ -215,8 +215,17 @@ export class WorkflowEngineService {
     });
 
     try {
-      // Execute node handler
-      const result = await this.nodeHandlers.execute(node, context);
+      // Resolve expressions in node config before execution
+      const resolvedNode = {
+        ...node,
+        data: {
+          ...node.data,
+          config: this.resolveNodeConfig(node.data.config, context),
+        },
+      };
+
+      // Execute node handler with resolved config
+      const result = await this.nodeHandlers.execute(resolvedNode, context);
 
       const nodeEndTime = Date.now();
       const nodeDuration = nodeEndTime - nodeStartTime;
@@ -235,9 +244,15 @@ export class WorkflowEngineService {
       execution.executionLog.push(logEntry);
       await execution.save();
 
-      // Update context
+      // Update context: store node output under nodeId key for variable binding
       if (result.output !== undefined) {
         context.currentData = result.output;
+        context[node.id] = result.output; // Enable {{nodeId.field}} expressions
+      }
+
+      // Seed trigger object from input data (for first node)
+      if (node.type.startsWith('trigger:')) {
+        context.trigger = result.output || context.triggerData;
       }
 
       // Update variables if provided
@@ -314,6 +329,30 @@ export class WorkflowEngineService {
       // Rethrow to stop workflow execution
       throw error;
     }
+  }
+
+  /**
+   * Resolve variable expressions in node config
+   * Recursively resolves {{expressions}} in all config fields
+   */
+  private resolveNodeConfig(config: Record<string, any>, context: any): Record<string, any> {
+    const resolved: Record<string, any> = {};
+
+    for (const [key, value] of Object.entries(config)) {
+      if (typeof value === 'string') {
+        resolved[key] = resolveExpression(value, context);
+      } else if (Array.isArray(value)) {
+        resolved[key] = value.map(item =>
+          typeof item === 'string' ? resolveExpression(item, context) : item
+        );
+      } else if (typeof value === 'object' && value !== null) {
+        resolved[key] = this.resolveNodeConfig(value, context);
+      } else {
+        resolved[key] = value;
+      }
+    }
+
+    return resolved;
   }
 
   /**
