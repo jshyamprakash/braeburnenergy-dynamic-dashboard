@@ -26,15 +26,26 @@ function formatDate(dateString: string | Date): string {
   });
 }
 
+interface DashboardItem {
+  _id: string;
+  dashboardId: string;
+  name: string;
+  description?: string;
+  blocks: Array<{ id: string }>;
+  updatedAt: string;
+}
+
 function ApplicationDetailContent({ applicationId }: { applicationId: string }) {
   const router = useRouter();
   const [application, setApplication] = useState<Application | null>(null);
   const [devices, setDevices] = useState<Device[]>([]);
   const [workflows, setWorkflows] = useState<WorkflowType[]>([]);
+  const [dashboards, setDashboards] = useState<DashboardItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'devices' | 'workflows' | 'dashboards'>('devices');
   const [isDeviceFormOpen, setIsDeviceFormOpen] = useState(false);
   const [isWorkflowModalOpen, setIsWorkflowModalOpen] = useState(false);
+  const [isCreateDashboardOpen, setIsCreateDashboardOpen] = useState(false);
 
   // Fetch application
   useEffect(() => {
@@ -77,11 +88,27 @@ function ApplicationDetailContent({ applicationId }: { applicationId: string }) 
         setWorkflows(filtered);
       } catch (error) {
         console.error('Failed to fetch workflows:', error);
+      }
+    };
+    fetchWorkflows();
+  }, [applicationId]);
+
+  // Fetch dashboards
+  useEffect(() => {
+    const fetchDashboards = async () => {
+      try {
+        const response = await apiClient.get<any>('/dashboards');
+        const allDashboards = response.data || [];
+        // Filter by applicationId
+        const filtered = allDashboards.filter((d: DashboardItem) => (d as any).applicationId === applicationId);
+        setDashboards(filtered);
+      } catch (error) {
+        console.error('Failed to fetch dashboards:', error);
       } finally {
         setLoading(false);
       }
     };
-    fetchWorkflows();
+    fetchDashboards();
   }, [applicationId]);
 
   const handleDeviceFormSuccess = () => {
@@ -114,6 +141,22 @@ function ApplicationDetailContent({ applicationId }: { applicationId: string }) 
       }
     };
     fetchWorkflows();
+  };
+
+  const handleDashboardSuccess = () => {
+    setIsCreateDashboardOpen(false);
+    // Refresh dashboards list
+    const fetchDashboards = async () => {
+      try {
+        const response = await apiClient.get<any>('/dashboards');
+        const allDashboards = response.data || [];
+        const filtered = allDashboards.filter((d: DashboardItem) => (d as any).applicationId === applicationId);
+        setDashboards(filtered);
+      } catch (error) {
+        console.error('Failed to refresh dashboards:', error);
+      }
+    };
+    fetchDashboards();
   };
 
   if (loading) {
@@ -329,9 +372,66 @@ function ApplicationDetailContent({ applicationId }: { applicationId: string }) 
         )}
 
         {activeTab === 'dashboards' && (
-          <div className="text-center py-12 border rounded-lg border-gray-200 dark:border-gray-700">
-            <Workflow className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600 dark:text-gray-400">Dashboard builder coming soon</p>
+          <div className="space-y-4">
+            <div className="flex justify-end">
+              <button
+                onClick={() => setIsCreateDashboardOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+              >
+                <Plus className="h-4 w-4" />
+                Create Dashboard
+              </button>
+            </div>
+            {dashboards.length === 0 ? (
+              <div className="text-center py-12 border rounded-lg border-gray-200 dark:border-gray-700">
+                <p className="text-gray-600 dark:text-gray-400">No dashboards in this application</p>
+              </div>
+            ) : (
+              <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden">
+                <table className="w-full">
+                  <thead className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">Name</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">Blocks</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold">Updated</th>
+                      <th className="px-4 py-3 text-right text-sm font-semibold">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dashboards.map((dashboard) => (
+                      <tr
+                        key={dashboard.dashboardId}
+                        className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
+                      >
+                        <td className="px-4 py-3 font-medium">
+                          <Link
+                            href={`/dashboards/${dashboard.dashboardId}`}
+                            className="text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                          >
+                            {dashboard.name}
+                          </Link>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                          {dashboard.blocks?.length || 0} blocks
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                          {formatDate(dashboard.updatedAt)}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <Link
+                            href={`/dashboards/${dashboard.dashboardId}`}
+                            className="text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                            title="Edit"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 
@@ -350,6 +450,101 @@ function ApplicationDetailContent({ applicationId }: { applicationId: string }) 
           onClose={() => setIsWorkflowModalOpen(false)}
           onSuccess={handleWorkflowSuccess}
         />
+
+        {/* Create Dashboard Modal */}
+        {isCreateDashboardOpen && (
+          <CreateDashboardModalComponent
+            applicationId={applicationId}
+            onClose={() => setIsCreateDashboardOpen(false)}
+            onSuccess={handleDashboardSuccess}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CreateDashboardModalComponent({
+  applicationId,
+  onClose,
+  onSuccess,
+}: {
+  applicationId: string;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) {
+      toast.error('Dashboard name is required');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await apiClient.post('/dashboards/default', {
+        name: name.trim(),
+        description: description.trim() || undefined,
+        applicationId,
+        blocks: [],
+        layouts: {},
+      });
+      toast.success('Dashboard created successfully');
+      onSuccess();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to create dashboard');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+      <div className="w-full max-w-md rounded-lg bg-white p-6 dark:bg-gray-900 dark:text-white shadow-xl">
+        <h2 className="mb-4 text-xl font-bold">Create Dashboard</h2>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Name *</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full px-3 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-700"
+              placeholder="e.g., Production Metrics"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Description</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full px-3 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-700"
+              placeholder="Optional description"
+              rows={3}
+            />
+          </div>
+          <div className="flex gap-3 justify-end pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              {loading ? 'Creating...' : 'Create'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
