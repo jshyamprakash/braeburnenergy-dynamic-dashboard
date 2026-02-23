@@ -8,6 +8,7 @@ interface BlockConfigPanelProps {
   block: DashboardBlock;
   onUpdate: (config: DashboardBlock['config']) => void;
   onClose: () => void;
+  applicationId?: string;
 }
 
 /**
@@ -15,10 +16,15 @@ interface BlockConfigPanelProps {
  *
  * Configuration panel for editing block properties
  */
-export function BlockConfigPanel({ block, onUpdate, onClose }: BlockConfigPanelProps) {
+export function BlockConfigPanel({ block, onUpdate, onClose, applicationId }: BlockConfigPanelProps) {
   const [config, setConfig] = useState(block.config);
   const { data: devices = [], isLoading: devicesLoading, error: devicesError } = useDevices();
   const fields = useDeviceFields(config.deviceId);
+
+  // Filter devices by applicationId if provided
+  const filteredDevices = applicationId
+    ? devices.filter((d: any) => d.applicationId === applicationId)
+    : devices;
 
   // Sync config only when switching to a different block (not when config updates)
   useEffect(() => {
@@ -71,24 +77,24 @@ export function BlockConfigPanel({ block, onUpdate, onClose }: BlockConfigPanelP
                     onUpdate(newConfig);
                   }}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
-                  disabled={devices.length === 0}
+                  disabled={filteredDevices.length === 0}
                 >
                   <option value="">Select a device</option>
-                  {devices.map((device) => (
+                  {filteredDevices.map((device) => (
                     <option key={device.id} value={device.deviceId}>
                       {device.name} ({device.deviceId.slice(-6)})
                     </option>
                   ))}
                 </select>
               )}
-              {!devicesLoading && !devicesError && devices.length === 0 && (
+              {!devicesLoading && !devicesError && filteredDevices.length === 0 && (
                 <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
                   No devices found. Run the simulator to create devices.
                 </p>
               )}
-              {!devicesLoading && !devicesError && devices.length > 0 && (
+              {!devicesLoading && !devicesError && filteredDevices.length > 0 && (
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  {devices.length} device{devices.length !== 1 ? 's' : ''} available
+                  {filteredDevices.length} device{filteredDevices.length !== 1 ? 's' : ''} available
                 </p>
               )}
             </div>
@@ -104,14 +110,14 @@ export function BlockConfigPanel({ block, onUpdate, onClose }: BlockConfigPanelP
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Select a field</option>
-                  {fields.map((field) => (
-                    <option key={field} value={field}>
-                      {field}
+                  {fields.map((entry) => (
+                    <option key={entry.key} value={entry.key}>
+                      {entry.source === 'state' ? `~ ${entry.key}` : entry.key}
                     </option>
                   ))}
                 </select>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  {fields.length} field{fields.length !== 1 ? 's' : ''} available: {fields.join(', ')}
+                  {fields.length} field{fields.length !== 1 ? 's' : ''} available: {fields.map((e) => e.key).join(', ')}
                 </p>
               </div>
             )}
@@ -219,7 +225,7 @@ export function BlockConfigPanel({ block, onUpdate, onClose }: BlockConfigPanelP
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Use mock data</option>
-                {devices.map((device) => (
+                {filteredDevices.map((device) => (
                   <option key={device.id} value={device.deviceId}>
                     {device.name} ({device.deviceId.slice(-6)})
                   </option>
@@ -316,7 +322,7 @@ export function BlockConfigPanel({ block, onUpdate, onClose }: BlockConfigPanelP
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">All devices</option>
-                {devices.map((device) => (
+                {filteredDevices.map((device) => (
                   <option key={device.id} value={device.deviceId}>
                     {device.name} ({device.deviceId.slice(-6)})
                   </option>

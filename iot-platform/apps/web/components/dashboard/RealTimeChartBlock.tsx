@@ -53,9 +53,9 @@ export function RealTimeChartBlock({
 
     const colors = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
 
-    return fields.map((field, index) => ({
-      key: field,
-      label: field.charAt(0).toUpperCase() + field.slice(1).replace(/_/g, ' '),
+    return fields.map((entry, index) => ({
+      key: entry.key,
+      label: entry.key.charAt(0).toUpperCase() + entry.key.slice(1).replace(/_/g, ' '),
       color: colors[index % colors.length],
     }));
   }, [deviceId, fields, fallbackSeries]);

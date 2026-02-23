@@ -91,6 +91,9 @@
 - Workflow Variable Binding from Device Attributes (ADR-023 Rule 3) — applicationId in Redux, device schema auto-fetch, datalist field suggestions, VariablePicker device schema section
 - Application Detail Page + Context Selector Cleanup (ADR-024) — /applications/[applicationId] hub with Devices/Workflows/Dashboards tabs, scoped entity filtering, applicationId as prop from route context, remove form selectors
 - Application RBAC Fix + Dashboard List/Detail UI (ADR-025) — Fixed application RBAC permissions, created /dashboards list page, /dashboards/[dashboardId] detail/builder page, updated sidebar nav, integrated dashboards tab in Application Detail page
+- Dashboard Field Discovery + ULID Fix (ADR-026) — Fixed useDeviceFields schema bug (Object.keys vs .sensors[]), added DeviceFieldEntry interface with source tagging, ~ prefix for state-derived fields, POST /dashboards with ULID body, dashboard name in detail page header
+- POC Phase 2 Foundations (A+B+D) — Simulator: --deviceId targeted mode + --applicationId flag + correct tags/attributes schemas; DeviceForm attributes editor verified complete; workflow-templates.ts: added Device State Processor template (trigger:deviceStateChange → condition:comparison → action:writeDeviceState) with correct data.nodeType fields and wired edges
+- POC Demo UX Polish (5 tasks) — NodeConfigPanel device-select picker for deviceId fields; GaugeBlock fallback min??0; Device detail ULID copy + simulator command block; applicationId prop chain dashboard detail→DashboardBuilder→BlockConfigPanel with device filter; Application Detail POC Setup Guide banner (4-step checklist with green checkmarks)
 
 ## In Progress
 

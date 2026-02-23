@@ -1,3 +1,3 @@
-# CURRENT_TASK: (None)
+# CURRENT TASK
 
-Task 4 complete. Generate new task when ready.
+(None — awaiting next task selection)

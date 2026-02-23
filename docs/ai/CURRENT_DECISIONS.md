@@ -1,38 +1,38 @@
-# CURRENT_DECISIONS: Application RBAC Fix + Dashboard List/Detail UI (ADR-025)
+# CURRENT_DECISIONS: POC Demo UX Polish (5 tasks)
 
-## What Changed (Task 4)
+## What Changed
 
-**1. Backend RBAC Fix:**
-- Added missing permissions to `rbac.middleware.ts` PERMISSIONS map:
-  - `application:create`: ['SuperAdmin', 'Admin']
-  - `application:read`: ['SuperAdmin', 'Admin', 'Operator', 'Viewer']
-  - `application:manage`: ['SuperAdmin', 'Admin']
-- Fixed 403 Forbidden error on application creation
+**Task 1 — NodeConfigPanel device-select picker:**
+- Added `'device-select'` to `FieldSchema` type union in NodeConfigPanel
+- `trigger:deviceStateChange`, `action:writeDeviceState`, `data:queryDeviceStates` deviceId fields → `type: 'device-select'`
+- Renders `<select>` populated via `useDevices()` hook; filters by `applicationId` when present in Redux
 
-**2. New Pages:**
-- `/dashboards` — List page: table of user dashboards with name, block count, updated date
-- `/dashboards/[dashboardId]` — Detail/builder page: loads dashboard and renders DashboardBuilder
-- Create Dashboard modal: on both list page and Application Detail Dashboards tab
+**Task 2 — GaugeBlock fallback fix:**
+- `DashboardBuilder.tsx`: `block.config.value || 75` → `block.config.min ?? 0`
+- Gauges now show 0 (not 75) when no live data; correct min-value fallback
 
-**3. Sidebar Navigation:**
-- `Dashboards` item now points to `/dashboards` (was `/dashboard-builder`)
-- `/dashboard-builder` and `/dashboard` routes still exist but unmapped from nav
+**Task 3 — Device detail ULID copy + simulator command:**
+- Copy-to-clipboard button next to device ULID on device detail page
+- Ready-to-run simulator command block: `pnpm run simulate -- --deviceId <ULID> --interval 1s`
+- Uses `navigator.clipboard.writeText`, 2-second "Copied!" feedback state
 
-**4. Application Detail Update:**
-- Dashboards tab now lists dashboards scoped to applicationId
-- "Create Dashboard" button opens modal (applicationId preset)
-- Dashboard names are clickable links → `/dashboards/[dashboardId]`
+**Task 4 — Application-scoped device picker:**
+- `/dashboards/[dashboardId]/page.tsx`: fetches dashboard → extracts `applicationId` → passes to `DashboardBuilder`
+- `DashboardBuilder`: added `applicationId?: string` prop → passes to `BlockConfigPanel`
+- `BlockConfigPanel`: `filteredDevices = applicationId ? devices.filter(d.applicationId===applicationId) : devices`
+
+**Task 5 — Application Detail POC Setup Guide:**
+- Detects: `devices.length === 0 || workflows.length === 0 || dashboards.length === 0`
+- Renders 4-step checklist (Add Device, Run Simulator, Create Workflow, Create Dashboard)
+- Each step shows green check when complete, blue circle with number when pending
+- Banner hidden automatically when all steps are complete
 
 ## Technical Implications
-
-- **Backend Support:** Dashboard model already has `applicationId` FK; no new backend endpoints needed
-- **Component Reuse:** DashboardBuilder accepts `dashboardId` from URL params (was hardcoded "main")
-- **API Integration:** Uses existing `GET /dashboards` and `POST /dashboards/:id` endpoints
-- **Filtering:** Client-side applicationId filtering matches ADR-024 pattern (route-based scoping)
-- **Build Status:** Web app compiles successfully; RBAC fix requires no deployment blocker
+- Device picker in NodeConfigPanel reads from global device list; `applicationId` filter is client-side
+- Dashboard detail page now requires one extra API call (GET /dashboards/:id) to resolve applicationId
+- ULID copy uses navigator.clipboard (requires HTTPS or localhost)
 
 ## Constraints
-
-1. **Old Routes:** `/dashboard` and `/dashboard-builder` still accessible but not recommended
-2. **Application Hierarchy:** Dashboards fully scoped to applications; can't cross-create
-3. **Dashboard Ownership:** Owned by user who created it + belongs to organization + application
+1. NodeConfigPanel device-select filter relies on Redux `workflowSlice.applicationId` being set
+2. Application setup banner only checks count > 0, not actual configuration completeness
+3. Simulator command block hardcodes `--interval 1s` (adjust if needed per device)

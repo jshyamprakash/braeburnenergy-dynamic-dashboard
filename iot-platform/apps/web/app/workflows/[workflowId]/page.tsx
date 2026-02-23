@@ -80,25 +80,30 @@ function WorkflowBuilderPage() {
   }, [dispatch, params.workflowId, isNewWorkflow]);
 
   // Load pending template on mount
+  // Use setTimeout(0) to defer past React 18 StrictMode's synchronous cleanup/remount cycle.
+  // Without the defer: effect sets nodes → cleanup runs resetWorkflow() (clears nodes) →
+  // remount effect finds sessionStorage already cleared → canvas stays empty.
   useEffect(() => {
     if (!isNewWorkflow) return; // Only for new workflows
 
     const pendingTemplate = sessionStorage.getItem('pendingTemplate');
     if (!pendingTemplate) return;
 
-    try {
-      const template = JSON.parse(pendingTemplate);
-      // Dispatch Redux actions to load template
-      dispatch(setNodes(template.nodes || []));
-      dispatch(setEdges(template.edges || []));
-      if (template.name) {
-        dispatch(updateMetadata({ name: template.name }));
+    const timer = setTimeout(() => {
+      try {
+        const template = JSON.parse(pendingTemplate);
+        dispatch(setNodes(template.nodes || []));
+        dispatch(setEdges(template.edges || []));
+        if (template.name) {
+          dispatch(updateMetadata({ name: template.name }));
+        }
+        sessionStorage.removeItem('pendingTemplate');
+      } catch (err) {
+        console.error('Failed to load template:', err);
       }
-      // Clear sessionStorage
-      sessionStorage.removeItem('pendingTemplate');
-    } catch (err) {
-      console.error('Failed to load template:', err);
-    }
+    }, 0);
+
+    return () => clearTimeout(timer);
   }, [dispatch, isNewWorkflow]);
 
   // Show toast on sync errors

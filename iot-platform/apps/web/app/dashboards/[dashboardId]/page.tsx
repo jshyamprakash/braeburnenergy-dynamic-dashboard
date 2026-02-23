@@ -2,16 +2,34 @@
 
 import { DashboardBuilder } from '@/components/dashboard/DashboardBuilder';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import { apiClient } from '@/lib/api-client';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+import { useState, useEffect, use } from 'react';
 
 interface DashboardDetailPageProps {
-  params: {
+  params: Promise<{
     dashboardId: string;
-  };
+  }>;
 }
 
-export default function DashboardDetailPage({ params }: DashboardDetailPageProps) {
+function DashboardDetailContent({ dashboardId }: { dashboardId: string }) {
+  const [dashboardName, setDashboardName] = useState<string>('');
+  const [applicationId, setApplicationId] = useState<string>('');
+
+  useEffect(() => {
+    const fetchDashboard = async () => {
+      try {
+        const response = await apiClient.get<any>(`/dashboards/${dashboardId}`);
+        setDashboardName(response.data?.name || '');
+        setApplicationId(response.data?.applicationId || '');
+      } catch {
+        // silently fall back to showing the ID
+      }
+    };
+    fetchDashboard();
+  }, [dashboardId]);
+
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -26,9 +44,11 @@ export default function DashboardDetailPage({ params }: DashboardDetailPageProps
               <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
             </Link>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard Editor</h1>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                {dashboardName || dashboardId}
+              </h1>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                ID: <code className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">{params.dashboardId}</code>
+                ID: <code className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">{dashboardId}</code>
               </p>
             </div>
           </div>
@@ -36,9 +56,14 @@ export default function DashboardDetailPage({ params }: DashboardDetailPageProps
 
         {/* Builder */}
         <div className="px-4 py-8 sm:px-6 lg:px-8">
-          <DashboardBuilder dashboardId={params.dashboardId} />
+          <DashboardBuilder dashboardId={dashboardId} applicationId={applicationId} />
         </div>
       </div>
     </ProtectedRoute>
   );
+}
+
+export default function DashboardDetailPage({ params }: DashboardDetailPageProps) {
+  const { dashboardId } = use(params);
+  return <DashboardDetailContent dashboardId={dashboardId} />;
 }

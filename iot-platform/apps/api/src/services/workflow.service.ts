@@ -338,11 +338,9 @@ export class WorkflowService {
       }
     }
 
-    // 5. Validate node-specific configurations
-    for (const node of nodes) {
-      const configErrors = this.validateNodeConfig(node);
-      errors.push(...configErrors);
-    }
+    // Node-specific config validation (e.g. required deviceId, field) is intentionally
+    // NOT run here. Workflows can be saved with incomplete configs while being built.
+    // Config validation runs at execution time via the node handlers.
 
     return errors;
   }

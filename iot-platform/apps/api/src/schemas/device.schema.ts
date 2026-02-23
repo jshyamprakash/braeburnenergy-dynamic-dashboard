@@ -171,7 +171,7 @@ export const deviceResponseSchema = z.object({
   id: z.string().uuid(),
   deviceId: ulidSchema,
   name: z.string(),
-  tags: z.array(z.string()),
+  tags: z.record(z.string()),
   attributes: z.record(z.unknown()).nullable(),
   createdAt: z.date(),
   updatedAt: z.date(),

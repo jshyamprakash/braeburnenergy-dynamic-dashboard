@@ -114,23 +114,43 @@ export function useDeviceRealtime(deviceId?: string) {
   return latestState;
 }
 
+export interface DeviceFieldEntry {
+  key: string;
+  source: 'schema' | 'state';
+}
+
 /**
- * Get available fields from device attributes
+ * Get available fields from device attributes (schema) and latest device state (runtime).
+ * Schema fields come from Object.keys(device.attributes) — Record<string, string>.
+ * State fields come from the latest device state data keys (includes workflow-derived fields).
+ * State-discovered fields are tagged source:'state' and displayed with a ~ prefix in the UI.
  */
-export function useDeviceFields(deviceId?: string) {
+export function useDeviceFields(deviceId?: string): DeviceFieldEntry[] {
   const { data: device } = useDevice(deviceId);
   const { data: states } = useDeviceStates(deviceId, { limit: 1 });
 
-  // Extract fields from device attributes or latest state
-  const fields = new Set<string>();
+  const schemaKeys = new Set<string>();
+  const stateKeys = new Set<string>();
 
-  if (device?.attributes?.sensors && Array.isArray(device.attributes.sensors)) {
-    device.attributes.sensors.forEach((sensor: string) => fields.add(sensor));
+  if (device?.attributes) {
+    Object.keys(device.attributes).forEach((key) => schemaKeys.add(key));
   }
 
   if (states && states.length > 0 && states[0].data) {
-    Object.keys(states[0].data).forEach((key) => fields.add(key));
+    Object.keys(states[0].data).forEach((key) => stateKeys.add(key));
   }
 
-  return Array.from(fields);
+  const entries: DeviceFieldEntry[] = [];
+
+  // Schema fields first
+  schemaKeys.forEach((key) => entries.push({ key, source: 'schema' }));
+
+  // State-only fields (workflow-derived or runtime fields not in schema)
+  stateKeys.forEach((key) => {
+    if (!schemaKeys.has(key)) {
+      entries.push({ key, source: 'state' });
+    }
+  });
+
+  return entries;
 }

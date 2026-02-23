@@ -1,12 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import ReactFlow, {
   Background,
   Controls,
   MiniMap,
   useNodesState,
   useEdgesState,
+  useReactFlow,
   type Connection,
   type NodeTypes,
 } from 'reactflow';
@@ -20,6 +21,16 @@ import TriggerNode from './nodes/TriggerNode';
 import ConditionNode from './nodes/ConditionNode';
 import ActionNode from './nodes/ActionNode';
 import TransformNode from './nodes/TransformNode';
+
+// Module-level constant — same object reference across ALL renders and StrictMode remounts.
+// Defining inside the component (even with useMemo) creates a new reference on each mount,
+// which triggers React Flow error #002 and causes createNodeInternals to crash.
+const NODE_TYPES: NodeTypes = {
+  trigger: TriggerNode,
+  condition: ConditionNode,
+  action: ActionNode,
+  transform: TransformNode,
+};
 
 interface WorkflowCanvasProps {
   onNodeContextMenu?: (event: React.MouseEvent, node: any) => void;
@@ -35,25 +46,27 @@ interface WorkflowCanvasProps {
 export default function WorkflowCanvas({ onNodeContextMenu }: WorkflowCanvasProps) {
   const dispatch = useAppDispatch();
   const { nodes: storeNodes, edges: storeEdges } = useAppSelector(state => state.workflow);
+  const { fitView } = useReactFlow();
 
-  // Local React Flow state (synced with Redux)
-  const [localNodes, setLocalNodes, onNodesChange] = useNodesState(storeNodes);
+  // Local React Flow state (synced with Redux).
+  // useNodesState initializes once at mount with the current Redux snapshot.
+  // That snapshot can contain stale nodes from a previous session (resetWorkflow() runs
+  // in an effect, AFTER the first render). Spreading to fresh objects + filtering out
+  // any id-less nodes prevents React from emitting a "unique key" warning on that first render.
+  const [localNodes, setLocalNodes, onNodesChange] = useNodesState(
+    storeNodes.filter(n => !!n.id).map(n => ({
+      ...n,
+      position: { x: n.position?.x ?? 0, y: n.position?.y ?? 0 },
+    }))
+  );
   const [localEdges, setLocalEdges, onEdgesChange] = useEdgesState(storeEdges);
+
+  // Track previous node count to detect first node added (for auto-fitView)
+  const prevNodeCountRef = useRef(storeNodes.length);
 
   // Ref to always hold the latest localNodes for drag stop (avoids stale closure)
   const localNodesRef = useRef(localNodes);
   localNodesRef.current = localNodes;
-
-  // Custom node types mapping
-  const nodeTypes: NodeTypes = useMemo(
-    () => ({
-      trigger: TriggerNode,
-      condition: ConditionNode,
-      action: ActionNode,
-      transform: TransformNode,
-    }),
-    []
-  );
 
   // Sync local nodes to Redux - skip during drag to prevent stutter
   const handleNodesChange = useCallback(
@@ -120,7 +133,49 @@ export default function WorkflowCanvas({ onNodeContextMenu }: WorkflowCanvasProp
   // Sync store nodes/edges to local React Flow state when Redux changes
   // useEffect (not useMemo) is correct here — this is a side effect, not a computation
   useEffect(() => {
-    setLocalNodes(storeNodes);
+    const prevCount = prevNodeCountRef.current;
+    prevNodeCountRef.current = storeNodes.length;
+    // Build fresh (unfrozen) node objects, deduplicated by id.
+    //
+    // WHY: Immer deeply freezes Redux state. Passing frozen objects to React Flow's
+    // createNodeInternals causes "Cannot read properties of undefined (reading 'x')"
+    // during page-navigation remounts (e.g. template load /workflows → /workflows/new).
+    //
+    // WHY DEDUP: On initial WorkflowCanvas mount the React Flow store may briefly hold
+    // stale nodes from a previous session (before resetWorkflow() effect fires). When
+    // template nodes then arrive via setNodes(), duplicated ids produce the React warning
+    // "Each child in a list should have a unique key prop" in NodeRenderer.
+    // Using a Map guarantees each id appears exactly once and keeps the latest value.
+    const seen = new Map<string, any>();
+    storeNodes.forEach(n => {
+      if (n.id) {
+        seen.set(n.id, {
+          ...n,
+          position: { x: n.position?.x ?? 0, y: n.position?.y ?? 0 },
+        });
+      }
+    });
+    setLocalNodes(Array.from(seen.values()));
+
+    // When first node is added to an empty canvas, fit view so it's visible.
+    // Uses setTimeout so React Flow has time to measure the new node's dimensions.
+    // Cleanup cancels the timer (handles StrictMode double-invocation and fast navigation).
+    if (prevCount !== 0 || storeNodes.length === 0) return;
+
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      if (cancelled) return;
+      try {
+        fitView({ duration: 300, padding: 0.3 });
+      } catch {
+        // fitView may fail if component unmounted before timer fires
+      }
+    }, 50);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [storeNodes]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -139,7 +194,7 @@ export default function WorkflowCanvas({ onNodeContextMenu }: WorkflowCanvasProp
         onNodeClick={handleNodeClick}
         onPaneClick={handlePaneClick}
         onNodeContextMenu={handleContextMenu}
-        nodeTypes={nodeTypes}
+        nodeTypes={NODE_TYPES}
         deleteKeyCode={['Backspace', 'Delete']}
         fitView
         attributionPosition="bottom-left"

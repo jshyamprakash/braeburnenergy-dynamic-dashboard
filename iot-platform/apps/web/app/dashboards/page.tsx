@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { Plus, Trash2, Edit2 } from 'lucide-react';
 import Link from 'next/link';
+import { ulid } from 'ulid';
 
 interface DashboardListItem {
   _id: string;
@@ -47,7 +48,9 @@ function CreateDashboardModal({
 
     setLoading(true);
     try {
-      await apiClient.post('/dashboards/default', {
+      await apiClient.post('/dashboards', {
+        dashboardId: ulid(),
+        organizationId: 'aaaaaaaaaaaaaaaaaaaaaaaa',
         name: name.trim(),
         description: description.trim() || undefined,
         blocks: [],

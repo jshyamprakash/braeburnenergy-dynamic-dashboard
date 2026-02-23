@@ -2,7 +2,7 @@ import mongoose, { Schema, type Document, type Types } from 'mongoose';
 
 export interface IDevice extends Document {
   orgId: Types.ObjectId;
-  applicationId?: Types.ObjectId; // Optional FK to Application (ADR-023)
+  applicationId?: string; // Optional FK to Application — stores ULID (ADR-023)
   deviceId: string;
   name: string;
   /** Static metadata key-value pairs, e.g. { model: "X1", mfg: "Acme" } */
@@ -16,7 +16,7 @@ export interface IDevice extends Document {
 const deviceSchema = new Schema<IDevice>(
   {
     orgId: { type: Schema.Types.ObjectId, ref: 'Organization', required: true },
-    applicationId: { type: Schema.Types.ObjectId, ref: 'Application' }, // Optional (ADR-023)
+    applicationId: { type: String, index: true }, // Optional FK — stores ULID (ADR-023)
     deviceId: { type: String, required: true },
     name: { type: String, required: true },
     tags: { type: Map, of: String, default: {} },

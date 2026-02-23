@@ -22,8 +22,8 @@ export default function DevicesPage() {
   useEffect(() => {
     const checkApplications = async () => {
       try {
-        const response = await apiClient.get<any>('/applications?limit=1&offset=0');
-        setApplicationCount((response as any).pagination?.total || 0);
+        const response = await apiClient.getPaginated<any>('/applications?limit=1&offset=0');
+        setApplicationCount(response.pagination?.total || 0);
       } catch (error) {
         // Silently fail - if applications API is not available, show banner anyway
         setApplicationCount(0);

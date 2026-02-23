@@ -81,7 +81,7 @@ export interface IWorkflow extends Document {
 
   // Multi-tenancy
   orgId: Types.ObjectId;
-  applicationId?: Types.ObjectId;  // Optional FK to Application (ADR-023)
+  applicationId?: string;  // Optional FK to Application — stores ULID (ADR-023)
   userId: string;                  // Creator user ID
 
   // Workflow Definition (React Flow format)
@@ -153,6 +153,8 @@ const workflowNodeSchema = new Schema<WorkflowNode>({
       'data:queryDeviceStates',
       // Logic (ADR-017)
       'logic:function',
+      // Action: write structured data back to DeviceState (ADR-022)
+      'action:writeDeviceState',
     ],
   },
   position: {
@@ -237,8 +239,7 @@ const workflowSchema = new Schema<IWorkflow>({
     index: true,
   },
   applicationId: {
-    type: Schema.Types.ObjectId,
-    ref: 'Application',
+    type: String,
     index: true,
   },
   userId: {

@@ -1,3 +1,3 @@
-# FEATURE_TASKS: (Cleared)
+# FEATURE_TASKS
 
-Task 4 complete. Generate new task when ready.
+(None — awaiting next task selection)

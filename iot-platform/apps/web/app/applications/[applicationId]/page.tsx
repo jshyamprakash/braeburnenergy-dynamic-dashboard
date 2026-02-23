@@ -2,7 +2,7 @@
 
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { apiClient } from '@/lib/api-client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, use } from 'react';
 import { toast } from 'sonner';
 import { ArrowLeft, Plus, Trash2, Edit2, Workflow } from 'lucide-react';
 import Link from 'next/link';
@@ -11,11 +11,12 @@ import { DeviceForm } from '@/components/DeviceForm';
 import CreateWorkflowModal from '@/components/workflow/CreateWorkflowModal';
 import type { Application, Workflow as WorkflowType } from '@repo/types';
 import type { Device } from '@/lib/types';
+import { ulid } from 'ulid';
 
 interface ApplicationDetailPageProps {
-  params: {
+  params: Promise<{
     applicationId: string;
-  };
+  }>;
 }
 
 function formatDate(dateString: string | Date): string {
@@ -209,6 +210,30 @@ function ApplicationDetailContent({ applicationId }: { applicationId: string }) 
             </div>
           </div>
         </div>
+
+        {/* POC Setup Guide Banner */}
+        {!loading && (devices.length === 0 || workflows.length === 0 || dashboards.length === 0) && (
+          <div className="mb-6 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 p-4">
+            <h3 className="font-semibold text-blue-900 dark:text-blue-200 mb-3">POC Setup Guide</h3>
+            <div className="space-y-2">
+              {[
+                { done: devices.length > 0, label: 'Create a device and configure its field schema (Attributes tab)' },
+                { done: devices.length > 0, label: `Run: pnpm run simulate -- --deviceId <device-id> --interval 2s`, mono: true },
+                { done: workflows.length > 0, label: 'Create a workflow from the "Device State Processor" template' },
+                { done: dashboards.length > 0, label: 'Create a dashboard and add Gauge/Chart blocks for your device' },
+              ].map((step, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <span className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${step.done ? 'bg-green-500 text-white' : 'bg-blue-200 dark:bg-blue-700 text-blue-800 dark:text-blue-200'}`}>
+                    {step.done ? '✓' : i + 1}
+                  </span>
+                  <span className={`text-sm text-blue-800 dark:text-blue-300 ${step.mono ? 'font-mono bg-blue-100 dark:bg-blue-900 px-2 py-0.5 rounded text-xs' : ''}`}>
+                    {step.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
@@ -486,7 +511,9 @@ function CreateDashboardModalComponent({
 
     setLoading(true);
     try {
-      await apiClient.post('/dashboards/default', {
+      await apiClient.post('/dashboards', {
+        dashboardId: ulid(),
+        organizationId: 'aaaaaaaaaaaaaaaaaaaaaaaa',
         name: name.trim(),
         description: description.trim() || undefined,
         applicationId,
@@ -551,9 +578,10 @@ function CreateDashboardModalComponent({
 }
 
 export default function ApplicationDetailPage({ params }: ApplicationDetailPageProps) {
+  const { applicationId } = use(params);
   return (
     <ProtectedRoute>
-      <ApplicationDetailContent applicationId={params.applicationId} />
+      <ApplicationDetailContent applicationId={applicationId} />
     </ProtectedRoute>
   );
 }

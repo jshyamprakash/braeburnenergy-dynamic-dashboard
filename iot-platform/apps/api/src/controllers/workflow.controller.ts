@@ -240,10 +240,11 @@ export class WorkflowController {
         });
       }
 
-      request.log.error(error, 'Error deleting workflow');
+      request.log.error({ err: error, message: error.message, stack: error.stack }, 'Error deleting workflow');
       return reply.code(500).send({
         success: false,
         error: 'Internal server error',
+        details: error.message,
       });
     }
   }

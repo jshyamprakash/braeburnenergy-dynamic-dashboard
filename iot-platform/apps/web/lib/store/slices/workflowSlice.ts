@@ -312,6 +312,10 @@ export const workflowSlice = createSlice({
       state.edges = state.edges.filter(
         e => e.source !== action.payload && e.target !== action.payload
       );
+      // Clear selection if the removed node was selected
+      if (state.selectedNodeId === action.payload) {
+        state.selectedNodeId = null;
+      }
       state.isDirty = true;
     },
 

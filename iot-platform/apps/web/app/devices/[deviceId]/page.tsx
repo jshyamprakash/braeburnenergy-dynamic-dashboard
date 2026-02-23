@@ -8,6 +8,7 @@ import { useDeviceStates, useLatestDeviceState } from '@/lib/hooks/useDeviceStat
 import { useDeviceStateUpdates } from '@/lib/hooks/useWebSocket';
 import type { DeviceState } from '@/lib/types';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import { toast } from 'sonner';
 
 export default function DeviceDetailPage() {
   const params = useParams();
@@ -65,7 +66,21 @@ export default function DeviceDetailPage() {
           </button>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{device.name}</h1>
-            <p className="text-sm text-gray-500 font-mono">{device.deviceId}</p>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-sm text-gray-500 font-mono">{device.deviceId}</p>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(device.deviceId);
+                  toast.success('Device ID copied');
+                }}
+                className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                title="Copy device ID"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.216 0-2.318.595-2.972 1.5H11.25a3 3 0 013 3V9A3 3 0 008.25 9v5.25c0 .804.648 1.5 1.5 1.5h5.25a1.5 1.5 0 001.5-1.5V9a3 3 0 013-3z" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -121,6 +136,31 @@ export default function DeviceDetailPage() {
               </div>
             )}
           </dl>
+        </div>
+      </div>
+
+      {/* Simulator Command Card */}
+      <div className="bg-white shadow sm:rounded-lg">
+        <div className="px-4 py-5 sm:p-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Stream Data to This Device</h3>
+          <p className="text-sm text-gray-600 mb-4">
+            Run this command to stream simulated data to this device:
+          </p>
+          <div className="flex items-center gap-2">
+            <pre className="flex-1 bg-gray-900 text-green-400 font-mono text-sm rounded p-3 overflow-x-auto">
+              {`pnpm run simulate -- --deviceId ${device.deviceId} --interval 2s`}
+            </pre>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(`pnpm run simulate -- --deviceId ${device.deviceId} --interval 2s`);
+                toast.success('Command copied');
+              }}
+              className="flex-shrink-0 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm font-medium"
+              title="Copy command"
+            >
+              Copy
+            </button>
+          </div>
         </div>
       </div>
 

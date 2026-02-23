@@ -89,6 +89,11 @@ interface DashboardBuilderProps {
   dashboardId?: string;
 
   /**
+   * Application ID for scoped device filtering
+   */
+  applicationId?: string;
+
+  /**
    * Edit mode toggle
    */
   isEditMode?: boolean;
@@ -111,6 +116,7 @@ interface DashboardBuilderProps {
 export function DashboardBuilder({
   initialBlocks = [],
   dashboardId = 'default',
+  applicationId,
   isEditMode: externalEditMode,
   onEditModeChange,
 }: DashboardBuilderProps) {
@@ -412,7 +418,7 @@ export function DashboardBuilder({
             <RealTimeGaugeBlock
               deviceId={block.config.deviceId}
               field={block.config.field}
-              value={block.config.value || 75}
+              value={block.config.min ?? 0}
               min={block.config.min || 0}
               max={block.config.max || 100}
               label={block.config.title || 'Gauge'}
@@ -690,6 +696,7 @@ export function DashboardBuilder({
             block={selectedBlock}
             onUpdate={(config) => handleUpdateBlockConfig(selectedBlock.id, config)}
             onClose={() => dispatch(selectBlock(null))}
+            applicationId={applicationId}
           />
         </div>
       )}

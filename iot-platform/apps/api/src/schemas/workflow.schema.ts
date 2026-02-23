@@ -41,11 +41,18 @@ export const nodeTypeSchema = z.enum([
   'action:callWebhook',
   'action:logMessage',
   'action:updateVariable',
+  'action:writeDeviceState',   // ADR-022
   // Transformations
   'transform:mathOperation',
   'transform:stringOperation',
   'transform:aggregation',
   'transform:dataMapping',
+  // Data (ADR-017)
+  'data:modbusRead',
+  'data:modbusWrite',
+  'data:queryDeviceStates',
+  // Logic (ADR-017)
+  'logic:function',
 ]);
 
 /**

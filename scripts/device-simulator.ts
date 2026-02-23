@@ -3,14 +3,17 @@
 /**
  * Device Simulator
  *
- * Simulates multiple IoT devices sending data to the platform.
- * Generates realistic sensor data with configurable patterns and anomalies.
+ * Simulates IoT devices sending data to the platform.
+ * Generates realistic sensor data with drift, noise, and optional anomalies.
  *
  * Usage:
- *   npm run simulate                           # 3 devices, 2s interval
- *   npm run simulate -- --devices 5            # 5 devices
- *   npm run simulate -- --interval 1s          # 1 second updates
- *   npm run simulate -- --anomalies            # Enable anomaly injection
+ *   pnpm run simulate                                         # 3 random devices, 2s interval
+ *   pnpm run simulate -- --devices 5                          # 5 random devices
+ *   pnpm run simulate -- --interval 1s                        # 1 second updates
+ *   pnpm run simulate -- --anomalies                          # Enable anomaly injection
+ *   pnpm run simulate -- --deviceId 01KGPQZ53TRMAG5Y1H2S2SH  # Stream to existing device
+ *   pnpm run simulate -- --deviceId <ULID> --interval 2s      # Existing device, 2s interval
+ *   pnpm run simulate -- --applicationId <ULID>               # Register new devices to application
  */
 
 import { ulid } from 'ulid';
@@ -21,287 +24,329 @@ let authToken: string | null = null;
 let refreshToken: string | null = null;
 let tokenRefreshInterval: NodeJS.Timeout | null = null;
 
-/**
- * Note: Multi-Tenancy Support
- * The simulator creates devices through the API, which automatically assigns
- * them to the default organization (aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa).
- * No changes needed for POC phase - the API handles organization assignment.
- */
+// ============================================================================
+// Field range lookup — used when targeting an existing device by ID
+// Falls back to DEFAULT_NUMBER_CONFIG for unknown field names
+// ============================================================================
 
-/**
- * Authenticate with the API
- */
-async function authenticate(): Promise<void> {
-  try {
-    const response = await fetch(`${API_URL}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        username: 'admin',
-        password: 'Admin@12345',
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Authentication failed: ${response.statusText}`);
-    }
-
-    const result = await response.json();
-    authToken = result.data.accessToken;
-    refreshToken = result.data.refreshToken;
-    console.log('✅ Authenticated successfully\n');
-
-    // Schedule token refresh every 10 minutes (before 15-minute expiry)
-    if (tokenRefreshInterval) clearInterval(tokenRefreshInterval);
-    tokenRefreshInterval = setInterval(refreshAccessToken, 10 * 60 * 1000);
-  } catch (error) {
-    console.error('❌ Authentication failed:', error);
-    throw error;
-  }
+interface NumberFieldConfig {
+  min: number;
+  max: number;
+  decimals: number;
+  drift: number;
+  noise: number;
 }
 
-/**
- * Refresh access token using refresh token
- */
+const FIELD_DEFAULTS: Record<string, NumberFieldConfig> = {
+  temperature:  { min: 15,  max: 40,   decimals: 1, drift: 0.2, noise: 0.5 },
+  humidity:     { min: 30,  max: 90,   decimals: 1, drift: 0.3, noise: 1   },
+  pressure:     { min: 980, max: 1020, decimals: 1, drift: 0.3, noise: 2   },
+  co2:          { min: 400, max: 1200, decimals: 0, drift: 5,   noise: 20  },
+  pm25:         { min: 10,  max: 100,  decimals: 1, drift: 1,   noise: 5   },
+  voc:          { min: 0,   max: 500,  decimals: 0, drift: 2,   noise: 10  },
+  power:        { min: 100, max: 5000, decimals: 0, drift: 50,  noise: 100 },
+  voltage:      { min: 210, max: 250,  decimals: 1, drift: 0.5, noise: 2   },
+  current:      { min: 0,   max: 30,   decimals: 2, drift: 0.5, noise: 1   },
+  flow_rate:    { min: 0,   max: 100,  decimals: 2, drift: 1,   noise: 2   },
+  level:        { min: 0,   max: 100,  decimals: 1, drift: 0.5, noise: 1   },
+  ph:           { min: 6,   max: 9,    decimals: 2, drift: 0.1, noise: 0.2 },
+  turbidity:    { min: 0,   max: 10,   decimals: 2, drift: 0.1, noise: 0.3 },
+  conductivity: { min: 100, max: 1000, decimals: 0, drift: 5,   noise: 10  },
+};
+
+const DEFAULT_NUMBER_CONFIG: NumberFieldConfig = {
+  min: 0, max: 100, decimals: 2, drift: 1, noise: 2,
+};
+
+// ============================================================================
+// Authentication
+// ============================================================================
+
+async function authenticate(): Promise<void> {
+  const response = await fetch(`${API_URL}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: 'admin', password: 'Admin@12345' }),
+  });
+
+  if (!response.ok) throw new Error(`Auth failed: ${response.statusText}`);
+
+  const result = await response.json();
+  authToken = result.data.accessToken;
+  refreshToken = result.data.refreshToken;
+  console.log('✅ Authenticated\n');
+
+  if (tokenRefreshInterval) clearInterval(tokenRefreshInterval);
+  tokenRefreshInterval = setInterval(refreshAccessToken, 10 * 60 * 1000);
+}
+
 async function refreshAccessToken(): Promise<void> {
   try {
-    if (!refreshToken) {
-      console.log('⚠️  No refresh token available, re-authenticating...');
-      await authenticate();
-      return;
-    }
-
+    if (!refreshToken) { await authenticate(); return; }
     const response = await fetch(`${API_URL}/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refreshToken }),
     });
-
-    if (!response.ok) {
-      throw new Error(`Token refresh failed: ${response.statusText}`);
-    }
-
+    if (!response.ok) throw new Error(`Refresh failed: ${response.statusText}`);
     const result = await response.json();
     authToken = result.data.accessToken;
     refreshToken = result.data.refreshToken;
     console.log('🔄 Token refreshed');
-  } catch (error) {
-    console.error('⚠️  Token refresh failed, re-authenticating:', error);
+  } catch {
     await authenticate();
   }
 }
 
+function authHeader(): Record<string, string> {
+  return authToken ? { Authorization: `Bearer ${authToken}` } : {};
+}
+
+// ============================================================================
+// Device Profiles (for new device creation mode)
+// ============================================================================
+
+interface SensorConfig {
+  field: string;
+  type: 'number' | 'string' | 'boolean' | 'timestamp';
+  config: NumberFieldConfig;
+}
+
 interface DeviceProfile {
-  type: string;
+  profileType: string;
   name: string;
   sensors: SensorConfig[];
 }
 
-interface SensorConfig {
-  field: string;
-  min: number;
-  max: number;
-  unit: string;
-  decimals: number;
-  drift: number; // Rate of gradual change
-  noise: number; // Random variation
-}
-
-// Device Profiles
 const DEVICE_PROFILES: DeviceProfile[] = [
   {
-    type: 'temperature_sensor',
+    profileType: 'temperature_sensor',
     name: 'Temperature Sensor',
     sensors: [
-      { field: 'temperature', min: 18, max: 35, unit: '°C', decimals: 1, drift: 0.1, noise: 0.5 },
-      { field: 'humidity', min: 40, max: 80, unit: '%', decimals: 1, drift: 0.2, noise: 1 },
+      { field: 'temperature', type: 'number', config: FIELD_DEFAULTS.temperature },
+      { field: 'humidity',    type: 'number', config: FIELD_DEFAULTS.humidity    },
     ],
   },
   {
-    type: 'pressure_sensor',
+    profileType: 'pressure_sensor',
     name: 'Pressure Sensor',
     sensors: [
-      { field: 'pressure', min: 980, max: 1020, unit: 'hPa', decimals: 1, drift: 0.3, noise: 2 },
-      { field: 'temperature', min: 15, max: 30, unit: '°C', decimals: 1, drift: 0.1, noise: 0.3 },
+      { field: 'pressure',    type: 'number', config: FIELD_DEFAULTS.pressure    },
+      { field: 'temperature', type: 'number', config: FIELD_DEFAULTS.temperature },
     ],
   },
   {
-    type: 'air_quality_sensor',
+    profileType: 'air_quality_sensor',
     name: 'Air Quality Sensor',
     sensors: [
-      { field: 'co2', min: 400, max: 1200, unit: 'ppm', decimals: 0, drift: 5, noise: 20 },
-      { field: 'pm25', min: 10, max: 100, unit: 'µg/m³', decimals: 1, drift: 1, noise: 5 },
-      { field: 'voc', min: 0, max: 500, unit: 'ppb', decimals: 0, drift: 2, noise: 10 },
+      { field: 'co2',  type: 'number', config: FIELD_DEFAULTS.co2  },
+      { field: 'pm25', type: 'number', config: FIELD_DEFAULTS.pm25 },
+      { field: 'voc',  type: 'number', config: FIELD_DEFAULTS.voc  },
     ],
   },
   {
-    type: 'energy_meter',
+    profileType: 'energy_meter',
     name: 'Energy Meter',
     sensors: [
-      { field: 'power', min: 100, max: 5000, unit: 'W', decimals: 0, drift: 50, noise: 100 },
-      { field: 'voltage', min: 220, max: 240, unit: 'V', decimals: 1, drift: 0.5, noise: 2 },
-      { field: 'current', min: 1, max: 25, unit: 'A', decimals: 2, drift: 0.5, noise: 1 },
+      { field: 'power',   type: 'number', config: FIELD_DEFAULTS.power   },
+      { field: 'voltage', type: 'number', config: FIELD_DEFAULTS.voltage },
+      { field: 'current', type: 'number', config: FIELD_DEFAULTS.current },
     ],
   },
   {
-    type: 'vibration_sensor',
-    name: 'Vibration Sensor',
+    profileType: 'water_quality',
+    name: 'Water Quality Sensor',
     sensors: [
-      { field: 'vibration_x', min: 0, max: 10, unit: 'mm/s', decimals: 2, drift: 0.1, noise: 0.5 },
-      { field: 'vibration_y', min: 0, max: 10, unit: 'mm/s', decimals: 2, drift: 0.1, noise: 0.5 },
-      { field: 'vibration_z', min: 0, max: 10, unit: 'mm/s', decimals: 2, drift: 0.1, noise: 0.5 },
-      { field: 'temperature', min: 20, max: 80, unit: '°C', decimals: 1, drift: 0.5, noise: 1 },
+      { field: 'ph',           type: 'number', config: FIELD_DEFAULTS.ph           },
+      { field: 'turbidity',    type: 'number', config: FIELD_DEFAULTS.turbidity    },
+      { field: 'conductivity', type: 'number', config: FIELD_DEFAULTS.conductivity },
+      { field: 'temperature',  type: 'number', config: FIELD_DEFAULTS.temperature  },
     ],
   },
 ];
 
+// ============================================================================
+// DeviceSimulator
+// ============================================================================
+
 class DeviceSimulator {
-  private deviceId: string;
-  private profile: DeviceProfile;
+  readonly deviceId: string;
+  private sensors: SensorConfig[];
   private currentValues: Map<string, number> = new Map();
-  private anomalyMode: boolean;
   private targetValues: Map<string, number> = new Map();
+  private anomalyMode: boolean;
+  private label: string;
 
-  constructor(profile: DeviceProfile, anomalies: boolean = false) {
-    this.deviceId = ulid();
-    this.profile = profile;
+  /**
+   * @param deviceId  ULID — either pre-existing (targeted mode) or freshly generated
+   * @param sensors   Field configs derived from profile or device attributes
+   * @param anomalies Whether to inject anomalies
+   * @param label     Display label for console output
+   */
+  constructor(
+    deviceId: string,
+    sensors: SensorConfig[],
+    anomalies = false,
+    label = '',
+  ) {
+    this.deviceId = deviceId;
+    this.sensors = sensors;
     this.anomalyMode = anomalies;
+    this.label = label || deviceId.slice(-6);
 
-    // Initialize current values to mid-range
-    profile.sensors.forEach((sensor) => {
-      const midValue = (sensor.min + sensor.max) / 2;
-      this.currentValues.set(sensor.field, midValue);
-      this.targetValues.set(sensor.field, midValue);
+    sensors.forEach(s => {
+      if (s.type === 'number') {
+        const mid = (s.config.min + s.config.max) / 2;
+        this.currentValues.set(s.field, mid);
+        this.targetValues.set(s.field, mid);
+      }
     });
   }
 
-  async register(): Promise<void> {
-    try {
-      const response = await fetch(`${API_URL}/devices`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(authToken && { Authorization: `Bearer ${authToken}` }),
-        },
-        body: JSON.stringify({
-          name: `${this.profile.name} ${this.deviceId.slice(-6)}`,
-          tags: [this.profile.type, 'simulated', 'demo'],
-          attributes: {
-            profile: this.profile.type,
-            simulated: true,
-            sensors: this.profile.sensors.map((s) => s.field),
-          },
-        }),
-      });
+  /**
+   * Register a NEW device via API (skip in targeted mode).
+   * Tags: Record<string,string> — matches model schema.
+   * Attributes: { fieldName: 'number' | 'string' | ... } — matches deviceAttributesSchema.
+   */
+  async register(applicationId?: string): Promise<void> {
+    const attributes: Record<string, string> = {};
+    for (const s of this.sensors) attributes[s.field] = s.type;
 
-      if (!response.ok) {
-        throw new Error(`Failed to register device: ${response.statusText}`);
-      }
+    const body: Record<string, any> = {
+      name: this.label,
+      tags: { category: 'simulated', env: 'demo' },
+      attributes,
+    };
+    if (applicationId) body.applicationId = applicationId;
 
-      // Get the device ID from response (API returns deviceId in response)
-      const result = await response.json();
-      if (result.data?.deviceId) {
-        this.deviceId = result.data.deviceId;
-      }
+    const response = await fetch(`${API_URL}/devices`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeader() },
+      body: JSON.stringify(body),
+    });
 
-      console.log(`✅ Registered: ${this.profile.name} (${this.deviceId.slice(-6)})`);
-    } catch (error) {
-      console.error(`❌ Failed to register device:`, error);
-      throw error;
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Register failed (${response.status}): ${text}`);
     }
+
+    const result = await response.json();
+    console.log(`✅ Registered: ${this.label} (${(result.data?.deviceId ?? this.deviceId).slice(-6)})`);
   }
 
-  generateData(): Record<string, number> {
-    const data: Record<string, number> = {};
+  generateData(): Record<string, any> {
+    const data: Record<string, any> = {};
 
-    this.profile.sensors.forEach((sensor) => {
-      let currentValue = this.currentValues.get(sensor.field)!;
-      let targetValue = this.targetValues.get(sensor.field)!;
+    for (const sensor of this.sensors) {
+      if (sensor.type === 'number') {
+        let current = this.currentValues.get(sensor.field)!;
+        let target  = this.targetValues.get(sensor.field)!;
+        const cfg = sensor.config;
 
-      // Gradually drift towards target
-      const diff = targetValue - currentValue;
-      currentValue += diff * 0.1;
+        current += (target - current) * 0.1;
+        current += (Math.random() - 0.5) * cfg.noise * 2;
+        current += (Math.random() - 0.5) * cfg.drift * 2;
 
-      // Add noise
-      currentValue += (Math.random() - 0.5) * sensor.noise * 2;
-
-      // Add gradual drift
-      currentValue += (Math.random() - 0.5) * sensor.drift * 2;
-
-      // Occasionally change target (simulate real-world changes)
-      if (Math.random() < 0.05) {
-        targetValue = sensor.min + Math.random() * (sensor.max - sensor.min);
-        this.targetValues.set(sensor.field, targetValue);
-      }
-
-      // Inject anomalies if enabled
-      if (this.anomalyMode && Math.random() < 0.02) {
-        // 2% chance of anomaly
-        const anomalyType = Math.random();
-        if (anomalyType < 0.5) {
-          // Spike
-          currentValue += (sensor.max - sensor.min) * 0.5 * (Math.random() > 0.5 ? 1 : -1);
-        } else {
-          // Out of range
-          currentValue = Math.random() > 0.5 ? sensor.max * 1.2 : sensor.min * 0.8;
+        if (Math.random() < 0.05) {
+          target = cfg.min + Math.random() * (cfg.max - cfg.min);
+          this.targetValues.set(sensor.field, target);
         }
+
+        if (this.anomalyMode && Math.random() < 0.02) {
+          current += (cfg.max - cfg.min) * 0.5 * (Math.random() > 0.5 ? 1 : -1);
+        }
+
+        current = Math.max(cfg.min * 0.9, Math.min(cfg.max * 1.1, current));
+        this.currentValues.set(sensor.field, current);
+        data[sensor.field] = Number(current.toFixed(cfg.decimals));
+
+      } else if (sensor.type === 'boolean') {
+        data[sensor.field] = Math.random() > 0.5;
+
+      } else if (sensor.type === 'timestamp') {
+        data[sensor.field] = new Date().toISOString();
+
+      } else {
+        // string: leave it out (not meaningful to generate random strings)
       }
-
-      // Clamp to reasonable bounds (not strict, allow some overshoot for realism)
-      currentValue = Math.max(
-        sensor.min * 0.9,
-        Math.min(sensor.max * 1.1, currentValue)
-      );
-
-      // Update current value
-      this.currentValues.set(sensor.field, currentValue);
-
-      // Round to specified decimals
-      data[sensor.field] = Number(currentValue.toFixed(sensor.decimals));
-    });
+    }
 
     return data;
   }
 
   async sendData(): Promise<void> {
     const data = this.generateData();
-
-    try {
-      const response = await fetch(`${API_URL}/devices/${this.deviceId}/states`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(authToken && { Authorization: `Bearer ${authToken}` }),
-        },
-        body: JSON.stringify({ data }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to send data: ${response.statusText}`);
-      }
-
-      // Format data for display
-      const dataStr = Object.entries(data)
-        .map(([key, value]) => {
-          const sensor = this.profile.sensors.find((s) => s.field === key);
-          return `${key}=${value}${sensor?.unit || ''}`;
-        })
-        .join(', ');
-
-      console.log(`📡 ${this.deviceId.slice(-6)}: ${dataStr}`);
-    } catch (error) {
-      console.error(`❌ Failed to send data for ${this.deviceId}:`, error);
+    if (Object.keys(data).length === 0) {
+      console.log(`⚠️  ${this.label}: No numeric/boolean/timestamp fields to send`);
+      return;
     }
+
+    const response = await fetch(`${API_URL}/devices/${this.deviceId}/states`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeader() },
+      body: JSON.stringify({ data }),
+    });
+
+    if (!response.ok) {
+      console.error(`❌ ${this.label}: send failed (${response.status})`);
+      return;
+    }
+
+    const dataStr = Object.entries(data)
+      .map(([k, v]) => `${k}=${v}`)
+      .join(', ');
+    console.log(`📡 ${this.label}: ${dataStr}`);
   }
 }
 
-// Parse CLI arguments
+// ============================================================================
+// Fetch existing device attributes from API
+// ============================================================================
+
+async function fetchDeviceSensors(deviceId: string): Promise<SensorConfig[]> {
+  const response = await fetch(`${API_URL}/devices/${deviceId}`, {
+    headers: { ...authHeader() },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Device not found: ${deviceId} (${response.status})`);
+  }
+
+  const result = await response.json();
+  const device = result.data;
+  const attrs: Record<string, string> = device?.attributes ?? {};
+  const name: string = device?.name ?? deviceId.slice(-6);
+
+  if (Object.keys(attrs).length === 0) {
+    console.warn(`⚠️  Device ${deviceId.slice(-6)} has no attributes defined — using temperature+humidity defaults`);
+    return [
+      { field: 'temperature', type: 'number', config: FIELD_DEFAULTS.temperature },
+      { field: 'humidity',    type: 'number', config: FIELD_DEFAULTS.humidity    },
+    ];
+  }
+
+  console.log(`📋 Device: ${name} (${deviceId.slice(-6)})`);
+  console.log(`   Fields: ${Object.entries(attrs).map(([k, v]) => `${k}:${v}`).join(', ')}`);
+
+  return Object.entries(attrs).map(([field, type]) => ({
+    field,
+    type: (type as SensorConfig['type']),
+    config: FIELD_DEFAULTS[field] ?? DEFAULT_NUMBER_CONFIG,
+  }));
+}
+
+// ============================================================================
+// CLI argument parser
+// ============================================================================
+
 function parseArgs() {
   const args = process.argv.slice(2);
   const config = {
     devices: 3,
-    interval: 2000, // ms
+    interval: 2000,
     anomalies: false,
+    deviceId: '',        // --deviceId <ULID> — target an existing device
+    applicationId: '',   // --applicationId <ULID> — attach new devices to an application
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -309,36 +354,40 @@ function parseArgs() {
       case '--devices':
         config.devices = parseInt(args[++i], 10);
         break;
-      case '--interval':
-        const intervalStr = args[++i];
-        const match = intervalStr.match(/^(\d+)(s|ms)?$/);
-        if (match) {
-          const value = parseInt(match[1], 10);
-          const unit = match[2] || 'ms';
-          config.interval = unit === 's' ? value * 1000 : value;
-        }
+      case '--interval': {
+        const s = args[++i];
+        const m = s.match(/^(\d+)(s|ms)?$/);
+        if (m) config.interval = m[2] === 's' ? parseInt(m[1]) * 1000 : parseInt(m[1]);
         break;
+      }
       case '--anomalies':
         config.anomalies = true;
         break;
+      case '--deviceId':
+        config.deviceId = args[++i];
+        break;
+      case '--applicationId':
+        config.applicationId = args[++i];
+        break;
       case '--help':
         console.log(`
-Device Simulator - Generate realistic IoT device data
+Device Simulator — stream realistic IoT data to the platform
 
 Usage:
-  npm run simulate [options]
+  pnpm run simulate [options]
 
 Options:
-  --devices <n>       Number of devices to simulate (default: 3)
-  --interval <time>   Update interval (default: 2s)
-                      Examples: 1s, 500ms, 2000ms
-  --anomalies         Enable anomaly injection (spikes, drift)
-  --help              Show this help message
+  --devices <n>           Number of NEW devices to create and simulate (default: 3)
+  --interval <time>       Update interval, e.g. 1s, 500ms, 2000ms (default: 2s)
+  --anomalies             Inject random anomaly spikes
+  --deviceId <ULID>       Stream to an EXISTING device (reads its attributes schema)
+  --applicationId <ULID>  Link newly-created devices to this application
 
 Examples:
-  npm run simulate
-  npm run simulate -- --devices 5 --interval 1s
-  npm run simulate -- --devices 10 --interval 500ms --anomalies
+  pnpm run simulate                                         # 3 new random devices
+  pnpm run simulate -- --deviceId 01KGPQZ53TRMAG5Y1H2S2SH  # existing device, 2s
+  pnpm run simulate -- --deviceId <ID> --interval 1s        # existing device, 1s
+  pnpm run simulate -- --devices 2 --applicationId <APP_ID> # 2 new devices in app
         `);
         process.exit(0);
     }
@@ -347,55 +396,65 @@ Examples:
   return config;
 }
 
-// Main function
+// ============================================================================
+// Main
+// ============================================================================
+
 async function main() {
   const config = parseArgs();
+
+  const isTargeted = !!config.deviceId;
 
   console.log(`
 🚀 Device Simulator Starting
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📊 Devices: ${config.devices}
-⏱️  Interval: ${config.interval}ms
+${isTargeted
+  ? `🎯 Mode:     Targeted (deviceId: ...${config.deviceId.slice(-8)})`
+  : `📦 Mode:     Create ${config.devices} new device(s)`}
+⏱️  Interval:  ${config.interval}ms
 ⚠️  Anomalies: ${config.anomalies ? 'Enabled' : 'Disabled'}
-🌐 API: ${API_URL}
+🌐 API:       ${API_URL}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `);
 
-  // Authenticate first
   await authenticate();
 
-  // Create devices with random profiles
-  const devices: DeviceSimulator[] = [];
-  for (let i = 0; i < config.devices; i++) {
-    const profile = DEVICE_PROFILES[Math.floor(Math.random() * DEVICE_PROFILES.length)];
-    const device = new DeviceSimulator(profile, config.anomalies);
-    devices.push(device);
+  const simulators: DeviceSimulator[] = [];
+
+  if (isTargeted) {
+    // --- Targeted mode: stream to a single existing device ---
+    console.log(`🔍 Fetching device schema for ${config.deviceId.slice(-8)}...\n`);
+    const sensors = await fetchDeviceSensors(config.deviceId);
+    simulators.push(new DeviceSimulator(config.deviceId, sensors, config.anomalies));
+    console.log(`\n✅ Ready. Starting stream...\n`);
+
+  } else {
+    // --- Create mode: register new devices with random profiles ---
+    console.log('📝 Registering devices...\n');
+    for (let i = 0; i < config.devices; i++) {
+      const profile = DEVICE_PROFILES[Math.floor(Math.random() * DEVICE_PROFILES.length)];
+      const deviceId = ulid();
+      const label = `${profile.name} ${deviceId.slice(-6)}`;
+      const sim = new DeviceSimulator(deviceId, profile.sensors, config.anomalies, label);
+      await sim.register(config.applicationId || undefined);
+      simulators.push(sim);
+    }
+    console.log(`\n✅ ${simulators.length} device(s) registered. Starting stream...\n`);
   }
 
-  // Register all devices
-  console.log('📝 Registering devices...\n');
-  for (const device of devices) {
-    await device.register();
-  }
-
-  console.log(`\n✅ All devices registered. Starting data generation...\n`);
-
-  // Start sending data
   setInterval(async () => {
-    for (const device of devices) {
-      await device.sendData();
+    for (const sim of simulators) {
+      await sim.sendData();
     }
   }, config.interval);
 
-  // Handle graceful shutdown
   process.on('SIGINT', () => {
-    console.log('\n\n👋 Shutting down simulator...');
+    console.log('\n\n👋 Simulator stopped.');
     process.exit(0);
   });
 }
 
-// Run simulator
-main().catch((error) => {
-  console.error('Fatal error:', error);
+main().catch(err => {
+  console.error('Fatal:', err);
   process.exit(1);
 });
