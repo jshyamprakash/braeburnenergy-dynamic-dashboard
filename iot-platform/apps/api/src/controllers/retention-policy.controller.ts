@@ -227,17 +227,16 @@ export async function getRetentionStats(request: FastifyRequest, reply: FastifyR
 
     const stats = await retentionPolicyService.getRetentionStats(category);
 
-    if (!stats) {
-      return reply.status(404).send({
-        success: false,
-        error: 'Not found',
-        message: `No active retention policy found for category: ${category}`,
-      });
-    }
-
     return reply.status(200).send({
       success: true,
-      data: stats,
+      data: stats ?? {
+        policy: null,
+        hotStorageDays: 0,
+        warmStorageDays: 0,
+        coldStorageDays: 0,
+        totalRetentionDays: 0,
+        archiveEnabled: false,
+      },
     });
   } catch (error) {
     request.log.error({ error }, 'Get retention stats error');

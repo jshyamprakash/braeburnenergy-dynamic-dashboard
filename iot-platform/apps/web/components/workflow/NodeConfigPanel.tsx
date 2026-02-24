@@ -123,6 +123,16 @@ const NODE_CONFIG_SCHEMAS: Record<string, FieldConfig[]> = {
       { value: 'DELETE', label: 'DELETE' },
     ], required: true },
   ],
+  'action:debug': [
+    { key: 'label', label: 'Node Label', type: 'text', placeholder: 'Debug', required: true },
+    { key: 'messageTemplate', label: 'Message / Expression', type: 'textarea', placeholder: 'e.g., Temperature: {{stateData.data.temperature}} or leave empty to print all data', required: false },
+    { key: 'level', label: 'Log Level', type: 'select', options: [
+      { value: 'DEBUG', label: 'Debug' },
+      { value: 'INFO', label: 'Info' },
+      { value: 'WARN', label: 'Warning' },
+      { value: 'ERROR', label: 'Error' },
+    ] },
+  ],
   'action:logEvent': [
     { key: 'label', label: 'Node Label', type: 'text', placeholder: 'e.g., Log Event', required: true },
     { key: 'description', label: 'Description', type: 'textarea' },
@@ -276,7 +286,15 @@ export default function NodeConfigPanel() {
   }
 
   const handleFieldChange = (key: string, value: any) => {
-    const updated = { ...formData, [key]: value };
+    // label and description are top-level node.data fields.
+    // Everything else lives in node.data.config so toBackendNodes() picks it up.
+    // The 'config' key is used by mapping-list handlers that pass the full config object.
+    const isTopLevel = key === 'label' || key === 'description';
+    const updated = isTopLevel
+      ? { ...formData, [key]: value }
+      : key === 'config'
+        ? { ...formData, config: value }
+        : { ...formData, config: { ...(formData.config || {}), [key]: value } };
     setFormData(updated);
     dispatch(updateNode({ id: selectedNode.id, data: updated }));
     // Trigger auto-save with 1-second debounce
@@ -312,7 +330,11 @@ export default function NodeConfigPanel() {
   };
 
   const getFieldValue = (key: string): any => {
-    return formData[key] ?? '';
+    // label and description are top-level; everything else lives in config
+    if (key === 'label' || key === 'description') {
+      return formData[key] ?? '';
+    }
+    return formData.config?.[key] ?? '';
   };
 
   const addMappingRow = () => {

@@ -681,7 +681,7 @@ export function DashboardBuilder({
 
       {/* Block Palette Sidebar - Floating Overlay */}
       {isEditMode && showPalette && (
-        <div className="fixed left-4 sm:left-6 lg:left-8 top-0 h-full z-20 shadow-xl">
+        <div className="fixed left-4 sm:left-6 lg:left-8 top-16 h-[calc(100vh-4rem)] z-20 shadow-xl">
           <BlockPalette
             onAddBlock={handleAddBlock}
             onClose={() => setShowPalette(false)}
@@ -691,7 +691,7 @@ export function DashboardBuilder({
 
       {/* Block Configuration Panel - Floating Overlay */}
       {isEditMode && selectedBlock && (
-        <div className="fixed right-4 sm:right-6 lg:right-8 top-0 h-full z-20 shadow-xl">
+        <div className="fixed right-4 sm:right-6 lg:right-8 top-16 h-[calc(100vh-4rem)] z-20 shadow-xl">
           <BlockConfigPanel
             block={selectedBlock}
             onUpdate={(config) => handleUpdateBlockConfig(selectedBlock.id, config)}

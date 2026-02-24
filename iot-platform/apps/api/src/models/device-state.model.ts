@@ -24,6 +24,7 @@ export interface IDeviceState extends Document {
     orgId: Types.ObjectId;
   };
   data: Record<string, any>;
+  derived?: Record<string, any>; // Workflow-derived values (ADR-028); data is immutable after ingest
   quality?: IQualityMetadata; // Data quality metadata
 }
 
@@ -35,6 +36,7 @@ const deviceStateSchema = new Schema<IDeviceState>(
       orgId: { type: Schema.Types.ObjectId, required: true },
     },
     data: { type: Schema.Types.Mixed, required: true },
+    derived: { type: Schema.Types.Mixed }, // Optional; absent on docs with no workflow execution
     quality: {
       status: {
         type: String,

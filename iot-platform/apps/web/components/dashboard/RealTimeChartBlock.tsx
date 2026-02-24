@@ -39,9 +39,11 @@ export function RealTimeChartBlock({
       return fallbackData;
     }
 
+    // ADR-028: merge derived over data so workflow-computed values take precedence per field
     return deviceStates.map((state) => ({
       timestamp: state.timestamp,
       ...state.data,
+      ...(state.derived ?? {}),
     }));
   }, [deviceId, deviceStates, fallbackData]);
 

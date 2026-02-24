@@ -42,6 +42,7 @@ export const nodeTypeSchema = z.enum([
   'action:logMessage',
   'action:updateVariable',
   'action:writeDeviceState',   // ADR-022
+  'action:debug',              // Real-time debug output node
   // Transformations
   'transform:mathOperation',
   'transform:stringOperation',
@@ -82,7 +83,7 @@ export const workflowEdgeSchema = z.object({
   sourceHandle: z.string().optional(),
   targetHandle: z.string().optional(),
   label: z.string().optional(),
-  type: z.enum(['default', 'smoothstep', 'step']).optional(),
+  type: z.string().optional(), // React Flow can generate various edge types
 });
 
 /**

@@ -13,6 +13,13 @@ export interface NodeExecutionResult {
   output?: any;                    // Output data to pass to next node
   conditionMet?: boolean;          // For condition nodes (true/false branch)
   variables?: Record<string, any>; // Variables to update in context
+  notes?: string;                  // Human-readable info for debug panel (e.g. log message text)
+  debugMessage?: {                 // For action:debug node real-time output
+    level: string;
+    message: string;
+    data: any;
+    nodeLabel: string;
+  };
 }
 
 /**
@@ -111,6 +118,8 @@ export class WorkflowNodeHandlers {
         return this.executeActionLogMessage(config, context);
       case 'action:updateVariable':
         return this.executeActionUpdateVariable(config, context);
+      case 'action:debug':
+        return this.executeActionDebug(config, context, node.data?.label);
 
       // Transformations
       case 'transform:mathOperation':
@@ -369,6 +378,7 @@ export class WorkflowNodeHandlers {
 
     return {
       output: context.currentData,
+      notes: `[${level || 'INFO'}] ${interpolatedMessage}`,
     };
   }
 
@@ -385,6 +395,26 @@ export class WorkflowNodeHandlers {
       output: context.currentData,
       variables: {
         [variableName]: variableValue,
+      },
+    };
+  }
+
+  private async executeActionDebug(config: any, context: any, nodeLabel?: string): Promise<NodeExecutionResult> {
+    const { messageTemplate, level = 'DEBUG' } = config;
+
+    const resolvedMessage = messageTemplate
+      ? this.interpolateString(messageTemplate, context.currentData)
+      : JSON.stringify(context.currentData, null, 2);
+
+    // Will be captured by engine and emitted as workflow:debug:message WebSocket event
+    return {
+      output: context.currentData,
+      notes: resolvedMessage,
+      debugMessage: {
+        level,
+        message: resolvedMessage,
+        data: context.currentData,
+        nodeLabel: nodeLabel || 'Debug',
       },
     };
   }

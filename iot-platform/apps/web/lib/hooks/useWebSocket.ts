@@ -166,7 +166,8 @@ export function useDeviceUpdates(onUpdate: (event: WebSocketEvent) => void) {
 export function useWorkflowExecutionUpdates(
   workflowId: string | null,
   onStepUpdate: (step: any) => void,
-  onComplete: (completion: any) => void
+  onComplete: (completion: any) => void,
+  onDebugMessage?: (msg: any) => void
 ) {
   const { socket, isConnected } = useWebSocket();
 
@@ -190,8 +191,15 @@ export function useWorkflowExecutionUpdates(
       onComplete(completion);
     };
 
+    // Listen for debug messages
+    const handleDebugMessage = (msg: any) => {
+      console.log('[WebSocket] Received debug message:', msg);
+      onDebugMessage?.(msg);
+    };
+
     socket.on('workflow:execution:step', handleStepUpdate);
     socket.on('workflow:execution:completed', handleCompletion);
+    socket.on('workflow:debug:message', handleDebugMessage);
 
     // Cleanup
     return () => {
@@ -199,6 +207,7 @@ export function useWorkflowExecutionUpdates(
       socket.emit('unsubscribe:workflow', workflowId);
       socket.off('workflow:execution:step', handleStepUpdate);
       socket.off('workflow:execution:completed', handleCompletion);
+      socket.off('workflow:debug:message', handleDebugMessage);
     };
-  }, [socket, isConnected, workflowId, onStepUpdate, onComplete]);
+  }, [socket, isConnected, workflowId, onStepUpdate, onComplete, onDebugMessage]);
 }

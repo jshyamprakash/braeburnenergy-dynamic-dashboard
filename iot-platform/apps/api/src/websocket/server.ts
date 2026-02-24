@@ -14,6 +14,7 @@ import { config } from '../config/config';
 export interface DeviceStateUpdate {
   deviceId: string;
   data: Record<string, unknown>;
+  derived?: Record<string, unknown>; // Workflow-derived values (ADR-028); absent when no workflow has run
   timestamp: Date;
 }
 
@@ -220,4 +221,25 @@ export function broadcastWorkflowExecutionCompleted(
   io.to(`workflow:${data.workflowId}`).emit('workflow:execution:completed', data);
   io.to(`org:${data.orgId}`).emit('workflow:execution:completed', data);
   console.log(`[WS] Workflow ${data.status}: ${data.workflowId}`);
+}
+
+/**
+ * Broadcast real-time debug message from action:debug node
+ */
+export function broadcastWorkflowDebugMessage(
+  io: SocketIOServer,
+  data: {
+    workflowId: string;
+    executionId: string;
+    orgId: string;
+    nodeId: string;
+    nodeLabel: string;
+    level: string;
+    message: string;
+    rawData: any;
+    timestamp: string;
+  }
+) {
+  io.to(`workflow:${data.workflowId}`).emit('workflow:debug:message', data);
+  console.log(`[WS] Debug message from ${data.nodeLabel}: ${data.level}`);
 }

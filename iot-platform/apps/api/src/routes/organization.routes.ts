@@ -90,6 +90,7 @@ export async function organizationRoutes(fastify: FastifyInstance) {
                 items: {
                   type: 'object',
                   properties: {
+                    _id: { type: 'string' },
                     id: { type: 'string' },
                     name: { type: 'string' },
                     slug: { type: 'string' },
@@ -97,6 +98,7 @@ export async function organizationRoutes(fastify: FastifyInstance) {
                     createdAt: { type: 'string', format: 'date-time' },
                     updatedAt: { type: 'string', format: 'date-time' },
                   },
+                  additionalProperties: true,
                 },
               },
               pagination: {

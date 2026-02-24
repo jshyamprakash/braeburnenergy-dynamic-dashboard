@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/lib/store';
-import { loadWorkflow, saveWorkflow, resetWorkflow, executeWorkflow, removeNode, addExecutionLogEntry, completeExecutionStream, clearExecutionLog, setNodes, setEdges, updateMetadata, addNode, selectNode, toggleDebugPanel } from '@/lib/store/slices/workflowSlice';
+import { loadWorkflow, saveWorkflow, resetWorkflow, executeWorkflow, removeNode, addExecutionLogEntry, completeExecutionStream, clearExecutionLog, setNodes, setEdges, updateMetadata, addNode, selectNode, toggleDebugPanel, addDebugMessage, cancelExecution } from '@/lib/store/slices/workflowSlice';
 import { useWorkflowExecutionUpdates } from '@/lib/hooks/useWebSocket';
 import WorkflowCanvas from '@/components/workflow/WorkflowCanvas';
 import NodePalette from '@/components/workflow/NodePalette';
@@ -18,6 +18,7 @@ import ContextDebugPanel from '@/components/workflow/ContextDebugPanel';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { useWorkflowKeyboardShortcuts } from '@/hooks/useWorkflowKeyboardShortcuts';
 import { exportWorkflowToJSON } from '@/lib/utils/workflow-export';
+import { apiClient } from '@/lib/api-client';
 import { toast } from 'sonner';
 import NodeContextMenu from '@/components/workflow/NodeContextMenu';
 import { ReactFlowProvider } from 'reactflow';
@@ -55,6 +56,7 @@ function WorkflowBuilderPage() {
     selectedNodeId,
     isDebugPanelOpen,
     executionLog,
+    debugMessages,
   } = useAppSelector(state => state.workflow);
 
   const [isSaving, setIsSaving] = useState(false);
@@ -126,6 +128,10 @@ function WorkflowBuilderPage() {
         status: completion.status,
         error: completion.error?.message,
       }));
+    },
+    // Handle debug messages
+    (debugMsg) => {
+      dispatch(addDebugMessage(debugMsg));
     }
   );
 
@@ -159,6 +165,25 @@ function WorkflowBuilderPage() {
     }
   };
 
+  // Handle deploy (save + enable workflow)
+  const handleDeploy = async () => {
+    if (!workflowId) {
+      toast.error('Save the workflow first');
+      return;
+    }
+    // Save first if dirty
+    if (isDirty) {
+      await handleSave();
+    }
+    try {
+      await apiClient.post(`/workflows/${workflowId}/enable`, {});
+      toast.success('Workflow deployed and active');
+      toast.info('Device State Trigger workflows activate automatically when the device sends data.');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to deploy workflow');
+    }
+  };
+
   // Handle back to list
   const handleBack = () => {
     if (isDirty) {
@@ -170,8 +195,18 @@ function WorkflowBuilderPage() {
     }
   };
 
-  const handleRun = () => {
+  const handleTestRun = () => {
     setIsExecutionModalOpen(true);
+  };
+
+  const handleStop = async () => {
+    if (!workflowId || !currentExecutionId) return;
+    try {
+      await dispatch(cancelExecution({ workflowId, executionId: currentExecutionId })).unwrap();
+      toast.success('Execution stopped');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to stop execution');
+    }
   };
 
   const handleExecute = async (inputData: Record<string, any>) => {
@@ -265,7 +300,7 @@ function WorkflowBuilderPage() {
   // Setup keyboard shortcuts
   useWorkflowKeyboardShortcuts({
     onSave: handleSave,
-    onRun: handleRun,  // For keyboard shortcuts (Ctrl+R)
+    onRun: handleTestRun,  // For keyboard shortcuts (Ctrl+R)
     onExport: handleExport,
     onDelete: handleDeleteNode,
     onShowHelp: () => setIsHelpOpen(true),
@@ -284,9 +319,12 @@ function WorkflowBuilderPage() {
         isExecuting={executionStatus === 'running'}
         executionId={currentExecutionId}
         isDebugPanelOpen={isDebugPanelOpen}
+        workflowId={workflowId}
         onSave={handleSave}
         onBack={handleBack}
-        onDeploy={handleRun}
+        onDeploy={handleDeploy}
+        onTestRun={handleTestRun}
+        onStop={handleStop}
         onExport={handleExport}
         onExecutionHistory={() => setIsExecutionHistoryModalOpen(true)}
         onValidation={() => setIsValidationPanelOpen(true)}
@@ -412,6 +450,7 @@ function WorkflowBuilderPage() {
         executionLog={executionLog}
         executionStatus={executionStatus}
         nodes={nodes}
+        debugMessages={debugMessages}
       />
     </div>
     </ReactFlowProvider>

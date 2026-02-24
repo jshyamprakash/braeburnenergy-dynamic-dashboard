@@ -131,6 +131,15 @@ const NODE_TYPES: NodeTypeConfig[] = [
     defaultConfig: { url: '', method: 'POST' },
   },
   {
+    type: 'action:debug',
+    category: 'action',
+    visualType: 'action',
+    label: 'Debug',
+    description: 'Print data to debug panel',
+    icon: '🐛',
+    defaultConfig: { messageTemplate: '', level: 'DEBUG' },
+  },
+  {
     type: 'action:logMessage',
     category: 'action',
     visualType: 'action',

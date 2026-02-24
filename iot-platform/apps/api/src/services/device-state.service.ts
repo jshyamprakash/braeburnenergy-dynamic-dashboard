@@ -43,6 +43,7 @@ export class DeviceStateService {
       deviceId: obj.metadata.deviceId,
       orgId: obj.metadata.orgId.toString(),
       data: obj.data,
+      derived: obj.derived,
       timestamp: obj.timestamp,
       quality: obj.quality,
     };
@@ -98,6 +99,7 @@ export class DeviceStateService {
       id: s._id,
       deviceId: s.metadata.deviceId,
       data: s.data,
+      derived: s.derived,
       timestamp: s.timestamp,
     }));
 
@@ -126,6 +128,7 @@ export class DeviceStateService {
       id: state._id,
       deviceId: state.metadata.deviceId,
       data: state.data,
+      derived: (state as any).derived,
       timestamp: state.timestamp,
     };
   }
@@ -144,6 +147,7 @@ export class DeviceStateService {
       id: state._id,
       deviceId: state.metadata.deviceId,
       data: state.data,
+      derived: (state as any).derived,
       timestamp: state.timestamp,
     };
   }
@@ -322,8 +326,9 @@ export class DeviceStateService {
   }
 
   /**
-   * Patch a DeviceState's data field with structured key-value pairs (ADR-022)
-   * Used by action:writeDeviceState workflow node to overlay typed values
+   * Patch a DeviceState's derived sub-document with workflow-computed values (ADR-028)
+   * Writes exclusively to `derived.*` — raw `data` is immutable after ingest.
+   * Used by action:writeDeviceState workflow node.
    */
   async patchData(
     deviceId: string,
@@ -332,7 +337,7 @@ export class DeviceStateService {
   ): Promise<boolean> {
     const setFields: Record<string, any> = {};
     for (const [key, value] of Object.entries(patch)) {
-      setFields[`data.${key}`] = value;
+      setFields[`derived.${key}`] = value;
     }
 
     const result = await DeviceState.updateOne(
@@ -341,6 +346,21 @@ export class DeviceStateService {
     );
 
     return result.modifiedCount > 0;
+  }
+
+  /**
+   * Get the derived sub-document for a specific state (ADR-028)
+   */
+  async getDerived(
+    deviceId: string,
+    stateId: string
+  ): Promise<Record<string, any> | null> {
+    const state = await DeviceState.findOne(
+      { _id: new mongoose.Types.ObjectId(stateId), 'metadata.deviceId': deviceId },
+      { derived: 1 }
+    ).lean() as any;
+
+    return state?.derived ?? null;
   }
 
   // =========================================================================

@@ -30,6 +30,7 @@ export type NodeType =
   | 'action:callWebhook'
   | 'action:logMessage'
   | 'action:updateVariable'
+  | 'action:debug'
   // Transformations (legacy — frozen, use data:* for new nodes)
   | 'transform:mathOperation'
   | 'transform:stringOperation'
@@ -142,6 +143,7 @@ const workflowNodeSchema = new Schema<WorkflowNode>({
       'action:callWebhook',
       'action:logMessage',
       'action:updateVariable',
+      'action:debug',
       // Transformations (legacy)
       'transform:mathOperation',
       'transform:stringOperation',

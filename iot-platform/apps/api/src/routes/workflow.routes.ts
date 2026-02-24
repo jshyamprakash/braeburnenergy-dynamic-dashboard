@@ -20,8 +20,14 @@ import { WORKFLOW_TEMPLATES } from '../data/workflow-templates';
  * Registers all workflow-related HTTP endpoints with OpenAPI documentation
  */
 export async function workflowRoutes(fastify: FastifyInstance) {
-  // Create controller with Socket.io instance
-  const workflowController = new WorkflowController((fastify as any).io);
+  // Lazy-init controller via onReady so that fastify.decorate('io', io) in index.ts
+  // has already run by the time we capture the Socket.IO instance.
+  // Route handlers are arrow-function wrappers so workflowController is only
+  // dereferenced at request time (after onReady), not at registration time.
+  let workflowController: WorkflowController;
+  fastify.addHook('onReady', async () => {
+    workflowController = new WorkflowController((fastify as any).io);
+  });
 
   // Get workflow templates
   fastify.get('/workflow-templates', {
@@ -87,7 +93,7 @@ export async function workflowRoutes(fastify: FastifyInstance) {
       },
     },
     preHandler: [requireAuth, requirePermission('workflow:create')],
-  }, workflowController.create.bind(workflowController) as any);
+  }, (req: any, reply: any) => workflowController.create(req, reply));
 
   // Get workflow by ID
   fastify.get('/workflows/:workflowId', {
@@ -124,7 +130,7 @@ export async function workflowRoutes(fastify: FastifyInstance) {
       },
     },
     preHandler: [requireAuth, requirePermission('workflow:read')],
-  }, workflowController.getOne.bind(workflowController) as any);
+  }, (req: any, reply: any) => workflowController.getOne(req, reply));
 
   // List workflows
   fastify.get('/workflows', {
@@ -158,7 +164,7 @@ export async function workflowRoutes(fastify: FastifyInstance) {
       },
     },
     preHandler: [requireAuth, requirePermission('workflow:read')],
-  }, workflowController.list.bind(workflowController) as any);
+  }, (req: any, reply: any) => workflowController.list(req, reply));
 
   // Update workflow
   fastify.patch('/workflows/:workflowId', {
@@ -191,7 +197,7 @@ export async function workflowRoutes(fastify: FastifyInstance) {
       },
     },
     preHandler: [requireAuth, requirePermission('workflow:update')],
-  }, workflowController.update.bind(workflowController) as any);
+  }, (req: any, reply: any) => workflowController.update(req, reply));
 
   // Delete workflow
   fastify.delete('/workflows/:workflowId', {
@@ -210,7 +216,7 @@ export async function workflowRoutes(fastify: FastifyInstance) {
       },
     },
     preHandler: [requireAuth, requirePermission('workflow:delete')],
-  }, workflowController.delete.bind(workflowController) as any);
+  }, (req: any, reply: any) => workflowController.delete(req, reply));
 
   // Execute workflow
   fastify.post('/workflows/:workflowId/execute', {
@@ -238,7 +244,7 @@ export async function workflowRoutes(fastify: FastifyInstance) {
       },
     },
     preHandler: [requireAuth, requirePermission('workflow:execute')],
-  }, workflowController.execute.bind(workflowController) as any);
+  }, (req: any, reply: any) => workflowController.execute(req, reply));
 
   // Enable workflow
   fastify.post('/workflows/:workflowId/enable', {
@@ -257,7 +263,7 @@ export async function workflowRoutes(fastify: FastifyInstance) {
       },
     },
     preHandler: [requireAuth, requirePermission('workflow:update')],
-  }, workflowController.enable.bind(workflowController) as any);
+  }, (req: any, reply: any) => workflowController.enable(req, reply));
 
   // Disable workflow
   fastify.post('/workflows/:workflowId/disable', {
@@ -276,7 +282,33 @@ export async function workflowRoutes(fastify: FastifyInstance) {
       },
     },
     preHandler: [requireAuth, requirePermission('workflow:update')],
-  }, workflowController.disable.bind(workflowController) as any);
+  }, (req: any, reply: any) => workflowController.disable(req, reply));
+
+  // Cancel workflow execution
+  fastify.post('/workflows/:workflowId/executions/:executionId/cancel', {
+    schema: {
+      tags: ['Workflows'],
+      summary: 'Cancel a running workflow execution',
+      description: 'Stops a currently running workflow execution',
+      security: [{ bearerAuth: [] }],
+      params: {
+        type: 'object',
+        required: ['workflowId', 'executionId'],
+        properties: {
+          workflowId: { type: 'string' },
+          executionId: { type: 'string' },
+        },
+      },
+      response: {
+        200: successResponse(
+          { type: 'object', properties: { workflowId: { type: 'string' }, executionId: { type: 'string' }, status: { type: 'string', example: 'cancelled' } } },
+          'Workflow execution cancelled'
+        ),
+        404: errorResponse('Execution not found or already completed'),
+      },
+    },
+    preHandler: [requireAuth, requirePermission('workflow:execute')],
+  }, (req: any, reply: any) => workflowController.cancelExecution(req, reply));
 
   // List workflow executions
   fastify.get('/workflows/:workflowId/executions', {
@@ -309,7 +341,7 @@ export async function workflowRoutes(fastify: FastifyInstance) {
       },
     },
     preHandler: [requireAuth, requirePermission('workflow:read')],
-  }, workflowController.listExecutions.bind(workflowController) as any);
+  }, (req: any, reply: any) => workflowController.listExecutions(req, reply));
 
   // Get execution details
   fastify.get('/executions/:executionId', {
@@ -348,5 +380,5 @@ export async function workflowRoutes(fastify: FastifyInstance) {
       },
     },
     preHandler: [requireAuth, requirePermission('workflow:read')],
-  }, workflowController.getExecution.bind(workflowController) as any);
+  }, (req: any, reply: any) => workflowController.getExecution(req, reply));
 }

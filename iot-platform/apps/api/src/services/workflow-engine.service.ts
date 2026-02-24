@@ -8,7 +8,7 @@ import {
 import { Workflow, type WorkflowNode, type WorkflowEdge } from '../models/workflow.model';
 import { WorkflowService } from './workflow.service';
 import { WorkflowNodeHandlers, resolveExpression } from './workflow-node-handlers.service';
-import { broadcastWorkflowExecutionStep, broadcastWorkflowExecutionCompleted } from '../websocket/server';
+import { broadcastWorkflowExecutionStep, broadcastWorkflowExecutionCompleted, broadcastWorkflowDebugMessage } from '../websocket/server';
 import type { QueryExecutionsDTO } from '../schemas/workflow.schema';
 
 /**
@@ -35,7 +35,8 @@ export class WorkflowEngineService {
   async execute(
     workflowId: string,
     trigger: Omit<ExecutionTrigger, 'timestamp'>,
-    userId?: string
+    userId?: string,
+    bypassEnabled = false
   ): Promise<string> {
     // Find workflow
     const workflow = await Workflow.findOne({ workflowId }).lean();
@@ -43,7 +44,7 @@ export class WorkflowEngineService {
       throw new Error('Workflow not found');
     }
 
-    if (!workflow.isEnabled) {
+    if (!workflow.isEnabled && !bypassEnabled) {
       throw new Error('Workflow is disabled');
     }
 
@@ -198,6 +199,11 @@ export class WorkflowEngineService {
     context: any,
     execution: any
   ): Promise<void> {
+    // Check if execution was cancelled externally
+    if (execution.status === 'cancelled') {
+      return; // Stop execution silently
+    }
+
     const nodeStartTime = Date.now();
 
     // Update current node in execution
@@ -239,6 +245,7 @@ export class WorkflowEngineService {
         input: context.currentData,
         output: result.output,
         duration: nodeDuration,
+        notes: result.notes,
       };
 
       execution.executionLog.push(logEntry);
@@ -270,7 +277,23 @@ export class WorkflowEngineService {
         status: 'completed',
         output: result.output,
         duration: nodeDuration,
+        notes: result.notes,
       });
+
+      // Emit real-time debug message if node produced one (action:debug)
+      if (result.debugMessage && this.io) {
+        broadcastWorkflowDebugMessage(this.io, {
+          workflowId: execution.workflowId,
+          executionId: execution.executionId,
+          orgId: execution.orgId.toString(),
+          nodeId: node.id,
+          nodeLabel: result.debugMessage.nodeLabel,
+          level: result.debugMessage.level,
+          message: result.debugMessage.message,
+          rawData: result.debugMessage.data,
+          timestamp: new Date().toISOString(),
+        });
+      }
 
       // Find next nodes (follow edges)
       const outgoingEdges = allEdges.filter(e => e.source === node.id);
@@ -361,6 +384,31 @@ export class WorkflowEngineService {
   async getExecution(executionId: string) {
     const execution = await WorkflowExecution.findOne({ executionId }).lean();
     return execution;
+  }
+
+  /**
+   * Cancel a running workflow execution
+   */
+  async cancelExecution(executionId: string): Promise<boolean> {
+    const execution = await WorkflowExecution.findOne({ executionId });
+
+    if (!execution || !['pending', 'running'].includes(execution.status)) {
+      return false;
+    }
+
+    execution.status = 'cancelled';
+    execution.completedAt = new Date();
+    await execution.save();
+
+    // Emit WebSocket: workflow:execution:completed (cancelled)
+    this.emitExecutionEvent('workflow:execution:completed', {
+      executionId: execution.executionId,
+      workflowId: execution.workflowId,
+      orgId: execution.orgId.toString(),
+      status: 'cancelled',
+    });
+
+    return true;
   }
 
   /**

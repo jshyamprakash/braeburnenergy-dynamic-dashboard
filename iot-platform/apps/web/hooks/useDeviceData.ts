@@ -92,12 +92,14 @@ export function useDeviceRealtime(deviceId?: string) {
     socket.emit('subscribe:device', deviceId);
 
     // Listen for state updates
-    const handleStateUpdate = (update: { deviceId: string; data: any; timestamp: Date }) => {
+    // derived (ADR-028): merge derived over data so dashboard reads the most-processed value
+    const handleStateUpdate = (update: { deviceId: string; data: any; derived?: Record<string, any>; timestamp: Date }) => {
       if (update.deviceId === deviceId) {
         setLatestState({
           id: `ws-${Date.now()}`,
           deviceId: update.deviceId,
-          data: update.data,
+          data: { ...update.data, ...(update.derived ?? {}) },
+          derived: update.derived,
           timestamp: new Date(update.timestamp).toISOString(),
         });
       }
@@ -116,14 +118,16 @@ export function useDeviceRealtime(deviceId?: string) {
 
 export interface DeviceFieldEntry {
   key: string;
-  source: 'schema' | 'state';
+  source: 'schema' | 'state' | 'derived';
 }
 
 /**
- * Get available fields from device attributes (schema) and latest device state (runtime).
+ * Get available fields from device attributes (schema), latest device state (runtime),
+ * and workflow-derived sub-document (ADR-028).
  * Schema fields come from Object.keys(device.attributes) — Record<string, string>.
- * State fields come from the latest device state data keys (includes workflow-derived fields).
- * State-discovered fields are tagged source:'state' and displayed with a ~ prefix in the UI.
+ * State fields come from the latest device state data keys (raw sensor fields).
+ * Derived fields come from state.derived keys (workflow-computed values).
+ * Derived fields take display precedence: display value = derived[field] ?? data[field].
  */
 export function useDeviceFields(deviceId?: string): DeviceFieldEntry[] {
   const { data: device } = useDevice(deviceId);
@@ -131,13 +135,19 @@ export function useDeviceFields(deviceId?: string): DeviceFieldEntry[] {
 
   const schemaKeys = new Set<string>();
   const stateKeys = new Set<string>();
+  const derivedKeys = new Set<string>();
 
   if (device?.attributes) {
     Object.keys(device.attributes).forEach((key) => schemaKeys.add(key));
   }
 
-  if (states && states.length > 0 && states[0].data) {
-    Object.keys(states[0].data).forEach((key) => stateKeys.add(key));
+  if (states && states.length > 0) {
+    if (states[0].data) {
+      Object.keys(states[0].data).forEach((key) => stateKeys.add(key));
+    }
+    if (states[0].derived) {
+      Object.keys(states[0].derived).forEach((key) => derivedKeys.add(key));
+    }
   }
 
   const entries: DeviceFieldEntry[] = [];
@@ -145,9 +155,16 @@ export function useDeviceFields(deviceId?: string): DeviceFieldEntry[] {
   // Schema fields first
   schemaKeys.forEach((key) => entries.push({ key, source: 'schema' }));
 
-  // State-only fields (workflow-derived or runtime fields not in schema)
-  stateKeys.forEach((key) => {
+  // Derived fields (workflow-computed; not in schema)
+  derivedKeys.forEach((key) => {
     if (!schemaKeys.has(key)) {
+      entries.push({ key, source: 'derived' });
+    }
+  });
+
+  // Raw state-only fields (not in schema and not already covered by derived)
+  stateKeys.forEach((key) => {
+    if (!schemaKeys.has(key) && !derivedKeys.has(key)) {
       entries.push({ key, source: 'state' });
     }
   });

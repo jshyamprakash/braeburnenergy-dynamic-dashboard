@@ -81,7 +81,7 @@ export function BlockConfigPanel({ block, onUpdate, onClose, applicationId }: Bl
                 >
                   <option value="">Select a device</option>
                   {filteredDevices.map((device) => (
-                    <option key={device.id} value={device.deviceId}>
+                    <option key={device.deviceId} value={device.deviceId}>
                       {device.name} ({device.deviceId.slice(-6)})
                     </option>
                   ))}
@@ -226,7 +226,7 @@ export function BlockConfigPanel({ block, onUpdate, onClose, applicationId }: Bl
               >
                 <option value="">Use mock data</option>
                 {filteredDevices.map((device) => (
-                  <option key={device.id} value={device.deviceId}>
+                  <option key={device.deviceId} value={device.deviceId}>
                     {device.name} ({device.deviceId.slice(-6)})
                   </option>
                 ))}
@@ -323,7 +323,7 @@ export function BlockConfigPanel({ block, onUpdate, onClose, applicationId }: Bl
               >
                 <option value="">All devices</option>
                 {filteredDevices.map((device) => (
-                  <option key={device.id} value={device.deviceId}>
+                  <option key={device.deviceId} value={device.deviceId}>
                     {device.name} ({device.deviceId.slice(-6)})
                   </option>
                 ))}

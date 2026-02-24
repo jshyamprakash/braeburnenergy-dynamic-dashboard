@@ -137,6 +137,7 @@ export class DeviceStateController {
         broadcastDeviceState(io, {
           deviceId: state.deviceId,
           data: state.data as Record<string, unknown>,
+          derived: state.derived as Record<string, unknown> | undefined,
           timestamp: state.timestamp,
         });
 

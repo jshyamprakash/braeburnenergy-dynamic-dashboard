@@ -423,23 +423,24 @@ function RetentionPoliciesContent() {
   };
 
   const fetchStats = async () => {
-    try {
-      const statsData: StatCard[] = [];
-      for (const cat of CATEGORIES) {
-        const response = await apiClient.get<any>(`/retention-policies/stats/${cat.value}`);
-        statsData.push({
+    const results = await Promise.allSettled(
+      CATEGORIES.map((cat) =>
+        apiClient.get<any>(`/retention-policies/stats/${cat.value}`).then((response) => ({
           category: cat.value,
           label: cat.label,
           hotDays: response.data.hotStorageDays || 0,
           warmDays: response.data.warmStorageDays || 0,
           coldDays: response.data.coldStorageDays || 0,
           totalDays: response.data.totalRetentionDays || 0,
-        });
-      }
-      setStats(statsData);
-    } catch (error) {
-      console.error('Failed to fetch stats:', error);
-    }
+        }))
+      )
+    );
+    const statsData: StatCard[] = results.map((result, i) =>
+      result.status === 'fulfilled'
+        ? result.value
+        : { category: CATEGORIES[i].value, label: CATEGORIES[i].label, hotDays: 0, warmDays: 0, coldDays: 0, totalDays: 0 }
+    );
+    setStats(statsData);
   };
 
   useEffect(() => {

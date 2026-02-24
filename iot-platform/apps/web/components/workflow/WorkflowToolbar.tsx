@@ -11,9 +11,12 @@ export interface WorkflowToolbarProps {
   isExecuting?: boolean;
   executionId?: string | null;
   isDebugPanelOpen?: boolean;
+  workflowId?: string | null;
   onSave: () => void;
   onBack: () => void;
-  onDeploy?: () => void;  // Renamed from onRun
+  onDeploy?: () => void;  // Save + enable workflow (deploy to production)
+  onTestRun?: () => void;  // Open execution input modal (test run)
+  onStop?: () => void;  // Stop current execution
   onExport?: () => void;
   onExecutionHistory?: () => void;  // New: open execution history modal
   onValidation?: () => void;
@@ -30,9 +33,12 @@ export default function WorkflowToolbar({
   isExecuting,
   executionId,
   isDebugPanelOpen,
+  workflowId,
   onSave,
   onBack,
   onDeploy,
+  onTestRun,
+  onStop,
   onExport,
   onExecutionHistory,
   onValidation,
@@ -182,13 +188,48 @@ export default function WorkflowToolbar({
                 : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
             }
           `}
-          title="Deploy workflow (Ctrl+D)"
+          title="Deploy workflow to production"
         >
           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M8 5v14l11-7z" />
+            <path d="M13 10V3L4 14h7v7l9-11h-7z" />
           </svg>
           Deploy
         </button>
+
+        {/* Test Run button */}
+        <button
+          onClick={onTestRun}
+          disabled={!workflowId || isExecuting}
+          className={`
+            px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2
+            ${
+              workflowId && !isExecuting
+                ? 'bg-orange-500 hover:bg-orange-600 text-white'
+                : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+            }
+          `}
+          title="Manually trigger workflow execution with input data"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Test Run
+        </button>
+
+        {/* Stop button — only when executing */}
+        {isExecuting && (
+          <button
+            onClick={onStop}
+            className="px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
+            title="Stop current execution"
+          >
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M6 6h12v12H6z"/>
+            </svg>
+            Stop
+          </button>
+        )}
 
         {/* Debug button */}
         <button

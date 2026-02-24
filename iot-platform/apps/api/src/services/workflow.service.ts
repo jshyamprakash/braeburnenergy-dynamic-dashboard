@@ -246,6 +246,10 @@ export class WorkflowService {
   /**
    * Find enabled workflows that match a trigger type with optional filters
    * Used by WorkflowTriggerDispatcher for auto-trigger matching
+   *
+   * Field matching behavior:
+   * - If trigger node has no field configured (empty or missing), it matches ANY field (wildcard)
+   * - If trigger node has a field configured, it matches only that specific field
    */
   async findTriggerWorkflows(
     orgId: string,
@@ -261,21 +265,24 @@ export class WorkflowService {
       triggerType,
     };
 
-    // If filters provided, match trigger node config
-    // For deviceStateChange triggers: filter by config.deviceId and/or config.field
-    if (filters?.deviceId || filters?.field) {
-      // Build filter for trigger node's config matching
-      if (filters.deviceId && filters.field) {
-        filter['nodes.data.config.deviceId'] = filters.deviceId;
-        filter['nodes.data.config.field'] = filters.field;
-      } else if (filters.deviceId) {
-        filter['nodes.data.config.deviceId'] = filters.deviceId;
-      } else if (filters.field) {
-        filter['nodes.data.config.field'] = filters.field;
-      }
+    // Only filter by deviceId in DB query — do field matching in JS to handle "any field" (empty field = wildcard)
+    if (filters?.deviceId) {
+      filter['nodes.data.config.deviceId'] = filters.deviceId;
     }
 
-    return Workflow.find(filter).lean();
+    const workflows = await Workflow.find(filter).lean();
+
+    // If no field filter, return all
+    if (!filters?.field) return workflows;
+
+    // Filter: a workflow matches if its trigger node has no field (any-field wildcard) OR field matches
+    return workflows.filter((w: any) => {
+      const triggerNode = w.nodes?.find((n: any) => n.type === triggerType);
+      if (!triggerNode) return false;
+      const configField = triggerNode.data?.config?.field;
+      // Empty/absent field = wildcard (trigger on any field)
+      return !configField || configField === filters.field;
+    });
   }
 
   /**

@@ -32,6 +32,7 @@ export interface ExecutionLogEntry {
   output?: any;
   error?: string;
   duration?: number;               // Execution time in milliseconds
+  notes?: string;                  // Human-readable info (e.g. log message text)
 }
 
 export interface ExecutionError {
@@ -120,6 +121,7 @@ const executionLogEntrySchema = new Schema<ExecutionLogEntry>({
   output: Schema.Types.Mixed,
   error: String,
   duration: Number,
+  notes: String,
 }, { _id: false });
 
 const executionErrorSchema = new Schema<ExecutionError>({

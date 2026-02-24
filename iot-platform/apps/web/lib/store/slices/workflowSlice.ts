@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit';
 import type { Node, Edge, Connection } from 'reactflow';
-import type { WorkflowExecutionStepEvent, WorkflowExecutionCompletedEvent } from '@repo/types';
+import type { WorkflowExecutionStepEvent, WorkflowExecutionCompletedEvent, WorkflowDebugMessageEvent } from '@repo/types';
 import { apiClient } from '@/lib/api-client';
 
 /**
@@ -73,6 +73,9 @@ export interface WorkflowState {
   executionHistoryTotal: number;
   executionHistoryLoading: boolean;
 
+  // Debug messages from action:debug nodes
+  debugMessages: WorkflowDebugMessageEvent[];
+
   // Debug panel
   isDebugPanelOpen: boolean;
 }
@@ -111,6 +114,8 @@ const initialState: WorkflowState = {
   executionHistory: [],
   executionHistoryTotal: 0,
   executionHistoryLoading: false,
+
+  debugMessages: [],
 
   isDebugPanelOpen: false,
 };
@@ -208,6 +213,22 @@ export const loadExecutionDetail = createAsyncThunk<any, string>(
   async (executionId: string) => {
     const response = await apiClient.get<any>(`/executions/${executionId}`);
     return response.data;
+  }
+);
+
+// Cancel a running workflow execution
+export const cancelExecution = createAsyncThunk<
+  void,
+  { workflowId: string; executionId: string },
+  { rejectValue: string }
+>(
+  'workflow/cancelExecution',
+  async ({ workflowId, executionId }, { rejectWithValue }) => {
+    try {
+      await apiClient.post(`/workflows/${workflowId}/executions/${executionId}/cancel`, {});
+    } catch (err: any) {
+      return rejectWithValue(err.message || 'Failed to cancel execution');
+    }
   }
 );
 
@@ -428,6 +449,20 @@ export const workflowSlice = createSlice({
       state.syncStatus = 'saved';
     },
 
+    // Add debug message from action:debug node
+    addDebugMessage: (state, action: PayloadAction<WorkflowDebugMessageEvent>) => {
+      state.debugMessages.push(action.payload);
+      // Keep only last 200 messages
+      if (state.debugMessages.length > 200) {
+        state.debugMessages = state.debugMessages.slice(-200);
+      }
+    },
+
+    // Clear debug messages
+    clearDebugMessages: state => {
+      state.debugMessages = [];
+    },
+
     // Toggle debug panel
     toggleDebugPanel: state => {
       state.isDebugPanelOpen = !state.isDebugPanelOpen;
@@ -571,6 +606,8 @@ export const {
   startExecutionStream,
   completeExecutionStream,
   clearExecutionLog,
+  addDebugMessage,
+  clearDebugMessages,
   markAsSaved,
   toggleDebugPanel,
 } = workflowSlice.actions;

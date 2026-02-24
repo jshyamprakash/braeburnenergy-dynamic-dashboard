@@ -271,6 +271,7 @@ export class WorkflowController {
       }
 
       // Execute workflow (async)
+      // bypassEnabled=true: manual test runs should work regardless of isEnabled state
       const executionId = await this.engineService.execute(
         workflowId,
         {
@@ -278,7 +279,8 @@ export class WorkflowController {
           source: 'api',
           data: inputData || {},
         },
-        DEFAULT_USER_ID
+        DEFAULT_USER_ID,
+        true
       );
 
       // Return 202 Accepted (execution in progress)
@@ -371,6 +373,39 @@ export class WorkflowController {
       }
 
       request.log.error(error, 'Error disabling workflow');
+      return reply.code(500).send({
+        success: false,
+        error: 'Internal server error',
+      });
+    }
+  }
+
+  /**
+   * POST /workflows/:workflowId/executions/:executionId/cancel
+   * Cancel a running workflow execution
+   */
+  async cancelExecution(
+    request: FastifyRequest<{ Params: { workflowId: string; executionId: string } }>,
+    reply: FastifyReply
+  ) {
+    try {
+      const { workflowId, executionId } = request.params;
+
+      const result = await this.engineService.cancelExecution(executionId);
+
+      if (!result) {
+        return reply.code(404).send({
+          success: false,
+          error: 'Execution not found or already completed',
+        });
+      }
+
+      return reply.code(200).send({
+        success: true,
+        data: { workflowId, executionId, status: 'cancelled' },
+      });
+    } catch (error: any) {
+      request.log.error(error, 'Error cancelling execution');
       return reply.code(500).send({
         success: false,
         error: 'Internal server error',

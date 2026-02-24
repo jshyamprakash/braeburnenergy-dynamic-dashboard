@@ -31,6 +31,7 @@ export interface DeviceState {
   id: string;
   deviceId: string;  // ULID reference
   data: Record<string, any>;
+  derived?: Record<string, any>; // Workflow-derived values (ADR-028); absent when no workflow has run
   timestamp: string | Date;
   metadata?: {
     orgId?: string;
@@ -169,7 +170,7 @@ export type NodeType =
   | 'condition:comparison' | 'condition:threshold' | 'condition:ifElse'
   | 'condition:timeBased' | 'condition:deviceStatus'
   | 'action:sendNotification' | 'action:updateDevice' | 'action:createAlarm'
-  | 'action:callWebhook' | 'action:logMessage' | 'action:updateVariable'
+  | 'action:callWebhook' | 'action:logMessage' | 'action:updateVariable' | 'action:debug'
   | 'transform:mathOperation' | 'transform:stringOperation'
   | 'transform:aggregation' | 'transform:dataMapping'
   | 'data:modbusRead' | 'data:modbusWrite' | 'data:queryDeviceStates'
@@ -260,6 +261,7 @@ export interface WorkflowExecutionStepEvent {
   error?: string;
   duration?: number;
   timestamp?: Date | string;
+  notes?: string;
 }
 
 /**
@@ -277,4 +279,19 @@ export interface WorkflowExecutionCompletedEvent {
     nodeId: string;
   };
   timestamp?: Date | string;
+}
+
+/**
+ * Real-time debug message from action:debug node
+ */
+export interface WorkflowDebugMessageEvent {
+  workflowId: string;
+  executionId: string;
+  orgId: string;
+  nodeId: string;
+  nodeLabel: string;
+  level: string;
+  message: string;
+  rawData: any;
+  timestamp: string;
 }
