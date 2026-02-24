@@ -20,6 +20,13 @@ export interface NodeExecutionResult {
     data: any;
     nodeLabel: string;
   };
+  /** When set, the engine broadcasts a device:state update via WebSocket */
+  broadcastState?: {
+    deviceId: string;
+    data: Record<string, any>;
+    derived: Record<string, any>;
+    timestamp: Date | string;
+  };
 }
 
 /**
@@ -669,15 +676,18 @@ export class WorkflowNodeHandlers {
       return { output: context.currentData };
     }
 
-    // Extract timestamp for a time-series-friendly filter (preferred over _id for TS collections)
     const stateTimestamp =
       context.trigger?.stateData?.timestamp ??
       context.currentData?.stateData?.timestamp;
+    const orgId =
+      context.trigger?.stateData?.orgId ??
+      context.currentData?.stateData?.orgId ??
+      'aaaaaaaaaaaaaaaaaaaaaaaa';
 
     let patched = false;
     let patchError: string | undefined;
     try {
-      patched = await deviceStateService.patchData(deviceId, stateId, patch, stateTimestamp);
+      patched = await deviceStateService.upsertDerived(deviceId, stateId, stateTimestamp ?? new Date(), orgId, patch);
     } catch (err: any) {
       patchError = err?.message || String(err);
     }
@@ -692,10 +702,22 @@ export class WorkflowNodeHandlers {
           ...(patchError ? { error: patchError } : {}),
         },
       },
+      // On success, signal the engine to broadcast a device:state WebSocket update
+      // so dashboards see derived values in real-time.
+      ...(patched && stateTimestamp
+        ? {
+            broadcastState: {
+              deviceId,
+              data: {},
+              derived: patch,
+              timestamp: stateTimestamp,
+            },
+          }
+        : {}),
       ...(patchError
-        ? { notes: `⚠️ patchData failed: ${patchError}` }
+        ? { notes: `⚠️ upsertDerived failed: ${patchError}` }
         : !patched
-          ? { notes: `ℹ️ patchData: no document matched stateId=${stateId} (modifiedCount=0)` }
+          ? { notes: `ℹ️ upsertDerived: no document created for stateId=${stateId}` }
           : {}),
     };
   }

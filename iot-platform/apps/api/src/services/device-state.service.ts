@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { DeviceState } from '../models/device-state.model';
+import { DeviceDerivedState } from '../models/device-derived-state.model';
 import type {
   CreateDeviceStateDTO,
   BulkCreateDeviceStatesDTO,
@@ -118,9 +119,15 @@ export class DeviceStateService {
    * Get latest state for a device
    */
   async getLatest(deviceId: string) {
-    const state = await DeviceState.findOne({ 'metadata.deviceId': deviceId })
-      .sort({ timestamp: -1 })
-      .lean() as any;
+    const [state, derivedDoc] = await Promise.all([
+      DeviceState.findOne({ 'metadata.deviceId': deviceId })
+        .sort({ timestamp: -1 })
+        .lean() as any,
+      DeviceDerivedState.findOne({ deviceId })
+        .sort({ timestamp: -1 })
+        .select('derived')
+        .lean() as any,
+    ]);
 
     if (!state) return null;
 
@@ -128,7 +135,7 @@ export class DeviceStateService {
       id: state._id,
       deviceId: state.metadata.deviceId,
       data: state.data,
-      derived: (state as any).derived,
+      derived: derivedDoc?.derived ?? undefined,
       timestamp: state.timestamp,
     };
   }
@@ -326,14 +333,43 @@ export class DeviceStateService {
   }
 
   /**
-   * Patch a DeviceState's derived sub-document with workflow-computed values (ADR-028)
-   * Writes exclusively to `derived.*` — raw `data` is immutable after ingest.
-   * Used by action:writeDeviceState workflow node.
-   *
-   * @param timestamp - Optional ISO timestamp of the state document for a more reliable
-   *   time-series filter.  When provided the query uses { metadata.deviceId, timestamp }
-   *   which is the canonical filter for MongoDB time series collections.  Falls back to
-   *   the `_id`-based filter when timestamp is not supplied (e.g. HTTP PATCH endpoint).
+   * Upsert workflow-derived values into the device_derived_states collection.
+   * This is a regular (non-time-series) collection, so standard updateOne/upsert works.
+   * Called by action:writeDeviceState; patchData now delegates here.
+   */
+  async upsertDerived(
+    deviceId: string,
+    stateId: string,
+    timestamp: Date | string,
+    orgId: string,
+    patch: Record<string, any>
+  ): Promise<boolean> {
+    const setFields: Record<string, any> = {};
+    for (const [key, value] of Object.entries(patch)) {
+      setFields[`derived.${key}`] = value;
+    }
+
+    const result = await DeviceDerivedState.updateOne(
+      { deviceId, stateId },
+      {
+        $set: setFields,
+        $setOnInsert: {
+          deviceId,
+          stateId,
+          timestamp: new Date(timestamp),
+          orgId: new mongoose.Types.ObjectId(orgId),
+        },
+      },
+      { upsert: true }
+    );
+
+    return result.modifiedCount > 0 || (result.upsertedCount ?? 0) > 0;
+  }
+
+  /**
+   * Patch derived values for a device state (ADR-028).
+   * Delegates to upsertDerived — stores in device_derived_states (regular collection)
+   * rather than the time series collection, which only allows metaField-based updates.
    */
   async patchData(
     deviceId: string,
@@ -341,32 +377,14 @@ export class DeviceStateService {
     patch: Record<string, any>,
     timestamp?: Date | string
   ): Promise<boolean> {
-    const setFields: Record<string, any> = {};
-    for (const [key, value] of Object.entries(patch)) {
-      setFields[`derived.${key}`] = value;
-    }
-
-    // Prefer timestamp-based filter for time series collections (MongoDB requires metaField
-    // or timeField in the filter for reliable updates on time series collections).
-    const filter = timestamp
-      ? { 'metadata.deviceId': deviceId, timestamp: new Date(timestamp) }
-      : { _id: new mongoose.Types.ObjectId(stateId), 'metadata.deviceId': deviceId };
-
-    // Time series collections only support updateMany (not updateOne).
-    // strict: false lets Mongoose skip schema-path validation for derived.* sub-paths.
-    const result = await DeviceState.updateMany(filter, { $set: setFields }, { strict: false });
-
-    // If timestamp filter found nothing, fall back to _id (defensive)
-    if (timestamp && result.modifiedCount === 0) {
-      const fallback = await DeviceState.updateMany(
-        { _id: new mongoose.Types.ObjectId(stateId), 'metadata.deviceId': deviceId },
-        { $set: setFields },
-        { strict: false }
-      );
-      return fallback.modifiedCount > 0;
-    }
-
-    return result.modifiedCount > 0;
+    const DEFAULT_ORG_ID = 'aaaaaaaaaaaaaaaaaaaaaaaa';
+    return this.upsertDerived(
+      deviceId,
+      stateId,
+      timestamp ?? new Date(),
+      DEFAULT_ORG_ID,
+      patch
+    );
   }
 
   /**

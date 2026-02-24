@@ -8,7 +8,7 @@ import {
 import { Workflow, type WorkflowNode, type WorkflowEdge } from '../models/workflow.model';
 import { WorkflowService } from './workflow.service';
 import { WorkflowNodeHandlers, resolveExpression } from './workflow-node-handlers.service';
-import { broadcastWorkflowExecutionStep, broadcastWorkflowExecutionCompleted, broadcastWorkflowDebugMessage } from '../websocket/server';
+import { broadcastWorkflowExecutionStep, broadcastWorkflowExecutionCompleted, broadcastWorkflowDebugMessage, broadcastDeviceState } from '../websocket/server';
 import type { QueryExecutionsDTO } from '../schemas/workflow.schema';
 
 /**
@@ -292,6 +292,16 @@ export class WorkflowEngineService {
           message: result.debugMessage.message,
           rawData: result.debugMessage.data,
           timestamp: new Date().toISOString(),
+        });
+      }
+
+      // Broadcast device state update if writeDeviceState wrote derived values
+      if (result.broadcastState && this.io) {
+        broadcastDeviceState(this.io, {
+          deviceId: result.broadcastState.deviceId,
+          data: result.broadcastState.data,
+          derived: result.broadcastState.derived,
+          timestamp: new Date(result.broadcastState.timestamp),
         });
       }
 
