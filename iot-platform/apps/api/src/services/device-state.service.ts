@@ -352,12 +352,13 @@ export class DeviceStateService {
       ? { 'metadata.deviceId': deviceId, timestamp: new Date(timestamp) }
       : { _id: new mongoose.Types.ObjectId(stateId), 'metadata.deviceId': deviceId };
 
-    // strict: false lets Mongoose skip schema-path validation for derived.* sub-paths
-    const result = await DeviceState.updateOne(filter, { $set: setFields }, { strict: false });
+    // Time series collections only support updateMany (not updateOne).
+    // strict: false lets Mongoose skip schema-path validation for derived.* sub-paths.
+    const result = await DeviceState.updateMany(filter, { $set: setFields }, { strict: false });
 
     // If timestamp filter found nothing, fall back to _id (defensive)
     if (timestamp && result.modifiedCount === 0) {
-      const fallback = await DeviceState.updateOne(
+      const fallback = await DeviceState.updateMany(
         { _id: new mongoose.Types.ObjectId(stateId), 'metadata.deviceId': deviceId },
         { $set: setFields },
         { strict: false }
