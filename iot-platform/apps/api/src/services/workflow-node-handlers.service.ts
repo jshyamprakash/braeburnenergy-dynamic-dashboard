@@ -669,13 +669,34 @@ export class WorkflowNodeHandlers {
       return { output: context.currentData };
     }
 
-    const patched = await deviceStateService.patchData(deviceId, stateId, patch);
+    // Extract timestamp for a time-series-friendly filter (preferred over _id for TS collections)
+    const stateTimestamp =
+      context.trigger?.stateData?.timestamp ??
+      context.currentData?.stateData?.timestamp;
+
+    let patched = false;
+    let patchError: string | undefined;
+    try {
+      patched = await deviceStateService.patchData(deviceId, stateId, patch, stateTimestamp);
+    } catch (err: any) {
+      patchError = err?.message || String(err);
+    }
 
     return {
       output: {
         ...context.currentData,
-        writeDeviceStateResult: { patched, stateId, keys: Object.keys(patch) },
+        writeDeviceStateResult: {
+          patched,
+          stateId,
+          keys: Object.keys(patch),
+          ...(patchError ? { error: patchError } : {}),
+        },
       },
+      ...(patchError
+        ? { notes: `⚠️ patchData failed: ${patchError}` }
+        : !patched
+          ? { notes: `ℹ️ patchData: no document matched stateId=${stateId} (modifiedCount=0)` }
+          : {}),
     };
   }
 

@@ -220,6 +220,11 @@ export default function ContextDebugPanel({
                           {step.notes}
                         </div>
                       )}
+                      {step.status === 'failed' && (step as any).error && (
+                        <div className="mb-2 px-2 py-1.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-xs font-mono text-red-800 dark:text-red-300 break-all">
+                          <span className="font-bold">Error: </span>{(step as any).error}
+                        </div>
+                      )}
                       <div className="text-xs">
                         {step.output ? (
                           <pre className="font-mono text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap break-words">

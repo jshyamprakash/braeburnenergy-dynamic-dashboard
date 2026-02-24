@@ -329,21 +329,41 @@ export class DeviceStateService {
    * Patch a DeviceState's derived sub-document with workflow-computed values (ADR-028)
    * Writes exclusively to `derived.*` — raw `data` is immutable after ingest.
    * Used by action:writeDeviceState workflow node.
+   *
+   * @param timestamp - Optional ISO timestamp of the state document for a more reliable
+   *   time-series filter.  When provided the query uses { metadata.deviceId, timestamp }
+   *   which is the canonical filter for MongoDB time series collections.  Falls back to
+   *   the `_id`-based filter when timestamp is not supplied (e.g. HTTP PATCH endpoint).
    */
   async patchData(
     deviceId: string,
     stateId: string,
-    patch: Record<string, any>
+    patch: Record<string, any>,
+    timestamp?: Date | string
   ): Promise<boolean> {
     const setFields: Record<string, any> = {};
     for (const [key, value] of Object.entries(patch)) {
       setFields[`derived.${key}`] = value;
     }
 
-    const result = await DeviceState.updateOne(
-      { _id: new mongoose.Types.ObjectId(stateId), 'metadata.deviceId': deviceId },
-      { $set: setFields }
-    );
+    // Prefer timestamp-based filter for time series collections (MongoDB requires metaField
+    // or timeField in the filter for reliable updates on time series collections).
+    const filter = timestamp
+      ? { 'metadata.deviceId': deviceId, timestamp: new Date(timestamp) }
+      : { _id: new mongoose.Types.ObjectId(stateId), 'metadata.deviceId': deviceId };
+
+    // strict: false lets Mongoose skip schema-path validation for derived.* sub-paths
+    const result = await DeviceState.updateOne(filter, { $set: setFields }, { strict: false });
+
+    // If timestamp filter found nothing, fall back to _id (defensive)
+    if (timestamp && result.modifiedCount === 0) {
+      const fallback = await DeviceState.updateOne(
+        { _id: new mongoose.Types.ObjectId(stateId), 'metadata.deviceId': deviceId },
+        { $set: setFields },
+        { strict: false }
+      );
+      return fallback.modifiedCount > 0;
+    }
 
     return result.modifiedCount > 0;
   }
