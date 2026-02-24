@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/lib/store';
-import { loadWorkflow, saveWorkflow, resetWorkflow, executeWorkflow, removeNode, addExecutionLogEntry, completeExecutionStream, clearExecutionLog, setNodes, setEdges, updateMetadata, addNode, selectNode, toggleDebugPanel, addDebugMessage, cancelExecution } from '@/lib/store/slices/workflowSlice';
+import { loadWorkflow, saveWorkflow, resetWorkflow, executeWorkflow, removeNode, addExecutionLogEntry, completeExecutionStream, clearExecutionLog, setNodes, setEdges, updateMetadata, addNode, selectNode, toggleDebugPanel, addDebugMessage, cancelExecution, clearDebugMessages } from '@/lib/store/slices/workflowSlice';
 import { useWorkflowExecutionUpdates } from '@/lib/hooks/useWebSocket';
 import WorkflowCanvas from '@/components/workflow/WorkflowCanvas';
 import NodePalette from '@/components/workflow/NodePalette';
@@ -447,6 +447,7 @@ function WorkflowBuilderPage() {
       <ContextDebugPanel
         isOpen={isDebugPanelOpen}
         onClose={() => dispatch(toggleDebugPanel())}
+        onClearDebug={() => dispatch(clearDebugMessages())}
         executionLog={executionLog}
         executionStatus={executionStatus}
         nodes={nodes}

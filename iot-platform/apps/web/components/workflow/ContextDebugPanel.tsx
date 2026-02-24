@@ -6,6 +6,7 @@ import type { WorkflowExecutionStepEvent, WorkflowDebugMessageEvent } from '@rep
 interface ContextDebugPanelProps {
   isOpen: boolean;
   onClose: () => void;
+  onClearDebug?: () => void;
   executionLog: WorkflowExecutionStepEvent[];
   executionStatus: 'idle' | 'running' | 'completed' | 'failed';
   nodes: any[];
@@ -19,6 +20,7 @@ interface ContextDebugPanelProps {
 export default function ContextDebugPanel({
   isOpen,
   onClose,
+  onClearDebug,
   executionLog,
   executionStatus,
   nodes,
@@ -62,25 +64,41 @@ export default function ContextDebugPanel({
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-0 px-4 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
-        {['debug', 'steps', 'variables', 'tester'].map(tab => (
+      <div className="flex items-center gap-0 px-4 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex flex-1">
+          {['debug', 'steps', 'variables', 'tester'].map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab as any)}
+              className={`px-3 py-2 text-xs font-medium transition-colors relative ${
+                activeTab === tab
+                  ? 'border-b-2 border-purple-600 text-purple-600 dark:text-purple-400'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+              }`}
+            >
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              {tab === 'debug' && debugMessages.length > 0 && (
+                <span className="ml-1 px-1 py-0.5 rounded-full text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">
+                  {debugMessages.length}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Clear button — only on Debug tab with messages */}
+        {activeTab === 'debug' && debugMessages.length > 0 && onClearDebug && (
           <button
-            key={tab}
-            onClick={() => setActiveTab(tab as any)}
-            className={`px-3 py-2 text-xs font-medium transition-colors relative ${
-              activeTab === tab
-                ? 'border-b-2 border-purple-600 text-purple-600 dark:text-purple-400'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-            }`}
+            onClick={onClearDebug}
+            className="flex items-center gap-1 px-2 py-1 text-xs text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+            title="Clear console"
           >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            {tab === 'debug' && debugMessages.length > 0 && (
-              <span className="ml-1 px-1 py-0.5 rounded-full text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">
-                {debugMessages.length}
-              </span>
-            )}
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            Clear
           </button>
-        ))}
+        )}
       </div>
 
       {/* Content */}
@@ -100,7 +118,7 @@ export default function ContextDebugPanel({
                 <p className="text-xs mt-1 text-gray-400">Add an <strong>action:debug</strong> node and connect it to see live output here.</p>
               </div>
             ) : (
-              debugMessages.map((msg, idx) => (
+              [...debugMessages].reverse().map((msg, idx) => (
                 <div key={idx} className="font-mono text-xs border border-gray-200 dark:border-gray-700 rounded overflow-hidden">
                   <div className={`flex items-center gap-2 px-2 py-1 ${
                     msg.level === 'ERROR' ? 'bg-red-50 dark:bg-red-900/20' :

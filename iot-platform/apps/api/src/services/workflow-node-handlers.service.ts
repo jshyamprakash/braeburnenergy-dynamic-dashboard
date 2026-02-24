@@ -402,8 +402,10 @@ export class WorkflowNodeHandlers {
   private async executeActionDebug(config: any, context: any, nodeLabel?: string): Promise<NodeExecutionResult> {
     const { messageTemplate, level = 'DEBUG' } = config;
 
+    // Merge currentData into root so {{trigger.value}} and {{computed.x}} both resolve
+    const resolveCtx = { ...context.currentData, ...context };
     const resolvedMessage = messageTemplate
-      ? this.interpolateString(messageTemplate, context.currentData)
+      ? this.interpolateString(messageTemplate, resolveCtx)
       : JSON.stringify(context.currentData, null, 2);
 
     // Will be captured by engine and emitted as workflow:debug:message WebSocket event
@@ -638,12 +640,18 @@ export class WorkflowNodeHandlers {
       throw new Error('action:writeDeviceState requires stateId and deviceId in trigger context');
     }
 
+    // Build a flat resolution context so both {{trigger.value}} and {{computed.temp_f}} work:
+    //   context.currentData holds node outputs (e.g. computed, value, stateId)
+    //   context.trigger / context.variables are top-level keys
+    // Spread currentData first so explicit top-level keys win on collision.
+    const resolveCtx = { ...context.currentData, ...context };
+
     // Resolve each mapping expression
     const patch: Record<string, any> = {};
     for (const mapping of mappings) {
       const { key, expression } = mapping;
       if (!key) continue;
-      const resolved = resolveExpression(expression, context);
+      const resolved = resolveExpression(expression, resolveCtx);
       // Cast value using device attributes schema if available
       const attrType = context.deviceAttributes?.[key];
       patch[key] = castValue(resolved, attrType);

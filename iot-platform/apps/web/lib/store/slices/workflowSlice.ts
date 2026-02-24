@@ -133,6 +133,18 @@ export const loadWorkflow = createAsyncThunk<Workflow, string>(
   }
 );
 
+// Maps semantic category prefix → React Flow visual node type.
+// Matches the visualType assignments in NodePalette.tsx.
+// Categories whose prefix differs from their visual type must be listed here explicitly.
+const SEMANTIC_TO_VISUAL_TYPE: Record<string, string> = {
+  trigger: 'trigger',
+  condition: 'condition',
+  action: 'action',
+  transform: 'transform',
+  data: 'action',     // data:modbusRead / data:queryDeviceStates render as ActionNode (blue)
+  logic: 'transform', // logic:function renders as TransformNode (purple)
+};
+
 // Helper: transform React Flow nodes to backend format
 // React Flow nodes use visual type ('trigger') + data.nodeType for semantic type ('trigger:manual')
 // Backend expects type='trigger:manual' and data without nodeType/executionStatus
@@ -485,7 +497,11 @@ export const workflowSlice = createSlice({
       // backend stores type='trigger:manual', React Flow renders by type='trigger'
       // Semantic type is stored in data.nodeType for the workflow engine
       state.nodes = (action.payload.nodes || []).map((node: any) => {
-        const visualType = node.type.split(':')[0]; // 'trigger:manual' → 'trigger'
+        // Derive visual type from the semantic category prefix using the palette map.
+        // e.g. 'logic:function' → 'transform', 'data:modbusRead' → 'action'
+        // Falls back to the raw prefix for forward-compatibility with unknown types.
+        const categoryPrefix = node.type.split(':')[0];
+        const visualType = SEMANTIC_TO_VISUAL_TYPE[categoryPrefix] ?? categoryPrefix;
         return {
           ...node,
           type: visualType,

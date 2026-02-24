@@ -22,8 +22,8 @@ export class WorkflowService {
   async create(orgId: string, userId: string, data: CreateWorkflowDTO) {
     const workflowId = ulid();
 
-    // Validate workflow structure
-    const validationErrors = this.validateWorkflow(data.nodes, data.edges || []);
+    // Validate workflow structure (lenient on create — user hasn't connected nodes yet)
+    const validationErrors = this.validateWorkflow(data.nodes, data.edges || [], { strict: false });
     if (validationErrors.length > 0) {
       throw new Error(`Workflow validation failed: ${validationErrors.join(', ')}`);
     }
@@ -85,7 +85,10 @@ export class WorkflowService {
       const newNodes = data.nodes || existing.nodes;
       const newEdges = data.edges !== undefined ? data.edges : existing.edges;
 
-      const validationErrors = this.validateWorkflow(newNodes, newEdges);
+      // strict=true only when deploying (isEnabled: true); draft saves are lenient so
+      // users can add nodes and connect them without auto-save rejecting mid-build.
+      const isDeploying = data.isEnabled === true;
+      const validationErrors = this.validateWorkflow(newNodes, newEdges, { strict: isDeploying });
       if (validationErrors.length > 0) {
         throw new Error(`Workflow validation failed: ${validationErrors.join(', ')}`);
       }
@@ -309,30 +312,35 @@ export class WorkflowService {
   /**
    * Validate workflow structure
    * Returns array of error messages (empty if valid)
+   *
+   * strict=false (draft save): only checks trigger presence and dangling edge references.
+   * strict=true  (deploy):     also checks for orphaned nodes and cycles.
    */
-  validateWorkflow(nodes: WorkflowNode[], edges: WorkflowEdge[]): string[] {
+  validateWorkflow(nodes: WorkflowNode[], edges: WorkflowEdge[], options: { strict?: boolean } = {}): string[] {
     const errors: string[] = [];
+    const strict = options.strict ?? true;
 
-    // 1. Must have at least one trigger node
+    // 1. Must have at least one trigger node (always enforced)
     const triggerNodes = nodes.filter(n => n.type.startsWith('trigger:'));
     if (triggerNodes.length === 0) {
       errors.push('Workflow must have at least one trigger node');
     }
 
-    // 2. Check for orphaned nodes (except for single-node workflows)
-    if (nodes.length > 1) {
+    // 2. Check for orphaned nodes — deploy-time only
+    //    During draft saves users are still connecting nodes; skip this check.
+    if (strict && nodes.length > 1) {
       const orphanedNodes = this.findOrphanedNodes(nodes, edges);
       if (orphanedNodes.length > 0) {
         errors.push(`Orphaned nodes found: ${orphanedNodes.map(n => n.id).join(', ')}`);
       }
     }
 
-    // 3. Check for cycles
-    if (this.hasCycle(nodes, edges)) {
+    // 3. Check for cycles — deploy-time only
+    if (strict && this.hasCycle(nodes, edges)) {
       errors.push('Workflow contains cycles');
     }
 
-    // 4. Validate edge connections exist
+    // 4. Validate edge connections exist (always — dangling edges are always wrong)
     for (const edge of edges) {
       const sourceExists = nodes.some(n => n.id === edge.source);
       const targetExists = nodes.some(n => n.id === edge.target);
