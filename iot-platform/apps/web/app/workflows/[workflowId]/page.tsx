@@ -337,6 +337,7 @@ function WorkflowBuilderPage() {
         isOpen={isExecutionModalOpen}
         isLoading={executionStatus === 'running'}
         workflowId={workflowId}
+        nodes={nodes}
         onClose={() => setIsExecutionModalOpen(false)}
         onExecute={handleExecute}
       />

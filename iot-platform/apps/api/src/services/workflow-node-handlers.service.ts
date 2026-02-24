@@ -637,7 +637,15 @@ export class WorkflowNodeHandlers {
     const deviceId = context.trigger?.deviceId ?? context.currentData?.deviceId;
 
     if (!stateId || !deviceId) {
-      throw new Error('action:writeDeviceState requires stateId and deviceId in trigger context');
+      // Manual test-run: no stateId available — skip the write, emit a visible warning note.
+      // Auto-triggered runs (device sends data) always have stateId from the dispatcher.
+      return {
+        output: {
+          ...context.currentData,
+          writeDeviceStateResult: { skipped: true, reason: 'no stateId/deviceId in context (manual test run)' },
+        },
+        notes: '⚠️ writeDeviceState skipped: stateId not in context. For live writes, trigger via auto (device sends data). For manual testing, include stateId in test input.',
+      };
     }
 
     // Build a flat resolution context so both {{trigger.value}} and {{computed.temp_f}} work:

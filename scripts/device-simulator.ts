@@ -303,7 +303,7 @@ class DeviceSimulator {
 // Fetch existing device attributes from API
 // ============================================================================
 
-async function fetchDeviceSensors(deviceId: string): Promise<SensorConfig[]> {
+async function fetchDeviceSensors(deviceId: string, skip: string[] = []): Promise<SensorConfig[]> {
   const response = await fetch(`${API_URL}/devices/${deviceId}`, {
     headers: { ...authHeader() },
   });
@@ -325,10 +325,14 @@ async function fetchDeviceSensors(deviceId: string): Promise<SensorConfig[]> {
     ];
   }
 
-  console.log(`📋 Device: ${name} (${deviceId.slice(-6)})`);
-  console.log(`   Fields: ${Object.entries(attrs).map(([k, v]) => `${k}:${v}`).join(', ')}`);
+  const skipped = Object.keys(attrs).filter(f => skip.includes(f));
+  const active  = Object.entries(attrs).filter(([f]) => !skip.includes(f));
 
-  return Object.entries(attrs).map(([field, type]) => ({
+  console.log(`📋 Device: ${name} (${deviceId.slice(-6)})`);
+  console.log(`   Fields: ${active.map(([k, v]) => `${k}:${v}`).join(', ')}`);
+  if (skipped.length) console.log(`   Skipped (derived): ${skipped.join(', ')}`);
+
+  return active.map(([field, type]) => ({
     field,
     type: (type as SensorConfig['type']),
     config: FIELD_DEFAULTS[field] ?? DEFAULT_NUMBER_CONFIG,
@@ -347,6 +351,7 @@ function parseArgs() {
     anomalies: false,
     deviceId: '',        // --deviceId <ULID> — target an existing device
     applicationId: '',   // --applicationId <ULID> — attach new devices to an application
+    skip: [] as string[], // --skip field1,field2 — exclude derived/computed fields
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -369,6 +374,9 @@ function parseArgs() {
       case '--applicationId':
         config.applicationId = args[++i];
         break;
+      case '--skip':
+        config.skip = args[++i].split(',').map(f => f.trim());
+        break;
       case '--help':
         console.log(`
 Device Simulator — stream realistic IoT data to the platform
@@ -382,6 +390,7 @@ Options:
   --anomalies             Inject random anomaly spikes
   --deviceId <ULID>       Stream to an EXISTING device (reads its attributes schema)
   --applicationId <ULID>  Link newly-created devices to this application
+  --skip <fields>         Comma-separated fields to exclude (e.g. workflow-derived fields)
 
 Examples:
   pnpm run simulate                                         # 3 new random devices
@@ -424,7 +433,7 @@ ${isTargeted
   if (isTargeted) {
     // --- Targeted mode: stream to a single existing device ---
     console.log(`🔍 Fetching device schema for ${config.deviceId.slice(-8)}...\n`);
-    const sensors = await fetchDeviceSensors(config.deviceId);
+    const sensors = await fetchDeviceSensors(config.deviceId, config.skip);
     simulators.push(new DeviceSimulator(config.deviceId, sensors, config.anomalies));
     console.log(`\n✅ Ready. Starting stream...\n`);
 
