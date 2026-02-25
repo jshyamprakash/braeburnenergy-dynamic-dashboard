@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef } from 'react';
 import { apiClient } from '@/lib/api-client';
 import { useWebSocket } from '@/lib/hooks/useWebSocket';
 import type { Device, DeviceState } from '@repo/types';
@@ -57,52 +57,86 @@ export function useDeviceStates(deviceId?: string, options?: { limit?: number })
 }
 
 /**
- * Real-time device state updates via WebSocket
- * Fetches the latest state on mount, then listens for real-time updates
+ * Real-time device state updates via WebSocket + React Query.
+ *
+ * React Query caches the initial fetch by queryKey so the gauge immediately
+ * shows data on remount (survives DashboardBuilder re-renders / StrictMode
+ * double-mount) instead of resetting to 0.
+ *
+ * WebSocket updates are written back into the same React Query cache so all
+ * consumers stay in sync without an extra useState.
  */
 export function useDeviceRealtime(deviceId?: string) {
-  const [latestState, setLatestState] = useState<DeviceState | null>(null);
+  const queryClient = useQueryClient();
+  const queryKey = ['device-latest-state', deviceId];
   const { socket, isConnected } = useWebSocket();
 
-  // Fetch the latest state on mount
-  useEffect(() => {
-    if (!deviceId) return;
+  // React Query handles the initial fetch + caching.
+  // staleTime keeps the cached value fresh for 30 s so remounts never flash 0.
+  const { data: latestState = null } = useQuery<DeviceState | null>({
+    queryKey,
+    queryFn: async () => {
+      const response = await apiClient.get<{ success: boolean; data: DeviceState }>(
+        `/devices/${deviceId}/states/latest`
+      );
+      const state = response.data?.data;
+      if (!state) return null;
+      return {
+        ...state,
+        data: { ...state.data, ...(state.derived ?? {}) },
+      };
+    },
+    enabled: !!deviceId,
+    staleTime: 30_000,
+    retry: false,
+  });
 
-    const fetchLatestState = async () => {
-      try {
-        const response = await apiClient.get<DeviceState[]>(
-          `/devices/${deviceId}/states?limit=1`
-        );
-        if (response.data && response.data.length > 0) {
-          setLatestState(response.data[0]);
-        }
-      } catch (error) {
-        console.error('Failed to fetch latest state:', error);
-      }
-    };
+  // Keep a ref to the latest known derived values so the WebSocket handler
+  // can access them without recreating the effect on every state change.
+  const derivedRef = useRef<Record<string, any>>({});
+  if (latestState?.derived) {
+    derivedRef.current = latestState.derived;
+  }
 
-    fetchLatestState();
-  }, [deviceId]);
-
-  // Listen for real-time WebSocket updates
+  // WebSocket: write real-time updates directly into the React Query cache.
   useEffect(() => {
     if (!socket || !isConnected || !deviceId) return;
 
-    // Subscribe to device updates (server expects 'subscribe:device' with deviceId string)
     socket.emit('subscribe:device', deviceId);
 
-    // Listen for state updates
-    // derived (ADR-028): merge derived over data so dashboard reads the most-processed value
-    const handleStateUpdate = (update: { deviceId: string; data: any; derived?: Record<string, any>; timestamp: Date }) => {
-      if (update.deviceId === deviceId) {
-        setLatestState({
-          id: `ws-${Date.now()}`,
-          deviceId: update.deviceId,
-          data: { ...update.data, ...(update.derived ?? {}) },
-          derived: update.derived,
-          timestamp: new Date(update.timestamp).toISOString(),
-        });
+    const handleStateUpdate = (update: {
+      deviceId: string;
+      data: any;
+      derived?: Record<string, any>;
+      timestamp: Date;
+    }) => {
+      if (update.deviceId !== deviceId) return;
+
+      const prev = queryClient.getQueryData<DeviceState | null>(queryKey);
+
+      // Preserve previously known derived values when a raw telemetry broadcast
+      // has no derived payload (normal simulator updates).
+      const derived = update.derived ?? derivedRef.current ?? {};
+      if (Object.keys(derived).length > 0) {
+        derivedRef.current = derived;
       }
+
+      // When the workflow engine broadcasts after writeDeviceState it sends
+      // data:{} (only derived values are known at that point). Preserve the
+      // previous raw sensor fields so temperature/humidity don't disappear.
+      const rawData = Object.keys(update.data ?? {}).length > 0
+        ? update.data
+        : (prev?.data ?? {});
+
+      const next: DeviceState = {
+        id: `ws-${Date.now()}`,
+        deviceId: update.deviceId,
+        data: { ...rawData, ...derived },
+        derived: Object.keys(derived).length > 0 ? derived : undefined,
+        timestamp: new Date(update.timestamp).toISOString(),
+      };
+
+      queryClient.setQueryData<DeviceState | null>(queryKey, next);
     };
 
     socket.on('device:state', handleStateUpdate);
@@ -111,7 +145,8 @@ export function useDeviceRealtime(deviceId?: string) {
       socket.off('device:state', handleStateUpdate);
       socket.emit('unsubscribe:device', deviceId);
     };
-  }, [socket, isConnected, deviceId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [socket, isConnected, deviceId, queryClient]);
 
   return latestState;
 }

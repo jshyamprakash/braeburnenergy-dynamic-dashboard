@@ -66,7 +66,9 @@ function castValue(value: any, type?: string): any {
   if (type === 'number') return Number(value);
   if (type === 'boolean') return Boolean(value);
   if (type === 'timestamp') return new Date(value).toISOString();
-  return String(value); // default: string
+  if (type === 'string') return String(value);
+  // No explicit type: preserve the native JS type (number stays number, etc.)
+  return value;
 }
 
 /**

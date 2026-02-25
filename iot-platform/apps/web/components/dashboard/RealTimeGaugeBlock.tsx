@@ -29,10 +29,15 @@ export function RealTimeGaugeBlock({
 }: RealTimeGaugeBlockProps) {
   const latestState = useDeviceRealtime(deviceId);
 
-  // Extract the specific field value from device state
+  // Extract field value: derived takes precedence over raw data (ADR-028).
+  // Use Number() to handle string-typed values (e.g. derived fields stored as "94.1").
   let currentValue = fallbackValue;
-  if (latestState && field && latestState.data && typeof latestState.data[field] === 'number') {
-    currentValue = latestState.data[field];
+  if (latestState && field) {
+    const raw = latestState.derived?.[field] ?? latestState.data?.[field];
+    if (raw != null) {
+      const coerced = Number(raw);
+      if (!isNaN(coerced)) currentValue = coerced;
+    }
   }
 
   return (
