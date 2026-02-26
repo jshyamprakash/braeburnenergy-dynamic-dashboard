@@ -2,6 +2,7 @@
 
 ## Completed
 
+- ADR-031 End-to-End Verification & Demo Hardening (all 13 tasks: seed script fixed, backend verified, simulator triggers workflows, derived state written to MongoDB, WebSocket broadcasts verified, frontend hooks correct)
 - Visual Workflow Editor Week 2: React Flow Canvas (nodes, edges, palette, list/builder pages)
 - Visual Workflow Editor Week 3.1: NodeConfigPanel (dynamic forms for 19 node types, tabbed UI, Redux sync)
 - Visual Workflow Editor Week 3.2: Auto-Save (1-second debounce, smart save logic, dirty state tracking)
