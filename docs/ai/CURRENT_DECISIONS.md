@@ -1,27 +1,33 @@
-# CURRENT_DECISIONS: ADR-031 Two-Collection Storage Split
+# CURRENT_DECISIONS: ADR-031 Verification Complete + Device Attributes Fix
 
-## What Changed
+## What Changed (E2E Verification & Seed Script Fix)
 
-**ADR-031 — Two-Collection Storage Split (supersedes ADR-030):**
-- `device_states` reverted to MongoDB time series collection (TTL 5yr, append-only).
-- `device_derived_states` restored as regular collection (unique index on deviceId).
-- `device_derived_states` schema: `{ deviceId, derived: {}, lastSeen: Date, sourceEventId? }`.
-- `DeviceDerivedStateService` re-created with `upsert()`, `getLatest()`, `getAllForOrg()`.
-- `DeviceStateService`: removed `upsertDerived()`, `patchData()`, `getDerived()`.
-- `workflow-node-handlers`: `writeDeviceState` validates keys against `device.attributes`, writes to `device_derived_states`.
-- ADR-030 superseded. Dashboard reads ONLY from `device_derived_states`.
+**ADR-031 End-to-End Verification:**
+- Backend: DeviceDerivedStateService, writeDeviceState handler, WebSocket broadcast all verified working
+- Database: device_derived_states collection populated with workflow output values (per-key $set upserts)
+- Simulator: Correctly triggered both Workflows A (STREETLIGHT) and B (OHT) on raw sensor field updates
+- Frontend: useDeviceRealtime hook merges derived data; RealTimeGaugeBlock reads derived with priority
 
-## Technical Implications
-- Raw sensor data (`device_states`) is immutable after ingest; no `derived` field.
-- Workflow outputs go to `device_derived_states.derived.*` via `findOneAndUpdate` with per-key `$set`.
-- `writeDeviceState` validates each mapping key against `device.attributes` before writing.
-- WebSocket broadcast emits derived values from `device_derived_states` after write.
-- Dashboard field picker resolves from `device.attributes`; display reads `device_derived_states`.
+**Seed Script Enhancement (Critical Fix):**
+- STREETLIGHT device.attributes now includes: phase_volt, freq, current_line, kwh_total, battery (input) + volt_deviation, freq_deviation, power_quality_status (output)
+- OHT device.attributes now includes: turbidity, ground_level, totalizer (input) + turbidity_status, water_quality_score, tank_status (output)
+- Simulator uses attributes to generate telemetry; writeDeviceState validates against attributes
+- Workflows auto-execute on raw field updates; derived values written to device_derived_states
 
-## Constraints
-1. Seed script must be re-run after this change (time series collection recreated).
-2. MongoDB does NOT support updateOne/updateMany on time series collections — use insertOne.
-3. `device_derived_states` upserted via per-key `$set` — never replace whole `derived` object.
-4. `writeDeviceState` rejects unknown keys (not in `device.attributes`) at runtime.
-5. MongoDB replica set required (time series, compliance, oplog).
-6. `stateData` in logic:function context is the full IDeviceState doc.
+## Technical Implications (Verified)
+- Raw sensor data (`device_states`) is immutable time series (append-only, TTL 5yr).
+- Workflow outputs (via writeDeviceState) go to `device_derived_states.derived.*` via per-key $set upserts.
+- Simulator generates telemetry using device.attributes (both input + output fields); workflows filter on input fields.
+- writeDeviceState validates keys against device.attributes (graceful skip if no attributes; rejects unknown keys if attributes exist).
+- WebSocket broadcasts merged derived+raw data; frontend useDeviceRealtime preserves derived values across updates.
+- RealTimeGaugeBlock reads `derived` field with priority; falls back to `data` for raw telemetry fields.
+
+## Constraints & Verified Requirements
+1. Device.attributes must include BOTH input sensor fields AND output derived fields.
+   - Input fields enable simulator to generate telemetry.
+   - Output fields enable writeDeviceState to validate derived keys.
+2. MongoDB replica set REQUIRED (time series, compliance, oplog).
+3. Per-key $set paths (`derived.${key}`) prevent whole-object replacement during concurrent updates.
+4. Seed script is idempotent (safe to re-run multiple times).
+5. Workflow auto-trigger dispatch runs fire-and-forget (no wait for execution completion).
+6. Dashboard must fetch from /devices/{id}/states/latest (includes derived in response).
