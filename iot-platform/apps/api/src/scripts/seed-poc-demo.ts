@@ -51,6 +51,25 @@ function makeGaugeBlock(
   };
 }
 
+function makeChartBlock(
+  id: string,
+  title: string,
+  deviceId: string,
+  field: string,
+  chartType: 'line' | 'area' | 'bar',
+  x: number,
+  y: number,
+  w = 6,
+  h = 6
+) {
+  return {
+    id,
+    type: 'chart' as const,
+    layouts: makeLayout(id, x, y, w, h),
+    config: { title, deviceId, field, chartType, showLegend: false, showGrid: true, smooth: true },
+  };
+}
+
 // ─── Main ────────────────────────────────────────────────────────────────────
 async function main() {
   console.log('🔌 Connecting to MongoDB...');
@@ -411,6 +430,12 @@ async function main() {
     makeGaugeBlock('oht-turbstat','Turbidity Status', oht, 'turbidity_status',     0,   2,   '',     10, 5),
     // ── OHT row 2 ────────────────────────────────────────────────────────────
     makeGaugeBlock('oht-tankstat','Tank Status',      oht, 'tank_status',          0,   2,   '',      0,10),
+    // ── STREETLIGHT Chart row (y=15) ──────────────────────────────────────────
+    makeChartBlock('sl-volt-trend',   'Phase Voltage Trend',  sl,  'phase_volt',          'line', 0, 15),
+    makeChartBlock('sl-freq-trend',   'Frequency Trend',      sl,  'freq',                'area', 6, 15),
+    // ── OHT Chart row (y=21) ──────────────────────────────────────────────────
+    makeChartBlock('oht-turb-trend',  'Turbidity Trend',      oht, 'turbidity',           'line', 0, 21),
+    makeChartBlock('oht-wq-trend',    'Water Quality Trend',  oht, 'water_quality_score', 'area', 6, 21),
   ];
 
   const layouts = {

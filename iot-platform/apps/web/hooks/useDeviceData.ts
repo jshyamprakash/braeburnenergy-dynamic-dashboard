@@ -5,6 +5,30 @@ import { useWebSocket } from '@/lib/hooks/useWebSocket';
 import type { Device, DeviceState } from '@repo/types';
 
 /**
+ * Compute time range boundaries (startTime, endTime) for a given range string.
+ * @param range - '1h' | '6h' | '24h'
+ * @returns Object with startTime and endTime Date objects
+ */
+export function computeTimeRange(range: '1h' | '6h' | '24h'): { startTime: Date; endTime: Date } {
+  const endTime = new Date();
+  const startTime = new Date(endTime);
+
+  switch (range) {
+    case '1h':
+      startTime.setHours(endTime.getHours() - 1);
+      break;
+    case '6h':
+      startTime.setHours(endTime.getHours() - 6);
+      break;
+    case '24h':
+      startTime.setDate(endTime.getDate() - 1);
+      break;
+  }
+
+  return { startTime, endTime };
+}
+
+/**
  * Fetch all devices
  */
 export function useDevices() {
@@ -36,13 +60,15 @@ export function useDevice(deviceId?: string) {
 /**
  * Fetch device states (historical data)
  */
-export function useDeviceStates(deviceId?: string, options?: { limit?: number }) {
+export function useDeviceStates(deviceId?: string, options?: { limit?: number; startTime?: Date; endTime?: Date }) {
   return useQuery<DeviceState[]>({
     queryKey: ['device-states', deviceId, options],
     queryFn: async () => {
       if (!deviceId) return [];
       const params = new URLSearchParams();
       if (options?.limit) params.append('limit', options.limit.toString());
+      if (options?.startTime) params.append('startTime', options.startTime.toISOString());
+      if (options?.endTime) params.append('endTime', options.endTime.toISOString());
 
       const response = await apiClient.get<DeviceState[]>(
         `/devices/${deviceId}/states?${params}`

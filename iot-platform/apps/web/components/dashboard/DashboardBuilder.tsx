@@ -433,6 +433,7 @@ export function DashboardBuilder({
           return (
             <RealTimeChartBlock
               deviceId={block.config.deviceId}
+              field={block.config.field}
               data={block.config.data || []}
               series={block.config.series || []}
               title={block.config.title || 'Chart'}
