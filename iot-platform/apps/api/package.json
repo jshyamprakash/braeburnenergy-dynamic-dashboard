@@ -8,6 +8,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "seed:admin": "tsx src/scripts/seed-admin.ts",
+    "seed:poc-demo": "tsx src/scripts/seed-poc-demo.ts",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",

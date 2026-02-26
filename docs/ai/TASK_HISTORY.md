@@ -95,6 +95,25 @@
 - POC Phase 2 Foundations (A+B+D) — Simulator: --deviceId targeted mode + --applicationId flag + correct tags/attributes schemas; DeviceForm attributes editor verified complete; workflow-templates.ts: added Device State Processor template (trigger:deviceStateChange → condition:comparison → action:writeDeviceState) with correct data.nodeType fields and wired edges
 - POC Demo UX Polish (5 tasks) — NodeConfigPanel device-select picker for deviceId fields; GaugeBlock fallback min??0; Device detail ULID copy + simulator command block; applicationId prop chain dashboard detail→DashboardBuilder→BlockConfigPanel with device filter; Application Detail POC Setup Guide banner (4-step checklist with green checkmarks)
 
+- Dashboard Derived State Display (ADR-029) — writeDeviceState persists to device_derived_states
+  (regular collection, works around MongoDB time series update restriction); castValue preserves
+  native JS types; useDeviceRealtime rewritten with React Query (no useState flash); WebSocket
+  handler merges raw sensor data + derived values across both broadcast types; RealTimeGaugeBlock
+  reads derived??data with Number() coercion; gauges show raw + workflow-computed fields stably.
+
+- POC Live Device Workflows + Dashboard (Streetlight + OHT) — logic:function handler updated to
+  expose context in vm sandbox and support `return {...}` style; executeActionCreateAlarm updated to
+  actually create AlarmInstance (find-or-create AlarmRule); seed script creates device tags, OHT
+  alarm rule (threshold > 4 NTU), Workflow A (Streetlight Power Quality Monitor: volt/freq deviation
+  + power_quality_status), Workflow B (OHT Water Quality Monitor: turb_status, water_quality_score,
+  tank_status with conditional alarm branch), and IOT Operations Dashboard (13 gauge blocks).
+
+- ADR-030: Derived State Migration (15/15 tasks COMPLETE) — device_states converted from MongoDB time
+  series collection to regular collection with TTL index (5-year EPA retention); derived sub-document
+  now stored in same document as raw sensor data; upsertDerived() rewritten to use per-key $set paths;
+  getLatest() simplified to single query; device_derived_states collection & DeviceDerivedState model
+  deleted; ARCH_SUMMARY.md and indexes updated; ADR-028 voided, ADR-029 superseded.
+
 ## In Progress
 
 (None)

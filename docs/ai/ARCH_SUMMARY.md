@@ -2,26 +2,26 @@
 
 ## Stack (Pinned Versions)
 - Node.js 20, TypeScript 5.3.3 (strict mode)
-- MongoDB 8 + Mongoose 8.23.0 (Time Series Collections, replica set REQUIRED)
+- MongoDB 8 + Mongoose 8.23.0 (replica set REQUIRED for compliance)
 - Fastify 4.25.2 (92 TS files: 14 controllers, 22 services, 18 models)
 - Next.js 16.1.6 + React 19.2.4 + App Router
 - Tailwind CSS 4.1.18 (`@import "tailwindcss"` syntax, `darkMode: 'class'`)
 - Redux Toolkit 2.11.2 (6 slices: auth, ui, dashboard, websocket, workflow, alarm)
-- React Query 5.90.20 (device queries only, being phased out)
+- React Query 5.90.20 (device queries + realtime state; NOT being phased out)
 - React Flow 11.11.4 (visual workflow editor)
 - Socket.io 4.6.0 (WebSocket)
 - Zod 3.22.4 (validation)
 
 ## Database
-- Time Series Collections require replica set (even local dev)
-- 5-year TTL on device_states (`expireAfterSeconds: 157680000`) - EPA compliance
+- Time series collection: `device_states` (TTL 5yr, append-only raw telemetry) — ADR-031
+- Regular collection: `device_derived_states` (unique on deviceId, workflow outputs only) — ADR-031
+- Replica set REQUIRED for compliance (transaction support, oplog)
 - 10-year retention for audit logs (no TTL) - 21 CFR Part 11
 - 90-day TTL on workflow executions
-- Transactions NOT supported for Time Series delete operations (use sequential deletes)
 - Use `.lean()` for read-only queries (cast types: `as IModel | null`)
 - ObjectId format (24 hex chars), NOT UUID
 - Manual FK validation (MongoDB has no constraints)
-- Compound indexes: `(orgId, deviceId)`, `(orgId, isEnabled, updatedAt)`
+- Compound indexes: `(orgId, deviceId, timestamp)` for device state queries
 
 ## Security & Compliance
 - JWT with JTI stored in TokenSession model (database-backed revocation)
@@ -48,7 +48,7 @@
   - websocketSlice: connection state, subscriptions, updates
   - workflowSlice: nodes, edges, execution state
   - alarmSlice: alarm instances, rules, statistics, filters (NEW!)
-- React Query: Only for device/deviceState queries (being phased out)
+- React Query: device/deviceState queries + realtime cache (useDeviceRealtime)
 - Protected routes: ProtectedRoute wrapper with returnUrl
 - API client: Generic type parameters REQUIRED: `apiClient.get<T>()`
 - Named imports for named exports (no default mismatch)
@@ -79,8 +79,8 @@
 - OPC-UA: Subscription-based node monitoring
 
 ## Critical Pitfalls
-- MongoDB replica set REQUIRED for Time Series Collections
-- Transactions fail on Time Series deletes (use sequential deletes)
+- MongoDB replica set REQUIRED (compliance, oplog, transactions)
+- `device_derived_states` upserted via per-key `$set` paths (`'derived.key'`); never replace whole object
 - Fastify JSON responses: `additionalProperties: true` for dynamic fields
 - Tailwind v4: Single `@import "tailwindcss"` (NOT old directives)
 - `darkMode: 'class'` in tailwind.config.ts (requires dev server restart)

@@ -4,6 +4,7 @@ import { ModbusGateway } from '../models/modbus-gateway.model';
 import { ModbusClientService } from './modbus-client.service';
 import { DeviceService } from './device.service';
 import { deviceStateService } from './device-state.service';
+import { deviceDerivedStateService } from './device-derived-state.service';
 import { modbusGatewayManager } from './modbus-gateway-manager.service';
 
 /**
@@ -334,20 +335,101 @@ export class WorkflowNodeHandlers {
   }
 
   private async executeActionCreateAlarm(config: any, context: any): Promise<NodeExecutionResult> {
-    const { deviceId, field, priority, message } = config;
+    // NodeConfigPanel uses `severity`; legacy config uses `priority`
+    const { severity, priority, message, alarmRuleId, deviceId: configDeviceId, field: configField } = config;
+    const resolvedPriority = ((severity || priority || 'MEDIUM') as string).toUpperCase();
 
-    // Create alarm instance (integrate with alarm service)
-    console.log(`[ALARM] Device: ${deviceId}, Field: ${field}, Priority: ${priority}, Message: ${message}`);
+    // Resolve template expressions in message
+    const resolveCtx = { ...context.currentData, ...context };
+    const resolvedMessage = this.interpolateString(message || 'Workflow alarm triggered', resolveCtx);
 
-    // TODO: Integrate with AlarmService to create AlarmInstance
+    // Derive device/field from config or trigger context
+    const deviceId = configDeviceId || context.trigger?.deviceId || context.currentData?.deviceId || 'unknown';
+    const field = configField || context.trigger?.field || context.currentData?.field || 'unknown';
+    const triggerValue = context.trigger?.value ?? context.currentData?.value ?? 0;
 
-    return {
-      output: {
-        ...context.currentData,
-        alarmCreated: true,
-        alarmPriority: priority,
-      },
-    };
+    try {
+      const { AlarmRule } = await import('../models/alarm-rule.model');
+      const { AlarmInstance } = await import('../models/alarm-instance.model');
+
+      // 1. Resolve alarm rule
+      let rule: any = null;
+      if (alarmRuleId) {
+        const { default: mongoose } = await import('mongoose');
+        if (mongoose.Types.ObjectId.isValid(alarmRuleId)) {
+          rule = await AlarmRule.findById(alarmRuleId).lean();
+        }
+      }
+      if (!rule) {
+        rule = await AlarmRule.findOne({ deviceId, field, isEnabled: true }).lean();
+      }
+      if (!rule) {
+        // Create a minimal on-the-fly rule so AlarmInstance has a valid reference
+        const safeTag = `WF-${deviceId.slice(-8)}-${field.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10)}`;
+        const newRule = new AlarmRule({
+          name: `Workflow: ${resolvedMessage.slice(0, 80)}`,
+          tagName: safeTag,
+          deviceId,
+          field,
+          conditionType: 'THRESHOLD',
+          operator: 'GREATER_THAN',
+          parameters: { threshold: 0 },
+          priority: resolvedPriority as any,
+          requiresAcknowledgment: true,
+          notificationChannels: ['websocket'],
+          isActive: true,
+          isEnabled: true,
+          isShelved: false,
+        });
+        rule = await newRule.save();
+      }
+
+      // 2. Create alarm instance
+      const alarm = new AlarmInstance({
+        alarmRuleId: rule._id,
+        tagName: rule.tagName,
+        deviceId,
+        field,
+        triggerValue,
+        triggerTimestamp: new Date(),
+        triggerStateId: context.trigger?.stateId || context.currentData?.stateId,
+        state: 'ACTIVE_UNACKED',
+        priority: resolvedPriority as any,
+        requiresAcknowledgment: true,
+        activeTimestamp: new Date(),
+        isShelved: false,
+        notificationsSent: [],
+        stateTransitions: [{
+          fromState: null,
+          toState: 'ACTIVE_UNACKED',
+          timestamp: new Date(),
+        }],
+      });
+      await alarm.save();
+
+      console.log(`[ALARM] Created [${resolvedPriority}] for device=${deviceId} field=${field}: ${resolvedMessage}`);
+
+      return {
+        output: {
+          ...context.currentData,
+          alarmCreated: true,
+          alarmId: alarm._id.toString(),
+          alarmPriority: resolvedPriority,
+          alarmMessage: resolvedMessage,
+        },
+        notes: `🚨 Alarm created [${resolvedPriority}]: ${resolvedMessage}`,
+      };
+    } catch (error: any) {
+      console.error(`[ALARM] Failed to create alarm:`, error.message);
+      return {
+        output: {
+          ...context.currentData,
+          alarmCreated: false,
+          alarmError: error.message,
+        },
+        notes: `⚠️ Failed to create alarm: ${error.message}`,
+      };
+    }
   }
 
   private async executeActionCallWebhook(config: any, context: any): Promise<NodeExecutionResult> {
@@ -615,12 +697,20 @@ export class WorkflowNodeHandlers {
   private async executeLogicFunction(config: any, context: any): Promise<NodeExecutionResult> {
     const { code, outputField = 'computed' } = config;
 
-    const sandbox = {
+    const sandbox: Record<string, any> = {
       data: { ...context.currentData },
+      context: { ...context },
       result: {} as Record<string, any>,
     };
 
-    vm.runInNewContext(code, sandbox, { timeout: 3000 });
+    // Wrap user code in a function so both `return {...}` and `result = {...}` work.
+    // The function expression is evaluated in the sandbox scope, so `data`, `context`,
+    // and `result` are all accessible as free variables.
+    const fn = vm.runInNewContext(`(function() { ${code} })`, sandbox, { timeout: 3000 });
+    const returnValue = fn();
+    if (returnValue !== undefined && typeof returnValue === 'object' && returnValue !== null) {
+      sandbox.result = returnValue;
+    }
 
     return {
       output: {
@@ -635,78 +725,98 @@ export class WorkflowNodeHandlers {
   // ==========================================================================
 
   /**
-   * Write structured key-value output back to the originating DeviceState document.
+   * Write structured key-value output to device_derived_states (ADR-031).
    * Config: { mappings: [{ key: string, expression: string }] }
-   * Context must contain trigger.stateId and trigger.deviceId
+   * Validates each key against device.attributes before writing.
+   * Writes to DeviceDerivedStateService, NOT to DeviceStateService.
    */
   private async executeActionWriteDeviceState(config: any, context: any): Promise<NodeExecutionResult> {
     const { mappings = [] } = config;
 
-    const stateId = context.trigger?.stateId ?? context.currentData?.stateId;
     const deviceId = context.trigger?.deviceId ?? context.currentData?.deviceId;
+    const stateId = context.trigger?.stateId ?? context.currentData?.stateId;
 
-    if (!stateId || !deviceId) {
-      // Manual test-run: no stateId available — skip the write, emit a visible warning note.
-      // Auto-triggered runs (device sends data) always have stateId from the dispatcher.
+    if (!deviceId) {
       return {
         output: {
           ...context.currentData,
-          writeDeviceStateResult: { skipped: true, reason: 'no stateId/deviceId in context (manual test run)' },
+          writeDeviceStateResult: { skipped: true, reason: 'no deviceId in context' },
         },
-        notes: '⚠️ writeDeviceState skipped: stateId not in context. For live writes, trigger via auto (device sends data). For manual testing, include stateId in test input.',
+        notes: '⚠️ writeDeviceState skipped: deviceId not in context.',
       };
     }
 
-    // Build a flat resolution context so both {{trigger.value}} and {{computed.temp_f}} work:
-    //   context.currentData holds node outputs (e.g. computed, value, stateId)
-    //   context.trigger / context.variables are top-level keys
-    // Spread currentData first so explicit top-level keys win on collision.
+    // Build a flat resolution context so both {{trigger.value}} and {{computed.temp_f}} work
     const resolveCtx = { ...context.currentData, ...context };
 
-    // Resolve each mapping expression
+    // Load device.attributes for validation
+    const DEFAULT_ORG_ID = 'aaaaaaaaaaaaaaaaaaaaaaaa';
+    let deviceAttributes: Record<string, string> = {};
+    try {
+      const device = await this.deviceService.getByDeviceId(DEFAULT_ORG_ID, deviceId);
+      deviceAttributes = (device?.attributes as Record<string, string>) ?? {};
+    } catch {
+      // If device lookup fails, allow write (graceful degradation)
+    }
+
+    // Resolve and validate each mapping
     const patch: Record<string, any> = {};
+    const rejectedKeys: string[] = [];
+
     for (const mapping of mappings) {
       const { key, expression } = mapping;
       if (!key) continue;
+
+      // Reject keys not in device.attributes (ADR-031)
+      if (Object.keys(deviceAttributes).length > 0 && !(key in deviceAttributes)) {
+        rejectedKeys.push(key);
+        continue;
+      }
+
       const resolved = resolveExpression(expression, resolveCtx);
-      // Cast value using device attributes schema if available
-      const attrType = context.deviceAttributes?.[key];
+      const attrType = deviceAttributes[key];
       patch[key] = castValue(resolved, attrType);
     }
 
-    if (Object.keys(patch).length === 0) {
-      return { output: context.currentData };
+    if (rejectedKeys.length > 0) {
+      console.warn(`[writeDeviceState] Rejected keys not in device.attributes: ${rejectedKeys.join(', ')}`);
     }
 
-    const stateTimestamp =
-      context.trigger?.stateData?.timestamp ??
-      context.currentData?.stateData?.timestamp;
-    const orgId =
-      context.trigger?.stateData?.orgId ??
-      context.currentData?.stateData?.orgId ??
-      'aaaaaaaaaaaaaaaaaaaaaaaa';
+    if (Object.keys(patch).length === 0) {
+      return {
+        output: { ...context.currentData, writeDeviceStateResult: { patched: false, rejectedKeys } },
+        notes: rejectedKeys.length > 0
+          ? `⚠️ writeDeviceState: all keys rejected (not in device.attributes): ${rejectedKeys.join(', ')}`
+          : 'ℹ️ writeDeviceState: no mappings to write',
+      };
+    }
 
     let patched = false;
     let patchError: string | undefined;
     try {
-      patched = await deviceStateService.upsertDerived(deviceId, stateId, stateTimestamp ?? new Date(), orgId, patch);
+      await deviceDerivedStateService.upsert(deviceId, patch, stateId);
+      patched = true;
     } catch (err: any) {
       patchError = err?.message || String(err);
     }
+
+    const stateTimestamp =
+      context.trigger?.stateData?.timestamp ??
+      context.currentData?.stateData?.timestamp ??
+      new Date();
 
     return {
       output: {
         ...context.currentData,
         writeDeviceStateResult: {
           patched,
-          stateId,
+          deviceId,
           keys: Object.keys(patch),
+          rejectedKeys,
           ...(patchError ? { error: patchError } : {}),
         },
       },
-      // On success, signal the engine to broadcast a device:state WebSocket update
-      // so dashboards see derived values in real-time.
-      ...(patched && stateTimestamp
+      ...(patched
         ? {
             broadcastState: {
               deviceId,
@@ -717,10 +827,12 @@ export class WorkflowNodeHandlers {
           }
         : {}),
       ...(patchError
-        ? { notes: `⚠️ upsertDerived failed: ${patchError}` }
+        ? { notes: `⚠️ writeDeviceState failed: ${patchError}` }
         : !patched
-          ? { notes: `ℹ️ upsertDerived: no document created for stateId=${stateId}` }
-          : {}),
+          ? { notes: `ℹ️ writeDeviceState: upsert returned no result for deviceId=${deviceId}` }
+          : rejectedKeys.length > 0
+            ? { notes: `ℹ️ writeDeviceState: wrote ${Object.keys(patch).length} keys; rejected: ${rejectedKeys.join(', ')}` }
+            : {}),
     };
   }
 

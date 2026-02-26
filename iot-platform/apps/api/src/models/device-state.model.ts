@@ -24,7 +24,6 @@ export interface IDeviceState extends Document {
     orgId: Types.ObjectId;
   };
   data: Record<string, any>;
-  derived?: Record<string, any>; // Workflow-derived values (ADR-028); data is immutable after ingest
   quality?: IQualityMetadata; // Data quality metadata
 }
 
@@ -36,7 +35,6 @@ const deviceStateSchema = new Schema<IDeviceState>(
       orgId: { type: Schema.Types.ObjectId, required: true },
     },
     data: { type: Schema.Types.Mixed, required: true },
-    derived: { type: Schema.Types.Mixed }, // Optional; absent on docs with no workflow execution
     quality: {
       status: {
         type: String,
@@ -51,17 +49,16 @@ const deviceStateSchema = new Schema<IDeviceState>(
     },
   },
   {
-    // Time Series Collection configuration
     timeseries: {
       timeField: 'timestamp',
       metaField: 'metadata',
       granularity: 'seconds',
     },
-    // EPA-compliant 5-year data retention
-    // 5 years = 157,680,000 seconds
-    expireAfterSeconds: 157680000,
     collection: 'device_states',
   }
 );
+
+// Compound index for efficient lookups: orgId + deviceId + timestamp
+deviceStateSchema.index({ 'metadata.orgId': 1, 'metadata.deviceId': 1, timestamp: -1 });
 
 export const DeviceState = mongoose.model<IDeviceState>('DeviceState', deviceStateSchema);

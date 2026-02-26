@@ -2,6 +2,7 @@ import type { FastifyRequest, FastifyReply } from 'fastify';
 import type { Server as SocketIOServer } from 'socket.io';
 import { deviceService } from '../services/device.service';
 import { deviceStateService } from '../services/device-state.service';
+import { deviceDerivedStateService } from '../services/device-derived-state.service';
 import { DataQualityService } from '../services/data-quality.service';
 import { AlarmService } from '../services/alarm.service';
 import {
@@ -137,7 +138,7 @@ export class DeviceStateController {
         broadcastDeviceState(io, {
           deviceId: state.deviceId,
           data: state.data as Record<string, unknown>,
-          derived: state.derived as Record<string, unknown> | undefined,
+          derived: undefined,
           timestamp: state.timestamp,
         });
 
@@ -499,7 +500,9 @@ export class DeviceStateController {
         return reply.code(400).send({ success: false, error: 'data cannot be empty' });
       }
 
-      const patched = await deviceStateService.patchData(deviceId, stateId, data);
+      // ADR-031: derived values go to device_derived_states (not device_states)
+      await deviceDerivedStateService.upsert(deviceId, data, stateId);
+      const patched = true;
 
       if (!patched) {
         return reply.code(404).send({ success: false, error: 'State not found or no changes made' });

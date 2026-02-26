@@ -1,6 +1,5 @@
 import mongoose from 'mongoose';
 import { DeviceState } from '../models/device-state.model';
-import { DeviceDerivedState } from '../models/device-derived-state.model';
 import type {
   CreateDeviceStateDTO,
   BulkCreateDeviceStatesDTO,
@@ -44,7 +43,6 @@ export class DeviceStateService {
       deviceId: obj.metadata.deviceId,
       orgId: obj.metadata.orgId.toString(),
       data: obj.data,
-      derived: obj.derived,
       timestamp: obj.timestamp,
       quality: obj.quality,
     };
@@ -100,7 +98,6 @@ export class DeviceStateService {
       id: s._id,
       deviceId: s.metadata.deviceId,
       data: s.data,
-      derived: s.derived,
       timestamp: s.timestamp,
     }));
 
@@ -119,15 +116,9 @@ export class DeviceStateService {
    * Get latest state for a device
    */
   async getLatest(deviceId: string) {
-    const [state, derivedDoc] = await Promise.all([
-      DeviceState.findOne({ 'metadata.deviceId': deviceId })
-        .sort({ timestamp: -1 })
-        .lean() as any,
-      DeviceDerivedState.findOne({ deviceId })
-        .sort({ timestamp: -1 })
-        .select('derived')
-        .lean() as any,
-    ]);
+    const state = await DeviceState.findOne({ 'metadata.deviceId': deviceId })
+      .sort({ timestamp: -1 })
+      .lean() as any;
 
     if (!state) return null;
 
@@ -135,7 +126,6 @@ export class DeviceStateService {
       id: state._id,
       deviceId: state.metadata.deviceId,
       data: state.data,
-      derived: derivedDoc?.derived ?? undefined,
       timestamp: state.timestamp,
     };
   }
@@ -154,7 +144,6 @@ export class DeviceStateService {
       id: state._id,
       deviceId: state.metadata.deviceId,
       data: state.data,
-      derived: (state as any).derived,
       timestamp: state.timestamp,
     };
   }
@@ -332,75 +321,6 @@ export class DeviceStateService {
     }));
   }
 
-  /**
-   * Upsert workflow-derived values into the device_derived_states collection.
-   * This is a regular (non-time-series) collection, so standard updateOne/upsert works.
-   * Called by action:writeDeviceState; patchData now delegates here.
-   */
-  async upsertDerived(
-    deviceId: string,
-    stateId: string,
-    timestamp: Date | string,
-    orgId: string,
-    patch: Record<string, any>
-  ): Promise<boolean> {
-    const setFields: Record<string, any> = {};
-    for (const [key, value] of Object.entries(patch)) {
-      setFields[`derived.${key}`] = value;
-    }
-
-    const result = await DeviceDerivedState.updateOne(
-      { deviceId, stateId },
-      {
-        $set: setFields,
-        $setOnInsert: {
-          deviceId,
-          stateId,
-          timestamp: new Date(timestamp),
-          orgId: new mongoose.Types.ObjectId(orgId),
-        },
-      },
-      { upsert: true }
-    );
-
-    return result.modifiedCount > 0 || (result.upsertedCount ?? 0) > 0;
-  }
-
-  /**
-   * Patch derived values for a device state (ADR-028).
-   * Delegates to upsertDerived — stores in device_derived_states (regular collection)
-   * rather than the time series collection, which only allows metaField-based updates.
-   */
-  async patchData(
-    deviceId: string,
-    stateId: string,
-    patch: Record<string, any>,
-    timestamp?: Date | string
-  ): Promise<boolean> {
-    const DEFAULT_ORG_ID = 'aaaaaaaaaaaaaaaaaaaaaaaa';
-    return this.upsertDerived(
-      deviceId,
-      stateId,
-      timestamp ?? new Date(),
-      DEFAULT_ORG_ID,
-      patch
-    );
-  }
-
-  /**
-   * Get the derived sub-document for a specific state (ADR-028)
-   */
-  async getDerived(
-    deviceId: string,
-    stateId: string
-  ): Promise<Record<string, any> | null> {
-    const state = await DeviceState.findOne(
-      { _id: new mongoose.Types.ObjectId(stateId), 'metadata.deviceId': deviceId },
-      { derived: 1 }
-    ).lean() as any;
-
-    return state?.derived ?? null;
-  }
 
   // =========================================================================
   // Helper Methods

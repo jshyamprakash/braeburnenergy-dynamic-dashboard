@@ -1,7 +1,12 @@
 # ADR-028: Derived State Sub-Document for Immutable Raw Data Separation
 
 ## Status
-Accepted
+**Voided** — Intent is correct and reinstated in ADR-030.
+The mechanism failed at execution: `device_states` is a MongoDB time series collection,
+which does not support post-insert `$set` on non-metaField fields. ADR-029 introduced
+a separate `device_derived_states` collection as a workaround. ADR-030 resolves the
+blocker by converting `device_states` to a regular collection with TTL, enabling the
+original sub-document pattern as designed here.
 
 ## Context
 `action:writeDeviceState` currently patches workflow-derived values into `device_states.data`
