@@ -2,6 +2,7 @@
 
 ## Completed
 
+- Historical Trend Charts on IOT Operations Dashboard (all 12 tasks: hook time-range support, timeRange selector UI, 4 chart blocks in seed, DashboardBuilder integration, field filtering)
 - ADR-031 End-to-End Verification & Demo Hardening (all 13 tasks: seed script fixed, backend verified, simulator triggers workflows, derived state written to MongoDB, WebSocket broadcasts verified, frontend hooks correct)
 - Visual Workflow Editor Week 2: React Flow Canvas (nodes, edges, palette, list/builder pages)
 - Visual Workflow Editor Week 3.1: NodeConfigPanel (dynamic forms for 19 node types, tabbed UI, Redux sync)
