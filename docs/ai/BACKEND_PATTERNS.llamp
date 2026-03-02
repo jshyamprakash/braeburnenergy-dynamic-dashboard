@@ -1,0 +1,119 @@
+// LLAMP-SPEC v1 | Backend Implementation Patterns
+// src: iot-platform/apps/api/src/
+// ver: 1.0 | updated: 2026-03-02
+// target: @sonnet @haiku
+// purpose: canonical reference — read once per session before writing any backend code
+
+---
+
+// ── LAYER MAP ──
+=layers: {
+  model:      src/models/*.model.ts,        // Mongoose schemas + types
+  schema:     src/schemas/*.schema.ts,      // Zod shapes → DTOs via z.infer
+  service:    src/services/*.service.ts,    // all business logic + DB queries
+  controller: src/controllers/*.controller.ts, // HTTP only: parse → call service → send
+  route:      src/routes/*.routes.ts,       // register endpoints + preHandlers + OpenAPI
+  lib:        src/lib/,                     // shared utilities (import from here)
+  middleware: src/middleware/               // auth, rbac, validate
+}
+!rule: no business logic in controllers
+!rule: no DB calls in controllers
+!rule: no try/catch in controllers or services (errors propagate to global handler)
+
+---
+
+// ── LIB UTILITIES (always import from these — never inline) ──
+=lib: {
+  errors:          src/lib/errors.ts,          // AppError subclasses
+  response:        src/lib/response.ts,         // sendSuccess/Created/Paginated/Deleted/Accepted
+  request-context: src/lib/request-context.ts, // getRequestContext(req) → {orgId,userId,role}
+  pagination:      src/lib/pagination.ts        // parsePaginationQuery / buildPaginationMeta
+}
+
+// errors.ts — throw these, never raw Error:
+//   BadRequestError(msg?)    → 400 BAD_REQUEST
+//   UnauthorizedError(msg?)  → 401 UNAUTHORIZED
+//   ForbiddenError(msg?)     → 403 FORBIDDEN
+//   NotFoundError(resource?) → 404 NOT_FOUND  e.g. throw new NotFoundError('Device')
+//   ConflictError(msg?)      → 409 CONFLICT
+//   UnprocessableError(msg?) → 422 UNPROCESSABLE_ENTITY
+//   ValidationError(msg?,details?) → 400 VALIDATION_ERROR
+// isAppError(e) → type guard
+
+// response.ts — use these, never reply.send() directly:
+//   sendSuccess(reply, data, code=200)      → { success:true, data }
+//   sendCreated(reply, data)                → 201 { success:true, data }
+//   sendAccepted(reply, data)               → 202 { success:true, data }
+//   sendPaginated(reply, data[], meta)      → 200 { success:true, data:[], pagination:{} }
+//   sendDeleted(reply, msg?)                → 200 { success:true, message }
+
+// request-context.ts:
+//   getRequestContext(request) → { orgId, userId, role }
+//   Falls back to POC defaults when unauthenticated
+//   POC_DEFAULT_ORG_ID = 'aaaaaaaaaaaaaaaaaaaaaaaa'
+//   POC_DEFAULT_USER_ID = 'admin-user'
+
+// pagination.ts:
+//   parsePaginationQuery(query) → { limit, offset }   // clamps: max 500, min 1
+//   buildPaginationMeta(total, limit, offset) → PaginationMeta
+
+---
+
+// ── CONTROLLER PATTERN ──
+// Zero try/catch. Zero inline reply.send(). Zero DB calls.
+// class XxxController { async method(req, reply) { ... } }
+// export const xxxController = new XxxController();
+=controller_template:
+  import { sendSuccess, sendCreated, sendPaginated, sendDeleted } from '../lib/response'
+  import { NotFoundError, BadRequestError } from '../lib/errors'
+  import { getRequestContext } from '../lib/request-context'
+  // handler body:
+  //   const { orgId } = getRequestContext(request)
+  //   const result = await xxxService.method(orgId, ...)
+  //   if (!result) throw new NotFoundError('ResourceName')
+  //   return sendSuccess(reply, result)
+
+---
+
+// ── ROUTE PATTERN ──
+// preHandler order: [requireAuth, requirePermission('resource:action'), zodBodyValidator(schema)]
+// bind controller: xxxController.method.bind(xxxController) as any
+=route_prehandlers: {
+  auth_required:     requireAuth,                          // src/middleware/auth.middleware
+  permission:        requirePermission('resource:action'), // src/middleware/rbac.middleware
+  body_validation:   zodBodyValidator(schema),             // src/middleware/validate.middleware
+  query_validation:  zodQueryValidator(schema),
+  params_validation: zodParamsValidator(schema)
+}
+// OpenAPI: use zodToSwagger(schema), successResponse(), paginatedResponse(), errorResponse()
+// from src/utils/swagger
+
+---
+
+// ── SERVICE PATTERN ──
+// Returns typed data or null (never throws for not-found — controller decides)
+// Pagination: return { data: T[], pagination: PaginationMeta } from list methods
+// All queries scoped by orgId first
+=service_list_return: { data: T[], pagination: { total, limit, offset, hasMore } }
+
+---
+
+// ── GLOBAL ERROR HANDLER ──
+// Registered in server.ts — catches all thrown errors automatically
+// AppError subclasses → error.statusCode + error.toJSON()
+// ZodError → 400 ValidationError
+// Unknown → 500 INTERNAL_SERVER_ERROR
+// !rule: never catch and swallow errors in controllers/services
+//        exception: external I/O that must be graceful (e.g. logout API call)
+
+---
+
+// ── ANTI-PATTERNS (never do these) ──
+!never: [
+  reply.send({ success:true, data }) inline,    // use sendSuccess()
+  reply.code(xxx).send() inline,                // use lib/response helpers
+  (request as any).user.organizationId inline,  // use getRequestContext()
+  const DEFAULT_ORG_ID = '...' per-file,        // use POC_DEFAULT_ORG_ID from lib
+  try { zod.parse(body) } catch {},             // use zodBodyValidator preHandler
+  throw new Error('...')                        // use AppError subclass
+]
