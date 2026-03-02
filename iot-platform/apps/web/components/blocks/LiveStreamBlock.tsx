@@ -6,6 +6,7 @@ import type { DeviceState } from '@/lib/types';
 import { exportDeviceStatesToCSV } from '@/lib/utils/export';
 import { toast } from '@/lib/utils/toast';
 import { useDeviceStateUpdates } from '@/lib/hooks/useWebSocket';
+import { useDeviceDerivedHistory } from '@/hooks/useDeviceData';
 
 interface LiveStreamBlockProps {
   /**
@@ -19,9 +20,14 @@ interface LiveStreamBlockProps {
   title?: string;
 
   /**
-   * Maximum number of updates to display
+   * Maximum number of updates to display (legacy alias for limit)
    */
   maxUpdates?: number;
+
+  /**
+   * Rolling window size — buffer capped at this many entries
+   */
+  limit?: number;
 
   /**
    * Height of the stream container
@@ -69,15 +75,25 @@ export function LiveStreamBlock({
   deviceId,
   title = 'Live Data Stream',
   maxUpdates = 50,
+  limit,
   height = 400,
   fields,
   autoScroll = true,
   manualData,
 }: LiveStreamBlockProps) {
+  const effectiveLimit = limit ?? maxUpdates ?? 50;
+
   const [updates, setUpdates] = useState<DeviceState[]>([]);
   const [updateCount, setUpdateCount] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const streamRef = useRef<ListImperativeAPI>(null);
+
+  // Fetch N historical derived points — shared React Query cache with RealTimeChartBlock
+  const { data: historyRecords = [] } = useDeviceDerivedHistory(deviceId, effectiveLimit);
+
+  // Stable content-derived key: avoids infinite loops caused by the default `[]` fallback
+  // creating a new array reference on every render (which would re-trigger the effect endlessly).
+  const historySeedKey = `${deviceId}-${historyRecords.length}-${historyRecords[0]?.timestamp ?? ''}`;
 
   // Handle manual data injection (for demo)
   useEffect(() => {
@@ -86,25 +102,39 @@ export function LiveStreamBlock({
       if (!isPaused) {
         setUpdates((prev) => {
           const updated = [latestData, ...prev];
-          return updated.slice(0, maxUpdates);
+          return updated.slice(0, effectiveLimit);
         });
         setUpdateCount((prev) => prev + 1);
       }
     }
-  }, [manualData, maxUpdates, isPaused]);
+  }, [manualData, effectiveLimit, isPaused]);
 
-  // Clear updates when device changes
+  // Seed from history when device or history batch changes.
+  // historyRecords arrive newest-first — matches live stream display order (newest at top).
   useEffect(() => {
-    setUpdates([]);
-    setUpdateCount(0);
-  }, [deviceId]);
+    if (historyRecords.length === 0) {
+      setUpdates([]);
+      setUpdateCount(0);
+      return;
+    }
+    const seedEntries: DeviceState[] = historyRecords.map((r) => ({
+      id: `hist-${r.timestamp}`,
+      deviceId: deviceId!,
+      data: r.derived,
+      derived: r.derived,
+      timestamp: new Date(r.timestamp).toISOString(),
+    }));
+    setUpdates(seedEntries);
+    setUpdateCount(seedEntries.length);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [historySeedKey]);
 
   // Subscribe to real-time WebSocket updates
   useDeviceStateUpdates(deviceId || null, (state: DeviceState) => {
     if (!isPaused) {
       setUpdates((prev) => {
         const updated = [state, ...prev];
-        return updated.slice(0, maxUpdates);
+        return updated.slice(0, effectiveLimit);
       });
       setUpdateCount((prev) => prev + 1);
     }
@@ -128,9 +158,9 @@ export function LiveStreamBlock({
     });
   };
 
-  // Extract and format field values
-  const formatFieldValue = (data: any, field: string): string => {
-    const value = data[field];
+  // Extract and format field values from derived state only
+  const formatFieldValue = (derived: Record<string, any> | undefined, field: string): string => {
+    const value = derived?.[field];
     if (value === undefined || value === null) return 'N/A';
     if (typeof value === 'number') {
       return value.toFixed(2);
@@ -153,8 +183,11 @@ export function LiveStreamBlock({
     };
   }) => {
     const update = updates[index];
-    // Get fields for THIS specific update (not just the first one)
-    const rowFields = fields || Object.keys(update.data);
+    // Show only derived fields — ADR-031: raw device_states data must never
+    // appear in the dashboard. Derived values come from workflow outputs only.
+    const derived = update.derived ?? {};
+    const rowFields = fields?.length ? fields.filter(f => f in derived) : Object.keys(derived);
+    const hasDerived = rowFields.length > 0;
 
     return (
       <div
@@ -174,30 +207,36 @@ export function LiveStreamBlock({
           )}
         </div>
 
-        {/* Field Values */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-          {rowFields.map((field) => (
-            <div
-              key={field}
-              className="bg-white dark:bg-gray-700 px-2 py-1.5 rounded border border-gray-200 dark:border-gray-600"
-            >
-              <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{field}</div>
-              <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                {formatFieldValue(update.data, field)}
+        {/* Derived Field Values */}
+        {hasDerived ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+            {rowFields.map((field) => (
+              <div
+                key={field}
+                className="bg-white dark:bg-gray-700 px-2 py-1.5 rounded border border-gray-200 dark:border-gray-600"
+              >
+                <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{field}</div>
+                <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                  {formatFieldValue(derived, field)}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-gray-400 dark:text-gray-500 italic">No derived fields in this update</p>
+        )}
 
-        {/* Raw JSON (collapsible) */}
-        <details className="mt-2">
-          <summary className="text-xs text-gray-500 dark:text-gray-400 cursor-pointer hover:text-gray-700 dark:hover:text-gray-300">
-            View Raw JSON
-          </summary>
-          <pre className="mt-2 p-2 bg-gray-900 dark:bg-gray-950 text-green-400 dark:text-green-300 rounded text-xs overflow-x-auto">
-            {JSON.stringify(update.data, null, 2)}
-          </pre>
-        </details>
+        {/* Derived JSON (collapsible) */}
+        {hasDerived && (
+          <details className="mt-2">
+            <summary className="text-xs text-gray-500 dark:text-gray-400 cursor-pointer hover:text-gray-700 dark:hover:text-gray-300">
+              View derived JSON
+            </summary>
+            <pre className="mt-2 p-2 bg-gray-900 dark:bg-gray-950 text-green-400 dark:text-green-300 rounded text-xs overflow-x-auto">
+              {JSON.stringify(derived, null, 2)}
+            </pre>
+          </details>
+        )}
       </div>
     );
   };
@@ -307,9 +346,9 @@ export function LiveStreamBlock({
               <span>
                 Latest: {formatTime(updates[0].timestamp)}
               </span>
-              {updates.length >= maxUpdates && (
+              {updates.length >= effectiveLimit && (
                 <span className="text-amber-600">
-                  Buffer full ({maxUpdates} max)
+                  Buffer full ({effectiveLimit} max)
                 </span>
               )}
             </div>

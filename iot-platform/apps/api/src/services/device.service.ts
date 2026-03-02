@@ -1,6 +1,7 @@
 import { ulid } from 'ulid';
 import mongoose from 'mongoose';
 import { Device } from '../models/device.model';
+import { UnprocessableError, ConflictError, BadRequestError } from '../lib/errors';
 import type {
   CreateDeviceDTO,
   UpdateDeviceDTO,
@@ -20,6 +21,11 @@ export class DeviceService {
    * Create a new device with system-generated ULID
    */
   async create(orgId: string, data: CreateDeviceDTO) {
+    // Enforce ADR-036: Device must belong to an application
+    if (!data.applicationId) {
+      throw new UnprocessableError('Device requires an application — create devices from the Application Detail page');
+    }
+
     const deviceId = ulid();
 
     const device = new Device({
@@ -28,6 +34,7 @@ export class DeviceService {
       name: data.name,
       tags: data.tags || [],
       attributes: data.attributes || null,
+      applicationId: data.applicationId,
     });
 
     const saved = await device.save();
@@ -43,7 +50,18 @@ export class DeviceService {
       deviceId,
     }).lean();
 
-    if (!device || !includeStates) return device;
+    if (!device) return device;
+
+    // Always fetch last-known derived state so dashboard gauges survive workflow deletion.
+    const { DeviceDerivedState } = await import('../models/device-derived-state.model');
+    const derivedDoc = await DeviceDerivedState.findOne({ deviceId }).lean() as any;
+    const derivedState = derivedDoc?.derived ?? {};
+    const derivedStateMeta = {
+      stale: derivedDoc?.stale ?? false,
+      staledAt: derivedDoc?.staledAt ?? null,
+    };
+
+    if (!includeStates) return { ...device, derivedState, derivedStateMeta };
 
     // If includeStates, fetch recent states
     const { DeviceState } = await import('../models/device-state.model');
@@ -60,7 +78,7 @@ export class DeviceService {
       timestamp: s.timestamp,
     }));
 
-    return { ...device, states: transformedStates };
+    return { ...device, states: transformedStates, derivedState, derivedStateMeta };
   }
 
   /**
@@ -95,12 +113,35 @@ export class DeviceService {
 
   /**
    * Delete device within organization
+   * Guards: block if active AlarmRules or AlarmInstances exist
+   * Cascade: auto-delete DeviceState records
    */
   async delete(orgId: string, deviceId: string) {
+    const { AlarmRule } = await import('../models/alarm-rule.model');
+    const { AlarmInstance } = await import('../models/alarm-instance.model');
+    const { DeviceState } = await import('../models/device-state.model');
+
+    const [alarmRuleCount, alarmInstanceCount] = await Promise.all([
+      AlarmRule.countDocuments({ deviceId, isActive: true }),
+      AlarmInstance.countDocuments({ deviceId, state: { $in: ['ACTIVE_UNACKED', 'ACTIVE_ACKED'] } }),
+    ]);
+
+    const blocking: Record<string, number> = {};
+    if (alarmRuleCount > 0) blocking.alarmRules = alarmRuleCount;
+    if (alarmInstanceCount > 0) blocking.alarmInstances = alarmInstanceCount;
+
+    if (Object.keys(blocking).length > 0) {
+      throw new ConflictError('Cannot delete device: resolve active alarms first.', { blocking });
+    }
+
     const device = await Device.findOneAndDelete({
       orgId: new mongoose.Types.ObjectId(orgId),
       deviceId,
     }).lean();
+
+    if (device) {
+      await DeviceState.deleteMany({ 'metadata.deviceId': deviceId });
+    }
 
     return device;
   }
@@ -109,10 +150,15 @@ export class DeviceService {
    * List devices with filtering, search, and pagination within organization
    */
   async list(orgId: string, query: QueryDevicesDTO) {
-    const { limit = 100, offset = 0, tags, search, sortBy = 'createdAt', sortOrder = 'desc' } = query;
+    const { limit = 100, offset = 0, tags, search, sortBy = 'createdAt', sortOrder = 'desc', applicationId } = query;
+
+    if (!applicationId) {
+      throw new BadRequestError('applicationId is required');
+    }
 
     const filter: any = {
       orgId: new mongoose.Types.ObjectId(orgId),
+      applicationId,
     };
 
     // Tag filtering (device must have ALL specified tags)
@@ -150,9 +196,13 @@ export class DeviceService {
   /**
    * Search devices by tags (has ANY of the specified tags) within organization
    */
-  async searchByTags(orgId: string, tags: string[], limit = 100) {
+  async searchByTags(orgId: string, applicationId: string, tags: string[], limit = 100) {
+    if (!applicationId) {
+      throw new BadRequestError('applicationId is required');
+    }
     return Device.find({
       orgId: new mongoose.Types.ObjectId(orgId),
+      applicationId,
       tags: { $in: tags },
     })
       .sort({ deviceId: -1 })
@@ -173,9 +223,13 @@ export class DeviceService {
   /**
    * Get device count within organization
    */
-  async count(orgId: string, tags?: string[]) {
+  async count(orgId: string, applicationId: string, tags?: string[]) {
+    if (!applicationId) {
+      throw new BadRequestError('applicationId is required');
+    }
     const filter: any = {
       orgId: new mongoose.Types.ObjectId(orgId),
+      applicationId,
     };
 
     if (tags && tags.length > 0) {
@@ -215,8 +269,11 @@ export class DeviceService {
   /**
    * Get recently created devices within organization (uses ULID time-sorting)
    */
-  async getRecent(orgId: string, limit = 50) {
-    return Device.find({ orgId: new mongoose.Types.ObjectId(orgId) })
+  async getRecent(orgId: string, applicationId: string, limit = 50) {
+    if (!applicationId) {
+      throw new BadRequestError('applicationId is required');
+    }
+    return Device.find({ orgId: new mongoose.Types.ObjectId(orgId), applicationId })
       .sort({ deviceId: -1 })
       .limit(limit)
       .lean();

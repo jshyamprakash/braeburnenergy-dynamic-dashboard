@@ -20,6 +20,7 @@ import { Workflow, extractTriggerType } from '../models/workflow.model';
 import { Dashboard } from '../models/dashboard.model';
 import { AlarmRule } from '../models/alarm-rule.model';
 import { User } from '../models/user.model';
+import { Application } from '../models/application.model';
 
 const ORG_ID = 'aaaaaaaaaaaaaaaaaaaaaaaa';
 const STREETLIGHT_ID = '01KJ9QP8JY5GHB4YYS0SN70BZR';
@@ -78,11 +79,30 @@ async function main() {
 
   const orgIdObj = new mongoose.Types.ObjectId(ORG_ID);
 
+  // ── 0. Ensure POC Demo application exists ─────────────────────────────────
+  let pocApp = await Application.findOne({ orgId: orgIdObj, slug: 'poc-demo' }).lean() as any;
+  if (!pocApp) {
+    pocApp = await Application.create({
+      orgId: orgIdObj,
+      applicationId: ulid(),
+      name: 'POC Demo',
+      description: 'Live device monitoring demo with Streetlight SPEM and OHT water system.',
+      slug: 'poc-demo',
+      isActive: true,
+    });
+    console.log(`✅ Created POC Demo application`);
+  } else {
+    console.log(`⏭️  POC Demo application already exists`);
+  }
+  const POC_APPLICATION_ID = (pocApp as any).applicationId;
+  console.log(`   applicationId: ${POC_APPLICATION_ID}\n`);
+
   // ── 1. Tag devices & set attributes for workflow output validation ─────────
   const streetlightResult = await Device.findOneAndUpdate(
     { orgId: orgIdObj, deviceId: STREETLIGHT_ID },
     {
       $set: {
+        applicationId: POC_APPLICATION_ID,
         tags: { streetlight: 'true', 'energy-meter': 'true', electrical: 'true' },
         attributes: {
           // Raw sensor fields (input telemetry)
@@ -112,6 +132,7 @@ async function main() {
     { orgId: orgIdObj, deviceId: OHT_ID },
     {
       $set: {
+        applicationId: POC_APPLICATION_ID,
         tags: { oht: 'true', 'water-tank': 'true', 'water-quality': 'true' },
         attributes: {
           // Raw sensor fields (input telemetry)
@@ -196,7 +217,7 @@ async function main() {
           outputField: 'computed',
           code: [
             'const volt = Number(context.trigger.value);',
-            'const freq = Number(context.trigger.stateData && context.trigger.stateData.freq != null ? context.trigger.stateData.freq : 50);',
+            'const freq = Number(context.workspace && context.workspace.freq != null ? context.workspace.freq : 50);',
             "const volt_dev = ((volt - 230) / 230 * 100).toFixed(1);",
             "const freq_dev = ((freq - 50) / 50 * 100).toFixed(2);",
             "const pq = Math.abs(volt - 230) > 20 ? 'CRITICAL'",
@@ -215,9 +236,9 @@ async function main() {
         description: 'Persists derived fields to DeviceState derived sub-document for dashboard display',
         config: {
           mappings: [
-            { key: 'volt_deviation', expression: '{{computed.volt_dev}}' },
-            { key: 'freq_deviation', expression: '{{computed.freq_dev}}' },
-            { key: 'power_quality_status', expression: '{{computed.power_quality}}' },
+            { key: '{{derived.volt_deviation}}', expression: '{{computed.volt_dev}}' },
+            { key: '{{derived.freq_deviation}}', expression: '{{computed.freq_dev}}' },
+            { key: '{{derived.power_quality_status}}', expression: '{{computed.power_quality}}' },
           ],
         },
       },
@@ -239,6 +260,7 @@ async function main() {
       orgId: orgIdObj,
       userId,
       type: 'Application',
+      applicationId: POC_APPLICATION_ID,
       nodes: wfANodes,
       edges: wfAEdges,
       isEnabled: true,
@@ -256,6 +278,7 @@ async function main() {
       { orgId: orgIdObj, name: wfAName },
       {
         $set: {
+          applicationId: POC_APPLICATION_ID,
           nodes: wfANodes,
           edges: wfAEdges,
           isEnabled: true,
@@ -297,7 +320,7 @@ async function main() {
           outputField: 'computed',
           code: [
             'const turb = Number(context.trigger.value);',
-            'const wl = Number(context.trigger.stateData && context.trigger.stateData.ground_level != null ? context.trigger.stateData.ground_level : 0);',
+            'const wl = Number(context.workspace && context.workspace.ground_level != null ? context.workspace.ground_level : 0);',
             "const turb_status = turb > 10 ? 'CRITICAL' : turb > 4 ? 'WARNING' : 'NORMAL';",
             'const water_score = Math.max(0, Math.round((10 - Math.min(turb, 10)) / 10 * 100));',
             "const tank_status = wl < 5 ? 'LOW' : wl < 10 ? 'MODERATE' : 'GOOD';",
@@ -345,9 +368,9 @@ async function main() {
         description: 'Persists derived water quality fields for dashboard display',
         config: {
           mappings: [
-            { key: 'turbidity_status', expression: '{{computed.turb_status}}' },
-            { key: 'water_quality_score', expression: '{{computed.water_score}}' },
-            { key: 'tank_status', expression: '{{computed.tank_status}}' },
+            { key: '{{derived.turbidity_status}}', expression: '{{computed.turb_status}}' },
+            { key: '{{derived.water_quality_score}}', expression: '{{computed.water_score}}' },
+            { key: '{{derived.tank_status}}', expression: '{{computed.tank_status}}' },
           ],
         },
       },
@@ -376,6 +399,7 @@ async function main() {
       orgId: orgIdObj,
       userId,
       type: 'Application',
+      applicationId: POC_APPLICATION_ID,
       nodes: wfBNodes,
       edges: wfBEdges,
       isEnabled: true,
@@ -393,6 +417,7 @@ async function main() {
       { orgId: orgIdObj, name: wfBName },
       {
         $set: {
+          applicationId: POC_APPLICATION_ID,
           nodes: wfBNodes,
           edges: wfBEdges,
           isEnabled: true,
@@ -444,11 +469,11 @@ async function main() {
     sm: blocks.map(b => b.layouts.sm),
   };
 
-  const existingDash = await Dashboard.findOne({ dashboardId: DASHBOARD_ID }).lean();
+  const existingDash = await Dashboard.findOne({ orgId: orgIdObj, dashboardId: DASHBOARD_ID }).lean();
   if (!existingDash) {
     const dashboard = new Dashboard({
-      userId,
-      organizationId: ORG_ID,
+      orgId: orgIdObj,
+      applicationId: POC_APPLICATION_ID,
       dashboardId: DASHBOARD_ID,
       name: 'IOT Operations Dashboard',
       description:
@@ -456,17 +481,15 @@ async function main() {
         'with workflow-derived power quality and water quality analytics.',
       blocks,
       layouts,
-      isShared: false,
-      sharedWith: [],
     });
     await dashboard.save();
-    console.log(`✅ Created dashboard: IOT Operations Dashboard (${blocks.length} gauges)`);
+    console.log(`✅ Created dashboard: IOT Operations Dashboard (${blocks.length} blocks)`);
   } else {
     await Dashboard.updateOne(
-      { dashboardId: DASHBOARD_ID },
-      { $set: { blocks, layouts, name: 'IOT Operations Dashboard' } }
+      { orgId: orgIdObj, dashboardId: DASHBOARD_ID },
+      { $set: { applicationId: POC_APPLICATION_ID, blocks, layouts, name: 'IOT Operations Dashboard' } }
     );
-    console.log(`⏭️  Updated dashboard: IOT Operations Dashboard (${blocks.length} gauges)`);
+    console.log(`⏭️  Updated dashboard: IOT Operations Dashboard (${blocks.length} blocks)`);
   }
 
   // ── Done ───────────────────────────────────────────────────────────────────

@@ -1,5 +1,6 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { authConfig } from '@/lib/config';
+import { apiClient } from '@/lib/api-client';
 
 /**
  * User interface matching backend User model
@@ -12,6 +13,7 @@ export interface User {
   organizationId: string;
   isActive: boolean;
   mustChangePassword: boolean;
+  lastLogin?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -218,6 +220,67 @@ export const {
  * Export reducer
  */
 export default authSlice.reducer;
+
+/**
+ * Async thunks
+ */
+export const loginThunk = createAsyncThunk(
+  'auth/login',
+  async ({ username, password }: { username: string; password: string }, { dispatch }) => {
+    dispatch(setLoading(true));
+    dispatch(setError(null));
+    try {
+      const { data } = await apiClient.post<{
+        user: User;
+        accessToken: string;
+        refreshToken: string;
+      }>('/auth/login', { username, password });
+      dispatch(loginSuccess(data));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Login failed';
+      dispatch(setError(message));
+      throw err;
+    }
+  }
+);
+
+export const logoutThunk = createAsyncThunk(
+  'auth/logout',
+  async (_, { dispatch }) => {
+    try {
+      await apiClient.post('/auth/logout', {});
+    } catch {
+      // Swallow API errors — clear local state regardless
+    }
+    dispatch(logout());
+  }
+);
+
+export const refreshTokenThunk = createAsyncThunk(
+  'auth/refreshToken',
+  async (_, { dispatch }) => {
+    const storedRefreshToken =
+      typeof window !== 'undefined'
+        ? localStorage.getItem(authConfig.refreshTokenKey)
+        : null;
+
+    if (!storedRefreshToken) {
+      dispatch(logout());
+      throw new Error('No refresh token available');
+    }
+
+    try {
+      const { data } = await apiClient.post<{
+        accessToken: string;
+        refreshToken: string;
+      }>('/auth/refresh', { refreshToken: storedRefreshToken });
+      dispatch(updateTokens(data));
+    } catch (err) {
+      dispatch(logout());
+      throw err;
+    }
+  }
+);
 
 /**
  * Selectors

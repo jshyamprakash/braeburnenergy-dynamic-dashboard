@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { apiClient } from '@/lib/api-client';
 import { useWebSocket } from '@/lib/hooks/useWebSocket';
 import type { Device, DeviceState } from '@repo/types';
@@ -29,16 +29,18 @@ export function computeTimeRange(range: '1h' | '6h' | '24h'): { startTime: Date;
 }
 
 /**
- * Fetch all devices
+ * Fetch all devices scoped to an application
  */
-export function useDevices() {
+export function useDevices(applicationId?: string) {
   return useQuery<Device[]>({
-    queryKey: ['devices'],
+    queryKey: ['devices', applicationId],
     queryFn: async () => {
-      const response = await apiClient.get<Device[]>('/devices');
+      if (!applicationId) return [];
+      const response = await apiClient.get<Device[]>(`/devices?applicationId=${applicationId}`);
       return response.data;
     },
-    refetchInterval: 30000, // Refetch every 30 seconds
+    enabled: !!applicationId,
+    refetchInterval: 30000,
   });
 }
 
@@ -61,14 +63,17 @@ export function useDevice(deviceId?: string) {
  * Fetch device states (historical data)
  */
 export function useDeviceStates(deviceId?: string, options?: { limit?: number; startTime?: Date; endTime?: Date }) {
+  const startIso = options?.startTime?.toISOString();
+  const endIso = options?.endTime?.toISOString();
+
   return useQuery<DeviceState[]>({
-    queryKey: ['device-states', deviceId, options],
+    queryKey: ['device-states', deviceId, options?.limit, startIso, endIso],
     queryFn: async () => {
       if (!deviceId) return [];
       const params = new URLSearchParams();
       if (options?.limit) params.append('limit', options.limit.toString());
-      if (options?.startTime) params.append('startTime', options.startTime.toISOString());
-      if (options?.endTime) params.append('endTime', options.endTime.toISOString());
+      if (startIso) params.append('startTime', startIso);
+      if (endIso) params.append('endTime', endIso);
 
       const response = await apiClient.get<DeviceState[]>(
         `/devices/${deviceId}/states?${params}`
@@ -76,9 +81,8 @@ export function useDeviceStates(deviceId?: string, options?: { limit?: number; s
       return response.data;
     },
     enabled: !!deviceId,
-    refetchInterval: 5000, // Refetch every 5 seconds
-    staleTime: 0, // Always consider data stale - force fresh fetches
-    gcTime: 30000, // Keep in cache for 30 seconds (formerly cacheTime)
+    staleTime: 30_000,
+    refetchInterval: 30_000,
   });
 }
 
@@ -91,31 +95,51 @@ export function useDeviceStates(deviceId?: string, options?: { limit?: number; s
  *
  * WebSocket updates are written back into the same React Query cache so all
  * consumers stay in sync without an extra useState.
+ *
+ * Returns an object with { state, stale, staledAt } where:
+ * - state: DeviceState | null (the actual device state)
+ * - stale: boolean (whether the derived state is stale from workflow deletion)
+ * - staledAt: string | null (ISO timestamp when the stale flag was set, formatted for display)
  */
-export function useDeviceRealtime(deviceId?: string) {
+export function useDeviceRealtime(deviceId?: string): {
+  state: DeviceState | null;
+  stale: boolean;
+  staledAt: string | null;
+} {
   const queryClient = useQueryClient();
   const queryKey = ['device-latest-state', deviceId];
   const { socket, isConnected } = useWebSocket();
 
   // React Query handles the initial fetch + caching.
+  // Queries device_derived_states for canonical live snapshot (ADR-039), not time-series.
   // staleTime keeps the cached value fresh for 30 s so remounts never flash 0.
   const { data: latestState = null } = useQuery<DeviceState | null>({
     queryKey,
     queryFn: async () => {
-      const response = await apiClient.get<{ success: boolean; data: DeviceState }>(
-        `/devices/${deviceId}/states/latest`
-      );
-      const state = response.data?.data;
-      if (!state) return null;
+      const response = await apiClient.get<{
+        deviceId: string; derived: Record<string, any>; lastSeen: Date; stale: boolean; staledAt: Date | null;
+      }>(`/devices/${deviceId}/derived-state`);
+      const derivedState = response.data;
+      if (!derivedState) return null;
+
+      // Build DeviceState-compatible cache object from derived-state response
       return {
-        ...state,
-        data: { ...state.data, ...(state.derived ?? {}) },
-      };
+        id: `derived-${deviceId}`,
+        deviceId: derivedState.deviceId,
+        data: derivedState.derived,
+        derived: derivedState.derived,
+        timestamp: new Date(derivedState.lastSeen).toISOString(),
+        stale: derivedState.stale,
+        staledAt: derivedState.staledAt,
+      } as DeviceState & { stale: boolean; staledAt: Date | null };
     },
     enabled: !!deviceId,
     staleTime: 30_000,
     retry: false,
   });
+
+  // Fetch device to access last-known derived state (survives workflow deletion).
+  const { data: device } = useDevice(deviceId);
 
   // Keep a ref to the latest known derived values so the WebSocket handler
   // can access them without recreating the effect on every state change.
@@ -123,6 +147,29 @@ export function useDeviceRealtime(deviceId?: string) {
   if (latestState?.derived) {
     derivedRef.current = latestState.derived;
   }
+
+  // Track stale status — seeded from HTTP device fetch, cleared by WebSocket derived events (ADR-034)
+  const [staleMeta, setStaleMeta] = useState<{ stale: boolean; staledAt: string | null }>({
+    stale: false,
+    staledAt: null,
+  });
+
+  // Seed derivedRef and staleMeta from latestState (queryFn response) on initial fetch.
+  // derived-state endpoint includes stale+staledAt fields (ADR-039).
+  // Ensures gauges show last-known computed values + stale status after hard refresh.
+  useEffect(() => {
+    if (latestState?.derived && Object.keys(latestState.derived).length > 0) {
+      derivedRef.current = latestState.derived;
+    }
+    const meta = (latestState as any)?.stale;
+    if (typeof meta === 'boolean') {
+      setStaleMeta({
+        stale: meta,
+        staledAt: (latestState as any)?.staledAt ? new Date((latestState as any).staledAt).toLocaleString() : null,
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [latestState?.deviceId]);
 
   // WebSocket: write real-time updates directly into the React Query cache.
   useEffect(() => {
@@ -145,6 +192,8 @@ export function useDeviceRealtime(deviceId?: string) {
       const derived = update.derived ?? derivedRef.current ?? {};
       if (Object.keys(derived).length > 0) {
         derivedRef.current = derived;
+        // Fresh derived data arrived via WebSocket — workflow is alive, clear stale flag (ADR-034)
+        setStaleMeta({ stale: false, staledAt: null });
       }
 
       // When the workflow engine broadcasts after writeDeviceState it sends
@@ -174,7 +223,27 @@ export function useDeviceRealtime(deviceId?: string) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [socket, isConnected, deviceId, queryClient]);
 
-  return latestState;
+  return { state: latestState, stale: staleMeta.stale, staledAt: staleMeta.staledAt };
+}
+
+/**
+ * Fetch N historical derived state records for a device (newest first).
+ * One shared React Query query per device — deduplicates to 1 HTTP request
+ * even when both RealTimeChartBlock and LiveStreamBlock are mounted.
+ */
+export function useDeviceDerivedHistory(deviceId?: string, limit = 50) {
+  return useQuery<Array<{ deviceId: string; derived: Record<string, any>; timestamp: string }>>({
+    queryKey: ['device-derived-history', deviceId, limit],
+    queryFn: async () => {
+      const res = await apiClient.get<Array<{ deviceId: string; derived: Record<string, any>; timestamp: string }>>(
+        `/devices/${deviceId}/derived-state/history?limit=${limit}`
+      );
+      return res.data ?? [];
+    },
+    enabled: !!deviceId,
+    staleTime: 30_000,
+    retry: false,
+  });
 }
 
 export interface DeviceFieldEntry {
@@ -183,52 +252,23 @@ export interface DeviceFieldEntry {
 }
 
 /**
- * Get available fields from device attributes (schema), latest device state (runtime),
- * and workflow-derived sub-document (ADR-028).
- * Schema fields come from Object.keys(device.attributes) — Record<string, string>.
- * State fields come from the latest device state data keys (raw sensor fields).
- * Derived fields come from state.derived keys (workflow-computed values).
- * Derived fields take display precedence: display value = derived[field] ?? data[field].
+ * Get available fields from the device's attributes schema (ADR-021).
+ * device.attributes is the canonical field registry — keys are defined when the
+ * device is created/updated and represent the fields that workflows can produce.
+ * Values at runtime come from device_derived_states (ADR-030/039), fetched separately
+ * by useDeviceRealtime.
  */
 export function useDeviceFields(deviceId?: string): DeviceFieldEntry[] {
   const { data: device } = useDevice(deviceId);
-  const { data: states } = useDeviceStates(deviceId, { limit: 1 });
-
-  const schemaKeys = new Set<string>();
-  const stateKeys = new Set<string>();
-  const derivedKeys = new Set<string>();
-
-  if (device?.attributes) {
-    Object.keys(device.attributes).forEach((key) => schemaKeys.add(key));
-  }
-
-  if (states && states.length > 0) {
-    if (states[0].data) {
-      Object.keys(states[0].data).forEach((key) => stateKeys.add(key));
-    }
-    if (states[0].derived) {
-      Object.keys(states[0].derived).forEach((key) => derivedKeys.add(key));
-    }
-  }
 
   const entries: DeviceFieldEntry[] = [];
 
-  // Schema fields first
-  schemaKeys.forEach((key) => entries.push({ key, source: 'schema' }));
-
-  // Derived fields (workflow-computed; not in schema)
-  derivedKeys.forEach((key) => {
-    if (!schemaKeys.has(key)) {
-      entries.push({ key, source: 'derived' });
-    }
-  });
-
-  // Raw state-only fields (not in schema and not already covered by derived)
-  stateKeys.forEach((key) => {
-    if (!schemaKeys.has(key) && !derivedKeys.has(key)) {
-      entries.push({ key, source: 'state' });
-    }
-  });
+  const attributes = (device as any)?.attributes;
+  if (attributes && typeof attributes === 'object') {
+    Object.keys(attributes).forEach((key) => {
+      entries.push({ key, source: 'schema' });
+    });
+  }
 
   return entries;
 }

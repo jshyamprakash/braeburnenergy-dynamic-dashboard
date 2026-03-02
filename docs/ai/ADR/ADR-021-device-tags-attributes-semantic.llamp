@@ -1,0 +1,24 @@
+// LLAMP-SPEC v1 | ADR-021
+=adr: 021
+=title: Device Tags vs Attributes Semantic Separation
+=date: 2026-02-23
+=status: accepted
+
+#ctx
+~problem: tags:string[] and attributes:Record<string,any> had no clear semantic contract
+~ambiguity: both fields ambiguous at API boundary and workflow engine level
+
+#decision
+=tags: Record<string,string> → static metadata key-value (e.g. {model:"X1", mfg:"Acme"})
+=attributes: Record<string,string> → device data schema (field_name → data_type)
+~attributes_example: { temperature:"number", status:"string", active:"boolean" }
+~attributes_role: schema descriptor — keys=expected_telemetry_fields, values=data_types
+!attributes: authority for action:writeDeviceState type casting
+
+#consequences
++pos: [workflow_can_typecast_via_attributes, clear_API_contract, frontend_kv_editor_for_both]
+-neg: [existing_tags_string[]_must_migrate→wrap_as_{tag:""}]
+~data_types: ["number", "string", "boolean", "timestamp"]
+
+#scope
+=arch_summary_update: yes

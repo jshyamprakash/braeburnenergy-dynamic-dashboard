@@ -1,0 +1,28 @@
+// LLAMP-SPEC v1 | ADR-010
+=adr: 010
+=title: Turborepo Monorepo with Shared Types
+=date: 2026-02-09
+=status: accepted
+
+#ctx
+~need: shared TypeScript types between frontend and backend
+~requirements: [type_safety, build_caching, independent_deployments]
+
+#opts
+~alt1: separate repos (rejected: type drift inevitable)
+~alt2: Nx (rejected: complex config)
+~alt3: Lerna (rejected: unmaintained)
+
+#decision
+=chosen: Turborepo 1.13.4 + pnpm workspaces
+=structure: iot-platform/apps/api | iot-platform/apps/web | iot-platform/packages/types
+=shared_pkg: @repo/types (no npm publish, workspace dep)
+=build: pnpm workspaces + Turborepo caching + parallel execution
+=install: single `pnpm install` for all packages
+
+#consequences
++pos: [zero_type_drift, build_caching, parallel_builds_faster_CI, workspace_deps]
+-neg: [monorepo_complexity, single_lockfile, harder_to_extract_packages]
+
+#scope
+=arch_summary_update: yes

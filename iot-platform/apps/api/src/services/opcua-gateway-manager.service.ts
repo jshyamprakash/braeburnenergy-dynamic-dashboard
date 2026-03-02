@@ -173,18 +173,16 @@ export class OpcuaGatewayManager {
       // Create device state with quality metadata
       const state = await deviceStateService.create(DEFAULT_ORG_ID, {
         deviceId: gateway.deviceId,
-        data: validationResult.data,
-        quality: validationResult.quality,
-        qualityMetadata: validationResult.metadata,
-        timestamp: new Date().toISOString(),
-      });
+        data: (validationResult as any).data || data,
+        timestamp: new Date(),
+      } as any);
 
       // Evaluate alarm conditions
       const device = { tags: [] }; // TODO: Fetch device tags
       const triggeredAlarms = await this.alarmService.evaluateDeviceState(
         gateway.deviceId,
         device.tags,
-        validationResult.data,
+        (validationResult as any).data || data,
         state._id.toString(),
         new Date()
       );

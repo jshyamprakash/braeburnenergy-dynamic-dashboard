@@ -1,0 +1,28 @@
+// LLAMP-SPEC v1 | ADR-002
+=adr: 002
+=title: JWT Token Session Tracking
+=date: 2026-02-14
+=status: accepted
+
+#ctx
+~problem: stateless JWT tokens unrevocable before expiry → zombie tokens
+~usecase: immediate logout, logout-all-devices, compromised token invalidation
+
+#opts
+~alt1: stateless JWT with short TTL (rejected: zombie window unacceptable)
+~alt2: Redis token blacklist (rejected: adds infra dependency)
+
+#decision
+=chosen: database-backed JTI session tracking
+=model: TokenSession (jti, userId, ip, userAgent, expiresAt, revokedAt)
+=flow: login/refresh → store JTI; every verify → DB JTI lookup; logout → revoke JTI
+=endpoints: [GET /auth/sessions, POST /auth/logout-all]
+~logout_all: revoke all tokens by userId
+
+#consequences
++pos: [immediate_revocation, session_management_ui, compromised_token_invalidation, audit_trail]
+-neg: [+10ms_per_request_acceptable, DB_dependency_for_verify, TokenSession_grows→TTL_auto_clean]
+!jti: must_be_unique, stored_on_issue, validated_on_every_request
+
+#scope
+=arch_summary_update: yes

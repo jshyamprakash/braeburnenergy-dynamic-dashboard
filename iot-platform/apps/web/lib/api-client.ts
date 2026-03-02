@@ -136,7 +136,7 @@ class ApiClient {
         if (isJson) {
           const errorData = await response.json() as any;
           const message = errorData.error?.message || errorData.error || getErrorMessage(response.status);
-          throw createApiError(response.status, message, errorData.error);
+          throw createApiError(response.status, message, errorData);
         } else {
           // Non-JSON error response (e.g., nginx error page)
           const message = getErrorMessage(response.status);

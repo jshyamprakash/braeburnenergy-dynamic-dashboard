@@ -1,60 +1,27 @@
-import { FastifyRequest, FastifyReply } from 'fastify';
+import type { FastifyRequest, FastifyReply } from 'fastify';
 import { WaterQualityService } from '../services/water-quality.service';
 import type { IWaterQualityParameter } from '../models/water-quality-parameter.model';
+import { NotFoundError, BadRequestError } from '../lib/errors';
+import { sendSuccess, sendCreated, sendDeleted } from '../lib/response';
+
+const waterQualityService = new WaterQualityService();
 
 /**
  * WaterQualityController
  *
- * HTTP handlers for EPA/AWWA water quality parameter management and validation.
+ * EPA/AWWA water quality parameter management and validation.
+ * Zero try/catch — errors propagate to global error handler.
  */
-
-const waterQualityService = new WaterQualityService();
-
-// ============================================================================
-// Parameter Management
-// ============================================================================
-
-/**
- * POST /water-quality/parameters
- * Create water quality parameter
- */
-export async function createParameter(
-  request: FastifyRequest<{
-    Body: Partial<IWaterQualityParameter>;
-  }>,
-  reply: FastifyReply
-) {
-  try {
+export class WaterQualityController {
+  async createParameter(request: FastifyRequest<{ Body: Partial<IWaterQualityParameter> }>, reply: FastifyReply) {
     const parameter = await waterQualityService.createParameter(request.body);
-
-    return reply.code(201).send({
-      success: true,
-      data: parameter,
-      message: 'Water quality parameter created successfully',
-    });
-  } catch (error: any) {
-    request.log.error(error);
-    return reply.code(400).send({
-      success: false,
-      error: error.message,
-    });
+    return sendCreated(reply, parameter);
   }
-}
 
-/**
- * GET /water-quality/parameters
- * List water quality parameters
- */
-export async function listParameters(
-  request: FastifyRequest<{
-    Querystring: {
-      category?: string;
-      isRegulated?: string;
-    };
-  }>,
-  reply: FastifyReply
-) {
-  try {
+  async listParameters(
+    request: FastifyRequest<{ Querystring: { category?: string; isRegulated?: string } }>,
+    reply: FastifyReply
+  ) {
     const { category, isRegulated } = request.query;
 
     const filter: any = {};
@@ -62,188 +29,57 @@ export async function listParameters(
     if (isRegulated !== undefined) filter.isRegulated = isRegulated === 'true';
 
     const parameters = await waterQualityService.listParameters(filter);
-
-    return reply.send({
-      success: true,
-      data: parameters,
-      count: parameters.length,
-    });
-  } catch (error: any) {
-    request.log.error(error);
-    return reply.code(500).send({
-      success: false,
-      error: error.message,
-    });
+    return sendSuccess(reply, parameters);
   }
-}
 
-/**
- * GET /water-quality/parameters/:code
- * Get parameter by code
- */
-export async function getParameter(
-  request: FastifyRequest<{
-    Params: {
-      code: string;
-    };
-  }>,
-  reply: FastifyReply
-) {
-  try {
+  async getParameter(request: FastifyRequest<{ Params: { code: string } }>, reply: FastifyReply) {
     const parameter = await waterQualityService.getParameterByCode(request.params.code);
 
     if (!parameter) {
-      return reply.code(404).send({
-        success: false,
-        error: 'Parameter not found',
-      });
+      throw new NotFoundError('Parameter');
     }
 
-    return reply.send({
-      success: true,
-      data: parameter,
-    });
-  } catch (error: any) {
-    request.log.error(error);
-    return reply.code(500).send({
-      success: false,
-      error: error.message,
-    });
+    return sendSuccess(reply, parameter);
   }
-}
 
-/**
- * PATCH /water-quality/parameters/:code
- * Update parameter
- */
-export async function updateParameter(
-  request: FastifyRequest<{
-    Params: {
-      code: string;
-    };
-    Body: Partial<IWaterQualityParameter>;
-  }>,
-  reply: FastifyReply
-) {
-  try {
-    const parameter = await waterQualityService.updateParameter(
-      request.params.code,
-      request.body
-    );
+  async updateParameter(
+    request: FastifyRequest<{ Params: { code: string }; Body: Partial<IWaterQualityParameter> }>,
+    reply: FastifyReply
+  ) {
+    const parameter = await waterQualityService.updateParameter(request.params.code, request.body);
 
     if (!parameter) {
-      return reply.code(404).send({
-        success: false,
-        error: 'Parameter not found',
-      });
+      throw new NotFoundError('Parameter');
     }
 
-    return reply.send({
-      success: true,
-      data: parameter,
-      message: 'Parameter updated successfully',
-    });
-  } catch (error: any) {
-    request.log.error(error);
-    return reply.code(400).send({
-      success: false,
-      error: error.message,
-    });
+    return sendSuccess(reply, parameter);
   }
-}
 
-/**
- * DELETE /water-quality/parameters/:code
- * Delete parameter
- */
-export async function deleteParameter(
-  request: FastifyRequest<{
-    Params: {
-      code: string;
-    };
-  }>,
-  reply: FastifyReply
-) {
-  try {
+  async deleteParameter(request: FastifyRequest<{ Params: { code: string } }>, reply: FastifyReply) {
     const deleted = await waterQualityService.deleteParameter(request.params.code);
 
     if (!deleted) {
-      return reply.code(404).send({
-        success: false,
-        error: 'Parameter not found',
-      });
+      throw new NotFoundError('Parameter');
     }
 
-    return reply.send({
-      success: true,
-      message: 'Parameter deleted successfully',
-    });
-  } catch (error: any) {
-    request.log.error(error);
-    return reply.code(500).send({
-      success: false,
-      error: error.message,
-    });
+    return sendDeleted(reply, 'Parameter deleted successfully');
   }
-}
 
-// ============================================================================
-// Validation
-// ============================================================================
-
-/**
- * POST /water-quality/validate
- * Validate water quality reading
- */
-export async function validateReading(
-  request: FastifyRequest<{
-    Body: {
-      parameterCode: string;
-      value: number;
-      timestamp?: string;
-    };
-  }>,
-  reply: FastifyReply
-) {
-  try {
+  async validateReading(
+    request: FastifyRequest<{ Body: { parameterCode: string; value: number; timestamp?: string } }>,
+    reply: FastifyReply
+  ) {
     const { parameterCode, value, timestamp } = request.body;
-
     const result = await waterQualityService.validateReading(
-      parameterCode,
-      value,
-      timestamp ? new Date(timestamp) : new Date()
+      parameterCode, value, timestamp ? new Date(timestamp) : new Date()
     );
-
-    return reply.send({
-      success: true,
-      data: result,
-    });
-  } catch (error: any) {
-    request.log.error(error);
-    return reply.code(400).send({
-      success: false,
-      error: error.message,
-    });
+    return sendSuccess(reply, result);
   }
-}
 
-/**
- * POST /water-quality/validate-batch
- * Validate multiple readings
- */
-export async function validateBatchReadings(
-  request: FastifyRequest<{
-    Body: {
-      readings: Array<{
-        parameterCode: string;
-        value: number;
-        timestamp?: string;
-      }>;
-    };
-  }>,
-  reply: FastifyReply
-) {
-  try {
+  async validateBatchReadings(
+    request: FastifyRequest<{ Body: { readings: Array<{ parameterCode: string; value: number; timestamp?: string }> } }>,
+    reply: FastifyReply
+  ) {
     const readings = request.body.readings.map(r => ({
       parameterCode: r.parameterCode,
       value: r.value,
@@ -251,130 +87,57 @@ export async function validateBatchReadings(
     }));
 
     const results = await waterQualityService.validateReadings(readings);
-
-    return reply.send({
-      success: true,
-      data: results,
-      count: results.length,
-    });
-  } catch (error: any) {
-    request.log.error(error);
-    return reply.code(400).send({
-      success: false,
-      error: error.message,
-    });
+    return sendSuccess(reply, results);
   }
-}
 
-// ============================================================================
-// Compliance Reporting
-// ============================================================================
-
-/**
- * GET /water-quality/compliance/:deviceId
- * Generate compliance report
- */
-export async function getComplianceReport(
-  request: FastifyRequest<{
-    Params: {
-      deviceId: string;
-    };
-    Querystring: {
-      startDate: string;
-      endDate: string;
-      parameters?: string; // Comma-separated parameter codes
-    };
-  }>,
-  reply: FastifyReply
-) {
-  try {
+  async getComplianceReport(
+    request: FastifyRequest<{
+      Params: { deviceId: string };
+      Querystring: { startDate: string; endDate: string; parameters?: string };
+    }>,
+    reply: FastifyReply
+  ) {
     const { deviceId } = request.params;
     const { startDate, endDate, parameters } = request.query;
 
     if (!startDate || !endDate) {
-      return reply.code(400).send({
-        success: false,
-        error: 'startDate and endDate are required',
-      });
+      throw new BadRequestError('startDate and endDate are required');
     }
 
     const parameterCodes = parameters ? parameters.split(',').map(p => p.trim()) : undefined;
-
     const report = await waterQualityService.generateComplianceReport(
-      deviceId,
-      new Date(startDate),
-      new Date(endDate),
-      parameterCodes
+      deviceId, new Date(startDate), new Date(endDate), parameterCodes
     );
 
-    return reply.send({
-      success: true,
-      data: report,
-    });
-  } catch (error: any) {
-    request.log.error(error);
-    return reply.code(500).send({
-      success: false,
-      error: error.message,
-    });
+    return sendSuccess(reply, report);
   }
-}
 
-/**
- * GET /water-quality/sampling-requirements
- * Get sampling requirements
- */
-export async function getSamplingRequirements(
-  request: FastifyRequest<{
-    Querystring: {
-      parameters?: string; // Comma-separated parameter codes
-    };
-  }>,
-  reply: FastifyReply
-) {
-  try {
+  async getSamplingRequirements(
+    request: FastifyRequest<{ Querystring: { parameters?: string } }>,
+    reply: FastifyReply
+  ) {
     const { parameters } = request.query;
     const parameterCodes = parameters ? parameters.split(',').map(p => p.trim()) : undefined;
-
     const requirements = await waterQualityService.getSamplingRequirements(parameterCodes);
-
-    return reply.send({
-      success: true,
-      data: requirements,
-      count: requirements.length,
-    });
-  } catch (error: any) {
-    request.log.error(error);
-    return reply.code(500).send({
-      success: false,
-      error: error.message,
-    });
+    return sendSuccess(reply, requirements);
   }
-}
 
-// ============================================================================
-// Seeding
-// ============================================================================
-
-/**
- * POST /water-quality/seed
- * Seed default EPA/AWWA parameters (Admin only)
- */
-export async function seedDefaultParameters(
-  _request: FastifyRequest,
-  reply: FastifyReply
-) {
-  try {
+  async seedDefaultParameters(_request: FastifyRequest, reply: FastifyReply) {
     await waterQualityService.seedDefaultParameters();
-
-    return reply.send({
-      success: true,
-      message: 'Default water quality parameters seeded successfully',
-    });
-  } catch (error: any) {
-    return reply.code(500).send({
-      success: false,
-      error: error.message,
-    });
+    return sendSuccess(reply, { message: 'Default water quality parameters seeded successfully' });
   }
 }
+
+export const waterQualityController = new WaterQualityController();
+
+// Legacy named function exports
+export const createParameter = (req: FastifyRequest<any>, reply: FastifyReply) => waterQualityController.createParameter(req, reply);
+export const listParameters = (req: FastifyRequest<any>, reply: FastifyReply) => waterQualityController.listParameters(req, reply);
+export const getParameter = (req: FastifyRequest<any>, reply: FastifyReply) => waterQualityController.getParameter(req, reply);
+export const updateParameter = (req: FastifyRequest<any>, reply: FastifyReply) => waterQualityController.updateParameter(req, reply);
+export const deleteParameter = (req: FastifyRequest<any>, reply: FastifyReply) => waterQualityController.deleteParameter(req, reply);
+export const validateReading = (req: FastifyRequest<any>, reply: FastifyReply) => waterQualityController.validateReading(req, reply);
+export const validateBatchReadings = (req: FastifyRequest<any>, reply: FastifyReply) => waterQualityController.validateBatchReadings(req, reply);
+export const getComplianceReport = (req: FastifyRequest<any>, reply: FastifyReply) => waterQualityController.getComplianceReport(req, reply);
+export const getSamplingRequirements = (req: FastifyRequest<any>, reply: FastifyReply) => waterQualityController.getSamplingRequirements(req, reply);
+export const seedDefaultParameters = (req: FastifyRequest, reply: FastifyReply) => waterQualityController.seedDefaultParameters(req, reply);

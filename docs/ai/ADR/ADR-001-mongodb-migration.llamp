@@ -1,0 +1,31 @@
+// LLAMP-SPEC v1 | ADR-001
+=adr: 001
+=title: MongoDB Migration from PostgreSQL
+=date: 2026-02-12
+=status: accepted
+
+#ctx
+~initial: PostgreSQL 16 + Prisma + TimescaleDB
+~trigger: client required MongoDB time-series support
+~stage: early POC (low migration cost)
+
+#opts
+~alt1: stay PostgreSQL + TimescaleDB (rejected: client requirement)
+~alt2: hybrid DB (rejected: complexity)
+
+#decision
+=chosen: MongoDB 8 + Mongoose 8.x + Time Series Collections
+=db: PostgreSQL → MongoDB 8
+=orm: Prisma 5.x → Mongoose 8.23.0
+=timeseries: TimescaleDB hypertables → MongoDB TS Collections
+=ids: UUID 36ch → ObjectId 24hex
+=retention: TimescaleDB jobs → MongoDB TTL indexes
+!replica_set: REQUIRED even for local dev
+
+#consequences
++pos: [native_ts_support, doc_flexibility, simpler_deploy, horizontal_scale]
+-neg: [no_fk_constraints→manual_validation, ts_deletes_no_transactions→sequential, replica_required, lean()_needed→type_cast]
+~migration: 8 phases, 63/63 tests passing
+
+#scope
+=arch_summary_update: yes

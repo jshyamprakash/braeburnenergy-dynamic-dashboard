@@ -147,9 +147,11 @@ export function DashboardBuilder({
     // Step 1: Load from localStorage immediately (fast, works offline)
     dispatch(initializeDashboard(dashboardId));
 
-    // Step 2: Try to load from backend (sync across devices)
-    dispatch(loadDashboardFromBackend(dashboardId));
-  }, [dashboardId, dispatch]);
+    // Step 2: Try to load from backend (sync across devices) — needs applicationId
+    if (applicationId) {
+      dispatch(loadDashboardFromBackend({ dashboardId, applicationId }));
+    }
+  }, [dashboardId, applicationId, dispatch]);
 
   // Online/offline detection
   useEffect(() => {
@@ -441,6 +443,7 @@ export function DashboardBuilder({
               showLegend={block.config.showLegend !== false}
               showGrid={block.config.showGrid !== false}
               smooth={block.config.smooth !== false}
+              limit={block.config.limit ?? 50}
             />
           );
 
@@ -451,7 +454,7 @@ export function DashboardBuilder({
               title={block.config.title || 'Live Stream'}
               height={300}
               fields={block.config.fields}
-              maxUpdates={50}
+              limit={block.config.limit ?? 50}
             />
           );
 

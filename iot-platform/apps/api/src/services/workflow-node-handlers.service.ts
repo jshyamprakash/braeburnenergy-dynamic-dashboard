@@ -166,7 +166,7 @@ export class WorkflowNodeHandlers {
   // Triggers
   // ==========================================================================
 
-  private async executeTrigger(config: any, context: any): Promise<NodeExecutionResult> {
+  private async executeTrigger(_config: any, context: any): Promise<NodeExecutionResult> {
     // Triggers just pass through the trigger data
     return {
       output: context.currentData,
@@ -255,7 +255,7 @@ export class WorkflowNodeHandlers {
   }
 
   private async executeConditionTimeBased(config: any, context: any): Promise<NodeExecutionResult> {
-    const { startHour, endHour, timezone } = config;
+    const { startHour, endHour } = config;
 
     const now = new Date();
     const currentHour = now.getHours(); // TODO: Handle timezone
@@ -269,7 +269,7 @@ export class WorkflowNodeHandlers {
   }
 
   private async executeConditionDeviceStatus(config: any, context: any): Promise<NodeExecutionResult> {
-    const { deviceId, status } = config;
+    const { status } = config;
 
     // Check device status (online/offline/error)
     // For MVP, assume devices are always online
@@ -286,7 +286,7 @@ export class WorkflowNodeHandlers {
   // ==========================================================================
 
   private async executeActionSendNotification(config: any, context: any): Promise<NodeExecutionResult> {
-    const { message, channels, recipients } = config;
+    const { message, channels } = config;
 
     // Interpolate variables in message
     const interpolatedMessage = this.interpolateString(message, context.currentData);
@@ -767,15 +767,20 @@ export class WorkflowNodeHandlers {
       const { key, expression } = mapping;
       if (!key) continue;
 
+      // ADR-037: parse {{derived.attr}} or derived.attr syntax → extract attr name
+      const derivedMatch =
+        key.match(/^\{\{derived\.(\w+)\}\}$/) ?? key.match(/^derived\.(\w+)$/);
+      const attrKey = derivedMatch ? derivedMatch[1] : key;
+
       // Reject keys not in device.attributes (ADR-031)
-      if (Object.keys(deviceAttributes).length > 0 && !(key in deviceAttributes)) {
-        rejectedKeys.push(key);
+      if (Object.keys(deviceAttributes).length > 0 && !(attrKey in deviceAttributes)) {
+        rejectedKeys.push(attrKey);
         continue;
       }
 
       const resolved = resolveExpression(expression, resolveCtx);
-      const attrType = deviceAttributes[key];
-      patch[key] = castValue(resolved, attrType);
+      const attrType = deviceAttributes[attrKey];
+      patch[attrKey] = castValue(resolved, attrType);
     }
 
     if (rejectedKeys.length > 0) {
@@ -800,9 +805,10 @@ export class WorkflowNodeHandlers {
       patchError = err?.message || String(err);
     }
 
+    // ADR-037: timestamp is at trigger root (not stateData sub-key)
     const stateTimestamp =
-      context.trigger?.stateData?.timestamp ??
-      context.currentData?.stateData?.timestamp ??
+      context.trigger?.timestamp ??
+      context.currentData?.timestamp ??
       new Date();
 
     return {

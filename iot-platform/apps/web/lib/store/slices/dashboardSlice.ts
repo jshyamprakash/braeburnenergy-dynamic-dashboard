@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { dashboardConfig, apiConfig } from '@/lib/config';
+import { dashboardConfig } from '@/lib/config';
+import { apiClient } from '@/lib/api-client';
 
 /**
  * Layout interface (react-grid-layout)
@@ -54,7 +55,7 @@ export interface DashboardBlock {
  */
 export interface DashboardState {
   dashboardId: string;
-  organizationId: string;
+  applicationId: string;
   name: string;
   description: string;
   blocks: DashboardBlock[];
@@ -119,29 +120,17 @@ function saveDashboardToStorage(state: DashboardState) {
  */
 export const loadDashboardFromBackend = createAsyncThunk(
   'dashboard/loadFromBackend',
-  async (dashboardId: string, { rejectWithValue }) => {
+  async ({ dashboardId, applicationId }: { dashboardId: string; applicationId: string }, { rejectWithValue }) => {
     try {
-      const response = await fetch(`${apiConfig.baseUrl}/dashboards/${dashboardId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          // TODO: Add auth token when authentication is implemented
-          // 'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          // Dashboard not found in backend, use localStorage
-          return null;
-        }
-        throw new Error(`Failed to load dashboard: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      return result.data;
+      const response = await apiClient.get<any>(
+        `/dashboards/${dashboardId}?applicationId=${applicationId}`
+      );
+      return response.data ?? null;
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to load dashboard from backend');
+      if (error?.status === 404) {
+        return null;
+      }
+      return rejectWithValue(error?.message || 'Failed to load dashboard from backend');
     }
   }
 );
@@ -154,7 +143,7 @@ export const saveDashboardToBackend = createAsyncThunk(
   async (
     payload: {
       dashboardId: string;
-      organizationId: string;
+      applicationId: string;
       name: string;
       description: string;
       blocks: DashboardBlock[];
@@ -163,24 +152,10 @@ export const saveDashboardToBackend = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
-      const response = await fetch(`${apiConfig.baseUrl}/dashboards`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          // TODO: Add auth token when authentication is implemented
-          // 'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to save dashboard: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      return result.data;
+      const response = await apiClient.post<any>('/dashboards', payload);
+      return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to save dashboard to backend');
+      return rejectWithValue(error?.message || 'Failed to save dashboard to backend');
     }
   }
 );
@@ -208,7 +183,7 @@ export const syncDashboardWithBackend = createAsyncThunk(
       const result = await dispatch(
         saveDashboardToBackend({
           dashboardId: dashboard.dashboardId,
-          organizationId: dashboard.organizationId,
+          applicationId: dashboard.applicationId,
           name: dashboard.name,
           description: dashboard.description,
           blocks: dashboard.blocks,
@@ -233,7 +208,7 @@ export const syncDashboardWithBackend = createAsyncThunk(
  */
 const initialState: DashboardState = {
   dashboardId: 'default',
-  organizationId: 'aaaaaaaaaaaaaaaaaaaaaaaa', // Default org ID
+  applicationId: '',
   name: 'My Dashboard',
   description: '',
   blocks: [],
@@ -387,11 +362,11 @@ const dashboardSlice = createSlice({
      */
     updateDashboardMetadata: (
       state,
-      action: PayloadAction<{ name?: string; description?: string; organizationId?: string }>
+      action: PayloadAction<{ name?: string; description?: string; applicationId?: string }>
     ) => {
       if (action.payload.name !== undefined) state.name = action.payload.name;
       if (action.payload.description !== undefined) state.description = action.payload.description;
-      if (action.payload.organizationId !== undefined) state.organizationId = action.payload.organizationId;
+      if (action.payload.applicationId !== undefined) state.applicationId = action.payload.applicationId;
       state.isDirty = true;
     },
 
@@ -426,7 +401,7 @@ const dashboardSlice = createSlice({
           state.layouts = action.payload.layouts || {};
           state.name = action.payload.name || 'My Dashboard';
           state.description = action.payload.description || '';
-          state.organizationId = action.payload.organizationId || state.organizationId;
+          state.applicationId = action.payload.applicationId || state.applicationId;
           state.lastSaved = action.payload.updatedAt ? new Date(action.payload.updatedAt).getTime() : null;
 
           // Also save to localStorage for offline access
@@ -540,5 +515,5 @@ export const selectIsOnline = (state: { dashboard: DashboardState }) =>
 export const selectDashboardMetadata = (state: { dashboard: DashboardState }) => ({
   name: state.dashboard.name,
   description: state.dashboard.description,
-  organizationId: state.dashboard.organizationId,
+  applicationId: state.dashboard.applicationId,
 });

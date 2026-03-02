@@ -1,0 +1,36 @@
+// LLAMP-SPEC v1 | ADR-034
+=adr: 034
+=title: Stale Derived State Display When Workflow Is Deleted
+=date: 2026-02-26
+=status: accepted
+
+#ctx
+~problem: workflow deletion leaves device_derived_states intact (ADR-032 Level3); dashboard gauges silently show stale workflow-computed values with no indication producing workflow is gone
+~risk: industrial IoT operators may trust stale values as live → safety concern
+
+#decision
+=model_change: DeviceDerivedState gains stale:Boolean(default=false) + staledAt:Date(default=null)
+=service_upsert: upsert() resets stale=false + staledAt=null on every write (workflow alive)
+=service_mark_stale: markAllStale() → sets stale=true + staledAt=now on ALL device_derived_states
+=workflow_delete: WorkflowService.delete() calls deviceDerivedStateService.markAllStale() after deletion
+~circular_dep: dynamic import used in workflow.service.ts to avoid circular dependency
+=api_response: GET /devices/:deviceId now returns derivedStateMeta:{stale,staledAt} alongside derivedState
+
+=frontend_hook: useDeviceRealtime() return_type changed to { state:DeviceState|null, stale:boolean, staledAt:string|null }
+=staleMeta: seeded from device.derivedStateMeta on HTTP fetch; cleared on WS derived event
+=gauge_ui: {
+  ring: ring-2 ring-amber-400 dark:ring-amber-500 when stale=true,
+  badge: 'Stale' pill top-right with amber indicator dot,
+  tooltip: "Workflow deleted — showing last known value as of {staledAt}"
+}
+!breaking_change: useDeviceRealtime callers MUST destructure {state,stale,staledAt}
+~only_caller: RealTimeGaugeBlock (already updated)
+!no_data_loss: device_derived_states retained per ADR-032 Level3
+
+#consequences
++pos: [operators_informed_value_not_live, no_data_loss, auto_recovery_on_workflow_restart]
+-neg: [markAllStale_is_org_agnostic→all_devices_marked_stale_on_any_workflow_delete]
+~future: per-org markAllStale when multi-org is fully enforced
+
+#scope
+=arch_summary_update: yes

@@ -38,7 +38,71 @@ export async function deviceStateRoutes(fastify: FastifyInstance) {
       },
     },
     preHandler: [requireAuth, requirePermission('device-state:create')],
-  }, deviceStateController.bulkCreate.bind(deviceStateController));
+  }, deviceStateController.bulkCreate.bind(deviceStateController) as any);
+
+  // Get derived state history — N historical derived points for dashboard seeding
+  // Registered BEFORE /derived-state to prevent Fastify param matching on the literal "history" segment
+  fastify.get('/devices/:deviceId/derived-state/history', {
+    schema: {
+      tags: ['Device States'],
+      summary: 'Get derived state history (N points)',
+      description: 'Returns the N most recent derived state records (newest first) from device_derived_state_history. Used to seed dashboard chart and live stream on load. Default limit 50, max 500.',
+      security: [{ bearerAuth: [] }],
+      params: zodToSwagger(deviceIdParamSchema),
+      querystring: {
+        type: 'object',
+        properties: {
+          limit: { type: 'string', description: 'Number of records to return (default 50, max 500)' },
+        },
+      },
+      response: {
+        200: successResponse(
+          {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                deviceId: { type: 'string' },
+                derived: { type: 'object', additionalProperties: true },
+                timestamp: { type: 'string', format: 'date-time' },
+              },
+            },
+          },
+          'Derived state history — newest first'
+        ),
+      },
+    },
+    preHandler: [requireAuth, requirePermission('device-state:read')],
+  }, deviceStateController.getDerivedStateHistory.bind(deviceStateController) as any);
+
+  // Get derived state — canonical live snapshot (ADR-039)
+  // dashboard MUST use this; /states/latest is for history only
+  fastify.get('/devices/:deviceId/derived-state', {
+    schema: {
+      tags: ['Device States'],
+      summary: 'Get derived state (live snapshot)',
+      description: 'Returns the canonical present-state snapshot from device_derived_states. One document per device, updated exclusively by writeDeviceState workflow actions. Use this for dashboard gauge display — not /states/latest which queries the time-series collection.',
+      security: [{ bearerAuth: [] }],
+      params: zodToSwagger(deviceIdParamSchema),
+      response: {
+        200: successResponse(
+          {
+            type: 'object',
+            properties: {
+              deviceId: { type: 'string' },
+              derived: { type: 'object', additionalProperties: true },
+              lastSeen: { type: 'string', format: 'date-time' },
+              stale: { type: 'boolean' },
+              staledAt: { type: 'string', format: 'date-time', nullable: true },
+            },
+          },
+          'Derived state — canonical live snapshot'
+        ),
+        404: errorResponse('No derived state found for this device'),
+      },
+    },
+    preHandler: [requireAuth, requirePermission('device-state:read')],
+  }, deviceStateController.getDerivedState.bind(deviceStateController) as any);
 
   // Create device state
   fastify.post('/devices/:deviceId/states', {
@@ -82,7 +146,7 @@ export async function deviceStateRoutes(fastify: FastifyInstance) {
       },
     },
     preHandler: [requireAuth, requirePermission('device-state:create')],
-  }, deviceStateController.create.bind(deviceStateController));
+  }, deviceStateController.create.bind(deviceStateController) as any);
 
   // List device states
   fastify.get('/devices/:deviceId/states', {
@@ -101,6 +165,7 @@ export async function deviceStateRoutes(fastify: FastifyInstance) {
               id: { type: 'string' },
               deviceId: { type: 'string' },
               data: { type: 'object', additionalProperties: true },
+              derived: { type: 'object', additionalProperties: true },
               timestamp: { type: 'string', format: 'date-time' },
             },
           },
@@ -110,7 +175,7 @@ export async function deviceStateRoutes(fastify: FastifyInstance) {
       },
     },
     preHandler: [requireAuth, requirePermission('device-state:read')],
-  }, deviceStateController.list.bind(deviceStateController));
+  }, deviceStateController.list.bind(deviceStateController) as any);
 
   // Get latest state
   fastify.get('/devices/:deviceId/states/latest', {
@@ -137,7 +202,7 @@ export async function deviceStateRoutes(fastify: FastifyInstance) {
       },
     },
     preHandler: [requireAuth, requirePermission('device-state:read')],
-  }, deviceStateController.getLatest.bind(deviceStateController));
+  }, deviceStateController.getLatest.bind(deviceStateController) as any);
 
   // Aggregate device states
   fastify.get('/devices/:deviceId/states/aggregate', {
@@ -208,7 +273,7 @@ export async function deviceStateRoutes(fastify: FastifyInstance) {
       },
     },
     preHandler: [requireAuth, requirePermission('device-state:read')],
-  }, deviceStateController.aggregate.bind(deviceStateController));
+  }, deviceStateController.aggregate.bind(deviceStateController) as any);
 
   // Get field statistics
   fastify.get('/devices/:deviceId/states/statistics', {
@@ -252,7 +317,7 @@ export async function deviceStateRoutes(fastify: FastifyInstance) {
       },
     },
     preHandler: [requireAuth, requirePermission('device-state:read')],
-  }, deviceStateController.getStatistics.bind(deviceStateController));
+  }, deviceStateController.getStatistics.bind(deviceStateController) as any);
 
   // Get state count
   fastify.get('/devices/:deviceId/states/count', {
@@ -283,7 +348,7 @@ export async function deviceStateRoutes(fastify: FastifyInstance) {
       },
     },
     preHandler: [requireAuth, requirePermission('device-state:read')],
-  }, deviceStateController.count.bind(deviceStateController));
+  }, deviceStateController.count.bind(deviceStateController) as any);
 
   // Patch device state data (ADR-022: workflow-driven structuring)
   fastify.patch('/devices/:deviceId/states/:stateId', {
@@ -313,7 +378,7 @@ export async function deviceStateRoutes(fastify: FastifyInstance) {
       },
     },
     preHandler: [requireAuth, requirePermission('device-state:create')],
-  }, deviceStateController.patchData.bind(deviceStateController));
+  }, deviceStateController.patchData.bind(deviceStateController) as any);
 
   // Delete old states
   fastify.delete('/devices/:deviceId/states/old', {
@@ -350,5 +415,5 @@ export async function deviceStateRoutes(fastify: FastifyInstance) {
       },
     },
     preHandler: [requireAuth, requirePermission('device-state:export')], // Using export permission for delete (Admin+)
-  }, deviceStateController.deleteOld.bind(deviceStateController));
+  }, deviceStateController.deleteOld.bind(deviceStateController) as any);
 }

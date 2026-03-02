@@ -1,0 +1,30 @@
+// LLAMP-SPEC v1 | ADR-008
+=adr: 008
+=title: ULID for User-Facing Identifiers
+=date: 2026-02-10
+=status: accepted
+
+#ctx
+~need: user-facing IDs that are sortable, URL-safe, human-readable
+~problem: ObjectId not URL-friendly; UUID 36ch not sortable
+
+#opts
+~alt1: UUID v4 (rejected: 36ch, not sortable)
+~alt2: ObjectId everywhere (rejected: not URL-friendly, leaks MongoDB internals)
+~alt3: NanoID (rejected: not time-sortable)
+
+#decision
+=chosen: ULID for user-facing IDs
+=ulid_fields: [deviceId, workflowId, applicationId, dashboardId]
+=internal_fields: [_id: ObjectId, orgId: ObjectId, userId: ObjectId]
+=format: 26ch, time-sortable, URL-safe, case-insensitive
+=example: 01HGW5N8XZ7KQRST9VW2XY3Z4A
+=generation: application-layer (not database)
+~both_indexed: _id + deviceId both have indexes
+
+#consequences
++pos: [shorter_than_UUID, time_ordered, copy_paste_friendly, collision_resistant_128bit]
+-neg: [dual_ID_complexity, app_layer_generation, reveals_creation_time]
+
+#scope
+=arch_summary_update: yes

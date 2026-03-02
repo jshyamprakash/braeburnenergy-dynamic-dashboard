@@ -1,0 +1,45 @@
+// LLAMP-SPEC v1 | ADR-019
+=adr: 019
+=title: Sidebar-First Navigation Architecture
+=date: 2026-02-17
+=status: accepted supersedes=ADR-018
+
+#ctx
+~prior: ADR-018 nested sidebar under workflow context — not viable
+~desired: persistent global left sidebar matching Losant pattern
+
+#decision
+=chosen: persistent 220px left sidebar + modal-based workflow CRUD + canvas layout
+
+=phase1_sidebar: {
+  component: Sidebar.tsx,
+  width: 220px, sticky_left, collapsible,
+  items: [Dashboard, Devices, Workflows, Alarms, AuditLogs, Settings],
+  layout: root flex with sidebar + main
+}
+
+=phase2_workflows: {
+  list_page: /workflows → table + CreateWorkflowModal,
+  canvas_page: /workflows/:id → ReactFlow + SettingsPanel (right) + toolbar (Save/Deploy/⋮),
+  workflow_types: [Application, Experience, Embedded, Edge],
+  save: persist canvas + settings to DB,
+  deploy: execute workflow
+}
+
+=deleted_from_ADR018: [
+  app/workflows/[workflowId]/layout.tsx,
+  app/workflows/[workflowId]/executions/page.tsx,
+  app/workflows/[workflowId]/settings/page.tsx,
+  components/workflow/ExecutionPanel.tsx,
+  components/workflow/SettingsModal.tsx
+]
+
+!canvas_layout: NodePalette_left | ReactFlow_center | SettingsPanel_right
+
+#consequences
++pos: [consistent_nav, Losant_parity, modal_CRUD_less_routing, cleaner_canvas_3col]
+-neg: [ADR-018_sub-routes_deleted, sidebar_adds_layout_complexity]
+~workflow_types: Application|Experience|Embedded|Edge stored in Workflow.type field
+
+#scope
+=arch_summary_update: yes

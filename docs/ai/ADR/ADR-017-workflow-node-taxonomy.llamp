@@ -1,0 +1,32 @@
+// LLAMP-SPEC v1 | ADR-017
+=adr: 017
+=title: Workflow Node Taxonomy Alignment (Losant 5-Category)
+=date: 2026-02-16
+=status: accepted
+
+#ctx
+~original: 20 nodes, 4 legacy categories [trigger, condition, action, transform]
+~gap: condition:deviceStatus stub; actions conflate output+data ops; 4 high-value nodes absent
+~reference: Losant IoT taxonomy (6 categories, 182 nodes)
+
+#opts
+~alt1: full migration of stored workflows (rejected: breaking change risk)
+
+#decision
+=chosen: additive 5-category taxonomy
+=categories: [trigger, logic, data, output, debug]
+=strategy: additive_only — no stored workflow migration
+=legacy: [condition:*, action:*, transform:*] remain valid in enum + engine
+=new_prefixes: [data:*, logic:*]
+=deprecated: condition:deviceStatus → palette-hidden only (enum retained)
+=tier1_new_nodes: [data:modbusRead, data:modbusWrite, data:queryDeviceStates, logic:function]
+=sandbox: logic:function uses Node.js vm module + 3-second timeout
+!legacy_prefixes: frozen — future nodes MUST use 5-category prefixes
+
+#consequences
++pos: [zero_breaking_changes, 5_visual_categories, Losant_parity, Modbus+DeviceState_nodes]
+-neg: [dual_prefix_system_in_engine, condition:deviceStatus_deprecated_not_deleted]
+~security: logic:function vm sandbox timeout=3s enforced
+
+#scope
+=arch_summary_update: yes

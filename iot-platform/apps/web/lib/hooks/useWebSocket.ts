@@ -108,13 +108,14 @@ export function useDeviceStateUpdates(
     socket.emit('subscribe:device', deviceId);
 
     // Listen for state updates (backend emits 'device:state')
-    const handleStateUpdate = (update: { deviceId: string; data: any; timestamp: Date }) => {
+    const handleStateUpdate = (update: { deviceId: string; data: any; derived?: Record<string, any>; timestamp: Date }) => {
       console.log('[WebSocket] Received device state:', update);
       // Convert backend format to DeviceState format
       onUpdate({
         id: `ws-${Date.now()}`,
         deviceId: update.deviceId,
         data: update.data,
+        derived: update.derived,
         timestamp: new Date(update.timestamp).toISOString(),
       });
     };

@@ -1,0 +1,30 @@
+// LLAMP-SPEC v1 | ADR-003
+=adr: 003
+=title: Redux Toolkit State Management Migration
+=date: 2026-02-14
+=status: accepted
+
+#ctx
+~original_plan: TanStack Query (server) + Zustand (client)
+~reality: complex state coordination required centralised predictable store
+~slices_needed: [auth, ui, dashboard, websocket, workflow, alarm]
+
+#opts
+~alt1: Zustand (rejected: insufficient for cross-feature coordination at scale)
+~alt2: TanStack Query only (rejected: no client-only state management)
+
+#decision
+=chosen: Redux Toolkit 2.11.2 as primary state manager
+=slices: [auth, ui, dashboard, websocket, workflow, alarm]
+=thunks: explicit generic types required → createAsyncThunk<ReturnType, ArgType, ThunkConfig>
+=persistence: dashboardSlice hybrid (localStorage + MongoDB)
+=react_query: retained for device queries + realtime state (NOT phased out)
+!zustand: deprecated
+
+#consequences
++pos: [centralised_single_source, time_travel_debug, type_safe_async, cross_feature_coordination]
+-neg: [more_boilerplate_than_zustand, learning_curve, larger_bundle]
+~react_query: still_used for device/deviceState queries + useDeviceRealtime
+
+#scope
+=arch_summary_update: yes

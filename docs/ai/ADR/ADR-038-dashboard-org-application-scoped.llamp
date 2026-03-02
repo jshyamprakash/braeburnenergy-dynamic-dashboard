@@ -1,0 +1,31 @@
+ADR-038: Dashboard Scoped to orgId + applicationId
+
+STATUS: Accepted
+
+CONTEXT:
+Dashboard model stored userId + organizationId (string) + applicationId (optional).
+This caused a fetch mismatch: saved with userId 'admin' but request context returned
+different string → list returned 0 dashboards.
+Platform hierarchy is Org → Application → Device/Workflow → Dashboard.
+Dashboards display derived device state — no natural per-user ownership exists.
+
+DECISION:
+Remove userId entirely. Replace organizationId (string) with orgId (ObjectId).
+Make applicationId required. Dashboards are application-level shared resources,
+consistent with Device and Workflow models.
+Remove isShared / sharedWith fields (no user ownership = no per-user sharing).
+Add requireAuth preHandler to all dashboard routes.
+orgId always comes from JWT via getRequestContext — never from request body.
+
+SCHEMA CHANGE:
+  Before: userId (string, required), organizationId (string), applicationId (optional)
+  After:  orgId (ObjectId, required), applicationId (string, required)
+  Index:  { orgId, dashboardId } unique  (was { userId, dashboardId })
+          { orgId, applicationId }       (was { organizationId, dashboardId })
+
+CONSEQUENCES:
++ Consistent with Device/Workflow multi-tenancy model
++ Fixes dashboard fetch bug permanently
++ Application delete guard now orgId-safe
+- Existing dashboard documents in MongoDB need migration (drop userId/organizationId,
+  set orgId ObjectId, mark applicationId) — one-time operation for POC

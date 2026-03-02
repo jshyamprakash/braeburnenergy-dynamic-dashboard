@@ -1,181 +1,127 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { organizationService } from '../services/organization.service';
+import { NotFoundError, ConflictError } from '../lib/errors';
+import { sendSuccess, sendCreated, sendPaginated, sendDeleted } from '../lib/response';
 import {
-  createOrganizationSchema,
-  updateOrganizationSchema,
-  orgIdParamSchema,
-  orgSlugParamSchema,
-  queryOrganizationsSchema,
+  type CreateOrganizationDTO,
+  type UpdateOrganizationDTO,
+  type QueryOrganizationsDTO,
 } from '../schemas/organization.schema';
 
 /**
- * OrganizationController handles HTTP requests for organization operations
+ * OrganizationController
+ *
+ * HTTP request handlers for organization management.
+ * Zero try/catch — errors propagate to global error handler.
  */
 class OrganizationController {
   /**
-   * Create a new organization
    * POST /organizations
    */
   async create(request: FastifyRequest, reply: FastifyReply) {
-    const validatedData = createOrganizationSchema.parse(request.body);
+    const data = request.body as CreateOrganizationDTO;
 
-    // Check if slug already exists
-    const existing = await organizationService.getBySlug(validatedData.slug);
+    const existing = await organizationService.getBySlug(data.slug);
     if (existing) {
-      return reply.code(409).send({
-        success: false,
-        error: 'Organization with this slug already exists',
-      });
+      throw new ConflictError('Organization with this slug already exists');
     }
 
-    const organization = await organizationService.create(validatedData);
-
-    return reply.code(201).send({
-      success: true,
-      data: organization,
-    });
+    const organization = await organizationService.create(data);
+    return sendCreated(reply, organization);
   }
 
   /**
-   * Get organization by ID
    * GET /organizations/:orgId
    */
   async getById(request: FastifyRequest, reply: FastifyReply) {
-    const { orgId } = orgIdParamSchema.parse(request.params);
-
+    const { orgId } = request.params as { orgId: string };
     const organization = await organizationService.getById(orgId);
 
     if (!organization) {
-      return reply.code(404).send({
-        success: false,
-        error: 'Organization not found',
-      });
+      throw new NotFoundError('Organization');
     }
 
-    return reply.code(200).send({
-      success: true,
-      data: organization,
-    });
+    return sendSuccess(reply, organization);
   }
 
   /**
-   * Get organization by slug
    * GET /organizations/slug/:slug
    */
   async getBySlug(request: FastifyRequest, reply: FastifyReply) {
-    const { slug } = orgSlugParamSchema.parse(request.params);
-
+    const { slug } = request.params as { slug: string };
     const organization = await organizationService.getBySlug(slug);
 
     if (!organization) {
-      return reply.code(404).send({
-        success: false,
-        error: 'Organization not found',
-      });
+      throw new NotFoundError('Organization');
     }
 
-    return reply.code(200).send({
-      success: true,
-      data: organization,
-    });
+    return sendSuccess(reply, organization);
   }
 
   /**
-   * List organizations with pagination
    * GET /organizations
    */
   async list(request: FastifyRequest, reply: FastifyReply) {
-    const validatedQuery = queryOrganizationsSchema.parse(request.query);
+    const query = request.query as QueryOrganizationsDTO;
+    const { organizations, total } = await organizationService.list(query);
 
-    const { organizations, total } = await organizationService.list(validatedQuery);
-
-    return reply.code(200).send({
-      success: true,
-      data: organizations,
-      pagination: {
-        limit: validatedQuery.limit || 20,
-        offset: validatedQuery.offset || 0,
-        total,
-      },
+    return sendPaginated(reply, organizations, {
+      total,
+      limit: query.limit || 20,
+      offset: query.offset || 0,
+      hasMore: (query.offset || 0) + (query.limit || 20) < total,
     });
   }
 
   /**
-   * Update organization
    * PATCH /organizations/:orgId
    */
   async update(request: FastifyRequest, reply: FastifyReply) {
-    const { orgId } = orgIdParamSchema.parse(request.params);
-    const validatedData = updateOrganizationSchema.parse(request.body);
+    const { orgId } = request.params as { orgId: string };
+    const data = request.body as UpdateOrganizationDTO;
 
-    // If updating slug, check if it's already taken
-    if (validatedData.slug) {
-      const existing = await organizationService.getBySlug(validatedData.slug);
+    if (data.slug) {
+      const existing = await organizationService.getBySlug(data.slug);
       if (existing && (existing._id?.toString() || existing.id) !== orgId) {
-        return reply.code(409).send({
-          success: false,
-          error: 'Organization with this slug already exists',
-        });
+        throw new ConflictError('Organization with this slug already exists');
       }
     }
 
-    const organization = await organizationService.update(orgId, validatedData);
+    const organization = await organizationService.update(orgId, data);
 
     if (!organization) {
-      return reply.code(404).send({
-        success: false,
-        error: 'Organization not found',
-      });
+      throw new NotFoundError('Organization');
     }
 
-    return reply.code(200).send({
-      success: true,
-      data: organization,
-    });
+    return sendSuccess(reply, organization);
   }
 
   /**
-   * Delete organization
    * DELETE /organizations/:orgId
    */
   async delete(request: FastifyRequest, reply: FastifyReply) {
-    const { orgId } = orgIdParamSchema.parse(request.params);
-
+    const { orgId } = request.params as { orgId: string };
     const deleted = await organizationService.delete(orgId);
 
     if (!deleted) {
-      return reply.code(404).send({
-        success: false,
-        error: 'Organization not found',
-      });
+      throw new NotFoundError('Organization');
     }
 
-    return reply.code(200).send({
-      success: true,
-      message: 'Organization deleted successfully',
-    });
+    return sendDeleted(reply, 'Organization deleted successfully');
   }
 
   /**
-   * Get organization statistics
    * GET /organizations/:orgId/stats
    */
   async getStats(request: FastifyRequest, reply: FastifyReply) {
-    const { orgId } = orgIdParamSchema.parse(request.params);
-
+    const { orgId } = request.params as { orgId: string };
     const stats = await organizationService.getStats(orgId);
 
     if (!stats) {
-      return reply.code(404).send({
-        success: false,
-        error: 'Organization not found',
-      });
+      throw new NotFoundError('Organization');
     }
 
-    return reply.code(200).send({
-      success: true,
-      data: stats,
-    });
+    return sendSuccess(reply, stats);
   }
 }
 

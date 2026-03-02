@@ -9,6 +9,7 @@ import {
 import { zodToSwagger, successResponse, paginatedResponse, errorResponse } from '../utils/swagger';
 import { requireAuth } from '../middleware/auth.middleware';
 import { requirePermission } from '../middleware/rbac.middleware';
+import { zodBodyValidator, zodQueryValidator } from '../middleware/validate.middleware';
 
 /**
  * Device Routes
@@ -44,7 +45,7 @@ export async function deviceRoutes(fastify: FastifyInstance) {
         400: errorResponse('Validation error'),
       },
     },
-    preHandler: [requireAuth, requirePermission('device:create')],
+    preHandler: [requireAuth, requirePermission('device:create'), zodBodyValidator(createDeviceSchema)],
   }, deviceController.create.bind(deviceController) as any);
 
   // Get device by ID
@@ -105,7 +106,7 @@ export async function deviceRoutes(fastify: FastifyInstance) {
         ),
       },
     },
-    preHandler: [requireAuth, requirePermission('device:read')],
+    preHandler: [requireAuth, requirePermission('device:read'), zodQueryValidator(queryDevicesSchema)],
   }, deviceController.list.bind(deviceController) as any);
 
   // Update device
@@ -138,7 +139,7 @@ export async function deviceRoutes(fastify: FastifyInstance) {
         400: errorResponse('Validation error'),
       },
     },
-    preHandler: [requireAuth, requirePermission('device:update')],
+    preHandler: [requireAuth, requirePermission('device:update'), zodBodyValidator(updateDeviceSchema)],
   }, deviceController.update.bind(deviceController) as any);
 
   // Delete device
@@ -182,10 +183,11 @@ export async function deviceRoutes(fastify: FastifyInstance) {
       querystring: {
         type: 'object',
         properties: {
+          applicationId: { type: 'string', description: 'Application ID (required)' },
           tags: { type: 'string', description: 'Comma-separated tags (e.g., floor-1,floor-2)' },
           limit: { type: 'integer', minimum: 1, maximum: 1000, default: 100 },
         },
-        required: ['tags'],
+        required: ['applicationId', 'tags'],
       },
       response: {
         200: successResponse(
@@ -214,13 +216,15 @@ export async function deviceRoutes(fastify: FastifyInstance) {
     schema: {
       tags: ['Devices'],
       summary: 'Get device count',
-      description: 'Returns total device count, optionally filtered by tags',
+      description: 'Returns total device count for an application, optionally filtered by tags',
       security: [{ bearerAuth: [] }],
       querystring: {
         type: 'object',
         properties: {
+          applicationId: { type: 'string', description: 'Application ID (required)' },
           tags: { type: 'string', description: 'Filter by tags (comma-separated)' },
         },
+        required: ['applicationId'],
       },
       response: {
         200: successResponse(
@@ -242,13 +246,15 @@ export async function deviceRoutes(fastify: FastifyInstance) {
     schema: {
       tags: ['Devices'],
       summary: 'Get recent devices',
-      description: 'Returns most recently created devices, sorted by ULID (time-sortable)',
+      description: 'Returns most recently created devices in an application, sorted by ULID (time-sortable)',
       security: [{ bearerAuth: [] }],
       querystring: {
         type: 'object',
         properties: {
+          applicationId: { type: 'string', description: 'Application ID (required)' },
           limit: { type: 'integer', minimum: 1, maximum: 100, default: 50 },
         },
+        required: ['applicationId'],
       },
       response: {
         200: successResponse(

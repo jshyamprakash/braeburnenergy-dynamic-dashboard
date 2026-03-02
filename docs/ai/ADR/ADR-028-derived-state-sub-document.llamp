@@ -1,0 +1,22 @@
+// LLAMP-SPEC v1 | ADR-028
+=adr: 028
+=title: Derived State Sub-Document (Voided)
+=date: 2026-02-24
+=status: voided superseded_by=ADR-030
+
+#ctx
+~problem: action:writeDeviceState patches device_states.data shared between raw+derived; field collision silently overwrites raw sensor values
+~intent: separate raw (immutable) from workflow-derived (mutable) in same document
+
+#decision
+=intent: add derived:Mixed sub-doc alongside data in DeviceState schema
+=writeDeviceState: writes exclusively to derived.* via $set {'derived.fieldName':value}
+=display_rule: derived[field] ?? data[field]
+~execution_blocked: device_states is MongoDB time series collection → no post-insert $set on non-metaField keys
+
+#void_reason: MongoDB time series collections are append-only; $set not supported after insert
+~workaround: ADR-029 used separate device_derived_states collection
+~resolution: ADR-030 converts device_states to regular collection with TTL, reinstating this intent
+
+#scope
+=arch_summary_update: no

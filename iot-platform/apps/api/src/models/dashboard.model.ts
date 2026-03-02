@@ -49,18 +49,18 @@ export interface IDashboardBlock {
 
 /**
  * Dashboard Document Interface
+ *
+ * ADR-038: Dashboards are scoped to orgId + applicationId (same as Device/Workflow).
+ * userId ownership removed — dashboards are application-level shared resources.
  */
 export interface IDashboard extends Document {
-  userId: string;
-  organizationId: string;
-  applicationId?: string; // Optional FK to Application (ADR-023)
+  orgId: mongoose.Types.ObjectId;
+  applicationId: string;
   dashboardId: string;
   name: string;
   description?: string;
   blocks: IDashboardBlock[];
   layouts: Record<string, any>;
-  isShared: boolean;
-  sharedWith: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -70,18 +70,14 @@ export interface IDashboard extends Document {
  */
 const DashboardSchema = new Schema<IDashboard>(
   {
-    userId: {
-      type: String,
-      required: true,
-      index: true,
-    },
-    organizationId: {
-      type: String,
+    orgId: {
+      type: Schema.Types.ObjectId,
       required: true,
       index: true,
     },
     applicationId: {
       type: String,
+      required: true,
       index: true,
     },
     dashboardId: {
@@ -100,14 +96,6 @@ const DashboardSchema = new Schema<IDashboard>(
     },
     blocks: [Schema.Types.Mixed],
     layouts: Schema.Types.Mixed,
-    isShared: {
-      type: Boolean,
-      default: false,
-    },
-    sharedWith: {
-      type: [String],
-      default: [],
-    },
   },
   {
     timestamps: true,
@@ -115,9 +103,9 @@ const DashboardSchema = new Schema<IDashboard>(
   }
 );
 
-// Compound index for unique dashboards per user
-DashboardSchema.index({ userId: 1, dashboardId: 1 }, { unique: true });
-DashboardSchema.index({ organizationId: 1, dashboardId: 1 });
+// Unique dashboard per org (matches Device/Workflow pattern)
+DashboardSchema.index({ orgId: 1, dashboardId: 1 }, { unique: true });
+DashboardSchema.index({ orgId: 1, applicationId: 1 });
 
 /**
  * Dashboard Model

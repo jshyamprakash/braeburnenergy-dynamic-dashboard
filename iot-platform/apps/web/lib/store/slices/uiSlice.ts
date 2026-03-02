@@ -33,6 +33,32 @@ export interface UIState {
 }
 
 /**
+ * Load sidebar expanded state from localStorage
+ */
+function loadSidebarFromStorage(): boolean {
+  if (typeof window === 'undefined') return true;
+  try {
+    const saved = localStorage.getItem('sidebar-expanded');
+    if (saved !== null) return JSON.parse(saved) as boolean;
+  } catch {
+    // ignore
+  }
+  return true;
+}
+
+/**
+ * Save sidebar expanded state to localStorage
+ */
+function saveSidebarToStorage(open: boolean) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem('sidebar-expanded', JSON.stringify(open));
+  } catch {
+    // ignore
+  }
+}
+
+/**
  * Load theme from localStorage
  */
 function loadThemeFromStorage(): Theme {
@@ -68,7 +94,7 @@ function saveThemeToStorage(theme: Theme) {
  */
 const initialState: UIState = {
   theme: loadThemeFromStorage(),
-  sidebarOpen: true,
+  sidebarOpen: loadSidebarFromStorage(),
   modals: {
     deviceForm: {
       isOpen: false,
@@ -112,6 +138,7 @@ const uiSlice = createSlice({
      */
     toggleSidebar: (state) => {
       state.sidebarOpen = !state.sidebarOpen;
+      saveSidebarToStorage(state.sidebarOpen);
     },
 
     /**
@@ -119,6 +146,7 @@ const uiSlice = createSlice({
      */
     setSidebarOpen: (state, action: PayloadAction<boolean>) => {
       state.sidebarOpen = action.payload;
+      saveSidebarToStorage(action.payload);
     },
 
     /**

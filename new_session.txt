@@ -2,5 +2,12 @@ Operate under CLAUDE.md.
 Re-anchor to repository.
 
 Generate next task.
+/model haiku
+Read docs/ai/HAIKU_ANCHOR.md and anchor.
 Start next task.
+/model sonnet
 Task complete.
+
+In frontend, move constants like DEFAULT_ORG_ID, DEFAULT_USER_ID to constants.  Use ORG_ID, USER_ID in the controllers instead of DEFAULT.  The controllers can assign ORG_ID = DEFAULT_ORG_ID from the constants.  Change wherever applicable for similar instances for other IDs (constants) too.
+
+Ask client if history needs to be maintained for derived states.

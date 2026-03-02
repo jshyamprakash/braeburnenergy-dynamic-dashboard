@@ -48,6 +48,13 @@ interface GaugeBlockProps {
    * Show the numeric value overlay
    */
   showValue?: boolean;
+
+  /**
+   * ISO timestamp of the last data update — shown in the footer so the reader
+   * knows how fresh the value is. Displayed as HH:MM:SS (or "DD MMM HH:MM" for
+   * data from a previous day).
+   */
+  lastUpdated?: string;
 }
 
 /**
@@ -83,7 +90,22 @@ export function GaugeBlock({
   criticalThreshold,
   size = 'md',
   showValue = true,
+  lastUpdated,
 }: GaugeBlockProps) {
+  const formattedTime = useMemo(() => {
+    if (!lastUpdated) return null;
+    const d = new Date(lastUpdated);
+    if (isNaN(d.getTime())) return null;
+    const now = new Date();
+    const isToday =
+      d.getFullYear() === now.getFullYear() &&
+      d.getMonth() === now.getMonth() &&
+      d.getDate() === now.getDate();
+    if (isToday) {
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+    return d.toLocaleString([], { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+  }, [lastUpdated]);
   // Calculate percentage for gauge fill
   const percentage = useMemo(() => {
     const range = max - min;
@@ -219,6 +241,13 @@ export function GaugeBlock({
           </div>
         )}
       </div>
+
+      {/* Last updated timestamp */}
+      {formattedTime && (
+        <div className="mt-1 text-xs text-gray-400 dark:text-gray-500 text-right flex-shrink-0">
+          Last update: {formattedTime}
+        </div>
+      )}
     </div>
   );
 }

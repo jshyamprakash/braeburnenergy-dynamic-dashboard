@@ -1,0 +1,35 @@
+// LLAMP-SPEC v1 | ADR-037
+=adr: 037
+=title: Workspace/Derived Variable Convention — ADR-031 Namespace Implementation
+=date: 2026-02-27
+=status: accepted implements=ADR-031(namespace_semantics) supersedes=trigger.stateData.*
+
+#ctx
+~problem: ADR-031 defined workspace.*/derived.* namespaces but code used trigger.stateData.* (read)
+  and plain attr names (write). Inconsistency; no support for nested telemetry paths.
+~requirement: implement ADR-031 namespace_semantics as clean break
+
+#decision
+=workspace: top-level context variable = device_states.data.* (the triggering doc's raw telemetry)
+  → {{workspace.freq}} resolves telemetry field 'freq'
+  → {{workspace.meter_Params.frequence}} resolves nested telemetry path
+=derived: mapping key prefix in writeDeviceState node
+  → key column accepts {{derived.attr}} syntax
+  → backend parses attr from {{derived.attr}}, validates against device.attributes
+  → plain key fallback still works for backwards compat
+=trigger.stateData: REMOVED (clean break — seed script and existing workflows updated)
+=workspace_at_root: engine adds workspace to root context at init + after trigger fires
+  → resolves from inputData.workspace at init; reseeds from context.trigger.workspace post-trigger
+
+#impl
+=dispatcher: data.workspace = stateData.data; data.timestamp = stateData.timestamp (no stateData key)
+=engine: context.workspace seeded from inputData.workspace at init + after trigger node fires
+=handlers: extractDerive(key) parses {{derived.attr}} → attr; fallback to plain key
+=seed_script: context.trigger.stateData.* → context.workspace.*; mapping keys → {{derived.attr}}
+=ui_panel: column headers renamed Output(derived.*)/Input(workspace.*); datalist → {{derived.attr}}
+=variable_picker: workspace.attr suggestions; section header "Workspace Variables"
+=workflow_variables: getDeviceAttributeVariables keys → workspace.${fieldName}
+
+#consequences
++pos: [matches_ADR-031_semantics, nested_telemetry_supported, explicit_read/write_distinction]
+-neg: [breaking_change_requires_seed_and_existing_workflow_updates]

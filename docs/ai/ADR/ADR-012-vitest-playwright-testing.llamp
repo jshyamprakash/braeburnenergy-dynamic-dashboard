@@ -1,0 +1,29 @@
+// LLAMP-SPEC v1 | ADR-012
+=adr: 012
+=title: Vitest + Playwright Test Strategy
+=date: 2026-02-11
+=status: accepted
+
+#ctx
+~need: fast TypeScript-native testing at unit, integration, E2E levels
+
+#opts
+~alt1: Jest (rejected: slower, heavy TS config)
+~alt2: Mocha (rejected: no TS native)
+~alt3: Cypress for E2E (rejected: frontend only, heavier)
+
+#decision
+=chosen_backend: Vitest (unit + integration)
+=chosen_e2e: Playwright
+=backend_coverage: 3 unit files + 8 integration files → 63+ tests
+=backend_db: iot_platform_test with setup/teardown
+!file_parallelism: OFF → prevents race conditions
+=playwright: 4 E2E specs, 3 browsers [Chromium, Firefox, WebKit]
+=playwright_server: auto-starts dev server
+
+#consequences
++pos: [vite_powered_fast, TS_native, modern_API, parallel_exec, cross_browser_E2E]
+-neg: [vitest_less_mature_than_jest, migration_from_jest_required, playwright_heavier_than_cypress]
+
+#scope
+=arch_summary_update: no

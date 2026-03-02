@@ -1,0 +1,34 @@
+# ADR-036: Application-Scoped Entity Creation (Strict Hierarchy Enforcement)
+
+## Status
+Accepted
+
+## Context
+ADR-023 defined Application → Device → Workflow → Dashboard as the platform hierarchy.
+ADR-035 added intra-application prerequisites (device before workflow, etc.).
+However, global list pages (/devices, /workflows, /dashboards) still allowed creating
+entities with no applicationId, producing orphaned records not visible in any Application
+Detail page. This violated ADR-023's intent and confused the user setup flow.
+
+## Decision
+Entity creation is ONLY permitted within an application context:
+
+**Backend (authoritative)**
+- DeviceService.create(): throw 422 if applicationId is missing
+- WorkflowService.create(): throw 422 if applicationId is missing (existing device guard retained)
+- DashboardService.saveDashboard(): throw 422 if applicationId is missing
+  (existing device + workflow guard retained)
+- All three controllers: catch prerequisite/scope errors → HTTP 422
+
+**Frontend (UX gate)**
+- /devices page: Remove "Add Device" button; show "Add devices from the Application Detail page"
+  with a link to /applications
+- /workflows page: Remove "Create Workflow" button; same guidance
+- /dashboards page: Remove "New Dashboard" button; same guidance
+- Application Detail page remains the ONLY creation entry point (already enforced)
+
+## Consequences
+- No orphaned entities — every Device, Workflow, Dashboard belongs to an Application
+- Enforces ADR-023 hierarchy at both API and UI layers
+- Global list pages become read-only browse/manage views
+- Users must create an Application before any other entity (existing /applications page handles this)

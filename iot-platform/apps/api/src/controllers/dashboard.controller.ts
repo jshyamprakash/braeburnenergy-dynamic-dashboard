@@ -1,203 +1,121 @@
-import { FastifyRequest, FastifyReply } from 'fastify';
+import type { FastifyRequest, FastifyReply } from 'fastify';
 import { DashboardService } from '../services/dashboard.service';
+import { NotFoundError, BadRequestError } from '../lib/errors';
+import { sendSuccess, sendDeleted } from '../lib/response';
+import { getRequestContext } from '../lib/request-context';
 
 const dashboardService = new DashboardService();
 
 /**
- * Get dashboard by ID
+ * DashboardController
+ *
+ * HTTP request handlers for dashboard management.
+ * Dashboards are scoped to orgId + applicationId (ADR-038).
+ * Zero try/catch — errors propagate to global error handler.
  */
-export async function getDashboard(
-  request: FastifyRequest<{
-    Params: { dashboardId: string };
-  }>,
-  reply: FastifyReply
-) {
-  try {
+export class DashboardController {
+  /**
+   * GET /dashboards/:dashboardId?applicationId=
+   */
+  async getDashboard(
+    request: FastifyRequest<{ Params: { dashboardId: string }; Querystring: { applicationId?: string } }>,
+    reply: FastifyReply
+  ) {
+    const { orgId } = getRequestContext(request);
     const { dashboardId } = request.params;
-    // TODO: Get userId from authenticated user (for now using hardcoded)
-    const userId = 'admin'; // Will be replaced with request.user.id after auth integration
+    const { applicationId } = request.query;
 
-    const dashboard = await dashboardService.getDashboard(userId, dashboardId);
-
-    if (!dashboard) {
-      return reply.code(404).send({
-        success: false,
-        error: 'Dashboard not found',
-      });
+    if (!applicationId) {
+      throw new BadRequestError('applicationId is required');
     }
 
-    return reply.send({
-      success: true,
-      data: dashboard,
-    });
-  } catch (error) {
-    request.log.warn(error);
-    return reply.code(500).send({
-      success: false,
-      error: 'Failed to fetch dashboard',
-    });
+    const dashboard = await dashboardService.getDashboard(orgId, dashboardId, applicationId);
+
+    if (!dashboard) {
+      throw new NotFoundError('Dashboard');
+    }
+
+    return sendSuccess(reply, dashboard);
   }
-}
 
-/**
- * Get all dashboards for current user
- */
-export async function getUserDashboards(request: FastifyRequest, reply: FastifyReply) {
-  try {
-    // TODO: Get userId from authenticated user
-    const userId = 'admin';
+  /**
+   * GET /dashboards?applicationId=
+   */
+  async getDashboards(
+    request: FastifyRequest<{ Querystring: { applicationId?: string } }>,
+    reply: FastifyReply
+  ) {
+    const { orgId } = getRequestContext(request);
+    const { applicationId } = request.query;
 
-    const dashboards = await dashboardService.getUserDashboards(userId);
+    if (!applicationId) {
+      throw new BadRequestError('applicationId is required');
+    }
 
-    return reply.send({
-      success: true,
-      data: dashboards,
-    });
-  } catch (error) {
-    request.log.error(error);
-    return reply.code(500).send({
-      success: false,
-      error: 'Failed to fetch dashboards',
-    });
+    const dashboards = await dashboardService.getDashboards(orgId, applicationId);
+    return sendSuccess(reply, dashboards);
   }
-}
 
-/**
- * Save dashboard (create or update)
- */
-export async function saveDashboard(
-  request: FastifyRequest<{
-    Body: {
-      dashboardId: string;
-      organizationId: string;
-      name?: string;
-      description?: string;
-      blocks: any[];
-      layouts: Record<string, any>;
-    };
-  }>,
-  reply: FastifyReply
-) {
-  try {
-    const { dashboardId, organizationId, name, description, blocks, layouts } = request.body;
-    // TODO: Get userId from authenticated user
-    const userId = 'admin';
+  /**
+   * POST /dashboards
+   */
+  async saveDashboard(
+    request: FastifyRequest<{
+      Body: {
+        dashboardId: string;
+        applicationId: string;
+        name?: string;
+        description?: string;
+        blocks: any[];
+        layouts: Record<string, any>;
+      };
+    }>,
+    reply: FastifyReply
+  ) {
+    const { orgId } = getRequestContext(request);
+    const { dashboardId, applicationId, name, description, blocks, layouts } = request.body;
 
-    const dashboard = await dashboardService.saveDashboard(userId, organizationId, dashboardId, {
+    if (!applicationId) {
+      throw new BadRequestError('applicationId is required');
+    }
+
+    const dashboard = await dashboardService.saveDashboard(orgId, applicationId, dashboardId, {
       name,
       description,
       blocks,
       layouts,
     });
 
-    return reply.send({
-      success: true,
-      data: dashboard,
-      message: 'Dashboard saved successfully',
-    });
-  } catch (error) {
-    request.log.error(error);
-    return reply.code(500).send({
-      success: false,
-      error: 'Failed to save dashboard',
-    });
+    return sendSuccess(reply, dashboard);
   }
-}
 
-/**
- * Delete dashboard
- */
-export async function deleteDashboard(
-  request: FastifyRequest<{
-    Params: { dashboardId: string };
-  }>,
-  reply: FastifyReply
-) {
-  try {
+  /**
+   * DELETE /dashboards/:dashboardId
+   */
+  async deleteDashboard(
+    request: FastifyRequest<{ Params: { dashboardId: string } }>,
+    reply: FastifyReply
+  ) {
+    const { orgId } = getRequestContext(request);
     const { dashboardId } = request.params;
-    // TODO: Get userId from authenticated user
-    const userId = 'admin';
-
-    const deleted = await dashboardService.deleteDashboard(userId, dashboardId);
+    const deleted = await dashboardService.deleteDashboard(orgId, dashboardId);
 
     if (!deleted) {
-      return reply.code(404).send({
-        success: false,
-        error: 'Dashboard not found',
-      });
+      throw new NotFoundError('Dashboard');
     }
 
-    return reply.send({
-      success: true,
-      message: 'Dashboard deleted successfully',
-    });
-  } catch (error) {
-    request.log.error(error);
-    return reply.code(500).send({
-      success: false,
-      error: 'Failed to delete dashboard',
-    });
+    return sendDeleted(reply, 'Dashboard deleted successfully');
   }
 }
 
-/**
- * Share dashboard with other users
- */
-export async function shareDashboard(
-  request: FastifyRequest<{
-    Params: { dashboardId: string };
-    Body: { sharedWith: string[] };
-  }>,
-  reply: FastifyReply
-) {
-  try {
-    const { dashboardId } = request.params;
-    const { sharedWith } = request.body;
-    // TODO: Get userId from authenticated user
-    const userId = 'admin';
+export const dashboardController = new DashboardController();
 
-    const dashboard = await dashboardService.shareDashboard(userId, dashboardId, sharedWith);
-
-    if (!dashboard) {
-      return reply.code(404).send({
-        success: false,
-        error: 'Dashboard not found',
-      });
-    }
-
-    return reply.send({
-      success: true,
-      data: dashboard,
-      message: 'Dashboard shared successfully',
-    });
-  } catch (error) {
-    request.log.error(error);
-    return reply.code(500).send({
-      success: false,
-      error: 'Failed to share dashboard',
-    });
-  }
-}
-
-/**
- * Get shared dashboards
- */
-export async function getSharedDashboards(request: FastifyRequest, reply: FastifyReply) {
-  try {
-    // TODO: Get userId from authenticated user
-    const userId = 'admin';
-
-    const dashboards = await dashboardService.getSharedDashboards(userId);
-
-    return reply.send({
-      success: true,
-      data: dashboards,
-    });
-  } catch (error) {
-    request.log.error(error);
-    return reply.code(500).send({
-      success: false,
-      error: 'Failed to fetch shared dashboards',
-    });
-  }
-}
+// Named function exports for route registrations
+export const getDashboard = (req: FastifyRequest<any>, reply: FastifyReply) =>
+  dashboardController.getDashboard(req, reply);
+export const getUserDashboards = (req: FastifyRequest<any>, reply: FastifyReply) =>
+  dashboardController.getDashboards(req, reply);
+export const saveDashboard = (req: FastifyRequest<any>, reply: FastifyReply) =>
+  dashboardController.saveDashboard(req, reply);
+export const deleteDashboard = (req: FastifyRequest<any>, reply: FastifyReply) =>
+  dashboardController.deleteDashboard(req, reply);

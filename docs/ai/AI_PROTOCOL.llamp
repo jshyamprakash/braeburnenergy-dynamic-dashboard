@@ -1,0 +1,266 @@
+// LLAMP-SPEC v1 | AI Operating Protocol
+// src: AI OPERATING MODE — TOKEN EFFICIENT & REPOSITORY-ANCHORED
+// ver: 1.3 | updated: 2026-02-27
+// target: @haiku @sonnet
+
+---
+
+// ── GLOBAL CONSTANTS ──
+=mode: repo-anchored
+=mem: NO_CHAT          // never rely on chat history
+=state: docs/ai/       // all state lives here
+=arch_src: ARCH_SUMMARY.md
+
+---
+
+// ── S0: COMMUNICATION FORMAT RULES (MANDATORY) ──
+// Who reads what → what format to use
+=fmt_rules: {
+  human->model:        natural_language,   // user speaks naturally
+  model->human:        natural_language,   // all replies, proposals, questions TO user
+  model->model:        llamp-spec-v1,      // all inter-model docs and instructions
+  arch_for_human:      natural_language,   // ARCH_SUMMARY.md = human readable
+  arch_for_models:     llamp-spec-v1,      // ADR/*.llamp = model readable
+  task_backlog:        natural_language,   // TASK_HISTORY.md backlog = human readable
+  task_execution_docs: llamp-spec-v1       // CURRENT_TASK.md, FEATURE_TASKS.md, CURRENT_DECISIONS.md
+}
+// Rule: if output.audience==human → natural_language
+//       if output.audience==model → llamp-spec-v1
+// ADR confirmation to user → natural_language summary THEN create .llamp file
+
+---
+
+// ── S0.5: MODEL ROUTING (canonical trigger → model assignment) ──
+=routing: {
+  "Generate new task"          → @sonnet,         // planning, ADR creation, arch decisions
+  "Task complete"              → @sonnet,          // wrap-up, TASK_HISTORY, CURRENT_DECISIONS, ARCH_SUMMARY
+  "Start next task" [backend]  → @sonnet,          // MANDATORY: backend/API/DB tasks → Sonnet implements
+  "Start next task" [frontend] → @haiku,           // MANDATORY: frontend/UI tasks → Haiku implements
+  "ADR created"                → @sonnet STOP      // after ADR + task files generated, Sonnet waits for user
+}
+// MANDATORY MODEL SPLIT (overrides previous default — unless human explicitly instructs otherwise):
+//   task.type == backend|api|db|service|model|route|middleware → @sonnet
+//   task.type == frontend|ui|component|page|hook|style        → @haiku
+// Sonnet NEVER self-transitions from ADR creation into implementation.
+!rule: never execute a trigger on the wrong model
+!rule: backend task on Haiku = STOP + instruct user to switch to Sonnet
+!rule: frontend task on Sonnet = STOP + instruct user to switch to Haiku
+~if_wrong_model: tell user which model to switch to (with task type reason), then stop
+~exception: human explicit instruction overrides model assignment
+
+---
+
+// ── S1: SESSION ANCHOR (run on every new session) ──
+@self #anchor
+cmd: read seq=[
+  docs/ai/ARCH_SUMMARY.llamp,     // model reads from .llamp (human reads .md)
+  docs/ai/ADR/           !filenames_only !format:*.llamp,
+  docs/ai/AI_PROTOCOL.llamp ?if:exists,
+  docs/ai/TASK_HISTORY.md ?if:exists,
+  docs/ai/CURRENT_TASK.llamp ?if:exists,
+  docs/ai/CURRENT_DECISIONS.llamp ?if:exists
+]
+!no_full_scan           // scan full repo only if: new_task|drift|explicit
+<text: "Anchored. Ready."
+
+---
+
+// ── S2: ARCH AUTHORITY ──
+// priority order (high→low):
+// implemented_code > ARCH_SUMMARY > ADR_history > TASK_HISTORY > chat
+@self #arch_authority
+?if: struct_conflict_detected -> trigger:#drift
+!never_silent_modify_arch_files
+
+---
+
+// ── S3: DRIFT DETECTION ──
+// trigger ONLY on:
+// db_model|core_dataflow|auth_strategy|realtime|storage|middleware|multitenancy
+@self #drift
+cmd: step [
+  1. inspect affected_modules_only,
+  2. diff vs ARCH_SUMMARY.md,
+  3. propose: [update_arch_summary? | new_adr?],  // propose in natural_language to user
+  4. wait_for_confirm,
+  5. !no_modify_arch_without_approval
+]
+!no_full_scan_minor_features
+
+---
+
+// ── S4: ADR GENERATION ──
+// trigger when: db_change|persist_change|middleware|service_boundary|
+//               realtime_change|multitenancy|ext_integration|major_refactor
+@sonnet #adr_gen
+cmd: step [
+  1. run #drift,
+  2. confirm_with_user,                            // natural_language: explain what + why
+  3. create docs/ai/ADR/ADR-XXX-short-title.llamp
+     !format: llamp-spec-v1
+     !max_lines:40
+     fields=[=adr,=title,=date,=status,#ctx,#opts,#decision,#consequences,#scope],
+  4. ?if: #scope.arch_summary_update==yes -> update_both: [
+       docs/ai/ARCH_SUMMARY.llamp  !format:llamp-spec-v1,  // model reads
+       docs/ai/ARCH_SUMMARY.md     !format:natural_language // human reads
+     ],
+  5. confirm_to_user  // natural_language: "ADR-XXX created. ARCH_SUMMARY updated."
+  6. write docs/ai/CURRENT_TASK.llamp   !format:llamp-spec-v1 !max_lines:40,
+  7. write docs/ai/FEATURE_TASKS.llamp  !format:llamp-spec-v1 !max_tasks:15,
+  8. STOP  // wait for user to decide: "Start next task" (Haiku) or other instruction
+]
+!never_rewrite_prev_adr
+!no_modify_arch_summary_until_adr_approved
+!all_adr_in_llamp_spec_v1
+!never_auto_implement_after_adr  // ADR creation = STOP point; user decides next step
+
+---
+
+// ── S5: TASK CONTINUITY ──
+// source of truth ONLY:
+// TASK_HISTORY.md | CURRENT_DECISIONS.md | ARCH_SUMMARY.md
+@self #task_continuity
+!never_infer_from_chat
+=task_history_struct: {
+  completed:   natural_language,   // human readable
+  in_progress: natural_language,   // human readable
+  backlog:     natural_language    // human readable — Shyam reads this
+}
+~entries: capability_level_only    // no explanations
+
+---
+
+// ── S6: GENERATE NEW TASK (human-in-loop) ──
+// trigger: user says "Generate new task"
+// !! SONNET ONLY — if running on Haiku, tell user to switch to Sonnet first !!
+@sonnet #gen_task
++require_model: sonnet
+?if: model!=sonnet -> <text: "Switch to Sonnet before generating tasks." + STOP
+cmd: step [
+  1. read [ARCH_SUMMARY.llamp, TASK_HISTORY.md, CURRENT_DECISIONS.llamp],
+  2. scan [incomplete_modules, backlog_items, capability_gaps],
+  3. propose 3-5 candidates                        // OUTPUT: natural_language to user
+     each=[title, 1line_purpose, arch_impact:bool],
+  4. WAIT_FOR_USER_SELECT
+]
+!no_gen_CURRENT_TASK_yet
+// after user selects:
+cmd: gen [
+  docs/ai/CURRENT_TASK.llamp     !format:llamp-spec-v1 !max_lines:40,
+  docs/ai/FEATURE_TASKS.llamp    !format:llamp-spec-v1 !max_tasks:15
+]
++remind_user: ~if task.type==backend|api|db → "Switch to Sonnet. Say: Start next task."
+             ~if task.type==frontend|ui    → "Switch to Haiku. Say: Start next task."
+!no: [re-summarize_arch, expand_adr, full_repo_scan, recreate_completed]
+
+---
+
+// ── S7: EXECUTE TASK ──
+// trigger: user says "Start next task"
+// !! MODEL DETERMINED BY TASK TYPE — MANDATORY (unless human overrides) !!
+//   backend|api|db|service|model|route|middleware → @sonnet
+//   frontend|ui|component|page|hook|style         → @haiku
+@self #exec_task
+cmd: step [
+  1. read CURRENT_TASK.llamp,    // llamp-spec-v1 — check task.type field
+  2. read FEATURE_TASKS.llamp,   // llamp-spec-v1
+  3. chk task.type:
+       ~if backend|api|db|service|model|route|middleware:
+           ?if model!=sonnet -> <text: "This is a backend task. Switch to Sonnet." + STOP
+       ~if frontend|ui|component|page|hook|style:
+           ?if model!=haiku  -> <text: "This is a frontend task. Switch to Haiku." + STOP
+  4. chk arch_impact==false,
+  5. inspect relevant_modules_only,
+  6. guide implementation        // OUTPUT: natural_language to user
+]
+!no_full_repo_scan
+?if: arch_impact==true -> STOP + report_to_user_natural_language + wait
+~exception: human explicit instruction overrides model check in step 3
+
+---
+
+// ── S8: TASK COMPLETE ──
+// trigger: user says "Task complete"
+// !! SONNET ONLY — if running on Haiku, tell user to switch to Sonnet first !!
+@sonnet #task_done
++require_model: sonnet
+?if: model!=sonnet -> <text: "Switch to Sonnet before closing out a task." + STOP
+cmd: step [
+  1. append completed_capability -> TASK_HISTORY.md
+     !format: natural_language   // human readable
+     under: completed,
+  2. remove from in_progress,
+  3. write docs/ai/CURRENT_DECISIONS.llamp
+     !format: llamp-spec-v1 !max_lines:40
+     fields=[what_changed, tech_implications, constraints],
+  4. clear [CURRENT_TASK.llamp, FEATURE_TASKS.llamp],
+  5. ?if: arch_changed==true -> update_both: [
+       ARCH_SUMMARY.llamp !format:llamp-spec-v1,
+       ARCH_SUMMARY.md    !format:natural_language
+     ]
+]
++remind_user: "Task closed. Say 'Generate new task' (Sonnet) or switch to Haiku + 'Start next task' if task file exists."
+
+---
+
+// ── S9: DOC CONSTRAINTS & FORMAT MAP ──
+=limits: {
+  ARCH_SUMMARY.llamp:      40ln  !format:llamp-spec-v1,    // model reads
+  ARCH_SUMMARY.md:         40ln  !format:natural_language, // human reads (keep both)
+  ADR/*.llamp:             40ln  !format:llamp-spec-v1,
+  CURRENT_TASK.llamp:      40ln  !format:llamp-spec-v1,
+  FEATURE_TASKS.llamp:     15tasks !format:llamp-spec-v1,
+  CURRENT_DECISIONS.llamp: 40ln  !format:llamp-spec-v1,
+  TASK_HISTORY.md:         80ln  !format:natural_language  // human reads only
+}
+!no_expand_beyond_limits
+
+---
+
+// ── S10: SELECTIVE SCAN STRATEGY ──
+@self #scan
+~default: [entry_points, recently_modified, task_relevant_modules]
+!avoid: unrelated_large_files
+!full_scan: only_if_explicit
+
+---
+
+// ── S11: MODEL SWITCH SAFETY ──
+@self #model_switch
+cmd: read [ARCH_SUMMARY.llamp, TASK_HISTORY.md, CURRENT_TASK.llamp ?if:exists]
+!never_rely_on_prior_chat_reasoning
++on_switch: confirm_anchor_natural_language   // tell user "Re-anchored. Current task: X"
+
+---
+
+// ── S12: STRICT DISCIPLINE ──
+!never: [
+  store_arch_reasoning_in_chat,
+  expand_arch_casually,
+  rewrite_adr_history,
+  speculative_design,
+  regenerate_completed_tasks,
+  write_llamp_spec_when_audience_is_human,    // format rule
+  write_natural_language_for_model_docs,      // format rule
+  auto_implement_after_adr_creation,          // Sonnet must stop after ADR; user decides
+  auto_proceed_without_user_gate,             // any arch decision ends with STOP + wait
+  implement_backend_task_on_haiku,            // MANDATORY: backend → Sonnet only
+  implement_frontend_task_on_sonnet           // MANDATORY: frontend → Haiku only
+]
+!always: [
+  persist_state_in_docs/ai/,
+  keep_arch_compressed,
+  isolate_execution,
+  maintain_token_efficiency,
+  match_format_to_audience                    // NEW: human=NL, model=llamp-spec-v1
+]
+
+---
+
+// ── S13: ADR READING RULE (for anchor) ──
+@self #adr_read
+>input: docs/ai/ADR/*.llamp
+!filenames_only: default
+!full_parse: only_if [drift_detected | task_relevant | explicit]
+!format_confirm: all_adr_must_be_llamp-spec-v1
+!no_md_adr_files: all ADRs are *.llamp — no *.md ADR files exist

@@ -1,249 +1,96 @@
-import { FastifyRequest, FastifyReply } from 'fastify';
+import type { FastifyRequest, FastifyReply } from 'fastify';
 import { RetentionPolicyService } from '../services/retention-policy.service';
-import { DataCategory } from '../models';
-
-/**
- * RetentionPolicyController
- *
- * Handles EPA-compliant data retention policy management.
- */
+import type { DataCategory } from '../models';
+import { NotFoundError } from '../lib/errors';
+import { sendSuccess, sendCreated, sendDeleted } from '../lib/response';
 
 const retentionPolicyService = new RetentionPolicyService();
 
 /**
- * Create a new retention policy (SuperAdmin only)
+ * RetentionPolicyController
+ *
+ * EPA-compliant data retention policy management.
+ * Zero try/catch — errors propagate to global error handler.
  */
-export async function createRetentionPolicy(request: FastifyRequest, reply: FastifyReply) {
-  try {
-    const data = request.body as any;
-
-    const policy = await retentionPolicyService.createPolicy(data);
-
-    return reply.status(201).send({
-      success: true,
-      data: policy,
-    });
-  } catch (error) {
-    request.log.error({ error }, 'Create retention policy error');
-
-    const errorMessage = (error as Error).message;
-
-    if (errorMessage.includes('validation failed') || errorMessage.includes('must be at least')) {
-      return reply.status(400).send({
-        success: false,
-        error: 'Validation error',
-        message: errorMessage,
-      });
-    }
-
-    return reply.status(500).send({
-      success: false,
-      error: 'Internal server error',
-      message: 'Failed to create retention policy',
-    });
+export class RetentionPolicyController {
+  async createRetentionPolicy(request: FastifyRequest, reply: FastifyReply) {
+    const policy = await retentionPolicyService.createPolicy(request.body as any);
+    return sendCreated(reply, policy);
   }
-}
 
-/**
- * List all retention policies
- */
-export async function listRetentionPolicies(request: FastifyRequest, reply: FastifyReply) {
-  try {
-    const { category, isActive } = request.query as {
-      category?: DataCategory;
-      isActive?: string;
-    };
+  async listRetentionPolicies(request: FastifyRequest, reply: FastifyReply) {
+    const { category, isActive } = request.query as { category?: DataCategory; isActive?: string };
 
     const filter: any = {};
     if (category) filter.category = category;
     if (isActive !== undefined) filter.isActive = isActive === 'true';
 
     const policies = await retentionPolicyService.listPolicies(filter);
-
-    return reply.status(200).send({
-      success: true,
-      data: policies,
-    });
-  } catch (error) {
-    request.log.error({ error }, 'List retention policies error');
-    return reply.status(500).send({
-      success: false,
-      error: 'Internal server error',
-      message: 'Failed to retrieve retention policies',
-    });
+    return sendSuccess(reply, policies);
   }
-}
 
-/**
- * Get retention policy by ID
- */
-export async function getRetentionPolicy(request: FastifyRequest, reply: FastifyReply) {
-  try {
+  async getRetentionPolicy(request: FastifyRequest, reply: FastifyReply) {
     const { id } = request.params as { id: string };
-
     const policy = await retentionPolicyService.getPolicyById(id);
 
     if (!policy) {
-      return reply.status(404).send({
-        success: false,
-        error: 'Not found',
-        message: 'Retention policy not found',
-      });
+      throw new NotFoundError('Retention policy');
     }
 
-    return reply.status(200).send({
-      success: true,
-      data: policy,
-    });
-  } catch (error) {
-    request.log.error({ error }, 'Get retention policy error');
-    return reply.status(500).send({
-      success: false,
-      error: 'Internal server error',
-      message: 'Failed to retrieve retention policy',
-    });
+    return sendSuccess(reply, policy);
   }
-}
 
-/**
- * Get active retention policy for a category
- */
-export async function getActiveRetentionPolicy(request: FastifyRequest, reply: FastifyReply) {
-  try {
+  async getActiveRetentionPolicy(request: FastifyRequest, reply: FastifyReply) {
     const { category } = request.params as { category: DataCategory };
-
     const policy = await retentionPolicyService.getActivePolicy(category);
 
     if (!policy) {
-      return reply.status(404).send({
-        success: false,
-        error: 'Not found',
-        message: `No active retention policy found for category: ${category}`,
-      });
+      throw new NotFoundError(`Retention policy for category ${category}`);
     }
 
-    return reply.status(200).send({
-      success: true,
-      data: policy,
-    });
-  } catch (error) {
-    request.log.error({ error }, 'Get active retention policy error');
-    return reply.status(500).send({
-      success: false,
-      error: 'Internal server error',
-      message: 'Failed to retrieve active retention policy',
-    });
+    return sendSuccess(reply, policy);
   }
-}
 
-/**
- * Update retention policy (SuperAdmin only)
- */
-export async function updateRetentionPolicy(request: FastifyRequest, reply: FastifyReply) {
-  try {
+  async updateRetentionPolicy(request: FastifyRequest, reply: FastifyReply) {
     const { id } = request.params as { id: string };
-    const updates = request.body as any;
-
-    const policy = await retentionPolicyService.updatePolicy(id, updates);
+    const policy = await retentionPolicyService.updatePolicy(id, request.body as any);
 
     if (!policy) {
-      return reply.status(404).send({
-        success: false,
-        error: 'Not found',
-        message: 'Retention policy not found',
-      });
+      throw new NotFoundError('Retention policy');
     }
 
-    return reply.status(200).send({
-      success: true,
-      data: policy,
-    });
-  } catch (error) {
-    request.log.error({ error }, 'Update retention policy error');
-
-    const errorMessage = (error as Error).message;
-
-    if (errorMessage.includes('not found')) {
-      return reply.status(404).send({
-        success: false,
-        error: 'Not found',
-        message: errorMessage,
-      });
-    }
-
-    if (errorMessage.includes('validation failed') || errorMessage.includes('must be at least')) {
-      return reply.status(400).send({
-        success: false,
-        error: 'Validation error',
-        message: errorMessage,
-      });
-    }
-
-    return reply.status(500).send({
-      success: false,
-      error: 'Internal server error',
-      message: 'Failed to update retention policy',
-    });
+    return sendSuccess(reply, policy);
   }
-}
 
-/**
- * Delete retention policy (SuperAdmin only)
- */
-export async function deleteRetentionPolicy(request: FastifyRequest, reply: FastifyReply) {
-  try {
+  async deleteRetentionPolicy(request: FastifyRequest, reply: FastifyReply) {
     const { id } = request.params as { id: string };
-
     const deleted = await retentionPolicyService.deletePolicy(id);
 
     if (!deleted) {
-      return reply.status(404).send({
-        success: false,
-        error: 'Not found',
-        message: 'Retention policy not found',
-      });
+      throw new NotFoundError('Retention policy');
     }
 
-    return reply.status(200).send({
-      success: true,
-      message: 'Retention policy deleted successfully',
-    });
-  } catch (error) {
-    request.log.error({ error }, 'Delete retention policy error');
-    return reply.status(500).send({
-      success: false,
-      error: 'Internal server error',
-      message: 'Failed to delete retention policy',
-    });
+    return sendDeleted(reply, 'Retention policy deleted successfully');
   }
-}
 
-/**
- * Get retention statistics for a category
- */
-export async function getRetentionStats(request: FastifyRequest, reply: FastifyReply) {
-  try {
+  async getRetentionStats(request: FastifyRequest, reply: FastifyReply) {
     const { category } = request.params as { category: DataCategory };
-
     const stats = await retentionPolicyService.getRetentionStats(category);
 
-    return reply.status(200).send({
-      success: true,
-      data: stats ?? {
-        policy: null,
-        hotStorageDays: 0,
-        warmStorageDays: 0,
-        coldStorageDays: 0,
-        totalRetentionDays: 0,
-        archiveEnabled: false,
-      },
-    });
-  } catch (error) {
-    request.log.error({ error }, 'Get retention stats error');
-    return reply.status(500).send({
-      success: false,
-      error: 'Internal server error',
-      message: 'Failed to retrieve retention statistics',
+    return sendSuccess(reply, stats ?? {
+      policy: null, hotStorageDays: 0, warmStorageDays: 0, coldStorageDays: 0,
+      totalRetentionDays: 0, archiveEnabled: false,
     });
   }
 }
+
+export const retentionPolicyController = new RetentionPolicyController();
+
+// Legacy named function exports
+export const createRetentionPolicy = (req: FastifyRequest, reply: FastifyReply) => retentionPolicyController.createRetentionPolicy(req, reply);
+export const listRetentionPolicies = (req: FastifyRequest, reply: FastifyReply) => retentionPolicyController.listRetentionPolicies(req, reply);
+export const getRetentionPolicy = (req: FastifyRequest, reply: FastifyReply) => retentionPolicyController.getRetentionPolicy(req, reply);
+export const getActiveRetentionPolicy = (req: FastifyRequest, reply: FastifyReply) => retentionPolicyController.getActiveRetentionPolicy(req, reply);
+export const updateRetentionPolicy = (req: FastifyRequest, reply: FastifyReply) => retentionPolicyController.updateRetentionPolicy(req, reply);
+export const deleteRetentionPolicy = (req: FastifyRequest, reply: FastifyReply) => retentionPolicyController.deleteRetentionPolicy(req, reply);
+export const getRetentionStats = (req: FastifyRequest, reply: FastifyReply) => retentionPolicyController.getRetentionStats(req, reply);

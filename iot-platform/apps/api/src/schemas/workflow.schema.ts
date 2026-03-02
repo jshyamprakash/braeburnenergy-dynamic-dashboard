@@ -205,7 +205,6 @@ export const updateWorkflowSchema = z.object({
 
   nodes: z
     .array(workflowNodeSchema)
-    .min(1, 'Workflow must have at least one node')
     .optional(),
 
   edges: z
@@ -301,6 +300,11 @@ export const queryWorkflowsSchema = z.object({
     .max(255)
     .optional()
     .describe('Search workflow names (case-insensitive)'),
+
+  applicationId: z
+    .string()
+    .optional()
+    .describe('Filter by application ID (ULID)'),
 
   // Sorting
   sortBy: z

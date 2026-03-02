@@ -1,0 +1,26 @@
+// LLAMP-SPEC v1 | ADR-016
+=adr: 016
+=title: Docker Multi-Stage Builds
+=date: 2026-02-11
+=status: accepted
+
+#ctx
+~need: production containers — small, fast, secure
+~requirements: [small_image, fast_build, no_dev_deps_in_prod]
+
+#opts
+~alt1: single-stage (rejected: larger images, includes dev tools, insecure)
+
+#decision
+=chosen: 3-stage Dockerfile per app
+=stage1_deps: pnpm workspace install
+=stage2_builder: TypeScript + Next.js compile (source + node_modules)
+=stage3_runner: production runtime (dist + prod_deps only, Alpine Linux)
+=optimisations: [Alpine_base, layer_caching_dep_install, .dockerignore_excludes_node_modules_.git_docs]
+
+#consequences
++pos: [60-70pct_smaller_images, faster_CI_via_cache, no_build_tools_in_prod, separate_build_runtime]
+-neg: [complex_3stage_Dockerfile, longer_first_build_no_cache, source_not_in_prod_harder_to_debug]
+
+#scope
+=arch_summary_update: no

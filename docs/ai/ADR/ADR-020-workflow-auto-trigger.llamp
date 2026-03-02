@@ -1,0 +1,26 @@
+// LLAMP-SPEC v1 | ADR-020
+=adr: 020
+=title: Workflow Real-Time Auto-Trigger
+=date: 2026-02-17
+=status: accepted
+
+#ctx
+~problem: trigger nodes exist in engine but only fire via manual API invocation
+~requirement: workflows must auto-execute when device states or alarms occur
+
+#decision
+=chosen: WorkflowTriggerDispatcher service (above DeviceStateService + WorkflowEngineService)
+=methods: [dispatchDeviceStateChange(orgId, deviceId, field, value, stateData), dispatchAlarmTriggered(orgId, alarmData)]
+=flow: DeviceState saved → Dispatcher.dispatchDeviceStateChange → WorkflowService.findTriggerWorkflows → WorkflowEngineService.execute (fire-and-forget)
+=instantiation: once in server.ts, injected via fastify.decorate
+=filter: matches on trigger node config.deviceId + config.field
+=index: compound (orgId, isEnabled, triggerType)
+!circular_dep: Dispatcher depends on WorkflowService + EngineService but NOT DeviceStateService
+!fire_and_forget: device state save NOT blocked by workflow execution
+
+#consequences
++pos: [core_automation_enabled, no_manual_execution_required, filter_precision, existing_engine_unchanged]
+-neg: [DB_query_per_device_state_write, fire-forget_means_no_error_propagation]
+
+#scope
+=arch_summary_update: yes

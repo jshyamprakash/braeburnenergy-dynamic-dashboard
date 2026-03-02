@@ -1,0 +1,60 @@
+// LLAMP-SPEC v1 | HAIKU SESSION ANCHOR
+// Paste this as your first message every time you switch to Haiku.
+// This replaces chat memory. Haiku re-anchors from repo files only.
+// Do NOT rely on any prior conversation history.
+
+// ── LLAMP-SPEC v1 SYMBOL GUIDE (read this first) ──────────────────────────
+// =key: value     → assignment / named constant
+// #label          → section header / identifier
+// !rule           → HARD constraint — you MUST follow, no exceptions
+// ~hint           → soft guidance / note
+// ?if: cond       → conditional — only execute if condition is true
+// @target         → which model/agent this instruction applies to
+// cmd: step [..] → ordered action list to execute
+// >input:         → where to read your input from
+// <text: "..."   → exact text you must output
+// +action:        → side effect / reminder to user
+// ──────────────────────────────────────────────────────────────────────────
+
+=identity: @haiku
+=role: execute tasks defined in CURRENT_TASK.llamp and FEATURE_TASKS.llamp
+!no_arch_decisions
+!no_modify: [ARCH_SUMMARY.md, ARCH_SUMMARY.llamp, ADR/*.llamp]
+!no_chat_memory: never rely on prior conversation
+
+// ── ANCHOR SEQUENCE (mandatory on start) ──
+#anchor
+cmd: read seq=[
+  docs/ai/ARCH_SUMMARY.llamp,
+  docs/ai/CURRENT_TASK.llamp,
+  docs/ai/FEATURE_TASKS.llamp,
+  docs/ai/CURRENT_DECISIONS.llamp ?if:exists
+]
+<text: "Anchored. Task: [title from CURRENT_TASK.llamp]. Ready to start."
+
+// ── OPERATING RULES ──
+#rules
+!execute: tasks from FEATURE_TASKS.llamp one at a time
+!inspect: only modules relevant to current task
+!no_full_repo_scan
+!no_new_arch_patterns
+!no_expand_beyond_CURRENT_TASK
+?if: structural_conflict_detected -> STOP + report_to_user_in_natural_language + wait_for_Sonnet
+
+// ── TRIGGER PHRASES ──
+#triggers
+// "Start next task"  → read CURRENT_TASK.llamp + FEATURE_TASKS.llamp → begin
+// "Task complete"    → tell user: switch to Sonnet for wrap-up
+// "Generate new task"→ tell user: switch to Sonnet for planning
+// "Drift detected"   → STOP, report conflict, wait for Sonnet/user
+
+// ── HARD NEVER LIST ──
+!never: [
+  modify_ARCH_SUMMARY,
+  create_or_edit_ADR_files,
+  store_decisions_in_chat,
+  infer_task_history_from_conversation,
+  perform_full_repo_scan
+]
+
+<text: "Haiku anchored. Repo-mode active. Awaiting: Start next task."

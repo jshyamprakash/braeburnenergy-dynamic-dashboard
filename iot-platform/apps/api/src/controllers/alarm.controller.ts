@@ -1,53 +1,32 @@
-import { FastifyRequest, FastifyReply } from 'fastify';
+import type { FastifyRequest, FastifyReply } from 'fastify';
 import { AlarmRule, AlarmInstance } from '../models';
 import { AlarmService } from '../services/alarm.service';
+import { NotFoundError } from '../lib/errors';
+import { sendSuccess, sendCreated, sendPaginated, sendDeleted } from '../lib/response';
+import { getRequestContext } from '../lib/request-context';
+
+const alarmService = new AlarmService();
 
 /**
  * AlarmController
  *
  * HTTP handlers for ISA-18.2 alarm management.
+ * Zero try/catch — errors propagate to global error handler.
  */
-
-const alarmService = new AlarmService();
-
-/**
- * POST /alarm-rules
- * Create alarm rule (Admin+)
- */
-export async function createAlarmRule(request: FastifyRequest, reply: FastifyReply) {
-  try {
-    const data = request.body as any;
-
-    const rule = await AlarmRule.create(data);
-
-    return reply.status(201).send({
-      success: true,
-      data: rule,
-    });
-  } catch (error) {
-    request.log.error({ error }, 'Create alarm rule error');
-    return reply.status(500).send({
-      success: false,
-      error: 'Internal server error',
-      message: 'Failed to create alarm rule',
-    });
+export class AlarmController {
+  /**
+   * POST /alarm-rules
+   */
+  async createAlarmRule(request: FastifyRequest, reply: FastifyReply) {
+    const rule = await AlarmRule.create(request.body as any);
+    return sendCreated(reply, rule);
   }
-}
 
-/**
- * GET /alarm-rules
- * List alarm rules
- */
-export async function listAlarmRules(request: FastifyRequest, reply: FastifyReply) {
-  try {
-    const {
-      deviceId,
-      field,
-      priority,
-      isActive,
-      isEnabled,
-      isShelved,
-    } = request.query as any;
+  /**
+   * GET /alarm-rules
+   */
+  async listAlarmRules(request: FastifyRequest, reply: FastifyReply) {
+    const { deviceId, field, priority, isActive, isEnabled, isShelved } = request.query as any;
 
     const filter: any = {};
     if (deviceId) filter.deviceId = deviceId;
@@ -58,222 +37,100 @@ export async function listAlarmRules(request: FastifyRequest, reply: FastifyRepl
     if (isShelved !== undefined) filter.isShelved = isShelved === 'true';
 
     const rules = await AlarmRule.find(filter).sort({ priority: 1, field: 1, createdAt: -1 });
-
-    return reply.status(200).send({
-      success: true,
-      data: rules,
-    });
-  } catch (error) {
-    request.log.error({ error }, 'List alarm rules error');
-    return reply.status(500).send({
-      success: false,
-      error: 'Internal server error',
-      message: 'Failed to retrieve alarm rules',
-    });
+    return sendSuccess(reply, rules);
   }
-}
 
-/**
- * GET /alarm-rules/:id
- * Get alarm rule by ID
- */
-export async function getAlarmRule(request: FastifyRequest, reply: FastifyReply) {
-  try {
+  /**
+   * GET /alarm-rules/:id
+   */
+  async getAlarmRule(request: FastifyRequest, reply: FastifyReply) {
     const { id } = request.params as { id: string };
-
     const rule = await AlarmRule.findById(id);
 
     if (!rule) {
-      return reply.status(404).send({
-        success: false,
-        error: 'Not found',
-        message: 'Alarm rule not found',
-      });
+      throw new NotFoundError('Alarm rule');
     }
 
-    return reply.status(200).send({
-      success: true,
-      data: rule,
-    });
-  } catch (error) {
-    request.log.error({ error }, 'Get alarm rule error');
-    return reply.status(500).send({
-      success: false,
-      error: 'Internal server error',
-      message: 'Failed to retrieve alarm rule',
-    });
+    return sendSuccess(reply, rule);
   }
-}
 
-/**
- * PATCH /alarm-rules/:id
- * Update alarm rule (Admin+)
- */
-export async function updateAlarmRule(request: FastifyRequest, reply: FastifyReply) {
-  try {
+  /**
+   * PATCH /alarm-rules/:id
+   */
+  async updateAlarmRule(request: FastifyRequest, reply: FastifyReply) {
     const { id } = request.params as { id: string };
-    const updates = request.body as any;
-
-    const rule = await AlarmRule.findByIdAndUpdate(
-      id,
-      updates,
-      { new: true, runValidators: true }
-    );
+    const rule = await AlarmRule.findByIdAndUpdate(id, request.body as any, { new: true, runValidators: true });
 
     if (!rule) {
-      return reply.status(404).send({
-        success: false,
-        error: 'Not found',
-        message: 'Alarm rule not found',
-      });
+      throw new NotFoundError('Alarm rule');
     }
 
-    return reply.status(200).send({
-      success: true,
-      data: rule,
-    });
-  } catch (error) {
-    request.log.error({ error }, 'Update alarm rule error');
-    return reply.status(500).send({
-      success: false,
-      error: 'Internal server error',
-      message: 'Failed to update alarm rule',
-    });
+    return sendSuccess(reply, rule);
   }
-}
 
-/**
- * DELETE /alarm-rules/:id
- * Delete alarm rule (Admin+)
- */
-export async function deleteAlarmRule(request: FastifyRequest, reply: FastifyReply) {
-  try {
+  /**
+   * DELETE /alarm-rules/:id
+   */
+  async deleteAlarmRule(request: FastifyRequest, reply: FastifyReply) {
     const { id } = request.params as { id: string };
-
     const result = await AlarmRule.findByIdAndDelete(id);
 
     if (!result) {
-      return reply.status(404).send({
-        success: false,
-        error: 'Not found',
-        message: 'Alarm rule not found',
-      });
+      throw new NotFoundError('Alarm rule');
     }
 
-    return reply.status(200).send({
-      success: true,
-      message: 'Alarm rule deleted successfully',
-    });
-  } catch (error) {
-    request.log.error({ error }, 'Delete alarm rule error');
-    return reply.status(500).send({
-      success: false,
-      error: 'Internal server error',
-      message: 'Failed to delete alarm rule',
-    });
+    return sendDeleted(reply, 'Alarm rule deleted successfully');
   }
-}
 
-/**
- * POST /alarm-rules/:id/shelve
- * Shelve alarm rule (Admin+)
- */
-export async function shelveAlarmRule(request: FastifyRequest, reply: FastifyReply) {
-  try {
+  /**
+   * POST /alarm-rules/:id/shelve
+   */
+  async shelveAlarmRule(request: FastifyRequest, reply: FastifyReply) {
     const { id } = request.params as { id: string };
     const { reason, duration } = request.body as { reason: string; duration?: number };
-    const user = (request as any).user;
+    const { userId } = getRequestContext(request);
 
     const rule = await AlarmRule.findById(id);
-
     if (!rule) {
-      return reply.status(404).send({
-        success: false,
-        error: 'Not found',
-        message: 'Alarm rule not found',
-      });
+      throw new NotFoundError('Alarm rule');
     }
 
     rule.isShelved = true;
-    rule.shelvedBy = user?.id || 'system';
+    rule.shelvedBy = userId;
     rule.shelvedReason = reason;
-
     if (duration) {
       rule.shelvedUntil = new Date(Date.now() + duration * 1000);
     }
-
     await rule.save();
 
-    return reply.status(200).send({
-      success: true,
-      data: rule,
-      message: 'Alarm rule shelved successfully',
-    });
-  } catch (error) {
-    request.log.error({ error }, 'Shelve alarm rule error');
-    return reply.status(500).send({
-      success: false,
-      error: 'Internal server error',
-      message: 'Failed to shelve alarm rule',
-    });
+    return sendSuccess(reply, rule);
   }
-}
 
-/**
- * POST /alarm-rules/:id/unshelve
- * Unshelve alarm rule (Admin+)
- */
-export async function unshelveAlarmRule(request: FastifyRequest, reply: FastifyReply) {
-  try {
+  /**
+   * POST /alarm-rules/:id/unshelve
+   */
+  async unshelveAlarmRule(request: FastifyRequest, reply: FastifyReply) {
     const { id } = request.params as { id: string };
 
     const rule = await AlarmRule.findById(id);
-
     if (!rule) {
-      return reply.status(404).send({
-        success: false,
-        error: 'Not found',
-        message: 'Alarm rule not found',
-      });
+      throw new NotFoundError('Alarm rule');
     }
 
     rule.isShelved = false;
     rule.shelvedUntil = undefined;
     rule.shelvedBy = undefined;
     rule.shelvedReason = undefined;
-
     await rule.save();
 
-    return reply.status(200).send({
-      success: true,
-      data: rule,
-      message: 'Alarm rule unshelved successfully',
-    });
-  } catch (error) {
-    request.log.error({ error }, 'Unshelve alarm rule error');
-    return reply.status(500).send({
-      success: false,
-      error: 'Internal server error',
-      message: 'Failed to unshelve alarm rule',
-    });
+    return sendSuccess(reply, rule);
   }
-}
 
-/**
- * GET /alarms
- * List alarm instances
- */
-export async function listAlarms(request: FastifyRequest, reply: FastifyReply) {
-  try {
-    const {
-      deviceId,
-      state,
-      priority,
-      startTime,
-      endTime,
-      limit = 100,
-      offset = 0,
-    } = request.query as any;
+  /**
+   * GET /alarms
+   */
+  async listAlarms(request: FastifyRequest, reply: FastifyReply) {
+    const { deviceId, state, priority, startTime, endTime, limit = 100, offset = 0 } = request.query as any;
 
     const filter: any = {};
     if (deviceId) filter.deviceId = deviceId;
@@ -286,224 +143,119 @@ export async function listAlarms(request: FastifyRequest, reply: FastifyReply) {
       if (endTime) filter.activeTimestamp.$lte = new Date(endTime);
     }
 
-    const alarms = await AlarmInstance.find(filter)
-      .sort({ priority: 1, activeTimestamp: -1 })
-      .limit(parseInt(limit))
-      .skip(parseInt(offset))
-      .populate('alarmRuleId')
-      .lean();
+    const limitNum = parseInt(limit);
+    const offsetNum = parseInt(offset);
 
-    const total = await AlarmInstance.countDocuments(filter);
+    const [alarms, total] = await Promise.all([
+      AlarmInstance.find(filter)
+        .sort({ priority: 1, activeTimestamp: -1 })
+        .limit(limitNum)
+        .skip(offsetNum)
+        .populate('alarmRuleId')
+        .lean(),
+      AlarmInstance.countDocuments(filter),
+    ]);
 
-    return reply.status(200).send({
-      success: true,
-      data: alarms,
-      pagination: {
-        total,
-        limit: parseInt(limit),
-        offset: parseInt(offset),
-        hasMore: total > parseInt(offset) + parseInt(limit),
-      },
-    });
-  } catch (error) {
-    request.log.error({ error }, 'List alarms error');
-    return reply.status(500).send({
-      success: false,
-      error: 'Internal server error',
-      message: 'Failed to retrieve alarms',
-    });
+    return sendPaginated(reply, alarms, { total, limit: limitNum, offset: offsetNum, hasMore: total > offsetNum + limitNum });
   }
-}
 
-/**
- * GET /alarms/:id
- * Get alarm instance by ID
- */
-export async function getAlarm(request: FastifyRequest, reply: FastifyReply) {
-  try {
+  /**
+   * GET /alarms/:id
+   */
+  async getAlarm(request: FastifyRequest, reply: FastifyReply) {
     const { id } = request.params as { id: string };
-
     const alarm = await AlarmInstance.findById(id).populate('alarmRuleId');
 
     if (!alarm) {
-      return reply.status(404).send({
-        success: false,
-        error: 'Not found',
-        message: 'Alarm not found',
-      });
+      throw new NotFoundError('Alarm');
     }
 
-    return reply.status(200).send({
-      success: true,
-      data: alarm,
-    });
-  } catch (error) {
-    request.log.error({ error }, 'Get alarm error');
-    return reply.status(500).send({
-      success: false,
-      error: 'Internal server error',
-      message: 'Failed to retrieve alarm',
-    });
+    return sendSuccess(reply, alarm);
   }
-}
 
-/**
- * POST /alarms/:id/acknowledge
- * Acknowledge alarm (Operator+)
- */
-export async function acknowledgeAlarm(request: FastifyRequest, reply: FastifyReply) {
-  try {
+  /**
+   * POST /alarms/:id/acknowledge
+   */
+  async acknowledgeAlarm(request: FastifyRequest, reply: FastifyReply) {
     const { id } = request.params as { id: string };
     const { comment } = request.body as { comment?: string };
-    const user = (request as any).user;
+    const { userId } = getRequestContext(request);
 
-    const alarm = await alarmService.acknowledgeAlarm(id, user?.id || 'system', comment);
+    const alarm = await alarmService.acknowledgeAlarm(id, userId, comment);
 
     if (!alarm) {
-      return reply.status(404).send({
-        success: false,
-        error: 'Not found',
-        message: 'Alarm not found',
-      });
+      throw new NotFoundError('Alarm');
     }
 
-    return reply.status(200).send({
-      success: true,
-      data: alarm,
-      message: 'Alarm acknowledged successfully',
-    });
-  } catch (error: any) {
-    request.log.error({ error }, 'Acknowledge alarm error');
-
-    if (error.message.includes('Cannot acknowledge')) {
-      return reply.status(400).send({
-        success: false,
-        error: 'Invalid operation',
-        message: error.message,
-      });
-    }
-
-    return reply.status(500).send({
-      success: false,
-      error: 'Internal server error',
-      message: 'Failed to acknowledge alarm',
-    });
+    return sendSuccess(reply, alarm);
   }
-}
 
-/**
- * POST /alarms/:id/shelve
- * Shelve alarm instance (Admin+)
- */
-export async function shelveAlarm(request: FastifyRequest, reply: FastifyReply) {
-  try {
+  /**
+   * POST /alarms/:id/shelve
+   */
+  async shelveAlarm(request: FastifyRequest, reply: FastifyReply) {
     const { id } = request.params as { id: string };
     const { reason, duration } = request.body as { reason: string; duration?: number };
-    const user = (request as any).user;
+    const { userId } = getRequestContext(request);
 
-    const alarm = await alarmService.shelveAlarm(id, user?.id || 'system', reason, duration);
+    const alarm = await alarmService.shelveAlarm(id, userId, reason, duration);
 
     if (!alarm) {
-      return reply.status(404).send({
-        success: false,
-        error: 'Not found',
-        message: 'Alarm not found',
-      });
+      throw new NotFoundError('Alarm');
     }
 
-    return reply.status(200).send({
-      success: true,
-      data: alarm,
-      message: 'Alarm shelved successfully',
-    });
-  } catch (error) {
-    request.log.error({ error }, 'Shelve alarm error');
-    return reply.status(500).send({
-      success: false,
-      error: 'Internal server error',
-      message: 'Failed to shelve alarm',
-    });
+    return sendSuccess(reply, alarm);
   }
-}
 
-/**
- * POST /alarms/:id/unshelve
- * Unshelve alarm instance (Admin+)
- */
-export async function unshelveAlarm(request: FastifyRequest, reply: FastifyReply) {
-  try {
+  /**
+   * POST /alarms/:id/unshelve
+   */
+  async unshelveAlarm(request: FastifyRequest, reply: FastifyReply) {
     const { id } = request.params as { id: string };
-    const user = (request as any).user;
+    const { userId } = getRequestContext(request);
 
-    const alarm = await alarmService.unshelveAlarm(id, user?.id || 'system');
+    const alarm = await alarmService.unshelveAlarm(id, userId);
 
     if (!alarm) {
-      return reply.status(404).send({
-        success: false,
-        error: 'Not found',
-        message: 'Alarm not found',
-      });
+      throw new NotFoundError('Alarm');
     }
 
-    return reply.status(200).send({
-      success: true,
-      data: alarm,
-      message: 'Alarm unshelved successfully',
-    });
-  } catch (error) {
-    request.log.error({ error }, 'Unshelve alarm error');
-    return reply.status(500).send({
-      success: false,
-      error: 'Internal server error',
-      message: 'Failed to unshelve alarm',
-    });
+    return sendSuccess(reply, alarm);
   }
-}
 
-/**
- * GET /alarms/statistics
- * Get alarm statistics
- */
-export async function getAlarmStatistics(request: FastifyRequest, reply: FastifyReply) {
-  try {
+  /**
+   * GET /alarms/statistics
+   */
+  async getAlarmStatistics(request: FastifyRequest, reply: FastifyReply) {
     const { deviceId, days = 7 } = request.query as { deviceId?: string; days?: number };
-
     const stats = await alarmService.getAlarmStatistics(deviceId, Number(days));
-
-    return reply.status(200).send({
-      success: true,
-      data: stats,
-    });
-  } catch (error) {
-    request.log.error({ error }, 'Get alarm statistics error');
-    return reply.status(500).send({
-      success: false,
-      error: 'Internal server error',
-      message: 'Failed to retrieve alarm statistics',
-    });
+    return sendSuccess(reply, stats);
   }
-}
 
-/**
- * GET /devices/:deviceId/alarms/active
- * Get active alarms for device
- */
-export async function getDeviceActiveAlarms(request: FastifyRequest, reply: FastifyReply) {
-  try {
+  /**
+   * GET /devices/:deviceId/alarms/active
+   */
+  async getDeviceActiveAlarms(request: FastifyRequest, reply: FastifyReply) {
     const { deviceId } = request.params as { deviceId: string };
-
     const alarms = await alarmService.getActiveAlarms(deviceId);
-
-    return reply.status(200).send({
-      success: true,
-      data: alarms,
-    });
-  } catch (error) {
-    request.log.error({ error }, 'Get device active alarms error');
-    return reply.status(500).send({
-      success: false,
-      error: 'Internal server error',
-      message: 'Failed to retrieve active alarms',
-    });
+    return sendSuccess(reply, alarms);
   }
 }
+
+export const alarmController = new AlarmController();
+
+// Legacy named function exports for backward compat with existing routes
+export const createAlarmRule = (req: FastifyRequest, reply: FastifyReply) => alarmController.createAlarmRule(req, reply);
+export const listAlarmRules = (req: FastifyRequest, reply: FastifyReply) => alarmController.listAlarmRules(req, reply);
+export const getAlarmRule = (req: FastifyRequest, reply: FastifyReply) => alarmController.getAlarmRule(req, reply);
+export const updateAlarmRule = (req: FastifyRequest, reply: FastifyReply) => alarmController.updateAlarmRule(req, reply);
+export const deleteAlarmRule = (req: FastifyRequest, reply: FastifyReply) => alarmController.deleteAlarmRule(req, reply);
+export const shelveAlarmRule = (req: FastifyRequest, reply: FastifyReply) => alarmController.shelveAlarmRule(req, reply);
+export const unshelveAlarmRule = (req: FastifyRequest, reply: FastifyReply) => alarmController.unshelveAlarmRule(req, reply);
+export const listAlarms = (req: FastifyRequest, reply: FastifyReply) => alarmController.listAlarms(req, reply);
+export const getAlarm = (req: FastifyRequest, reply: FastifyReply) => alarmController.getAlarm(req, reply);
+export const acknowledgeAlarm = (req: FastifyRequest, reply: FastifyReply) => alarmController.acknowledgeAlarm(req, reply);
+export const shelveAlarm = (req: FastifyRequest, reply: FastifyReply) => alarmController.shelveAlarm(req, reply);
+export const unshelveAlarm = (req: FastifyRequest, reply: FastifyReply) => alarmController.unshelveAlarm(req, reply);
+export const getAlarmStatistics = (req: FastifyRequest, reply: FastifyReply) => alarmController.getAlarmStatistics(req, reply);
+export const getDeviceActiveAlarms = (req: FastifyRequest, reply: FastifyReply) => alarmController.getDeviceActiveAlarms(req, reply);

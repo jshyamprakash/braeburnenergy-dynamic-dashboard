@@ -2,6 +2,7 @@
 
 import { useCallback } from 'react';
 import { ulid } from 'ulid';
+import { useReactFlow } from 'reactflow';
 import { useAppDispatch } from '@/lib/store';
 import { addNode } from '@/lib/store/slices/workflowSlice';
 
@@ -230,25 +231,38 @@ const NODE_TYPES: NodeTypeConfig[] = [
 
 export default function NodePalette() {
   const dispatch = useAppDispatch();
+  const { getViewport } = useReactFlow();
 
   const handleAddNode = useCallback(
     (nodeType: NodeTypeConfig) => {
       const nodeId = ulid();
+
+      // Place the new node at the top-left corner of the visible canvas area.
+      // Viewport: { x, y } are screen-space offsets; zoom is the scale factor.
+      // Flow coordinates of the visible top-left = (-x / zoom, -y / zoom).
+      // Add 40px screen-space padding so the node isn't flush with the edge.
+      const { x: vpX, y: vpY, zoom } = getViewport();
+      const padding = 40 / zoom;
+      const position = {
+        x: -vpX / zoom + padding,
+        y: -vpY / zoom + padding,
+      };
+
       const newNode = {
         id: nodeId,
-        type: nodeType.visualType, // Use visual component type (not semantic category)
-        position: { x: 250, y: 200 }, // Default position (center-ish)
+        type: nodeType.visualType,
+        position,
         data: {
           label: nodeType.label,
           description: nodeType.description,
-          nodeType: nodeType.type, // Store semantic type for engine
+          nodeType: nodeType.type,
           config: nodeType.defaultConfig,
         },
       };
 
       dispatch(addNode(newNode));
     },
-    [dispatch]
+    [dispatch, getViewport]
   );
 
   const renderCategory = (category: string, nodes: NodeTypeConfig[]) => {

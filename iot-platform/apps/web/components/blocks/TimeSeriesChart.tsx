@@ -267,6 +267,25 @@ export function TimeSeriesChart({
     return formattedData;
   }, [data, timeFormat, chartWidth, series]);
 
+  // Derive effective series list (fall back on data keys if the caller didn't
+  // supply any). This makes the component more forgiving when used directly
+  // (e.g. via playground or dashboard config with no explicit series).
+  const effectiveSeries = useMemo(() => {
+    if (series && series.length > 0) return series;
+    if (chartData.length > 0) {
+      // pick all numeric/visible keys except internal helpers
+      const keys = Object.keys(chartData[0]).filter(
+        k => k !== 'timestamp' && k !== 'time' && k !== '_sortKey'
+      );
+      return keys.map((key, idx) => ({
+        key,
+        label: key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' '),
+        color: defaultColors[idx % defaultColors.length],
+      }));
+    }
+    return [];
+  }, [series, chartData]);
+
   // Custom tooltip
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (!active || !payload || !payload.length) return null;
@@ -326,7 +345,7 @@ export function TimeSeriesChart({
             />
             <Tooltip content={<CustomTooltip />} />
             {showLegend && <Legend wrapperStyle={{ fontSize: '12px' }} />}
-            {series.map((s, index) => (
+            {effectiveSeries.map((s, index) => (
               <Area
                 key={s.key}
                 type={smooth ? 'monotone' : 'linear'}
@@ -363,7 +382,7 @@ export function TimeSeriesChart({
             />
             <Tooltip content={<CustomTooltip />} />
             {showLegend && <Legend wrapperStyle={{ fontSize: '12px' }} />}
-            {series.map((s, index) => (
+            {effectiveSeries.map((s, index) => (
               <Bar
                 key={s.key}
                 dataKey={s.key}
@@ -397,7 +416,7 @@ export function TimeSeriesChart({
             />
             <Tooltip content={<CustomTooltip />} />
             {showLegend && <Legend wrapperStyle={{ fontSize: '12px' }} />}
-            {series.map((s, index) => (
+            {effectiveSeries.map((s, index) => (
               <Line
                 key={s.key}
                 type={smooth ? 'monotone' : 'linear'}
@@ -417,7 +436,7 @@ export function TimeSeriesChart({
   return (
     <div
       ref={containerRef}
-      className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4 flex flex-col h-full"
+      className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4 flex flex-col"
     >
       {/* Header */}
       <div className="mb-4 flex items-center justify-between flex-shrink-0">
@@ -471,19 +490,17 @@ export function TimeSeriesChart({
         )}
       </div>
 
-      {/* Chart - flexible height using flex-1 */}
+      {/* Chart — explicit pixel height so ResponsiveContainer always has a concrete size */}
       {chartData.length > 0 ? (
-        <div
-          ref={chartRef}
-          className="flex-1 min-h-0"
-        >
-          <ResponsiveContainer width="100%" height="100%">
+        <div ref={chartRef} style={{ height }}>
+          <ResponsiveContainer width="100%" height={height}>
             {renderChart()}
           </ResponsiveContainer>
         </div>
       ) : (
         <div
-          className="flex-1 min-h-0 flex items-center justify-center text-gray-500 dark:text-gray-400 text-sm"
+          style={{ height }}
+          className="flex items-center justify-center text-gray-500 dark:text-gray-400 text-sm"
         >
           No data available
         </div>

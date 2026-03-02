@@ -1,0 +1,37 @@
+# ADR-035: Entity Creation Prerequisites Guard
+
+## Status
+Accepted
+
+## Context
+The platform hierarchy is: Application → Device → Workflow → Dashboard (ADR-023).
+Without guidance, a user could create a Dashboard with no devices or workflows, resulting
+in an empty, non-functional view. The setup sequence must be enforced at the UX layer
+to prevent dead-end states and guide users through a meaningful onboarding path.
+
+## Decision
+Enforce prerequisite guards at two layers:
+
+**Frontend (primary UX gate)**
+- Workflow "Create" button/action: disabled + tooltip if application has 0 devices
+- Dashboard "Create" button/action: disabled + tooltip if application has 0 devices OR 0 workflows
+- Prerequisite check runs against the scoped counts already fetched on the Application Detail page
+  (devices[] and workflows[] arrays already in component state — no extra API call)
+
+**Backend (secondary integrity gate)**
+- WorkflowService.create(): verify Device.countDocuments({ orgId, applicationId }) > 0
+- DashboardService.create(): verify device count > 0 AND Workflow.countDocuments({ orgId, applicationId }) > 0
+- Return HTTP 422 with descriptive error if precondition fails
+- Backend guard is a safety net only; frontend should prevent reaching this state
+
+## Enforcement Points
+| Entity    | Requires              | Layer         |
+|-----------|----------------------|---------------|
+| Workflow  | ≥1 Device            | Frontend + BE |
+| Dashboard | ≥1 Device + ≥1 Workflow | Frontend + BE |
+
+## Consequences
+- Explicit user guidance through setup sequence — no silent empty state
+- Application Detail page already fetches devices/workflows; zero extra network cost on frontend
+- Backend adds 1–2 countDocuments() calls on create path only (negligible — create is infrequent)
+- ADR-023 hierarchy is now enforced, not just documented

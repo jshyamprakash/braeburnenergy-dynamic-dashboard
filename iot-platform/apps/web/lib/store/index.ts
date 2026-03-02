@@ -8,6 +8,8 @@ import dashboardReducer from './slices/dashboardSlice';
 import websocketReducer from './slices/websocketSlice';
 import workflowReducer from './slices/workflowSlice';
 import alarmReducer from './slices/alarmSlice';
+import userReducer from './slices/userSlice';
+import policyReducer from './slices/policySlice';
 
 /**
  * Configure Redux store
@@ -20,6 +22,8 @@ export const store = configureStore({
     websocket: websocketReducer,
     workflow: workflowReducer,
     alarm: alarmReducer,
+    user: userReducer,
+    policy: policyReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

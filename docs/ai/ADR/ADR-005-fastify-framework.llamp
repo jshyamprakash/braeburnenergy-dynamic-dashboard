@@ -1,0 +1,28 @@
+// LLAMP-SPEC v1 | ADR-005
+=adr: 005
+=title: Fastify Web Framework
+=date: 2026-02-10
+=status: accepted
+
+#ctx
+~need: high-perf HTTP for IoT telemetry (10k+ req/sec)
+~requirements: [async_native, schema_validation, plugin_ecosystem]
+
+#opts
+~alt1: Express (rejected: slower, callback-based, no schema)
+~alt2: Hapi (rejected: heavy config, less performant)
+
+#decision
+=chosen: Fastify 4.25.2
+=plugins: [@fastify/cors, @fastify/swagger, @fastify/swagger-ui]
+=logging: Pino (structured JSON, built-in)
+=validation: JSON Schema + Zod
+=features: [request_id_tracking, decorators_for_DI, async_native]
+!response_schema: additionalProperties=true required for dynamic JSON fields
+
+#consequences
++pos: [2x_faster_than_express, built_in_openapi, TS_friendly, high_IoT_throughput]
+-neg: [smaller_ecosystem, different_plugin_arch, less_community_content]
+
+#scope
+=arch_summary_update: yes

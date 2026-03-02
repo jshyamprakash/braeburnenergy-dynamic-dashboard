@@ -10,6 +10,7 @@ import { WorkflowService } from './workflow.service';
 import { WorkflowNodeHandlers, resolveExpression } from './workflow-node-handlers.service';
 import { broadcastWorkflowExecutionStep, broadcastWorkflowExecutionCompleted, broadcastWorkflowDebugMessage, broadcastDeviceState } from '../websocket/server';
 import type { QueryExecutionsDTO } from '../schemas/workflow.schema';
+import { NotFoundError, UnprocessableError } from '../lib/errors';
 
 /**
  * WorkflowEngineService
@@ -41,11 +42,11 @@ export class WorkflowEngineService {
     // Find workflow
     const workflow = await Workflow.findOne({ workflowId }).lean();
     if (!workflow) {
-      throw new Error('Workflow not found');
+      throw new NotFoundError('Workflow');
     }
 
     if (!workflow.isEnabled && !bypassEnabled) {
-      throw new Error('Workflow is disabled');
+      throw new UnprocessableError('Workflow is disabled');
     }
 
     // Create execution record
@@ -108,6 +109,8 @@ export class WorkflowEngineService {
         variables: {},
         triggerData: execution.inputData,
         currentData: execution.inputData,
+        // ADR-037: workspace = device_states.data snapshot (raw telemetry)
+        workspace: execution.inputData.workspace ?? {},
       };
 
       // Find trigger node (starting point)
@@ -260,6 +263,8 @@ export class WorkflowEngineService {
       // Seed trigger object from input data (for first node)
       if (node.type.startsWith('trigger:')) {
         context.trigger = result.output || context.triggerData;
+        // ADR-037: keep workspace at root context after trigger fires
+        context.workspace = context.trigger.workspace ?? context.workspace ?? {};
       }
 
       // Update variables if provided

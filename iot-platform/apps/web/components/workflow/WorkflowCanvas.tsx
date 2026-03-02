@@ -68,13 +68,18 @@ export default function WorkflowCanvas({ onNodeContextMenu }: WorkflowCanvasProp
   const localNodesRef = useRef(localNodes);
   localNodesRef.current = localNodes;
 
-  // Sync local nodes to Redux - skip during drag to prevent stutter
+  // Sync local nodes to Redux - skip position changes during drag to prevent stutter,
+  // but immediately sync deletions so Redux state stays accurate.
   const handleNodesChange = useCallback(
     (changes: any) => {
       onNodesChange(changes);
-      // Don't dispatch position changes to Redux during drag - onNodeDragStop handles that
+      const removals = changes.filter((c: any) => c.type === 'remove');
+      if (removals.length > 0) {
+        const removedIds = new Set(removals.map((c: any) => c.id));
+        dispatch(setNodes(storeNodes.filter((n: any) => !removedIds.has(n.id))));
+      }
     },
-    [onNodesChange]
+    [dispatch, storeNodes, onNodesChange]
   );
 
   // Sync node positions to Redux only when drag completes (eliminates drag stutter)

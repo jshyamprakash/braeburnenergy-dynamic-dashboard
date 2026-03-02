@@ -57,6 +57,7 @@ function WorkflowBuilderPage() {
     isDebugPanelOpen,
     executionLog,
     debugMessages,
+    applicationId,
   } = useAppSelector(state => state.workflow);
 
   const [isSaving, setIsSaving] = useState(false);
@@ -184,14 +185,15 @@ function WorkflowBuilderPage() {
     }
   };
 
-  // Handle back to list
+  // Handle back — return to the application detail page if context is known
   const handleBack = () => {
+    const backTo = applicationId ? `/applications/${applicationId}` : '/applications';
     if (isDirty) {
       if (confirm('You have unsaved changes. Are you sure you want to leave?')) {
-        router.push('/workflows');
+        router.push(backTo);
       }
     } else {
-      router.push('/workflows');
+      router.push(backTo);
     }
   };
 

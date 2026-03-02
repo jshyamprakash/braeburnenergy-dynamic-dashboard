@@ -1,0 +1,26 @@
+// LLAMP-SPEC v1 | ADR-029
+=adr: 029
+=title: Derived State Dashboard Display (Superseded)
+=date: 2026-02-24
+=status: superseded_by=ADR-030
+
+#ctx
+~workaround: ADR-028 blocked by time series; used separate device_derived_states collection
+~three_failures_fixed: {
+  f1: castValue default String(value) → workflow numbers stored as strings → gauge=0,
+  f2: useDeviceRealtime useState+broken_response_parse → API returns {success,data:DeviceState} not DeviceState[] → setLatestState never called,
+  f3: workflow broadcast sent data:{} → wiped raw sensor fields from cached state
+}
+
+#decision
+=backend_fix: castValue() preserves native JS type when no attribute type specified (return value not String(value))
+=frontend_rewrite: useDeviceRealtime → React Query
+=rq_strategy: GET /devices/:id/states/latest → cached by ['device-latest-state', deviceId] → WS pushes into queryClient.setQueryData
+=derived_preserved: derivedRef across raw telemetry broadcasts
+=raw_preserved: prev-cache fallback when broadcast data:{}
+=gauge_read: derived[field] ?? data[field] + Number() + !isNaN()
+
+#superseded_reason: device_derived_states workaround removed in ADR-030; frontend display logic retained
+
+#scope
+=arch_summary_update: no

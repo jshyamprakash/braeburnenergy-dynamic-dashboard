@@ -1,0 +1,30 @@
+// LLAMP-SPEC v1 | ADR-023
+=adr: 023
+=title: Application → Device → Workflow → Dashboard Hierarchy
+=date: 2026-02-23
+=status: accepted
+
+#ctx
+~problem: Device, Workflow, Dashboard existed as independent siblings under Org — no formal hierarchy
+
+#decision
+=hierarchy: Organization → Application → [Device, Workflow, Dashboard]
+=data_flow: POST /devices/:id/states (raw) → DeviceState saved → Workflow fires → device.attributes → patches DeviceState.data → Dashboard renders
+
+=rules: {
+  rule1: Application_first → must exist before Device/Workflow/Dashboard creation,
+  rule2: Device_is_schema_authority → device.attributes is single source of truth for keys,
+  rule3: Workflow_reads_schema_writes_data → reads device.attributes, writes via action:writeDeviceState,
+  rule4: Dashboard_reads_schema+data → uses device.attributes for key hints, DeviceState.data for values
+}
+
+=new_model: Application (name, description, orgId, slug, createdAt)
+=fk_added: applicationId on [Device, Workflow, Dashboard]
+
+#consequences
++pos: [clear_creation_order, schema_authority_single_source, workflow_builder_auto_suggests_keys]
+-neg: [Application_creation_mandatory_first_step, FK_added_to_3_models]
+~onboarding: Application detail page is primary entry point for all app-scoped work
+
+#scope
+=arch_summary_update: yes

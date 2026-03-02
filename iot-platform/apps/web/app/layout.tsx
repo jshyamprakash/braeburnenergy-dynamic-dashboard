@@ -4,7 +4,6 @@ import { TopBar } from "@/components/navigation/TopBar";
 import { Sidebar } from "@/components/navigation/Sidebar";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import { AuthProvider } from "@/contexts/AuthContext";
 import { Toaster } from "sonner";
 import "./globals.css";
 
@@ -27,23 +26,21 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange={false}
         >
-          <AuthProvider>
-            <ErrorBoundary>
-              <Providers>
-                {/* Top Bar */}
-                <TopBar />
+          <ErrorBoundary>
+            <Providers>
+              {/* Top Bar */}
+              <TopBar />
 
-                {/* Main Layout: Sidebar + Content */}
-                <div className="flex h-[calc(100vh-64px)]">
-                  <Sidebar />
-                  <main className="flex-1 overflow-auto px-4 sm:px-6 lg:px-8 py-8">
-                    {children}
-                  </main>
-                </div>
-              </Providers>
-            </ErrorBoundary>
-            <Toaster position="top-right" richColors />
-          </AuthProvider>
+              {/* Main Layout: Sidebar + Content */}
+              <div className="flex h-[calc(100vh-64px)]">
+                <Sidebar />
+                <main className="flex-1 overflow-auto px-4 sm:px-6 lg:px-8 py-8">
+                  {children}
+                </main>
+              </div>
+            </Providers>
+          </ErrorBoundary>
+          <Toaster position="top-right" richColors />
         </ThemeProvider>
       </body>
     </html>

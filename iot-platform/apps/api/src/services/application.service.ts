@@ -1,6 +1,7 @@
 import { ulid } from 'ulid';
 import mongoose from 'mongoose';
 import { Application } from '../models/application.model';
+import { ConflictError } from '../lib/errors';
 import type {
   CreateApplicationDTO,
   UpdateApplicationDTO,
@@ -41,7 +42,7 @@ export class ApplicationService {
     });
 
     if (existing) {
-      throw new Error(`Slug "${slug}" is already taken in this organization`);
+      throw new ConflictError(`Slug "${slug}" is already taken in this organization`);
     }
 
     const application = new Application({
@@ -127,7 +128,7 @@ export class ApplicationService {
       });
 
       if (existing) {
-        throw new Error(`Slug "${updateData.slug}" is already taken in this organization`);
+        throw new ConflictError(`Slug "${updateData.slug}" is already taken in this organization`);
       }
     }
 
@@ -147,41 +148,32 @@ export class ApplicationService {
   }
 
   /**
-   * Delete application (guard: reject if devices are linked)
+   * Delete application (guard: reject if devices, workflows, or dashboards are linked)
    */
   async delete(orgId: string, applicationId: string) {
-    // Check if any devices are linked to this application
+    const orgIdObj = new mongoose.Types.ObjectId(orgId);
+
     const { Device } = await import('../models/device.model');
-    const deviceCount = await Device.countDocuments({
-      orgId: new mongoose.Types.ObjectId(orgId),
-      applicationId,
-    });
-
-    if (deviceCount > 0) {
-      throw new Error(
-        `Cannot delete application with ${deviceCount} linked device(s). Delete devices first.`
-      );
-    }
-
-    // Check if any workflows are linked to this application
     const { Workflow } = await import('../models/workflow.model');
-    const workflowCount = await Workflow.countDocuments({
-      orgId: new mongoose.Types.ObjectId(orgId),
-      applicationId,
-    });
+    const { Dashboard } = await import('../models/dashboard.model');
 
-    if (workflowCount > 0) {
-      throw new Error(
-        `Cannot delete application with ${workflowCount} linked workflow(s). Delete workflows first.`
-      );
+    // Check all associations in parallel
+    const [deviceCount, workflowCount, dashboardCount] = await Promise.all([
+      Device.countDocuments({ orgId: orgIdObj, applicationId }),
+      Workflow.countDocuments({ orgId: orgIdObj, applicationId }),
+      Dashboard.countDocuments({ orgId: orgIdObj, applicationId }),
+    ]);
+
+    const blocking: Record<string, number> = {};
+    if (deviceCount > 0) blocking.devices = deviceCount;
+    if (workflowCount > 0) blocking.workflows = workflowCount;
+    if (dashboardCount > 0) blocking.dashboards = dashboardCount;
+
+    if (Object.keys(blocking).length > 0) {
+      throw new ConflictError('Cannot delete application: associated entities must be removed first.', { blocking });
     }
 
-    const result = await Application.findOneAndDelete({
-      orgId: new mongoose.Types.ObjectId(orgId),
-      applicationId,
-    });
-
-    return result?.toObject();
+    return Application.findOneAndDelete({ orgId: orgIdObj, applicationId }).lean();
   }
 }
 

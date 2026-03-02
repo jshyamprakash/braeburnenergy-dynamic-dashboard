@@ -1,0 +1,31 @@
+// LLAMP-SPEC v1 | ADR-024
+=adr: 024
+=title: Implicit Application Context via Route-Based Scoping
+=date: 2026-02-23
+=status: accepted
+
+#ctx
+~problem: ADR-023 added applicationId FK; initial impl added dropdown selectors to DeviceForm + CreateWorkflowModal
+~wrong: explicit dropdown allows cross-app entities + violates implicit context intent
+
+#decision
+=chosen: application context established by URL route, not by form field
+=routing: {
+  /applications → list all,
+  /applications/[slug] → Application Detail hub (Devices + Workflows + Dashboards tabs),
+  /applications/[slug]/devices → scoped device list (optional sub-route)
+}
+=rules: {
+  rule1: all entity creation in /applications/[slug] inherits applicationId from route,
+  rule2: DeviceForm + CreateWorkflowModal MUST NOT contain applicationId selectors,
+  rule3: Application Detail is primary entry point for app-scoped work,
+  rule4: global /devices + /workflows remain for SuperAdmin cross-app admin
+}
+!remove: applicationId dropdowns from DeviceForm and CreateWorkflowModal
+
+#consequences
++pos: [implicit_scoping_cleaner_UX, ADR-023_rule1_enforced_at_nav_level, no_cross_app_accidents]
+-neg: [SuperAdmin_global_views_unaffected→slightly_inconsistent]
+
+#scope
+=arch_summary_update: yes

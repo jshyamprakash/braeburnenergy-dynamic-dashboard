@@ -6,8 +6,11 @@
  */
 
 /**
- * Convert device attributes to trigger.data.* variables
- * e.g., { temperature: 'number', pressure: 'string' } → { 'trigger.data.temperature': 'Device field: temperature (number)' }
+ * Convert device attributes to workspace.* variables (ADR-037)
+ * e.g., { temperature: 'number', pressure: 'string' } → { 'workspace.temperature': 'Device field: temperature (number)' }
+ *
+ * workspace = device_states.data snapshot (raw telemetry from the triggering document).
+ * Supports nested paths: {{workspace.meter_Params.frequence}}
  */
 export function getDeviceAttributeVariables(
   attributes: Record<string, string> | null | undefined
@@ -16,7 +19,7 @@ export function getDeviceAttributeVariables(
   if (!attributes) return variables;
 
   for (const [fieldName, fieldType] of Object.entries(attributes)) {
-    const key = `trigger.data.${fieldName}`;
+    const key = `workspace.${fieldName}`;
     variables[key] = `Device field: ${fieldName} (${fieldType})`;
   }
 

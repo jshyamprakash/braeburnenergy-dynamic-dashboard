@@ -1,0 +1,28 @@
+// LLAMP-SPEC v1 | ADR-013
+=adr: 013
+=title: Hybrid Dashboard Storage
+=date: 2026-02-14
+=status: accepted
+
+#ctx
+~need: dashboards work offline AND sync across devices
+~requirements: [instant_load, cross_device_sync, offline_capability]
+
+#opts
+~alt1: MongoDB only (rejected: no offline, network latency on load)
+~alt2: localStorage only (rejected: no sync, no backup)
+
+#decision
+=chosen: localStorage cache + MongoDB persistence
+=load: localStorage → fallback API
+=save: write localStorage + debounced API (1 second delay)
+=conflict: server timestamp wins (last-write-wins)
+=offline: queue writes, sync when online via navigator.onLine
+=impl: Redux dashboardSlice syncStatus + dashboard-storage.ts utility
+
+#consequences
++pos: [instant_page_load, offline_view, cross_device_sync, MongoDB_backup_sharing]
+-neg: [sync_complexity, storage_duplication, localStorage_limit_5-10MB, stale_risk_if_API_fails]
+
+#scope
+=arch_summary_update: yes

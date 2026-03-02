@@ -1,0 +1,24 @@
+// LLAMP-SPEC v1 | ADR-033
+=adr: 033
+=title: API Key M2M Auth — Middleware Fix + Frontend UI
+=date: 2026-02-26
+=status: accepted
+
+#ctx
+~gap1: auth.middleware.ts used ApiKey.findOne({prefix, isActive}) → returns arbitrary doc when multiple keys share prefix → compareKey() fails for all but one
+~gap2: no frontend UI for API key management
+
+#decision
+=fix1: replace findOne with find+iteration in requireAuth + optionalAuth
+  → fetch ALL active keys matching prefix → hash-compare each until match
+=fix2: extend /profile page with API Keys section (table + create modal + one-time reveal panel)
+~complexity: O(n) bcrypt comparisons, acceptable for n<20 keys per org
+=no_new_routes: profile page only
+
+#consequences
++pos: [multiple_keys_same_prefix_work, Node-RED_MQTT_can_auth_via_Bearer, single_credential_mgmt_page]
+-neg: [O(n)_bcrypt_per_request, acceptable_at_POC_scale]
+~key_format: iot_live_|iot_test_ prefix, bcrypt hash stored (ADR-002 pattern)
+
+#scope
+=arch_summary_update: yes

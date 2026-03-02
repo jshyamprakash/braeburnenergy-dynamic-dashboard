@@ -4,70 +4,71 @@ import {
   getUserDashboards,
   saveDashboard,
   deleteDashboard,
-  shareDashboard,
-  getSharedDashboards,
 } from '../controllers/dashboard.controller';
+import { requireAuth } from '../middleware/auth.middleware';
 import { successResponse, errorResponse } from '../utils/swagger';
+
+const dashboardSchema = {
+  type: 'object',
+  properties: {
+    _id: { type: 'string' },
+    orgId: { type: 'string' },
+    applicationId: { type: 'string' },
+    dashboardId: { type: 'string', example: 'default' },
+    name: { type: 'string', example: 'My Dashboard' },
+    description: { type: 'string', example: 'Main monitoring dashboard' },
+    blocks: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          type: { type: 'string', enum: ['gauge', 'chart', 'liveStream'] },
+          layouts: { type: 'object', additionalProperties: true },
+          config: { type: 'object', additionalProperties: true },
+        },
+      },
+    },
+    layouts: { type: 'object', additionalProperties: true },
+    createdAt: { type: 'string', format: 'date-time' },
+    updatedAt: { type: 'string', format: 'date-time' },
+  },
+};
 
 /**
  * Dashboard Routes
  *
- * Registers dashboard-related HTTP endpoints for hybrid storage mode
- * (localStorage cache + backend persistence for cross-device sync)
+ * All routes require auth. Dashboards are scoped to orgId + applicationId (ADR-038).
  */
 export async function dashboardRoutes(fastify: FastifyInstance) {
-  // Get user's dashboards
+  // Get dashboards for an application
   fastify.get('/dashboards', {
+    preHandler: requireAuth,
     schema: {
       tags: ['Dashboards'],
-      summary: 'Get all user dashboards',
-      description: 'Returns all dashboards created by the authenticated user',
+      summary: 'Get dashboards for an application',
+      description: 'Returns all dashboards scoped to the authenticated org and application',
       security: [{ bearerAuth: [] }],
+      querystring: {
+        type: 'object',
+        properties: {
+          applicationId: { type: 'string', description: 'Application ID (required)' },
+        },
+        required: ['applicationId'],
+      },
       response: {
-        200: successResponse(
-          {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                _id: { type: 'string' },
-                userId: { type: 'string' },
-                organizationId: { type: 'string' },
-                dashboardId: { type: 'string', example: 'default' },
-                name: { type: 'string', example: 'My Dashboard' },
-                description: { type: 'string', example: 'Main monitoring dashboard' },
-                blocks: {
-                  type: 'array',
-                  items: {
-                    type: 'object',
-                    properties: {
-                      id: { type: 'string' },
-                      type: { type: 'string', enum: ['gauge', 'chart', 'liveStream'] },
-                      layouts: { type: 'object', additionalProperties: true },
-                      config: { type: 'object', additionalProperties: true },
-                    },
-                  },
-                },
-                layouts: { type: 'object', additionalProperties: true },
-                isShared: { type: 'boolean' },
-                sharedWith: { type: 'array', items: { type: 'string' } },
-                createdAt: { type: 'string', format: 'date-time' },
-                updatedAt: { type: 'string', format: 'date-time' },
-              },
-            },
-          },
-          'User dashboards retrieved successfully'
-        ),
+        200: successResponse({ type: 'array', items: dashboardSchema }, 'Dashboards retrieved successfully'),
       },
     },
   }, getUserDashboards);
 
   // Get specific dashboard by ID
   fastify.get('/dashboards/:dashboardId', {
+    preHandler: requireAuth,
     schema: {
       tags: ['Dashboards'],
       summary: 'Get dashboard by ID',
-      description: 'Retrieves a specific dashboard configuration',
+      description: 'Retrieves a specific dashboard scoped to org + application',
       security: [{ bearerAuth: [] }],
       params: {
         type: 'object',
@@ -76,27 +77,15 @@ export async function dashboardRoutes(fastify: FastifyInstance) {
         },
         required: ['dashboardId'],
       },
+      querystring: {
+        type: 'object',
+        properties: {
+          applicationId: { type: 'string', description: 'Application ID (required)' },
+        },
+        required: ['applicationId'],
+      },
       response: {
-        200: successResponse(
-          {
-            type: 'object',
-            properties: {
-              _id: { type: 'string' },
-              userId: { type: 'string' },
-              organizationId: { type: 'string' },
-              dashboardId: { type: 'string' },
-              name: { type: 'string' },
-              description: { type: 'string' },
-              blocks: { type: 'array', items: { type: 'object', additionalProperties: true } },
-              layouts: { type: 'object', additionalProperties: true },
-              isShared: { type: 'boolean' },
-              sharedWith: { type: 'array', items: { type: 'string' } },
-              createdAt: { type: 'string', format: 'date-time' },
-              updatedAt: { type: 'string', format: 'date-time' },
-            },
-          },
-          'Dashboard retrieved successfully'
-        ),
+        200: successResponse(dashboardSchema, 'Dashboard retrieved successfully'),
         404: errorResponse('Dashboard not found'),
       },
     },
@@ -104,16 +93,17 @@ export async function dashboardRoutes(fastify: FastifyInstance) {
 
   // Save dashboard (create or update)
   fastify.post('/dashboards', {
+    preHandler: requireAuth,
     schema: {
       tags: ['Dashboards'],
       summary: 'Save dashboard',
-      description: 'Creates a new dashboard or updates an existing one (upsert operation). Used for cross-device sync.',
+      description: 'Creates a new dashboard or updates an existing one (upsert). orgId comes from JWT.',
       security: [{ bearerAuth: [] }],
       body: {
         type: 'object',
         properties: {
           dashboardId: { type: 'string', description: 'Dashboard identifier' },
-          organizationId: { type: 'string', description: 'Organization ID' },
+          applicationId: { type: 'string', description: 'Application ID' },
           name: { type: 'string', description: 'Dashboard name' },
           description: { type: 'string', description: 'Dashboard description' },
           blocks: {
@@ -136,29 +126,10 @@ export async function dashboardRoutes(fastify: FastifyInstance) {
             additionalProperties: true,
           },
         },
-        required: ['dashboardId', 'organizationId', 'blocks', 'layouts'],
+        required: ['dashboardId', 'applicationId', 'blocks', 'layouts'],
       },
       response: {
-        200: successResponse(
-          {
-            type: 'object',
-            properties: {
-              _id: { type: 'string' },
-              userId: { type: 'string' },
-              organizationId: { type: 'string' },
-              dashboardId: { type: 'string' },
-              name: { type: 'string' },
-              description: { type: 'string' },
-              blocks: { type: 'array', items: { type: 'object', additionalProperties: true } },
-              layouts: { type: 'object', additionalProperties: true },
-              isShared: { type: 'boolean' },
-              sharedWith: { type: 'array', items: { type: 'string' } },
-              createdAt: { type: 'string', format: 'date-time' },
-              updatedAt: { type: 'string', format: 'date-time' },
-            },
-          },
-          'Dashboard saved successfully'
-        ),
+        200: successResponse(dashboardSchema, 'Dashboard saved successfully'),
         400: errorResponse('Validation error'),
       },
     },
@@ -166,10 +137,11 @@ export async function dashboardRoutes(fastify: FastifyInstance) {
 
   // Delete dashboard
   fastify.delete('/dashboards/:dashboardId', {
+    preHandler: requireAuth,
     schema: {
       tags: ['Dashboards'],
       summary: 'Delete dashboard',
-      description: 'Permanently deletes a dashboard',
+      description: 'Permanently deletes a dashboard scoped to the authenticated org',
       security: [{ bearerAuth: [] }],
       params: {
         type: 'object',
@@ -191,83 +163,4 @@ export async function dashboardRoutes(fastify: FastifyInstance) {
       },
     },
   }, deleteDashboard);
-
-  // Share dashboard with other users
-  fastify.post('/dashboards/:dashboardId/share', {
-    schema: {
-      tags: ['Dashboards'],
-      summary: 'Share dashboard',
-      description: 'Share a dashboard with other users (multi-user collaboration)',
-      security: [{ bearerAuth: [] }],
-      params: {
-        type: 'object',
-        properties: {
-          dashboardId: { type: 'string', description: 'Dashboard identifier' },
-        },
-        required: ['dashboardId'],
-      },
-      body: {
-        type: 'object',
-        properties: {
-          sharedWith: {
-            type: 'array',
-            items: { type: 'string' },
-            description: 'Array of user IDs to share with',
-          },
-        },
-        required: ['sharedWith'],
-      },
-      response: {
-        200: successResponse(
-          {
-            type: 'object',
-            properties: {
-              _id: { type: 'string' },
-              userId: { type: 'string' },
-              dashboardId: { type: 'string' },
-              isShared: { type: 'boolean', example: true },
-              sharedWith: { type: 'array', items: { type: 'string' } },
-            },
-          },
-          'Dashboard shared successfully'
-        ),
-        404: errorResponse('Dashboard not found'),
-      },
-    },
-  }, shareDashboard);
-
-  // Get shared dashboards
-  fastify.get('/dashboards/shared/all', {
-    schema: {
-      tags: ['Dashboards'],
-      summary: 'Get shared dashboards',
-      description: 'Returns all dashboards that have been shared with the authenticated user',
-      security: [{ bearerAuth: [] }],
-      response: {
-        200: successResponse(
-          {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                _id: { type: 'string' },
-                userId: { type: 'string', description: 'Original owner' },
-                organizationId: { type: 'string' },
-                dashboardId: { type: 'string' },
-                name: { type: 'string' },
-                description: { type: 'string' },
-                blocks: { type: 'array', items: { type: 'object', additionalProperties: true } },
-                layouts: { type: 'object', additionalProperties: true },
-                isShared: { type: 'boolean', example: true },
-                sharedWith: { type: 'array', items: { type: 'string' } },
-                createdAt: { type: 'string', format: 'date-time' },
-                updatedAt: { type: 'string', format: 'date-time' },
-              },
-            },
-          },
-          'Shared dashboards retrieved successfully'
-        ),
-      },
-    },
-  }, getSharedDashboards);
 }

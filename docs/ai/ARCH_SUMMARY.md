@@ -13,8 +13,8 @@
 - Zod 3.22.4 (validation)
 
 ## Database
-- Time series collection: `device_states` (TTL 5yr, append-only raw telemetry) — ADR-031
-- Regular collection: `device_derived_states` (unique on deviceId, workflow outputs only) — ADR-031
+- Time series collection: `device_states` (TTL 5yr, append-only raw telemetry, history/charts ONLY) — ADR-031
+- Regular collection: `device_derived_states` (unique on deviceId, workflow outputs only, stale+staledAt fields; canonical live snapshot for dashboard) — ADR-031/034/039
 - Replica set REQUIRED for compliance (transaction support, oplog)
 - 10-year retention for audit logs (no TTL) - 21 CFR Part 11
 - 90-day TTL on workflow executions
@@ -87,3 +87,6 @@
 - Redux async thunks: Explicit type parameters `createAsyncThunk<ReturnType, ArgType, ThunkConfig>`
 - React Flow Handles: Use `id` prop for branching (true/false)
 - API client: POST requires body parameter (use `{}` if no body)
+- `useDeviceRealtime` returns `{ state, stale, staledAt }` — callers MUST destructure (ADR-034)
+- Dashboard live snapshot: GET /devices/:deviceId/derived-state → device_derived_states (ADR-039)
+- device_states is history/charts/exports ONLY — never queried for live dashboard display

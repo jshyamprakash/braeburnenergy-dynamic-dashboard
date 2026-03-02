@@ -51,3 +51,8 @@ export const queryOrganizationsSchema = z.object({
   offset: z.coerce.number().int().min(0).default(0).optional().describe('Number of results to skip'),
   search: z.string().optional().describe('Search by name or slug'),
 });
+
+// Inferred TypeScript types from Zod schemas
+export type CreateOrganizationDTO = z.infer<typeof createOrganizationSchema>;
+export type UpdateOrganizationDTO = z.infer<typeof updateOrganizationSchema>;
+export type QueryOrganizationsDTO = z.infer<typeof queryOrganizationsSchema>;

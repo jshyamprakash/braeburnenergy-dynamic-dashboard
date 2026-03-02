@@ -35,6 +35,7 @@ export interface DeviceState {
   id: string;              // UUID (internal)
   deviceId: string;        // ULID reference to Device
   data: Record<string, any>;
+  derived?: Record<string, any>;
   timestamp: string;
 }
 

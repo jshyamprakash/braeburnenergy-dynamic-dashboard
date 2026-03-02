@@ -1,0 +1,28 @@
+// LLAMP-SPEC v1 | ADR-009
+=adr: 009
+=title: Socket.io for Real-Time Communication
+=date: 2026-02-11
+=status: accepted
+
+#ctx
+~need: real-time device state updates to dashboards
+~requirements: [room_subscriptions, auto_reconnect, fallback_transport]
+
+#opts
+~alt1: native WebSocket (rejected: no rooms, no reconnect, no fallback)
+~alt2: Server-Sent Events (rejected: one-way only)
+
+#decision
+=chosen: Socket.io 4.6.0
+=transports: [WebSocket primary, polling fallback]
+=rooms: device:${deviceId} per-device | all-devices global
+=events: [device:state:update, device:status, alarm:triggered, workflow:execution:update]
+=sub_model: subscribe:device | unsubscribe:device
+=future: Redis adapter for multi-server horizontal scaling
+
+#consequences
++pos: [auto_reconnect_exp_backoff, room_pubsub_efficient, polling_fallback_firewalls, binary_support, middleware_auth]
+-neg: [larger_bundle_than_native_WS, sticky_sessions_for_horizontal_scale, harder_to_debug]
+
+#scope
+=arch_summary_update: yes

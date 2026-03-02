@@ -45,7 +45,7 @@ async function seedAdmin() {
     const passwordHash = await bcrypt.hash(password, 10);
 
     // Create admin user
-    const admin = await User.create({
+    await User.create({
       username: 'admin',
       email: 'admin@example.com',
       passwordHash,

@@ -1,0 +1,37 @@
+// LLAMP-SPEC v1 | ADR-032
+=adr: 032
+=title: Hierarchical Deletion Guards — Application, Device, Workflow
+=date: 2026-02-26
+=status: accepted_partial (Level1 implemented; Levels2-3 backlog)
+
+#ctx
+~problem: uneven deletion protection; Device had no guard → DeviceState/AlarmRule/AlarmInstance orphaned silently
+
+=hierarchy: Organization → Application → [Device, Workflow, Dashboard]
+  Device → [DeviceState, DeviceDerivedState, AlarmRule, AlarmInstance]
+  Workflow → [WorkflowExecution (TTL 90d)]
+!no_fk_constraints: MongoDB → guards enforced in service layer (ADR-001)
+
+#decision
+=level1_application: {
+  block_409_if: Device.count({applicationId})>0 OR Workflow.count>0 OR Dashboard.count>0,
+  response: blocking:{devices,workflows,dashboards}
+}
+=level2_device: {
+  block_409_if: AlarmRule.count({deviceId,isActive:true})>0 OR AlarmInstance.count({deviceId,state:{$in:ACTIVE}})>0,
+  auto_cascade: delete DeviceState(metadata.deviceId) + DeviceDerivedState(deviceId),
+  response: blocking:{alarmRules,alarmInstances}
+}
+=level3_workflow: {
+  no_block: WorkflowExecution retained as immutable history (TTL auto-expires 90d)
+}
+
+=impl_pattern: Promise.all for parallel counts → structured err.blocking → controller catches → 409
+~frontend: parses blocking payload → renders entity count list in delete modal
+
+#consequences
++pos: [ISA-18.2_compliant_device_delete, DeviceState_auto_purged, audit_history_preserved]
+-neg: [operator_must_manually_clean_app_children_before_delete]
+
+#scope
+=arch_summary_update: yes

@@ -1,0 +1,27 @@
+// LLAMP-SPEC v1 | ADR-006
+=adr: 006
+=title: Clean Layered Architecture
+=date: 2026-02-10
+=status: accepted
+
+#ctx
+~need: separation of concerns for maintainability and testability
+~requirement: swappable data layer, isolated business logic
+
+#opts
+~alt1: MVC (rejected: HTTP concerns leak into models)
+~alt2: feature-based (rejected: cross-feature dependencies harder to manage)
+
+#decision
+=chosen: Controllers → Services → Models (3-layer)
+=controllers: 14 files → HTTP handling, validation, error formatting
+=services: 22 files → business logic, transactions, no HTTP concerns
+=models: 18 files → Mongoose schemas, data access, queries
+!services: must_not_import_Fastify_request_reply
+
+#consequences
++pos: [clear_boundaries, HTTP_agnostic_logic, services_testable_without_Fastify, swappable_persistence, easy_onboarding]
+-neg: [3_files_per_feature, indirection, potential_over-engineering_for_CRUD]
+
+#scope
+=arch_summary_update: yes

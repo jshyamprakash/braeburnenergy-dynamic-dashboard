@@ -1,0 +1,25 @@
+// LLAMP-SPEC v1 | ADR-026
+=adr: 026
+=title: Dashboard Field Discovery from Device State
+=date: 2026-02-24
+=status: accepted
+
+#ctx
+~problem: useDeviceFields bug — device.attributes is Record<string,string> (keys=field names), not .sensors[]; workflow-derived fields not surfaced to dashboard field picker
+
+#decision
+=useDeviceFields_returns: DeviceFieldEntry[] (not string[])
+=DeviceFieldEntry: { key: string, source: 'schema'|'state' }
+=schema_fields: Object.keys(device.attributes) → source:'schema'
+=state_fields: Object.keys(states[0].data) → source:'state'
+=dedup: schema fields take precedence; no duplicates
+=ui_prefix: state-discovered fields shown with '~ ' prefix (tilde = runtime/derived)
+!no_backend_changes: discovery is purely client-side
+
+#consequences
++pos: [all_runtime_derived_fields_surfaced, no_manual_schema_registration, tilde_visual_cue]
+-neg: [BlockConfigPanel.field_option_uses_entry.key_not_full_label]
+~RealTimeChartBlock: chartSeries uses entry.key from DeviceFieldEntry[]
+
+#scope
+=arch_summary_update: no

@@ -5,6 +5,8 @@ export interface IDeviceDerivedState extends Document {
   derived: Record<string, any>;
   lastSeen: Date;
   sourceEventId?: Types.ObjectId;
+  stale: boolean;
+  staledAt?: Date | null;
 }
 
 const deviceDerivedStateSchema = new Schema<IDeviceDerivedState>(
@@ -13,6 +15,8 @@ const deviceDerivedStateSchema = new Schema<IDeviceDerivedState>(
     derived: { type: Schema.Types.Mixed, default: {} },
     lastSeen: { type: Date, default: Date.now },
     sourceEventId: { type: Schema.Types.ObjectId },
+    stale: { type: Boolean, default: false },
+    staledAt: { type: Date, default: null },
   },
   {
     collection: 'device_derived_states',

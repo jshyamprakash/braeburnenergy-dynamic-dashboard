@@ -23,6 +23,7 @@ interface FieldConfig {
   placeholder?: string;
   options?: Array<{ value: string | number; label: string }>;
   required?: boolean;
+  note?: string;
 }
 
 // Node type to configuration schema mapping
@@ -35,7 +36,7 @@ const NODE_CONFIG_SCHEMAS: Record<string, FieldConfig[]> = {
     { key: 'label', label: 'Node Label', type: 'text', placeholder: 'e.g., Temperature Changed', required: true },
     { key: 'description', label: 'Description', type: 'textarea' },
     { key: 'deviceId', label: 'Device ID', type: 'device-select', placeholder: 'Select a device', required: true },
-    { key: 'field', label: 'Field Name', type: 'device-field', placeholder: 'e.g., temperature', required: true },
+    { key: 'field', label: 'Workspace Path (optional)', type: 'text', placeholder: 'e.g. {{workspace.meter_Params.meter_data.frequency}}', note: 'Leave empty to trigger on any state change. Use {{workspace.x.y}} paths in downstream conditions/actions.' },
   ],
   'trigger:scheduled': [
     { key: 'label', label: 'Node Label', type: 'text', placeholder: 'e.g., Daily Report', required: true },
@@ -125,7 +126,7 @@ const NODE_CONFIG_SCHEMAS: Record<string, FieldConfig[]> = {
   ],
   'action:debug': [
     { key: 'label', label: 'Node Label', type: 'text', placeholder: 'Debug', required: true },
-    { key: 'messageTemplate', label: 'Message / Expression', type: 'textarea', placeholder: 'e.g., Temperature: {{stateData.data.temperature}} or leave empty to print all data', required: false },
+    { key: 'messageTemplate', label: 'Message / Expression', type: 'textarea', placeholder: 'e.g., Temperature: {{workspace.temperature}} or leave empty to print all data', required: false },
     { key: 'level', label: 'Log Level', type: 'select', options: [
       { value: 'DEBUG', label: 'Debug' },
       { value: 'INFO', label: 'Info' },
@@ -209,7 +210,7 @@ const NODE_CONFIG_SCHEMAS: Record<string, FieldConfig[]> = {
 export default function NodeConfigPanel() {
   const dispatch = useAppDispatch();
   const { nodes, edges, selectedNodeId, applicationId } = useAppSelector(state => state.workflow);
-  const { data: devicesData } = useDevices();
+  const { data: devicesData } = useDevices({ applicationId: applicationId || undefined });
   const [activeTab, setActiveTab] = useState<'config' | 'info'>('config');
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [isVariablePickerOpen, setIsVariablePickerOpen] = useState(false);
@@ -233,13 +234,13 @@ export default function NodeConfigPanel() {
 
     const fetchDeviceAttributes = async () => {
       try {
-        const response = await apiClient.get<any>('/devices?limit=100&offset=0');
+        const response = await apiClient.get<any>(`/devices?limit=100&offset=0&applicationId=${applicationId}`);
         const devices = response.data || [];
 
-        // Filter devices by applicationId and merge their attributes
+        // Merge attributes from all devices in the application
         const mergedAttrs: Record<string, string> = {};
         devices.forEach((device: any) => {
-          if (device.applicationId === applicationId && device.attributes) {
+          if (device.attributes) {
             Object.assign(mergedAttrs, device.attributes);
           }
         });
@@ -501,8 +502,8 @@ export default function NodeConfigPanel() {
                     <div className="space-y-2">
                       {/* Column headers */}
                       <div className="grid grid-cols-[1fr_1fr_auto] gap-1 text-xs font-medium text-gray-500 dark:text-gray-400 px-1">
-                        <span>Attribute</span>
-                        <span>Expression</span>
+                        <span>Output <span className="text-gray-400 font-normal">(derived.*)</span></span>
+                        <span>Input <span className="text-gray-400 font-normal">(workspace.*)</span></span>
                         <span />
                       </div>
                       {/* Rows */}
@@ -512,7 +513,7 @@ export default function NodeConfigPanel() {
                             type="text"
                             value={row.key}
                             onChange={e => updateMappingRow(i, 'key', e.target.value)}
-                            placeholder="e.g., temperature"
+                            placeholder="{{derived.freq}}"
                             list="datalist-mapping-keys"
                             className="px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
                           />
@@ -520,7 +521,7 @@ export default function NodeConfigPanel() {
                             type="text"
                             value={row.expression}
                             onChange={e => updateMappingRow(i, 'expression', e.target.value)}
-                            placeholder="{{trigger.value}}"
+                            placeholder="{{workspace.voltage}}"
                             className="px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
                           />
                           <button
@@ -530,11 +531,11 @@ export default function NodeConfigPanel() {
                           >✕</button>
                         </div>
                       ))}
-                      {/* Attribute datalist from device schema */}
+                      {/* Attribute datalist — suggest {{derived.attr}} format (ADR-037) */}
                       {deviceAttributes && (
                         <datalist id="datalist-mapping-keys">
                           {Object.keys(deviceAttributes).map(attr => (
-                            <option key={attr} value={attr} />
+                            <option key={attr} value={`{{derived.${attr}}}`} />
                           ))}
                         </datalist>
                       )}
@@ -546,6 +547,11 @@ export default function NodeConfigPanel() {
                         + Add Mapping
                       </button>
                     </div>
+                  )}
+                  {field.note && (
+                    <p className="mt-1 text-xs text-gray-400 dark:text-gray-500 leading-relaxed">
+                      {field.note}
+                    </p>
                   )}
                 </div>
               ))

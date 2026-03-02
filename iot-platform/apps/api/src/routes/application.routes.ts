@@ -9,6 +9,7 @@ import {
 import { zodToSwagger, successResponse, paginatedResponse, errorResponse } from '../utils/swagger';
 import { requireAuth } from '../middleware/auth.middleware';
 import { requirePermission } from '../middleware/rbac.middleware';
+import { zodBodyValidator, zodQueryValidator } from '../middleware/validate.middleware';
 
 /**
  * Application Routes
@@ -47,7 +48,7 @@ export async function applicationRoutes(fastify: FastifyInstance) {
         409: errorResponse('Slug already taken'),
       },
     },
-    preHandler: [requireAuth, requirePermission('application:create')],
+    preHandler: [requireAuth, requirePermission('application:create'), zodBodyValidator(createApplicationSchema)],
   }, applicationController.create.bind(applicationController) as any);
 
   // List applications
@@ -78,7 +79,7 @@ export async function applicationRoutes(fastify: FastifyInstance) {
         ),
       },
     },
-    preHandler: [requireAuth, requirePermission('application:read')],
+    preHandler: [requireAuth, requirePermission('application:read'), zodQueryValidator(queryApplicationsSchema)],
   }, applicationController.list.bind(applicationController) as any);
 
   // Get application
@@ -144,7 +145,7 @@ export async function applicationRoutes(fastify: FastifyInstance) {
         409: errorResponse('Slug already taken or operation conflict'),
       },
     },
-    preHandler: [requireAuth, requirePermission('application:manage')],
+    preHandler: [requireAuth, requirePermission('application:manage'), zodBodyValidator(updateApplicationSchema)],
   }, applicationController.update.bind(applicationController) as any);
 
   // Delete application

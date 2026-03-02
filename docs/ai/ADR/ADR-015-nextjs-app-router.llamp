@@ -1,0 +1,28 @@
+// LLAMP-SPEC v1 | ADR-015
+=adr: 015
+=title: Next.js App Router
+=date: 2026-02-09
+=status: accepted
+
+#ctx
+~choice: Next.js 13+ offers Pages Router (legacy) vs App Router (new)
+~requirements: [RSC, streaming, nested_layouts, better_DX]
+
+#opts
+~alt1: Pages Router (rejected: no RSC, no nested layouts, legacy patterns)
+
+#decision
+=chosen: Next.js 16.1.6 App Router
+=dir: app/ (not pages/)
+=default: Server Components → opt-in 'use client'
+=routing: nested layouts via layout.tsx
+=streaming: Suspense boundaries
+=dev: Turbopack (faster HMR)
+!client_components: must add 'use client' for hooks/state/events
+
+#consequences
++pos: [RSC_reduces_bundle, nested_layouts_no_prop_drilling, streaming_perf, better_TS, turbopack_2x_faster]
+-neg: [SC_vs_CC_learning_curve, less_community_content, some_libs_incompatible_with_RSC]
+
+#scope
+=arch_summary_update: yes

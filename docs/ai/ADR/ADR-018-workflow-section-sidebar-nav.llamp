@@ -1,0 +1,20 @@
+// LLAMP-SPEC v1 | ADR-018
+=adr: 018
+=title: Workflow Section Sidebar Navigation (Losant Pattern)
+=date: 2026-02-16
+=status: superseded_by=ADR-019
+
+#ctx
+~original_nav: flat top navbar, no context-sensitive submenu
+~reference: Losant left sidebar with Canvas / Execution Log / Settings per workflow
+
+#decision
+=chosen: nested Next.js layout for /workflows/[workflowId]
+=routes: [/workflows/[id] (canvas), /workflows/[id]/executions (history), /workflows/[id]/settings (metadata)]
+=new_files: [app/workflows/[workflowId]/layout.tsx, /executions/page.tsx, /settings/page.tsx]
+
+#consequences
+~note: superseded by ADR-019 which removes nested layout in favour of global sidebar
+
+#scope
+=arch_summary_update: no

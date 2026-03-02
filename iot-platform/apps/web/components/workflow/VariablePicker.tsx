@@ -82,13 +82,13 @@ export default function VariablePicker({
         {filteredVars.length > 0 ? (
           <>
             {/* Device Schema section (ADR-023) */}
-            {deviceAttributes && filteredVars.some(([name]) => name.startsWith('trigger.data.')) && (
+            {deviceAttributes && filteredVars.some(([name]) => name.startsWith('workspace.')) && (
               <>
                 <div className="px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
-                  Device Schema (from attributes)
+                  Workspace Variables
                 </div>
                 {filteredVars
-                  .filter(([name]) => name.startsWith('trigger.data.'))
+                  .filter(([name]) => name.startsWith('workspace.'))
                   .map(([name, description]) => (
                     <button
                       key={name}
@@ -106,15 +106,15 @@ export default function VariablePicker({
             )}
 
             {/* Other variables section */}
-            {filteredVars.some(([name]) => !name.startsWith('trigger.data.')) && (
+            {filteredVars.some(([name]) => !name.startsWith('workspace.')) && (
               <>
-                {deviceAttributes && filteredVars.some(([name]) => name.startsWith('trigger.data.')) && (
+                {deviceAttributes && filteredVars.some(([name]) => name.startsWith('workspace.')) && (
                   <div className="px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
                     Workflow Variables
                   </div>
                 )}
                 {filteredVars
-                  .filter(([name]) => !name.startsWith('trigger.data.'))
+                  .filter(([name]) => !name.startsWith('workspace.'))
                   .map(([name, description]) => (
                     <button
                       key={name}

@@ -1,100 +1,28 @@
-import { FastifyRequest, FastifyReply } from 'fastify';
+import type { FastifyRequest, FastifyReply } from 'fastify';
 import { OpcuaGateway } from '../models';
 import { opcuaGatewayManager } from '../services/opcua-gateway-manager.service';
+import { NotFoundError } from '../lib/errors';
+import { sendSuccess, sendCreated, sendDeleted } from '../lib/response';
 
 /**
- * OPC UA Gateway Controller
+ * OpcuaGatewayController
  *
- * HTTP handlers for OPC UA gateway configuration and control.
+ * OPC UA protocol gateway for industrial device monitoring.
+ * Zero try/catch — errors propagate to global error handler.
  */
-
-// ============================================================================
-// Gateway Configuration Management
-// ============================================================================
-
-/**
- * POST /opcua-gateways
- * Create OPC UA gateway
- */
-export async function createOpcuaGateway(
-  request: FastifyRequest<{
-    Body: {
-      name: string;
-      description?: string;
-      deviceId: string;
-      endpointUrl: string;
-      securityMode?: string;
-      securityPolicy?: string;
-      username?: string;
-      password?: string;
-      certificatePath?: string;
-      privateKeyPath?: string;
-      connectionStrategy?: {
-        maxRetry?: number;
-        initialDelay?: number;
-        maxDelay?: number;
-      };
-      requestedSessionTimeout?: number;
-      keepSessionAlive?: boolean;
-      monitoringMode?: string;
-      pollingInterval?: number;
-      subscriptionSettings?: {
-        publishingInterval?: number;
-        maxNotificationsPerPublish?: number;
-        priority?: number;
-        samplingInterval?: number;
-        queueSize?: number;
-      };
-      nodeMappings: Array<{
-        field: string;
-        nodeId: string;
-        dataType?: string;
-        scale?: number;
-        offset?: number;
-        unit?: string;
-        description?: string;
-      }>;
-      tags?: string[];
-    };
-  }>,
-  reply: FastifyReply
-) {
-  try {
+export class OpcuaGatewayController {
+  async createGateway(request: FastifyRequest<{ Body: any }>, reply: FastifyReply) {
     const gateway = new OpcuaGateway(request.body);
     await gateway.save();
-
-    return reply.code(201).send({
-      success: true,
-      data: gateway,
-      message: 'OPC UA gateway created successfully',
-    });
-  } catch (error: any) {
-    request.log.error(error);
-    return reply.code(400).send({
-      success: false,
-      error: error.message,
-    });
+    return sendCreated(reply, gateway.toObject());
   }
-}
 
-/**
- * GET /opcua-gateways
- * List OPC UA gateways
- */
-export async function listOpcuaGateways(
-  request: FastifyRequest<{
-    Querystring: {
-      deviceId?: string;
-      isActive?: string;
-      isConnected?: string;
-      monitoringMode?: string;
-      page?: string;
-      limit?: string;
-    };
-  }>,
-  reply: FastifyReply
-) {
-  try {
+  async listGateways(
+    request: FastifyRequest<{
+      Querystring: { deviceId?: string; isActive?: string; isConnected?: string; monitoringMode?: string; page?: string; limit?: string };
+    }>,
+    reply: FastifyReply
+  ) {
     const { deviceId, isActive, isConnected, monitoringMode, page = '1', limit = '20' } = request.query;
 
     const filter: any = {};
@@ -108,473 +36,165 @@ export async function listOpcuaGateways(
     const skip = (pageNum - 1) * limitNum;
 
     const [gateways, total] = await Promise.all([
-      OpcuaGateway.find(filter)
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limitNum)
-        .lean(),
+      OpcuaGateway.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limitNum).lean(),
       OpcuaGateway.countDocuments(filter),
     ]);
 
-    // Add runtime status
-    const gatewaysWithStatus = gateways.map((gateway) => {
-      const status = opcuaGatewayManager.getGatewayStatus(gateway._id.toString());
-      return {
-        ...gateway,
-        runtime: status || { isRunning: false, isConnected: false },
-      };
-    });
+    const gatewaysWithStatus = gateways.map((gateway) => ({
+      ...gateway,
+      runtime: opcuaGatewayManager.getGatewayStatus(gateway._id.toString()) || { isRunning: false, isConnected: false },
+    }));
 
     return reply.send({
       success: true,
       data: gatewaysWithStatus,
-      pagination: {
-        page: pageNum,
-        limit: limitNum,
-        total,
-        pages: Math.ceil(total / limitNum),
-      },
-    });
-  } catch (error: any) {
-    request.log.error(error);
-    return reply.code(500).send({
-      success: false,
-      error: error.message,
+      pagination: { page: pageNum, limit: limitNum, total, pages: Math.ceil(total / limitNum) },
     });
   }
-}
 
-/**
- * GET /opcua-gateways/running
- * Get all running gateways
- */
-export async function getRunningGateways(
-  _request: FastifyRequest,
-  reply: FastifyReply
-) {
-  try {
+  async getRunningGateways(_request: FastifyRequest, reply: FastifyReply) {
     const runningIds = opcuaGatewayManager.getRunningGateways();
-    const gateways = await OpcuaGateway.find({
-      _id: { $in: runningIds },
-    }).lean();
+    const gateways = await OpcuaGateway.find({ _id: { $in: runningIds } }).lean();
 
-    const gatewaysWithStatus = gateways.map((gateway) => {
-      const status = opcuaGatewayManager.getGatewayStatus(gateway._id.toString());
-      return {
-        ...gateway,
-        runtime: status || { isRunning: false, isConnected: false },
-      };
-    });
+    const gatewaysWithStatus = gateways.map((gateway) => ({
+      ...gateway,
+      runtime: opcuaGatewayManager.getGatewayStatus(gateway._id.toString()) || { isRunning: false, isConnected: false },
+    }));
 
-    return reply.send({
-      success: true,
-      data: gatewaysWithStatus,
-      count: gatewaysWithStatus.length,
-    });
-  } catch (error: any) {
-    return reply.code(500).send({
-      success: false,
-      error: error.message,
-    });
+    return sendSuccess(reply, gatewaysWithStatus);
   }
-}
 
-/**
- * GET /opcua-gateways/:id
- * Get OPC UA gateway by ID
- */
-export async function getOpcuaGateway(
-  request: FastifyRequest<{
-    Params: {
-      id: string;
-    };
-  }>,
-  reply: FastifyReply
-) {
-  try {
+  async getGateway(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
     const gateway = await OpcuaGateway.findById(request.params.id).lean();
 
     if (!gateway) {
-      return reply.code(404).send({
-        success: false,
-        error: 'Gateway not found',
-      });
+      throw new NotFoundError('Gateway');
     }
 
-    // Add runtime status
     const status = opcuaGatewayManager.getGatewayStatus(request.params.id);
-
-    return reply.send({
-      success: true,
-      data: {
-        ...gateway,
-        runtime: status || { isRunning: false, isConnected: false },
-      },
-    });
-  } catch (error: any) {
-    request.log.error(error);
-    return reply.code(500).send({
-      success: false,
-      error: error.message,
-    });
+    return sendSuccess(reply, { ...gateway, runtime: status || { isRunning: false, isConnected: false } });
   }
-}
 
-/**
- * PATCH /opcua-gateways/:id
- * Update OPC UA gateway
- */
-export async function updateOpcuaGateway(
-  request: FastifyRequest<{
-    Params: {
-      id: string;
-    };
-    Body: Partial<{
-      name: string;
-      description: string;
-      endpointUrl: string;
-      securityMode: string;
-      securityPolicy: string;
-      username: string;
-      password: string;
-      certificatePath: string;
-      privateKeyPath: string;
-      connectionStrategy: any;
-      requestedSessionTimeout: number;
-      keepSessionAlive: boolean;
-      monitoringMode: string;
-      pollingInterval: number;
-      subscriptionSettings: any;
-      nodeMappings: any[];
-      isActive: boolean;
-      tags: string[];
-    }>;
-  }>,
-  reply: FastifyReply
-) {
-  try {
+  async updateGateway(request: FastifyRequest<{ Params: { id: string }; Body: any }>, reply: FastifyReply) {
     const gateway = await OpcuaGateway.findByIdAndUpdate(
       request.params.id,
-      { $set: request.body },
+      { $set: request.body as Record<string, any> },
       { new: true, runValidators: true }
     );
 
     if (!gateway) {
-      return reply.code(404).send({
-        success: false,
-        error: 'Gateway not found',
-      });
+      throw new NotFoundError('Gateway');
     }
 
-    // Restart if running and critical settings changed
     const status = opcuaGatewayManager.getGatewayStatus(request.params.id);
     if (status?.isRunning) {
       const criticalFields = ['endpointUrl', 'securityMode', 'securityPolicy', 'monitoringMode', 'nodeMappings'];
-      const hasCriticalChanges = criticalFields.some((field) => field in request.body);
-
-      if (hasCriticalChanges) {
+      if (criticalFields.some((field) => field in (request.body as Record<string, any>))) {
         await opcuaGatewayManager.restartGateway(request.params.id);
       }
     }
 
-    return reply.send({
-      success: true,
-      data: gateway,
-      message: 'OPC UA gateway updated successfully',
-    });
-  } catch (error: any) {
-    request.log.error(error);
-    return reply.code(400).send({
-      success: false,
-      error: error.message,
-    });
+    return sendSuccess(reply, (gateway as any).toObject());
   }
-}
 
-/**
- * DELETE /opcua-gateways/:id
- * Delete OPC UA gateway
- */
-export async function deleteOpcuaGateway(
-  request: FastifyRequest<{
-    Params: {
-      id: string;
-    };
-  }>,
-  reply: FastifyReply
-) {
-  try {
-    // Stop gateway if running
+  async deleteGateway(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
     const status = opcuaGatewayManager.getGatewayStatus(request.params.id);
     if (status?.isRunning) {
       await opcuaGatewayManager.stopGateway(request.params.id);
     }
 
     const gateway = await OpcuaGateway.findByIdAndDelete(request.params.id);
-
     if (!gateway) {
-      return reply.code(404).send({
-        success: false,
-        error: 'Gateway not found',
-      });
+      throw new NotFoundError('Gateway');
     }
 
-    return reply.send({
-      success: true,
-      message: 'OPC UA gateway deleted successfully',
-    });
-  } catch (error: any) {
-    request.log.error(error);
-    return reply.code(500).send({
-      success: false,
-      error: error.message,
-    });
+    return sendDeleted(reply, 'OPC UA gateway deleted successfully');
   }
-}
 
-// ============================================================================
-// Gateway Control
-// ============================================================================
-
-/**
- * POST /opcua-gateways/:id/start
- * Start OPC UA gateway
- */
-export async function startOpcuaGateway(
-  request: FastifyRequest<{
-    Params: {
-      id: string;
-    };
-  }>,
-  reply: FastifyReply
-) {
-  try {
+  async startGateway(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
     await opcuaGatewayManager.startGateway(request.params.id);
-
-    return reply.send({
-      success: true,
-      message: 'OPC UA gateway started successfully',
-    });
-  } catch (error: any) {
-    request.log.error(error);
-    return reply.code(400).send({
-      success: false,
-      error: error.message,
-    });
+    return sendSuccess(reply, { message: 'OPC UA gateway started successfully' });
   }
-}
 
-/**
- * POST /opcua-gateways/:id/stop
- * Stop OPC UA gateway
- */
-export async function stopOpcuaGateway(
-  request: FastifyRequest<{
-    Params: {
-      id: string;
-    };
-  }>,
-  reply: FastifyReply
-) {
-  try {
+  async stopGateway(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
     await opcuaGatewayManager.stopGateway(request.params.id);
-
-    return reply.send({
-      success: true,
-      message: 'OPC UA gateway stopped successfully',
-    });
-  } catch (error: any) {
-    request.log.error(error);
-    return reply.code(400).send({
-      success: false,
-      error: error.message,
-    });
+    return sendSuccess(reply, { message: 'OPC UA gateway stopped successfully' });
   }
-}
 
-/**
- * POST /opcua-gateways/:id/restart
- * Restart OPC UA gateway
- */
-export async function restartOpcuaGateway(
-  request: FastifyRequest<{
-    Params: {
-      id: string;
-    };
-  }>,
-  reply: FastifyReply
-) {
-  try {
+  async restartGateway(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
     await opcuaGatewayManager.restartGateway(request.params.id);
-
-    return reply.send({
-      success: true,
-      message: 'OPC UA gateway restarted successfully',
-    });
-  } catch (error: any) {
-    request.log.error(error);
-    return reply.code(400).send({
-      success: false,
-      error: error.message,
-    });
+    return sendSuccess(reply, { message: 'OPC UA gateway restarted successfully' });
   }
-}
 
-/**
- * POST /opcua-gateways/:id/test
- * Test OPC UA connection
- */
-export async function testConnection(
-  request: FastifyRequest<{
-    Params: {
-      id: string;
-    };
-  }>,
-  reply: FastifyReply
-) {
-  try {
+  async testConnection(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
     const result = await opcuaGatewayManager.testConnection(request.params.id);
-
-    return reply.send({
-      success: result.success,
-      message: result.message,
-    });
-  } catch (error: any) {
-    request.log.error(error);
-    return reply.code(500).send({
-      success: false,
-      error: error.message,
-    });
+    return sendSuccess(reply, { message: result.message });
   }
-}
 
-/**
- * GET /opcua-gateways/:id/status
- * Get gateway runtime status
- */
-export async function getStatus(
-  request: FastifyRequest<{
-    Params: {
-      id: string;
-    };
-  }>,
-  reply: FastifyReply
-) {
-  try {
+  async getStatus(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
     const status = opcuaGatewayManager.getGatewayStatus(request.params.id);
-
-    return reply.send({
-      success: true,
-      data: status || { isRunning: false, isConnected: false },
-    });
-  } catch (error: any) {
-    request.log.error(error);
-    return reply.code(500).send({
-      success: false,
-      error: error.message,
-    });
+    return sendSuccess(reply, status || { isRunning: false, isConnected: false });
   }
-}
 
-/**
- * POST /opcua-gateways/:id/browse
- * Browse OPC UA server nodes
- */
-export async function browseNodes(
-  request: FastifyRequest<{
-    Params: {
-      id: string;
-    };
-    Body: {
-      nodeId?: string;
-    };
-  }>,
-  reply: FastifyReply
-) {
-  try {
-    const nodeId = request.body.nodeId || 'RootFolder';
+  async browseNodes(request: FastifyRequest<{ Params: { id: string }; Body: { nodeId?: string } }>, reply: FastifyReply) {
+    const nodeId = request.body?.nodeId || 'RootFolder';
     const nodes = await opcuaGatewayManager.browseNodes(request.params.id, nodeId);
-
-    return reply.send({
-      success: true,
-      data: {
-        nodeId,
-        nodes,
-      },
-    });
-  } catch (error: any) {
-    request.log.error(error);
-    return reply.code(500).send({
-      success: false,
-      error: error.message,
-    });
+    return sendSuccess(reply, { nodeId, nodes });
   }
-}
 
-// ============================================================================
-// Gateway Statistics
-// ============================================================================
-
-/**
- * GET /opcua-gateways/:id/statistics
- * Get OPC UA gateway statistics
- */
-export async function getOpcuaGatewayStatistics(
-  request: FastifyRequest<{
-    Params: {
-      id: string;
-    };
-  }>,
-  reply: FastifyReply
-) {
-  try {
+  async getStatistics(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
     const gateway = await OpcuaGateway.findById(request.params.id).lean();
 
     if (!gateway) {
-      return reply.code(404).send({
-        success: false,
-        error: 'Gateway not found',
-      });
+      throw new NotFoundError('Gateway');
     }
 
     const status = opcuaGatewayManager.getGatewayStatus(request.params.id);
     const successRate = gateway.totalReads > 0
-      ? (gateway.successfulReads / gateway.totalReads) * 100
+      ? Math.round((gateway.successfulReads / gateway.totalReads) * 10000) / 100
       : 0;
 
-    return reply.send({
-      success: true,
-      data: {
-        gatewayId: gateway._id,
-        name: gateway.name,
-        deviceId: gateway.deviceId,
-        monitoringMode: gateway.monitoringMode,
-        isActive: gateway.isActive,
-        isConnected: gateway.isConnected,
-        runtime: status || { isRunning: false, isConnected: false },
-        statistics: {
-          totalReads: gateway.totalReads,
-          successfulReads: gateway.successfulReads,
-          failedReads: gateway.failedReads,
-          successRate: Math.round(successRate * 100) / 100,
-          averageResponseTime: gateway.averageResponseTime
-            ? Math.round(gateway.averageResponseTime * 100) / 100
-            : null,
-          consecutiveFailures: gateway.consecutiveFailures,
-        },
-        timestamps: {
-          lastPoll: gateway.lastPollTimestamp,
-          lastSuccess: gateway.lastSuccessTimestamp,
-          lastError: gateway.lastErrorTimestamp,
-        },
-        lastError: gateway.lastError,
+    return sendSuccess(reply, {
+      gatewayId: gateway._id,
+      name: gateway.name,
+      deviceId: gateway.deviceId,
+      monitoringMode: gateway.monitoringMode,
+      isActive: gateway.isActive,
+      isConnected: gateway.isConnected,
+      runtime: status || { isRunning: false, isConnected: false },
+      statistics: {
+        totalReads: gateway.totalReads,
+        successfulReads: gateway.successfulReads,
+        failedReads: gateway.failedReads,
+        successRate,
+        averageResponseTime: gateway.averageResponseTime
+          ? Math.round(gateway.averageResponseTime * 100) / 100
+          : null,
+        consecutiveFailures: gateway.consecutiveFailures,
       },
-    });
-  } catch (error: any) {
-    request.log.error(error);
-    return reply.code(500).send({
-      success: false,
-      error: error.message,
+      timestamps: {
+        lastPoll: gateway.lastPollTimestamp,
+        lastSuccess: gateway.lastSuccessTimestamp,
+        lastError: gateway.lastErrorTimestamp,
+      },
+      lastError: gateway.lastError,
     });
   }
 }
+
+export const opcuaGatewayController = new OpcuaGatewayController();
+
+// Legacy named function exports
+export const createOpcuaGateway = (req: FastifyRequest<any>, reply: FastifyReply) => opcuaGatewayController.createGateway(req, reply);
+export const listOpcuaGateways = (req: FastifyRequest<any>, reply: FastifyReply) => opcuaGatewayController.listGateways(req, reply);
+export const getRunningGateways = (req: FastifyRequest, reply: FastifyReply) => opcuaGatewayController.getRunningGateways(req, reply);
+export const getOpcuaGateway = (req: FastifyRequest<any>, reply: FastifyReply) => opcuaGatewayController.getGateway(req, reply);
+export const updateOpcuaGateway = (req: FastifyRequest<any>, reply: FastifyReply) => opcuaGatewayController.updateGateway(req, reply);
+export const deleteOpcuaGateway = (req: FastifyRequest<any>, reply: FastifyReply) => opcuaGatewayController.deleteGateway(req, reply);
+export const startOpcuaGateway = (req: FastifyRequest<any>, reply: FastifyReply) => opcuaGatewayController.startGateway(req, reply);
+export const stopOpcuaGateway = (req: FastifyRequest<any>, reply: FastifyReply) => opcuaGatewayController.stopGateway(req, reply);
+export const restartOpcuaGateway = (req: FastifyRequest<any>, reply: FastifyReply) => opcuaGatewayController.restartGateway(req, reply);
+export const testConnection = (req: FastifyRequest<any>, reply: FastifyReply) => opcuaGatewayController.testConnection(req, reply);
+export const getStatus = (req: FastifyRequest<any>, reply: FastifyReply) => opcuaGatewayController.getStatus(req, reply);
+export const browseNodes = (req: FastifyRequest<any>, reply: FastifyReply) => opcuaGatewayController.browseNodes(req, reply);
+export const getOpcuaGatewayStatistics = (req: FastifyRequest<any>, reply: FastifyReply) => opcuaGatewayController.getStatistics(req, reply);

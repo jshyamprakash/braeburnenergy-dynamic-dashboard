@@ -1,0 +1,26 @@
+// LLAMP-SPEC v1 | ADR-014
+=adr: 014
+=title: Industrial Protocol Gateway Architecture
+=date: 2026-02-13
+=status: accepted
+
+#ctx
+~need: integration with PLCs, SCADA systems, industrial sensors
+~protocols: [Modbus_IEC-61158, OPC-UA_IEC-62541]
+
+#opts
+~alt1: direct device integration (rejected: no protocol abstraction, not scalable)
+
+#decision
+=chosen: gateway architecture with protocol abstraction layer
+=modbus: TCP + RTU, 4 register types [Holding, Input, Coil, DiscreteInput], 5 data types [int16, uint16, int32, uint32, float, boolean]
+=opcua: endpoint + security modes [None, Sign, SignAndEncrypt]
+=services: ModbusClient (protocol ops) | ModbusGatewayManager (connection pool + polling)
+=features: [auto_device_registration, scale_offset_conversion, retry_exp_backoff, connection_pooling]
+
+#consequences
++pos: [protocol_agnostic_API, auto_device_discovery, raw_to_engineering_units, retry_logic]
+-neg: [gateway_lifecycle_complexity, protocol_specific_error_handling, Modbus_RTU_serial_latency, no_Modbus_encryption]
+
+#scope
+=arch_summary_update: yes

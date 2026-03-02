@@ -92,14 +92,14 @@ export class OpcuaClientService {
       // Create session
       if (this.gateway.username && this.gateway.password) {
         // Username/password authentication
-        this.session = await this.client.createSession({
+        this.session = await (this.client as any).createSession({
           type: 'UserName',
           userName: this.gateway.username,
           password: this.gateway.password,
         });
       } else {
         // Anonymous authentication
-        this.session = await this.client.createSession();
+        this.session = await (this.client as any).createSession();
       }
 
       this.isConnected = true;
@@ -169,7 +169,7 @@ export class OpcuaClientService {
 
     // Monitor each node
     for (const mapping of this.gateway.nodeMappings) {
-      const monitoredItem = await this.subscription.monitor(
+      const monitoredItem = await (this.subscription as any).monitor(
         {
           nodeId: mapping.nodeId,
           attributeId: AttributeIds.Value,
@@ -182,7 +182,7 @@ export class OpcuaClientService {
       );
 
       // Handle data change events
-      monitoredItem.on('changed', (dataValue: DataValue) => {
+      (monitoredItem as any).on('changed', (dataValue: DataValue) => {
         const value = this.extractValue(dataValue, mapping);
         this.dataCache.set(mapping.field, value);
       });

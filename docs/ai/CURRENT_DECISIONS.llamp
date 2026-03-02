@@ -1,0 +1,30 @@
+// LLAMP-SPEC v1 | CURRENT_DECISIONS: ADR-039 dashboard-derived-state-endpoint (2026-03-02)
+
+#what_changed
+=device-state.controller.ts: added getDerivedState() handler
+  → calls deviceDerivedStateService.getLatest(deviceId)
+  → throws NotFoundError if null
+  → returns { deviceId, derived, lastSeen, stale, staledAt }
+=device-state.routes.ts: registered GET /devices/:deviceId/derived-state
+  → placed before /states/* routes (Fastify ordering)
+  → preHandler: requireAuth + requirePermission('device-state:read')
+  → Swagger schema with derived, lastSeen, stale, staledAt
+=useDeviceData.ts (useDeviceRealtime): queryFn switched from /states/latest → /derived-state
+  → response parsed as { deviceId, derived, lastSeen, stale, staledAt }
+  → DeviceState cache object: { id:`derived-${deviceId}`, data:derived, derived, timestamp:lastSeen }
+  → staleMeta seeded from queryFn response (latestState.stale/staledAt) — removed device.derivedStateMeta path
+
+#tech_implications
+~device_states (time-series) is now history/charts/exports ONLY — never for live display
+~device_derived_states is canonical live snapshot for all dashboard gauge reads
+~useDeviceRealtime callers: state.data contains derived fields only (no raw sensor fields on initial load)
+  raw sensor fields still merged in on every WebSocket device:state event — no regression
+~useDeviceFields unchanged: reads device.derivedState from GET /devices/:deviceId
+~RealTimeGaugeBlock unchanged: reads latestState.derived?.[field] ?? latestState.data?.[field] — compatible
+~/states/latest endpoint remains (not removed) — used by audit/raw data views
+
+#constraints
+!rule: dashboard MUST use /derived-state for live snapshot (ADR-039)
+!rule: /states/latest is for historical/audit use only
+~if device has no derived state (no workflow run yet) → 404 from /derived-state → gauge shows fallback value
+~stale flag propagated from API response on hard refresh (no WebSocket needed for stale detection)

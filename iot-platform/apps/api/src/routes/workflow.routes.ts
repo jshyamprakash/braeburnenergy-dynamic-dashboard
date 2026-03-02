@@ -12,6 +12,7 @@ import {
 import { zodToSwagger, successResponse, paginatedResponse, errorResponse } from '../utils/swagger';
 import { requireAuth } from '../middleware/auth.middleware';
 import { requirePermission } from '../middleware/rbac.middleware';
+import { zodBodyValidator, zodQueryValidator } from '../middleware/validate.middleware';
 import { WORKFLOW_TEMPLATES } from '../data/workflow-templates';
 
 /**
@@ -56,7 +57,7 @@ export async function workflowRoutes(fastify: FastifyInstance) {
         ),
       },
     },
-    handler: async (request, reply) => {
+    handler: async (_request, reply) => {
       return reply.send({ success: true, data: WORKFLOW_TEMPLATES });
     },
   });
@@ -92,7 +93,7 @@ export async function workflowRoutes(fastify: FastifyInstance) {
         400: errorResponse('Validation error or workflow structure invalid'),
       },
     },
-    preHandler: [requireAuth, requirePermission('workflow:create')],
+    preHandler: [requireAuth, requirePermission('workflow:create'), zodBodyValidator(createWorkflowSchema)],
   }, (req: any, reply: any) => workflowController.create(req, reply));
 
   // Get workflow by ID
@@ -120,6 +121,7 @@ export async function workflowRoutes(fastify: FastifyInstance) {
               lastExecutedAt: { type: 'string', format: 'date-time' },
               lastExecutionStatus: { type: 'string', enum: ['completed', 'failed', 'timeout', 'cancelled'] },
               version: { type: 'number' },
+              applicationId: { type: 'string' },
               createdAt: { type: 'string', format: 'date-time' },
               updatedAt: { type: 'string', format: 'date-time' },
             },
@@ -155,6 +157,7 @@ export async function workflowRoutes(fastify: FastifyInstance) {
               lastExecutedAt: { type: 'string', format: 'date-time' },
               lastExecutionStatus: { type: 'string' },
               version: { type: 'number' },
+              applicationId: { type: 'string' },
               createdAt: { type: 'string', format: 'date-time' },
               updatedAt: { type: 'string', format: 'date-time' },
             },
@@ -163,7 +166,7 @@ export async function workflowRoutes(fastify: FastifyInstance) {
         ),
       },
     },
-    preHandler: [requireAuth, requirePermission('workflow:read')],
+    preHandler: [requireAuth, requirePermission('workflow:read'), zodQueryValidator(queryWorkflowsSchema)],
   }, (req: any, reply: any) => workflowController.list(req, reply));
 
   // Update workflow
@@ -196,7 +199,7 @@ export async function workflowRoutes(fastify: FastifyInstance) {
         400: errorResponse('Validation error'),
       },
     },
-    preHandler: [requireAuth, requirePermission('workflow:update')],
+    preHandler: [requireAuth, requirePermission('workflow:update'), zodBodyValidator(updateWorkflowSchema)],
   }, (req: any, reply: any) => workflowController.update(req, reply));
 
   // Delete workflow
@@ -243,7 +246,7 @@ export async function workflowRoutes(fastify: FastifyInstance) {
         400: errorResponse('Workflow is disabled'),
       },
     },
-    preHandler: [requireAuth, requirePermission('workflow:execute')],
+    preHandler: [requireAuth, requirePermission('workflow:execute'), zodBodyValidator(executeWorkflowSchema)],
   }, (req: any, reply: any) => workflowController.execute(req, reply));
 
   // Enable workflow

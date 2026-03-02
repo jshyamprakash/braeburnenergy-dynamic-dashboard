@@ -1,323 +1,158 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { deviceService } from '../services/device.service';
-import {
-  createDeviceSchema,
-  updateDeviceSchema,
-  queryDevicesSchema,
-  deviceIdParamSchema,
-  type CreateDeviceDTO,
-  type UpdateDeviceDTO,
-  type QueryDevicesDTO,
-  type DeviceIdParam,
+import { NotFoundError, BadRequestError } from '../lib/errors';
+import { sendSuccess, sendCreated, sendPaginated, sendDeleted } from '../lib/response';
+import { getRequestContext } from '../lib/request-context';
+import type {
+  CreateDeviceDTO,
+  UpdateDeviceDTO,
+  QueryDevicesDTO,
+  DeviceIdParam,
 } from '../schemas/device.schema';
-
-/**
- * Default organization ID for POC
- * TODO: Replace with orgId from JWT token or request header in MVP
- */
-const DEFAULT_ORG_ID = 'aaaaaaaaaaaaaaaaaaaaaaaa';
 
 /**
  * DeviceController
  *
- * HTTP request handlers for device management
- * Handles validation, service calls, and response formatting
+ * HTTP request handlers for device management.
+ * Zero try/catch — errors propagate to global error handler.
  */
 export class DeviceController {
   /**
    * POST /devices
-   * Create a new device
    */
   async create(
     request: FastifyRequest<{ Body: CreateDeviceDTO }>,
     reply: FastifyReply
   ) {
-    try {
-      // Validate request body
-      const validatedData = createDeviceSchema.parse(request.body);
-
-      // Create device (using default org for now)
-      const device = await deviceService.create(DEFAULT_ORG_ID, validatedData);
-
-      // Return 201 Created
-      return reply.code(201).send({
-        success: true,
-        data: device,
-      });
-    } catch (error) {
-      if (error instanceof Error && error.name === 'ZodError') {
-        return reply.code(400).send({
-          success: false,
-          error: 'Validation failed',
-          details: error,
-        });
-      }
-
-      request.log.error(error, 'Error creating device');
-      return reply.code(500).send({
-        success: false,
-        error: 'Internal server error',
-      });
-    }
+    const { orgId } = getRequestContext(request);
+    const device = await deviceService.create(orgId, request.body);
+    return sendCreated(reply, device);
   }
 
   /**
    * GET /devices/:deviceId
-   * Get device by ULID
    */
   async getOne(
     request: FastifyRequest<{ Params: DeviceIdParam; Querystring: { includeStates?: string } }>,
     reply: FastifyReply
   ) {
-    try {
-      // Validate params
-      const { deviceId } = deviceIdParamSchema.parse(request.params);
-      const includeStates = request.query.includeStates === 'true';
+    const { orgId } = getRequestContext(request);
+    const { deviceId } = request.params;
+    const includeStates = request.query.includeStates === 'true';
+    const device = await deviceService.getByDeviceId(orgId, deviceId, includeStates);
 
-      // Get device (using default org for now)
-      const device = await deviceService.getByDeviceId(DEFAULT_ORG_ID, deviceId, includeStates);
-
-      if (!device) {
-        return reply.code(404).send({
-          success: false,
-          error: 'Device not found',
-        });
-      }
-
-      return reply.code(200).send({
-        success: true,
-        data: device,
-      });
-    } catch (error) {
-      if (error instanceof Error && error.name === 'ZodError') {
-        return reply.code(400).send({
-          success: false,
-          error: 'Invalid device ID',
-          details: error,
-        });
-      }
-
-      request.log.error(error, 'Error fetching device');
-      return reply.code(500).send({
-        success: false,
-        error: 'Internal server error',
-      });
+    if (!device) {
+      throw new NotFoundError('Device');
     }
+
+    return sendSuccess(reply, device);
   }
 
   /**
    * GET /devices
-   * List devices with filtering and pagination
    */
   async list(
     request: FastifyRequest<{ Querystring: QueryDevicesDTO }>,
     reply: FastifyReply
   ) {
-    try {
-      // Validate query params
-      const validatedQuery = queryDevicesSchema.parse(request.query);
-
-      // Get devices (using default org for now)
-      const result = await deviceService.list(DEFAULT_ORG_ID, validatedQuery);
-
-      return reply.code(200).send({
-        success: true,
-        ...result,
-      });
-    } catch (error) {
-      if (error instanceof Error && error.name === 'ZodError') {
-        return reply.code(400).send({
-          success: false,
-          error: 'Invalid query parameters',
-          details: error,
-        });
-      }
-
-      request.log.error(error, 'Error listing devices');
-      return reply.code(500).send({
-        success: false,
-        error: 'Internal server error',
-      });
-    }
+    const { orgId } = getRequestContext(request);
+    const result = await deviceService.list(orgId, request.query);
+    return sendPaginated(reply, result.data, result.pagination);
   }
 
   /**
    * PATCH /devices/:deviceId
-   * Update device
    */
   async update(
     request: FastifyRequest<{ Params: DeviceIdParam; Body: UpdateDeviceDTO }>,
     reply: FastifyReply
   ) {
-    try {
-      // Validate params and body
-      const { deviceId } = deviceIdParamSchema.parse(request.params);
-      const validatedData = updateDeviceSchema.parse(request.body);
+    const { orgId } = getRequestContext(request);
+    const { deviceId } = request.params;
+    const device = await deviceService.update(orgId, deviceId, request.body);
 
-      // Update device (using default org for now)
-      const device = await deviceService.update(DEFAULT_ORG_ID, deviceId, validatedData);
-
-      if (!device) {
-        return reply.code(404).send({
-          success: false,
-          error: 'Device not found',
-        });
-      }
-
-      return reply.code(200).send({
-        success: true,
-        data: device,
-      });
-    } catch (error) {
-      if (error instanceof Error && error.name === 'ZodError') {
-        return reply.code(400).send({
-          success: false,
-          error: 'Validation failed',
-          details: error,
-        });
-      }
-
-      request.log.error(error, 'Error updating device');
-      return reply.code(500).send({
-        success: false,
-        error: 'Internal server error',
-      });
+    if (!device) {
+      throw new NotFoundError('Device');
     }
+
+    return sendSuccess(reply, device);
   }
 
   /**
    * DELETE /devices/:deviceId
-   * Delete device
    */
   async delete(
     request: FastifyRequest<{ Params: DeviceIdParam }>,
     reply: FastifyReply
   ) {
-    try {
-      // Validate params
-      const { deviceId } = deviceIdParamSchema.parse(request.params);
+    const { orgId } = getRequestContext(request);
+    const { deviceId } = request.params;
+    const device = await deviceService.delete(orgId, deviceId);
 
-      // Delete device (using default org for now)
-      const device = await deviceService.delete(DEFAULT_ORG_ID, deviceId);
-
-      if (!device) {
-        return reply.code(404).send({
-          success: false,
-          error: 'Device not found',
-        });
-      }
-
-      return reply.code(200).send({
-        success: true,
-        message: 'Device deleted successfully',
-        data: device,
-      });
-    } catch (error) {
-      if (error instanceof Error && error.name === 'ZodError') {
-        return reply.code(400).send({
-          success: false,
-          error: 'Invalid device ID',
-          details: error,
-        });
-      }
-
-      request.log.error(error, 'Error deleting device');
-      return reply.code(500).send({
-        success: false,
-        error: 'Internal server error',
-      });
+    if (!device) {
+      throw new NotFoundError('Device');
     }
+
+    return sendDeleted(reply, 'Device deleted successfully');
   }
 
   /**
    * GET /devices/search/tags
-   * Search devices by tags (has ANY of the specified tags)
    */
   async searchByTags(
-    request: FastifyRequest<{ Querystring: { tags: string; limit?: string } }>,
+    request: FastifyRequest<{ Querystring: { tags: string; applicationId?: string; limit?: string } }>,
     reply: FastifyReply
   ) {
-    try {
-      const { tags, limit } = request.query;
+    const { orgId } = getRequestContext(request);
+    const { tags, applicationId, limit } = request.query;
 
-      if (!tags) {
-        return reply.code(400).send({
-          success: false,
-          error: 'Tags query parameter is required',
-        });
-      }
-
-      const tagArray = tags.split(',').map((t) => t.trim()).filter(Boolean);
-      const limitNum = limit ? parseInt(limit, 10) : 100;
-
-      const devices = await deviceService.searchByTags(DEFAULT_ORG_ID, tagArray, limitNum);
-
-      return reply.code(200).send({
-        success: true,
-        data: devices,
-      });
-    } catch (error) {
-      request.log.error(error, 'Error searching devices by tags');
-      return reply.code(500).send({
-        success: false,
-        error: 'Internal server error',
-      });
+    if (!tags) {
+      throw new BadRequestError('Tags query parameter is required');
     }
+    if (!applicationId) {
+      throw new BadRequestError('applicationId is required');
+    }
+
+    const tagArray = tags.split(',').map((t) => t.trim()).filter(Boolean);
+    const limitNum = limit ? parseInt(limit, 10) : 100;
+    const devices = await deviceService.searchByTags(orgId, applicationId, tagArray, limitNum);
+
+    return sendSuccess(reply, devices);
   }
 
   /**
    * GET /devices/stats/count
-   * Get device count
    */
   async count(
-    request: FastifyRequest<{ Querystring: { tags?: string } }>,
+    request: FastifyRequest<{ Querystring: { applicationId?: string; tags?: string } }>,
     reply: FastifyReply
   ) {
-    try {
-      const { tags } = request.query;
-      const tagArray = tags ? tags.split(',').map((t) => t.trim()).filter(Boolean) : undefined;
-
-      const count = await deviceService.count(DEFAULT_ORG_ID, tagArray);
-
-      return reply.code(200).send({
-        success: true,
-        data: { count },
-      });
-    } catch (error) {
-      request.log.error(error, 'Error counting devices');
-      return reply.code(500).send({
-        success: false,
-        error: 'Internal server error',
-      });
+    const { orgId } = getRequestContext(request);
+    const { applicationId, tags } = request.query;
+    if (!applicationId) {
+      throw new BadRequestError('applicationId is required');
     }
+    const tagArray = tags ? tags.split(',').map((t) => t.trim()).filter(Boolean) : undefined;
+    const count = await deviceService.count(orgId, applicationId, tagArray);
+    return sendSuccess(reply, { count });
   }
 
   /**
    * GET /devices/recent
-   * Get recently created devices (uses ULID time-sorting)
    */
   async getRecent(
-    request: FastifyRequest<{ Querystring: { limit?: string } }>,
+    request: FastifyRequest<{ Querystring: { applicationId?: string; limit?: string } }>,
     reply: FastifyReply
   ) {
-    try {
-      const limit = request.query.limit ? parseInt(request.query.limit, 10) : 50;
-
-      const devices = await deviceService.getRecent(DEFAULT_ORG_ID, limit);
-
-      return reply.code(200).send({
-        success: true,
-        data: devices,
-      });
-    } catch (error) {
-      request.log.error(error, 'Error fetching recent devices');
-      return reply.code(500).send({
-        success: false,
-        error: 'Internal server error',
-      });
+    const { orgId } = getRequestContext(request);
+    const { applicationId } = request.query;
+    if (!applicationId) {
+      throw new BadRequestError('applicationId is required');
     }
+    const limit = request.query.limit ? parseInt(request.query.limit, 10) : 50;
+    const devices = await deviceService.getRecent(orgId, applicationId, limit);
+    return sendSuccess(reply, devices);
   }
 }
 
-// Export singleton instance
 export const deviceController = new DeviceController();

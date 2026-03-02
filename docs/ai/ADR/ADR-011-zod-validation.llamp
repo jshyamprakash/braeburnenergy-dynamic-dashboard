@@ -1,0 +1,28 @@
+// LLAMP-SPEC v1 | ADR-011
+=adr: 011
+=title: Zod for Schema Validation
+=date: 2026-02-10
+=status: accepted
+
+#ctx
+~need: runtime validation with TypeScript type inference
+~requirements: [type_safety, field_error_messages, OpenAPI_integration]
+
+#opts
+~alt1: Joi (rejected: no TS type inference)
+~alt2: Yup (rejected: weaker types)
+~alt3: class-validator (rejected: decorator overhead)
+
+#decision
+=chosen: Zod 3.22.4
+=pattern: z.object({...}) → schema.parse(body) → type = z.infer<typeof schema>
+=openapi: zodToSwagger(schema) for code-first Swagger
+=schema_files: [device, device-state, organization, workflow]
+~validation: schema.parse(request.body) at controller boundary
+
+#consequences
++pos: [type_inference_no_manual_types, runtime+compile_validation, composable_schemas, field_errors, openapi_gen]
+-neg: [learning_curve, verbose_raw_errors→transform_needed, no_native_JSON_Schema]
+
+#scope
+=arch_summary_update: no

@@ -98,6 +98,7 @@ export class DeviceStateService {
       id: s._id,
       deviceId: s.metadata.deviceId,
       data: s.data,
+      derived: s.derived,
       timestamp: s.timestamp,
     }));
 

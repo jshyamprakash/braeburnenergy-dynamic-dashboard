@@ -1,6 +1,8 @@
 import { ulid } from 'ulid';
 import mongoose from 'mongoose';
 import { Workflow, extractTriggerType, type WorkflowNode, type WorkflowEdge } from '../models/workflow.model';
+import { Device } from '../models/device.model';
+import { NotFoundError, UnprocessableError } from '../lib/errors';
 import type {
   CreateWorkflowDTO,
   UpdateWorkflowDTO,
@@ -22,8 +24,22 @@ export class WorkflowService {
   async create(orgId: string, userId: string, data: CreateWorkflowDTO) {
     const workflowId = ulid();
 
+    // Enforce ADR-036: Workflow must belong to an application
+    if (!data.applicationId) {
+      throw new UnprocessableError('Workflow requires an application — create workflows from the Application Detail page');
+    }
+
+    // Enforce ADR-035: Workflow requires at least one device in the application
+    const deviceCount = await Device.countDocuments({
+      orgId: new mongoose.Types.ObjectId(orgId),
+      applicationId: data.applicationId,
+    });
+    if (deviceCount === 0) {
+      throw new UnprocessableError('Workflow requires at least one device in the application');
+    }
+
     // Validate workflow structure (lenient on create — user hasn't connected nodes yet)
-    const validationErrors = this.validateWorkflow(data.nodes, data.edges || [], { strict: false });
+    const validationErrors = this.validateWorkflow(data.nodes, (data.edges || []) as any, { strict: false });
     if (validationErrors.length > 0) {
       throw new Error(`Workflow validation failed: ${validationErrors.join(', ')}`);
     }
@@ -43,6 +59,7 @@ export class WorkflowService {
       timeoutSeconds: data.timeoutSeconds || 300,
       schedule: data.schedule,
       triggerType: extractTriggerType(data.nodes),
+      applicationId: data.applicationId,
       executionCount: 0,
       version: 1,
     });
@@ -79,7 +96,7 @@ export class WorkflowService {
     if (data.nodes || data.edges) {
       const existing = await this.getByWorkflowId(orgId, workflowId);
       if (!existing) {
-        throw new Error('Workflow not found');
+        throw new NotFoundError('Workflow');
       }
 
       const newNodes = data.nodes || existing.nodes;
@@ -88,7 +105,7 @@ export class WorkflowService {
       // strict=true only when deploying (isEnabled: true); draft saves are lenient so
       // users can add nodes and connect them without auto-save rejecting mid-build.
       const isDeploying = data.isEnabled === true;
-      const validationErrors = this.validateWorkflow(newNodes, newEdges, { strict: isDeploying });
+      const validationErrors = this.validateWorkflow(newNodes, newEdges as any, { strict: isDeploying });
       if (validationErrors.length > 0) {
         throw new Error(`Workflow validation failed: ${validationErrors.join(', ')}`);
       }
@@ -138,11 +155,16 @@ export class WorkflowService {
     }).lean();
 
     if (!workflow) {
-      throw new Error('Workflow not found');
+      throw new NotFoundError('Workflow');
     }
 
     // TODO: Delete related workflow executions (or keep for history)
     // For now, we'll keep executions as historical records
+
+    // Mark all derived states as stale (ADR-034): the workflow producing derived
+    // values is gone; gauges should show last-known value with amber indicator.
+    const { deviceDerivedStateService } = await import('./device-derived-state.service');
+    await deviceDerivedStateService.markAllStale();
 
     return workflow;
   }
@@ -170,6 +192,10 @@ export class WorkflowService {
 
     if (query.search) {
       filter.name = { $regex: query.search, $options: 'i' };
+    }
+
+    if (query.applicationId) {
+      filter.applicationId = query.applicationId;
     }
 
     // Count total
@@ -209,7 +235,7 @@ export class WorkflowService {
     ).lean();
 
     if (!workflow) {
-      throw new Error('Workflow not found');
+      throw new NotFoundError('Workflow');
     }
 
     return workflow;
@@ -229,7 +255,7 @@ export class WorkflowService {
     ).lean();
 
     if (!workflow) {
-      throw new Error('Workflow not found');
+      throw new NotFoundError('Workflow');
     }
 
     return workflow;
@@ -320,9 +346,11 @@ export class WorkflowService {
     const errors: string[] = [];
     const strict = options.strict ?? true;
 
-    // 1. Must have at least one trigger node (always enforced)
+    // 1. Must have at least one trigger node.
+    // Skipped when nodes array is empty — an empty canvas is a valid draft state.
+    // Enforced when at least one node is present (structural correctness).
     const triggerNodes = nodes.filter(n => n.type.startsWith('trigger:'));
-    if (triggerNodes.length === 0) {
+    if (nodes.length > 0 && triggerNodes.length === 0) {
       errors.push('Workflow must have at least one trigger node');
     }
 
@@ -443,91 +471,92 @@ export class WorkflowService {
 
   /**
    * Validate node-specific configuration
+   * (Currently unused; kept for future extensibility)
    */
-  private validateNodeConfig(node: WorkflowNode): string[] {
-    const errors: string[] = [];
-    const config = node.data.config;
-
-    // Validate based on node type
-    switch (node.type) {
-      case 'trigger:deviceStateChange':
-        if (!config.deviceId && !config.deviceTags) {
-          errors.push(`Node ${node.id}: deviceStateChange trigger requires deviceId or deviceTags`);
-        }
-        if (!config.field) {
-          errors.push(`Node ${node.id}: deviceStateChange trigger requires field`);
-        }
-        break;
-
-      case 'trigger:scheduled':
-        if (!config.cronExpression) {
-          errors.push(`Node ${node.id}: scheduled trigger requires cronExpression`);
-        }
-        break;
-
-      case 'condition:comparison':
-        if (!config.field) {
-          errors.push(`Node ${node.id}: comparison condition requires field`);
-        }
-        if (!config.operator) {
-          errors.push(`Node ${node.id}: comparison condition requires operator`);
-        }
-        if (config.value === undefined) {
-          errors.push(`Node ${node.id}: comparison condition requires value`);
-        }
-        break;
-
-      case 'condition:threshold':
-        if (!config.field) {
-          errors.push(`Node ${node.id}: threshold condition requires field`);
-        }
-        if (config.min === undefined && config.max === undefined) {
-          errors.push(`Node ${node.id}: threshold condition requires min or max`);
-        }
-        break;
-
-      case 'action:sendNotification':
-        if (!config.message) {
-          errors.push(`Node ${node.id}: sendNotification action requires message`);
-        }
-        if (!config.channels || config.channels.length === 0) {
-          errors.push(`Node ${node.id}: sendNotification action requires at least one channel`);
-        }
-        break;
-
-      case 'action:updateDevice':
-        if (!config.deviceId) {
-          errors.push(`Node ${node.id}: updateDevice action requires deviceId`);
-        }
-        if (!config.updates || Object.keys(config.updates).length === 0) {
-          errors.push(`Node ${node.id}: updateDevice action requires updates`);
-        }
-        break;
-
-      case 'action:callWebhook':
-        if (!config.url) {
-          errors.push(`Node ${node.id}: callWebhook action requires url`);
-        }
-        if (!config.method) {
-          errors.push(`Node ${node.id}: callWebhook action requires method`);
-        }
-        break;
-
-      case 'transform:mathOperation':
-        if (!config.field) {
-          errors.push(`Node ${node.id}: mathOperation requires field`);
-        }
-        if (!config.operation) {
-          errors.push(`Node ${node.id}: mathOperation requires operation`);
-        }
-        if (config.value === undefined) {
-          errors.push(`Node ${node.id}: mathOperation requires value`);
-        }
-        break;
-
-      // Add more validations for other node types as needed
-    }
-
-    return errors;
-  }
+  // private validateNodeConfig(node: WorkflowNode): string[] {
+  //   const errors: string[] = [];
+  //   const config = node.data.config;
+  //
+  //   // Validate based on node type
+  //   switch (node.type) {
+  //     case 'trigger:deviceStateChange':
+  //       if (!config.deviceId && !config.deviceTags) {
+  //         errors.push(`Node ${node.id}: deviceStateChange trigger requires deviceId or deviceTags`);
+  //       }
+  //       if (!config.field) {
+  //         errors.push(`Node ${node.id}: deviceStateChange trigger requires field`);
+  //       }
+  //       break;
+  //
+  //     case 'trigger:scheduled':
+  //       if (!config.cronExpression) {
+  //         errors.push(`Node ${node.id}: scheduled trigger requires cronExpression`);
+  //       }
+  //       break;
+  //
+  //     case 'condition:comparison':
+  //       if (!config.field) {
+  //         errors.push(`Node ${node.id}: comparison condition requires field`);
+  //       }
+  //       if (!config.operator) {
+  //         errors.push(`Node ${node.id}: comparison condition requires operator`);
+  //       }
+  //       if (config.value === undefined) {
+  //         errors.push(`Node ${node.id}: comparison condition requires value`);
+  //       }
+  //       break;
+  //
+  //     case 'condition:threshold':
+  //       if (!config.field) {
+  //         errors.push(`Node ${node.id}: threshold condition requires field`);
+  //       }
+  //       if (config.min === undefined && config.max === undefined) {
+  //         errors.push(`Node ${node.id}: threshold condition requires min or max`);
+  //       }
+  //       break;
+  //
+  //     case 'action:sendNotification':
+  //       if (!config.message) {
+  //         errors.push(`Node ${node.id}: sendNotification action requires message`);
+  //       }
+  //       if (!config.channels || config.channels.length === 0) {
+  //         errors.push(`Node ${node.id}: sendNotification action requires at least one channel`);
+  //       }
+  //       break;
+  //
+  //     case 'action:updateDevice':
+  //       if (!config.deviceId) {
+  //         errors.push(`Node ${node.id}: updateDevice action requires deviceId`);
+  //       }
+  //       if (!config.updates || Object.keys(config.updates).length === 0) {
+  //         errors.push(`Node ${node.id}: updateDevice action requires updates`);
+  //       }
+  //       break;
+  //
+  //     case 'action:callWebhook':
+  //       if (!config.url) {
+  //         errors.push(`Node ${node.id}: callWebhook action requires url`);
+  //       }
+  //       if (!config.method) {
+  //         errors.push(`Node ${node.id}: callWebhook action requires method`);
+  //       }
+  //       break;
+  //
+  //     case 'transform:mathOperation':
+  //       if (!config.field) {
+  //         errors.push(`Node ${node.id}: mathOperation requires field`);
+  //       }
+  //       if (!config.operation) {
+  //         errors.push(`Node ${node.id}: mathOperation requires operation`);
+  //       }
+  //       if (config.value === undefined) {
+  //         errors.push(`Node ${node.id}: mathOperation requires value`);
+  //       }
+  //       break;
+  //
+  //     // Add more validations for other node types as needed
+  //   }
+  //
+  //   return errors;
+  // }
 }

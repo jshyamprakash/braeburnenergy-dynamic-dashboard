@@ -1,0 +1,85 @@
+// LLAMP-SPEC v1 | ARCH_SUMMARY (model-readable)
+// Human-readable version: docs/ai/ARCH_SUMMARY.md
+
+=stack: {
+  runtime: Node.js 20 + TypeScript 5.3.3 strict,
+  db: MongoDB 8 + Mongoose 8.23.0 (replica_set REQUIRED),
+  backend: Fastify 4.25.2 (92 TS files: 14 controllers, 22 services, 18 models),
+  frontend: Next.js 16.1.6 + React 19.2.4 + App Router,
+  css: Tailwind CSS 4.1.18 (@import "tailwindcss" syntax, darkMode:'class'),
+  state: Redux Toolkit 2.11.2 (6 slices: auth, ui, dashboard, websocket, workflow, alarm),
+  query: React Query 5.90.20 (device queries + realtime — NOT phased out),
+  canvas: React Flow 11.11.4,
+  ws: Socket.io 4.6.0,
+  validation: Zod 3.22.4
+}
+
+=database: {
+  device_states: time_series TTL=5yr append-only raw_telemetry (ADR-031),
+  device_derived_states: regular_collection unique_on_deviceId workflow_outputs_only (ADR-031),
+  replica_set: required for compliance + transactions + oplog,
+  audit_logs: 10yr no_TTL (21_CFR_Part_11),
+  workflow_executions: 90d TTL,
+  lean_queries: .lean() for read-only (cast: as IModel|null),
+  ids: ObjectId 24hex (internal) | ULID 26ch (user-facing: deviceId, workflowId),
+  indexes: compound (orgId, deviceId, timestamp) for device state queries
+}
+
+=security: {
+  jwt: JTI stored in TokenSession (DB-backed revocation, +10ms per request),
+  rbac: 4 roles (SuperAdmin > Admin > Operator > Viewer) + 24 permissions,
+  api_keys: bcrypt hash, prefix iot_live_|iot_test_, granular permissions (ADR-033),
+  lockout: track failed attempts + exponential backoff,
+  audit: immutable audit logs all CRUD (EPA 21 CFR Part 11)
+}
+
+=api_patterns: {
+  routes: 16 route files, 8 integration test suites, 63+ tests,
+  swagger: code-first at /docs (no separate YAML),
+  response_schema: additionalProperties:true required for JSON fields in Fastify,
+  pagination: {success, data, pagination},
+  errors: {success:false, error, details},
+  !post_requires_body: use {} if no body
+}
+
+=frontend: {
+  state: Redux Toolkit primary (NOT Zustand),
+  slices: [authSlice, uiSlice, dashboardSlice, websocketSlice, workflowSlice, alarmSlice],
+  react_query: device/deviceState queries + useDeviceRealtime cache,
+  protected_routes: ProtectedRoute wrapper with returnUrl,
+  api_client: generic type params REQUIRED → apiClient.get<T>(),
+  imports: named imports for named exports (no default mismatch),
+  tailwind: darkMode:'class' REQUIRED in tailwind.config.ts
+}
+
+=workflow_editor: {
+  backend: Workflow + WorkflowExecution Mongoose models,
+  node_types: 19 (5 triggers, 5 conditions, 6 actions, 4 transforms) + Losant_5_category,
+  engine: depth-first execution + step logging,
+  canvas: React Flow + Background + Controls + MiniMap,
+  custom_nodes: [TriggerNode, ConditionNode, ActionNode, TransformNode],
+  routes: /workflows (list) | /workflows/:id (canvas),
+  sidebar: 220px left nav via ADR-019,
+  rbac: [workflow:create, workflow:read, workflow:execute]
+}
+
+=compliance: {
+  EPA_21CFR11: immutable audit logs + electronic signatures,
+  EPA_40CFR141: 5yr water quality retention,
+  ISA-18.2: alarm state machine ACTIVE_UNACKED→ACTIVE_ACKED→CLEARED,
+  AWWA_M36: water audit methodology + quality scoring,
+  IEC_61158: Modbus TCP/RTU gateway + register mapping,
+  OPC-UA: subscription-based node monitoring
+}
+
+=critical_pitfalls: {
+  p1: MongoDB replica_set REQUIRED (compliance + oplog + transactions),
+  p2: device_derived_states upsert via per-key $set paths ('derived.key') — NEVER replace whole object,
+  p3: Fastify JSON responses need additionalProperties:true for dynamic fields,
+  p4: Tailwind v4 single @import "tailwindcss" (NOT old directives),
+  p5: darkMode:'class' in tailwind.config.ts (restart dev server after change),
+  p6: Redux async thunks need explicit type params: createAsyncThunk<ReturnType,ArgType,ThunkConfig>,
+  p7: React Flow Handles use id prop for branching (true/false),
+  p8: API client POST requires body param (use {} if no body),
+  p9: useDeviceRealtime returns {state,stale,staledAt} — destructure required (ADR-034)
+}

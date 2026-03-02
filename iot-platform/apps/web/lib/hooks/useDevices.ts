@@ -25,11 +25,13 @@ export function useDevices(params?: {
   limit?: number;
   offset?: number;
   tags?: string[];
+  applicationId?: string;
 }) {
   return useQuery({
     queryKey: DEVICE_KEYS.list(params || {}),
     queryFn: async () => {
       const queryParams = new URLSearchParams();
+      if (params?.applicationId) queryParams.set('applicationId', params.applicationId);
       if (params?.limit) queryParams.set('limit', params.limit.toString());
       if (params?.offset) queryParams.set('offset', params.offset.toString());
       if (params?.tags) queryParams.set('tags', params.tags.join(','));
@@ -44,6 +46,7 @@ export function useDevices(params?: {
         pagination: response.pagination,
       };
     },
+    enabled: !!params?.applicationId,
   });
 }
 

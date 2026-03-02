@@ -1,0 +1,43 @@
+// LLAMP-SPEC v1 | ADR-039
+=adr: 039
+=title: dashboard-derived-state-endpoint
+=date: 2026-03-02
+=status: accepted
+
+#ctx
+~dashboard gauge blocks call GET /devices/:deviceId/states/latest via useDeviceRealtime
+~that endpoint queries device_states (time-series, append-only raw telemetry) — ADR-031
+~workflow-computed canonical snapshot lives exclusively in device_derived_states
+  (one doc per device, upserted by writeDeviceState action, stale+staledAt from ADR-034)
+~time-series query may return a raw telemetry record with no derived fields;
+  gauges show incorrect or missing computed values on hard refresh / before WebSocket fires
+~no dedicated HTTP endpoint exposes device_derived_states today
+
+#opts
+A. keep /states/latest, merge derived inline → N-query join, defeats collection separation
+B. add GET /devices/:deviceId/derived-state backed by deviceDerivedStateService.getLatest()
+   → clean single-responsibility; time-series stays for history only
+
+#decision
+=chosen: B
+~add GET /devices/:deviceId/derived-state → deviceDerivedStateService.getLatest()
+  response: { deviceId, derived:{}, lastSeen, stale, staledAt }
+~useDeviceRealtime initial HTTP fetch switches from /states/latest → /derived-state
+~device_states (time-series) = history/charts/exports ONLY — never used for live snapshot
+~WebSocket live updates unchanged (already carry derived in payload)
+~useDeviceFields reads device.derivedState from GET /devices/:deviceId — no change
+
+#consequences
++clean separation: time-series→history, derived-state→live snapshot
++stale/staledAt propagated correctly on every hard refresh (no WebSocket dependency)
+~useDeviceRealtime response shape changes: adapt DeviceState-compatible cache object
+  data = derived (all workflow fields); derived = derived; timestamp = lastSeen
+~/states/latest remains for other consumers (audit, raw data views) — not removed
+!breaking: useDeviceRealtime callers must not assume data contains raw sensor fields
+  (raw sensor fields remain in WebSocket payload — gauges still update in realtime)
+
+#scope
+=arch_summary_update: yes
+=new_endpoint: GET /devices/:deviceId/derived-state
+=affected: [device-state.controller, device-state.routes, useDeviceRealtime]
+=task_type_split: backend→@sonnet | frontend→@haiku

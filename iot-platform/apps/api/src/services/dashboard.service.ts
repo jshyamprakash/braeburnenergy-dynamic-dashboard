@@ -1,33 +1,38 @@
+import mongoose from 'mongoose';
 import { Dashboard, type IDashboard, type IDashboardBlock } from '../models/dashboard.model';
+import { Device } from '../models/device.model';
+import { Workflow } from '../models/workflow.model';
+import { UnprocessableError, BadRequestError } from '../lib/errors';
 
 export class DashboardService {
   /**
-   * Get dashboard by userId and dashboardId
+   * Get dashboard by dashboardId, scoped to org + application
    */
-  async getDashboard(userId: string, dashboardId: string): Promise<IDashboard | null> {
-    return Dashboard.findOne({ userId, dashboardId }).lean() as unknown as Promise<IDashboard | null>;
+  async getDashboard(orgId: string, dashboardId: string, applicationId: string): Promise<IDashboard | null> {
+    if (!applicationId) {
+      throw new BadRequestError('applicationId is required');
+    }
+    const orgIdObj = new mongoose.Types.ObjectId(orgId);
+    return Dashboard.findOne({ orgId: orgIdObj, dashboardId, applicationId }).lean() as unknown as Promise<IDashboard | null>;
   }
 
   /**
-   * Get all dashboards for a user
+   * Get all dashboards scoped to org + application
    */
-  async getUserDashboards(userId: string): Promise<IDashboard[]> {
-    return Dashboard.find({ userId }).sort({ updatedAt: -1 }).lean() as unknown as Promise<IDashboard[]>;
-  }
-
-  /**
-   * Get all dashboards for an organization
-   */
-  async getOrganizationDashboards(organizationId: string): Promise<IDashboard[]> {
-    return Dashboard.find({ organizationId }).sort({ updatedAt: -1 }).lean() as unknown as Promise<IDashboard[]>;
+  async getDashboards(orgId: string, applicationId: string): Promise<IDashboard[]> {
+    if (!applicationId) {
+      throw new BadRequestError('applicationId is required');
+    }
+    const orgIdObj = new mongoose.Types.ObjectId(orgId);
+    return Dashboard.find({ orgId: orgIdObj, applicationId }).sort({ updatedAt: -1 }).lean() as unknown as Promise<IDashboard[]>;
   }
 
   /**
    * Create or update dashboard (upsert)
    */
   async saveDashboard(
-    userId: string,
-    organizationId: string,
+    orgId: string,
+    applicationId: string,
     dashboardId: string,
     data: {
       name?: string;
@@ -36,12 +41,25 @@ export class DashboardService {
       layouts: Record<string, any>;
     }
   ): Promise<IDashboard> {
+    const orgIdObj = new mongoose.Types.ObjectId(orgId);
+
+    // Enforce ADR-035: Dashboard requires at least one device and one workflow in the application
+    const deviceCount = await Device.countDocuments({ orgId: orgIdObj, applicationId });
+    if (deviceCount === 0) {
+      throw new UnprocessableError('Dashboard requires at least one device in the application');
+    }
+
+    const workflowCount = await Workflow.countDocuments({ orgId: orgIdObj, applicationId });
+    if (workflowCount === 0) {
+      throw new UnprocessableError('Dashboard requires at least one workflow in the application');
+    }
+
     const dashboard = await Dashboard.findOneAndUpdate(
-      { userId, dashboardId },
+      { orgId: orgIdObj, dashboardId },
       {
         $set: {
-          userId,
-          organizationId,
+          orgId: orgIdObj,
+          applicationId,
           dashboardId,
           name: data.name || 'My Dashboard',
           description: data.description || '',
@@ -60,88 +78,11 @@ export class DashboardService {
   }
 
   /**
-   * Delete dashboard
+   * Delete dashboard, scoped to org
    */
-  async deleteDashboard(userId: string, dashboardId: string): Promise<boolean> {
-    const result = await Dashboard.deleteOne({ userId, dashboardId });
+  async deleteDashboard(orgId: string, dashboardId: string): Promise<boolean> {
+    const orgIdObj = new mongoose.Types.ObjectId(orgId);
+    const result = await Dashboard.deleteOne({ orgId: orgIdObj, dashboardId });
     return result.deletedCount > 0;
-  }
-
-  /**
-   * Share dashboard with other users
-   */
-  async shareDashboard(
-    userId: string,
-    dashboardId: string,
-    sharedWith: string[]
-  ): Promise<IDashboard | null> {
-    const dashboard = await Dashboard.findOneAndUpdate(
-      { userId, dashboardId },
-      {
-        $set: {
-          isShared: true,
-          sharedWith,
-        },
-      },
-      { new: true }
-    );
-
-    return dashboard ? dashboard.toObject() : null;
-  }
-
-  /**
-   * Get shared dashboards for a user
-   */
-  async getSharedDashboards(userId: string): Promise<IDashboard[]> {
-    return Dashboard.find({
-      isShared: true,
-      sharedWith: userId,
-    })
-      .sort({ updatedAt: -1 })
-      .lean() as unknown as Promise<IDashboard[]>;
-  }
-
-  /**
-   * Check if user has access to dashboard
-   */
-  async hasAccess(userId: string, dashboardId: string): Promise<boolean> {
-    const count = await Dashboard.countDocuments({
-      dashboardId,
-      $or: [{ userId }, { isShared: true, sharedWith: userId }],
-    });
-
-    return count > 0;
-  }
-
-  /**
-   * Duplicate dashboard
-   */
-  async duplicateDashboard(
-    userId: string,
-    organizationId: string,
-    sourceDashboardId: string,
-    newDashboardId: string,
-    newName: string
-  ): Promise<IDashboard | null> {
-    const source = await Dashboard.findOne({ userId, dashboardId: sourceDashboardId });
-
-    if (!source) {
-      return null;
-    }
-
-    const duplicate = new Dashboard({
-      userId,
-      organizationId,
-      dashboardId: newDashboardId,
-      name: newName,
-      description: source.description,
-      blocks: source.blocks,
-      layouts: source.layouts,
-      isShared: false,
-      sharedWith: [],
-    });
-
-    await duplicate.save();
-    return duplicate.toObject();
   }
 }

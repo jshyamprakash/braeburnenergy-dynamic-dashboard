@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { DeviceDerivedState } from '../models/device-derived-state.model';
+import { DeviceDerivedStateHistory } from '../models/device-derived-state-history.model';
 
 /**
  * DeviceDerivedStateService (ADR-031)
@@ -27,11 +28,43 @@ export class DeviceDerivedStateService {
       setFields.sourceEventId = new mongoose.Types.ObjectId(sourceEventId);
     }
 
+    // Reset stale flag when workflow writes fresh derived output (ADR-034)
+    setFields.stale = false;
+    setFields.staledAt = null;
+
     await DeviceDerivedState.findOneAndUpdate(
       { deviceId },
       { $set: setFields },
       { upsert: true, new: true }
     );
+
+    // Append to history collection for N-point dashboard seeding
+    await DeviceDerivedStateHistory.create({
+      deviceId,
+      derived: patch,
+      timestamp: new Date(),
+      sourceEventId:
+        sourceEventId && mongoose.Types.ObjectId.isValid(sourceEventId)
+          ? new mongoose.Types.ObjectId(sourceEventId)
+          : undefined,
+    });
+  }
+
+  /**
+   * Get the N most recent history entries for a device (newest first).
+   * Used to seed dashboard chart and live stream with N historical derived points.
+   */
+  async getHistory(deviceId: string, limit: number): Promise<Array<{ deviceId: string; derived: Record<string, any>; timestamp: Date }>> {
+    const docs = await DeviceDerivedStateHistory
+      .find({ deviceId })
+      .sort({ timestamp: -1 })
+      .limit(limit)
+      .lean() as any[];
+    return docs.map((doc) => ({
+      deviceId: doc.deviceId,
+      derived: doc.derived ?? {},
+      timestamp: doc.timestamp,
+    }));
   }
 
   /**
@@ -45,6 +78,8 @@ export class DeviceDerivedStateService {
       derived: doc.derived ?? {},
       lastSeen: doc.lastSeen,
       sourceEventId: doc.sourceEventId,
+      stale: doc.stale ?? false,
+      staledAt: doc.staledAt ?? null,
     };
   }
 
@@ -59,7 +94,20 @@ export class DeviceDerivedStateService {
       derived: doc.derived ?? {},
       lastSeen: doc.lastSeen,
       sourceEventId: doc.sourceEventId,
+      stale: doc.stale ?? false,
+      staledAt: doc.staledAt ?? null,
     }));
+  }
+
+  /**
+   * Mark all derived states as stale.
+   * Called when a workflow is deleted (ADR-034).
+   */
+  async markAllStale(): Promise<void> {
+    await DeviceDerivedState.updateMany(
+      {},
+      { $set: { stale: true, staledAt: new Date() } }
+    );
   }
 }
 

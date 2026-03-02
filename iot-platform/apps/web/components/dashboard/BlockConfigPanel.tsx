@@ -18,13 +18,10 @@ interface BlockConfigPanelProps {
  */
 export function BlockConfigPanel({ block, onUpdate, onClose, applicationId }: BlockConfigPanelProps) {
   const [config, setConfig] = useState(block.config);
-  const { data: devices = [], isLoading: devicesLoading, error: devicesError } = useDevices();
+  const { data: devices = [], isLoading: devicesLoading, error: devicesError } = useDevices(applicationId);
   const fields = useDeviceFields(config.deviceId);
 
-  // Filter devices by applicationId if provided
-  const filteredDevices = applicationId
-    ? devices.filter((d: any) => d.applicationId === applicationId)
-    : devices;
+  const filteredDevices = devices;
 
   // Sync config only when switching to a different block (not when config updates)
   useEffect(() => {
@@ -112,13 +109,19 @@ export function BlockConfigPanel({ block, onUpdate, onClose, applicationId }: Bl
                   <option value="">Select a field</option>
                   {fields.map((entry) => (
                     <option key={entry.key} value={entry.key}>
-                      {entry.source === 'state' ? `~ ${entry.key}` : entry.key}
+                      {entry.key}
                     </option>
                   ))}
                 </select>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  {fields.length} field{fields.length !== 1 ? 's' : ''} available: {fields.map((e) => e.key).join(', ')}
-                </p>
+                {fields.length === 0 ? (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                    No attributes defined on this device. Add attributes on the Device detail page first.
+                  </p>
+                ) : (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    {fields.length} field{fields.length !== 1 ? 's' : ''} available. Values come from derived state — shows "No data" until a workflow writes them.
+                  </p>
+                )}
               </div>
             )}
 
@@ -280,6 +283,24 @@ export function BlockConfigPanel({ block, onUpdate, onClose, applicationId }: Bl
               </label>
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Data Point Limit
+              </label>
+              <input
+                type="number"
+                min={5}
+                max={500}
+                step={5}
+                value={config.limit ?? 50}
+                onChange={(e) => handleChange('limit', Number(e.target.value))}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Max data points in the rolling window. Oldest points are dropped as new ones arrive.
+              </p>
+            </div>
+
             {config.deviceId ? (
               <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
                 <p className="text-xs text-green-800 dark:text-green-300">
@@ -328,6 +349,24 @@ export function BlockConfigPanel({ block, onUpdate, onClose, applicationId }: Bl
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Data Point Limit
+              </label>
+              <input
+                type="number"
+                min={5}
+                max={500}
+                step={5}
+                value={config.limit ?? 50}
+                onChange={(e) => handleChange('limit', Number(e.target.value))}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Max entries in the rolling window. Oldest entries are dropped as new ones arrive.
+              </p>
             </div>
 
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">

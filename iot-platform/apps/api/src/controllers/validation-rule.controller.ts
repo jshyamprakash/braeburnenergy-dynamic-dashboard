@@ -1,46 +1,26 @@
-import { FastifyRequest, FastifyReply } from 'fastify';
+import type { FastifyRequest, FastifyReply } from 'fastify';
 import { ValidationRule } from '../models';
 import { DataQualityService } from '../services/data-quality.service';
-
-/**
- * ValidationRuleController
- *
- * Manages data validation rules for quality assurance.
- */
+import { NotFoundError, BadRequestError } from '../lib/errors';
+import { sendSuccess, sendCreated, sendDeleted } from '../lib/response';
+import { getRequestContext } from '../lib/request-context';
 
 const dataQualityService = new DataQualityService();
 
 /**
- * Create validation rule (SuperAdmin and Admin)
+ * ValidationRuleController
+ *
+ * Manages data validation rules for EPA/AWWA quality assurance.
+ * Zero try/catch — errors propagate to global error handler.
  */
-export async function createValidationRule(request: FastifyRequest, reply: FastifyReply) {
-  try {
+export class ValidationRuleController {
+  async createValidationRule(request: FastifyRequest, reply: FastifyReply) {
     const data = request.body as any;
-
-    const rule = await ValidationRule.create({
-      ...data,
-      appliedAt: data.isActive ? new Date() : undefined,
-    });
-
-    return reply.status(201).send({
-      success: true,
-      data: rule,
-    });
-  } catch (error) {
-    request.log.error({ error }, 'Create validation rule error');
-    return reply.status(500).send({
-      success: false,
-      error: 'Internal server error',
-      message: 'Failed to create validation rule',
-    });
+    const rule = await ValidationRule.create({ ...data, appliedAt: data.isActive ? new Date() : undefined });
+    return sendCreated(reply, rule);
   }
-}
 
-/**
- * List validation rules
- */
-export async function listValidationRules(request: FastifyRequest, reply: FastifyReply) {
-  try {
+  async listValidationRules(request: FastifyRequest, reply: FastifyReply) {
     const { deviceId, field, validationType, isActive } = request.query as any;
 
     const filter: any = {};
@@ -50,188 +30,82 @@ export async function listValidationRules(request: FastifyRequest, reply: Fastif
     if (isActive !== undefined) filter.isActive = isActive === 'true';
 
     const rules = await ValidationRule.find(filter).sort({ field: 1, createdAt: -1 });
-
-    return reply.status(200).send({
-      success: true,
-      data: rules,
-    });
-  } catch (error) {
-    request.log.error({ error }, 'List validation rules error');
-    return reply.status(500).send({
-      success: false,
-      error: 'Internal server error',
-      message: 'Failed to retrieve validation rules',
-    });
+    return sendSuccess(reply, rules);
   }
-}
 
-/**
- * Get validation rule by ID
- */
-export async function getValidationRule(request: FastifyRequest, reply: FastifyReply) {
-  try {
+  async getValidationRule(request: FastifyRequest, reply: FastifyReply) {
     const { id } = request.params as { id: string };
-
     const rule = await ValidationRule.findById(id);
 
     if (!rule) {
-      return reply.status(404).send({
-        success: false,
-        error: 'Not found',
-        message: 'Validation rule not found',
-      });
+      throw new NotFoundError('Validation rule');
     }
 
-    return reply.status(200).send({
-      success: true,
-      data: rule,
-    });
-  } catch (error) {
-    request.log.error({ error }, 'Get validation rule error');
-    return reply.status(500).send({
-      success: false,
-      error: 'Internal server error',
-      message: 'Failed to retrieve validation rule',
-    });
+    return sendSuccess(reply, rule);
   }
-}
 
-/**
- * Update validation rule (SuperAdmin and Admin)
- */
-export async function updateValidationRule(request: FastifyRequest, reply: FastifyReply) {
-  try {
+  async updateValidationRule(request: FastifyRequest, reply: FastifyReply) {
     const { id } = request.params as { id: string };
     const updates = request.body as any;
 
     const rule = await ValidationRule.findByIdAndUpdate(
       id,
-      {
-        ...updates,
-        appliedAt: updates.isActive ? new Date() : undefined,
-      },
+      { ...updates, appliedAt: updates.isActive ? new Date() : undefined },
       { new: true, runValidators: true }
     );
 
     if (!rule) {
-      return reply.status(404).send({
-        success: false,
-        error: 'Not found',
-        message: 'Validation rule not found',
-      });
+      throw new NotFoundError('Validation rule');
     }
 
-    return reply.status(200).send({
-      success: true,
-      data: rule,
-    });
-  } catch (error) {
-    request.log.error({ error }, 'Update validation rule error');
-    return reply.status(500).send({
-      success: false,
-      error: 'Internal server error',
-      message: 'Failed to update validation rule',
-    });
+    return sendSuccess(reply, rule);
   }
-}
 
-/**
- * Delete validation rule (SuperAdmin and Admin)
- */
-export async function deleteValidationRule(request: FastifyRequest, reply: FastifyReply) {
-  try {
+  async deleteValidationRule(request: FastifyRequest, reply: FastifyReply) {
     const { id } = request.params as { id: string };
-
     const result = await ValidationRule.findByIdAndDelete(id);
 
     if (!result) {
-      return reply.status(404).send({
-        success: false,
-        error: 'Not found',
-        message: 'Validation rule not found',
-      });
+      throw new NotFoundError('Validation rule');
     }
 
-    return reply.status(200).send({
-      success: true,
-      message: 'Validation rule deleted successfully',
-    });
-  } catch (error) {
-    request.log.error({ error }, 'Delete validation rule error');
-    return reply.status(500).send({
-      success: false,
-      error: 'Internal server error',
-      message: 'Failed to delete validation rule',
-    });
+    return sendDeleted(reply, 'Validation rule deleted successfully');
   }
-}
 
-/**
- * Get quality statistics for a device
- */
-export async function getQualityStats(request: FastifyRequest, reply: FastifyReply) {
-  try {
+  async getQualityStats(request: FastifyRequest, reply: FastifyReply) {
     const { deviceId } = request.params as { deviceId: string };
     const { days = 7 } = request.query as { days?: number };
-
     const stats = await dataQualityService.getQualityStats(deviceId, Number(days));
-
-    return reply.status(200).send({
-      success: true,
-      data: stats,
-    });
-  } catch (error) {
-    request.log.error({ error }, 'Get quality stats error');
-    return reply.status(500).send({
-      success: false,
-      error: 'Internal server error',
-      message: 'Failed to retrieve quality statistics',
-    });
+    return sendSuccess(reply, stats);
   }
-}
 
-/**
- * Manual quality review (Admin+)
- */
-export async function manualQualityReview(request: FastifyRequest, reply: FastifyReply) {
-  try {
+  async manualQualityReview(request: FastifyRequest, reply: FastifyReply) {
     const { stateId } = request.params as { stateId: string };
     const { status, comment } = request.body as { status: string; comment: string };
-    const user = (request as any).user;
+    const { userId } = getRequestContext(request);
 
-    if (!status || !['GOOD', 'BAD', 'QUESTIONABLE', 'ESTIMATED'].includes(status)) {
-      return reply.status(400).send({
-        success: false,
-        error: 'Validation error',
-        message: 'Invalid quality status',
-      });
+    const validStatuses = ['GOOD', 'BAD', 'QUESTIONABLE', 'ESTIMATED'];
+    if (!status || !validStatuses.includes(status)) {
+      throw new BadRequestError('Invalid quality status');
     }
 
-    const updated = await dataQualityService.manualQualityReview(
-      stateId,
-      status as any,
-      comment || '',
-      user.id
-    );
+    const updated = await dataQualityService.manualQualityReview(stateId, status as any, comment || '', userId);
 
     if (!updated) {
-      return reply.status(404).send({
-        success: false,
-        error: 'Not found',
-        message: 'Device state not found',
-      });
+      throw new NotFoundError('Device state');
     }
 
-    return reply.status(200).send({
-      success: true,
-      message: 'Quality status updated successfully',
-    });
-  } catch (error) {
-    request.log.error({ error }, 'Manual quality review error');
-    return reply.status(500).send({
-      success: false,
-      error: 'Internal server error',
-      message: 'Failed to update quality status',
-    });
+    return sendSuccess(reply, { message: 'Quality status updated successfully' });
   }
 }
+
+export const validationRuleController = new ValidationRuleController();
+
+// Legacy named function exports
+export const createValidationRule = (req: FastifyRequest, reply: FastifyReply) => validationRuleController.createValidationRule(req, reply);
+export const listValidationRules = (req: FastifyRequest, reply: FastifyReply) => validationRuleController.listValidationRules(req, reply);
+export const getValidationRule = (req: FastifyRequest, reply: FastifyReply) => validationRuleController.getValidationRule(req, reply);
+export const updateValidationRule = (req: FastifyRequest, reply: FastifyReply) => validationRuleController.updateValidationRule(req, reply);
+export const deleteValidationRule = (req: FastifyRequest, reply: FastifyReply) => validationRuleController.deleteValidationRule(req, reply);
+export const getQualityStats = (req: FastifyRequest, reply: FastifyReply) => validationRuleController.getQualityStats(req, reply);
+export const manualQualityReview = (req: FastifyRequest, reply: FastifyReply) => validationRuleController.manualQualityReview(req, reply);

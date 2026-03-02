@@ -1,0 +1,29 @@
+// LLAMP-SPEC v1 | ADR-004
+=adr: 004
+=title: EPA-Compliant 5-Year Data Retention
+=date: 2026-02-13
+=status: accepted
+
+#ctx
+~original: 90-day TTL planned
+~regulation: EPA 40 CFR Part 141 → min 5yr water quality data
+~client: full EPA/AWWA compliance required from POC stage
+
+#opts
+~alt1: 90-day TTL (rejected: non-compliant)
+~alt2: no TTL + manual archival (rejected: operational overhead)
+
+#decision
+=chosen: 5yr TTL via MongoDB index
+=ttl_device_states: expireAfterSeconds=157680000
+=ttl_audit_logs: 10yr, no TTL (21 CFR Part 11 immutable)
+=ttl_workflow_exec: 90 days
+=tiers: hot[0-30d] | warm[31-90d] | cold[91d-5yr]
+
+#consequences
++pos: [EPA_AWWA_M36_compliant, 5yr_historical_analysis, no_future_migration, TS_compression]
+-neg: [higher_storage_cost, slower_cold_queries, longer_backup_restore]
+~mitigation: tiered storage + compound indexes
+
+#scope
+=arch_summary_update: yes

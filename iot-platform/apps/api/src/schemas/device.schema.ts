@@ -101,6 +101,12 @@ export type UpdateDeviceDTO = z.infer<typeof updateDeviceSchema>;
  * Schema for querying/filtering devices
  */
 export const queryDevicesSchema = z.object({
+  // Application scope (required — ADR-036)
+  applicationId: z
+    .string()
+    .min(1)
+    .describe('Application ID — required to scope devices to an application (ADR-036)'),
+
   // Pagination
   limit: z
     .coerce.number()

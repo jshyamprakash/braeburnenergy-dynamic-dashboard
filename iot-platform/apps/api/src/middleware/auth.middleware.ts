@@ -1,6 +1,8 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { AuthService } from '../services/auth.service';
 import { ApiKey } from '../models';
+import { UnauthorizedError, ForbiddenError } from '../lib/errors';
+import '../lib/request-context'; // ensure FastifyRequest augmentation is loaded
 
 /**
  * Authentication Middleware
@@ -42,15 +44,11 @@ function extractToken(request: FastifyRequest): { type: 'jwt' | 'api_key'; token
 /**
  * Authentication middleware - verify JWT token or API key
  */
-export async function requireAuth(request: FastifyRequest, reply: FastifyReply) {
+export async function requireAuth(request: FastifyRequest, _reply: FastifyReply) {
   const authData = extractToken(request);
 
   if (!authData) {
-    return reply.status(401).send({
-      success: false,
-      error: 'Authentication required',
-      message: 'No token provided',
-    });
+    throw new UnauthorizedError('Authentication required');
   }
 
   // Handle JWT authentication
@@ -58,35 +56,22 @@ export async function requireAuth(request: FastifyRequest, reply: FastifyReply) 
     const payload = await authService.verifyToken(authData.token);
 
     if (!payload) {
-      return reply.status(401).send({
-        success: false,
-        error: 'Authentication failed',
-        message: 'Invalid or expired token',
-      });
+      throw new UnauthorizedError('Invalid or expired token');
     }
 
     // Verify user still exists and is active
     const user = await authService.getUserById(payload.userId);
 
     if (!user || !user.isActive) {
-      return reply.status(401).send({
-        success: false,
-        error: 'Authentication failed',
-        message: 'User account is inactive or deleted',
-      });
+      throw new UnauthorizedError('User account is inactive or deleted');
     }
 
     // Check if password change is required
     if (user.mustChangePassword) {
-      return reply.status(403).send({
-        success: false,
-        error: 'Password change required',
-        message: 'You must change your password before continuing',
-      });
+      throw new ForbiddenError('You must change your password before continuing');
     }
 
-    // Attach user info to request for use in handlers
-    (request as any).user = {
+    request.user = {
       id: payload.userId,
       username: payload.username,
       email: payload.email,
@@ -97,50 +82,36 @@ export async function requireAuth(request: FastifyRequest, reply: FastifyReply) 
   }
   // Handle API key authentication
   else if (authData.type === 'api_key') {
-    // Find API key by prefix (for performance, avoid iterating all keys)
-    const apiKey = await ApiKey.findOne({
+    // Fetch ALL active keys with this prefix, then hash-compare to find the match
+    const candidateKeys = await ApiKey.find({
       prefix: authData.token.startsWith('iot_live_') ? 'iot_live_' : 'iot_test_',
       isActive: true,
     }).select('+keyHash').populate('userId');
 
-    if (!apiKey) {
-      return reply.status(401).send({
-        success: false,
-        error: 'Authentication failed',
-        message: 'Invalid API key',
-      });
+    let apiKey: (typeof candidateKeys)[0] | null = null;
+    for (const candidate of candidateKeys) {
+      const isValid = await candidate.compareKey(authData.token);
+      if (isValid) {
+        apiKey = candidate;
+        break;
+      }
     }
 
-    // Verify API key hash
-    const isValid = await apiKey.compareKey(authData.token);
-
-    if (!isValid) {
-      return reply.status(401).send({
-        success: false,
-        error: 'Authentication failed',
-        message: 'Invalid API key',
-      });
+    if (!apiKey) {
+      throw new UnauthorizedError('Invalid API key');
     }
 
     // Check if API key is expired
     if (apiKey.expiresAt && apiKey.expiresAt < new Date()) {
-      return reply.status(401).send({
-        success: false,
-        error: 'Authentication failed',
-        message: 'API key has expired',
-      });
+      throw new UnauthorizedError('API key has expired');
     }
 
     // Update last used timestamp (fire-and-forget, don't await)
-    ApiKey.findByIdAndUpdate(apiKey._id, { lastUsedAt: new Date() }).catch(() => {
-      // Ignore errors updating lastUsedAt
-    });
+    ApiKey.findByIdAndUpdate(apiKey._id, { lastUsedAt: new Date() }).catch(() => {});
 
-    // Get user from populated field
     const user = apiKey.userId as any;
 
-    // Attach user info to request (from API key)
-    (request as any).user = {
+    request.user = {
       id: user._id.toString(),
       username: user.username,
       email: user.email,
@@ -172,7 +143,7 @@ export async function optionalAuth(request: FastifyRequest, _reply: FastifyReply
       const user = await authService.getUserById(payload.userId);
 
       if (user && user.isActive) {
-        (request as any).user = {
+        request.user = {
           id: payload.userId,
           username: payload.username,
           email: payload.email,
@@ -186,18 +157,25 @@ export async function optionalAuth(request: FastifyRequest, _reply: FastifyReply
   // Handle API key
   else if (authData.type === 'api_key') {
     try {
-      const apiKey = await ApiKey.findOne({
+      const candidateKeys = await ApiKey.find({
         prefix: authData.token.startsWith('iot_live_') ? 'iot_live_' : 'iot_test_',
         isActive: true,
       }).select('+keyHash').populate('userId');
 
-      if (apiKey) {
-        const isValid = await apiKey.compareKey(authData.token);
+      let apiKey: (typeof candidateKeys)[0] | null = null;
+      for (const candidate of candidateKeys) {
+        const isValid = await candidate.compareKey(authData.token);
+        if (isValid) {
+          apiKey = candidate;
+          break;
+        }
+      }
 
-        if (isValid && (!apiKey.expiresAt || apiKey.expiresAt > new Date())) {
+      if (apiKey) {
+        if (!apiKey.expiresAt || apiKey.expiresAt > new Date()) {
           const user = apiKey.userId as any;
 
-          (request as any).user = {
+          request.user = {
             id: user._id.toString(),
             username: user.username,
             email: user.email,

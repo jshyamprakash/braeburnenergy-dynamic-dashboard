@@ -3,6 +3,9 @@ import cors from '@fastify/cors';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import { config } from './config/config';
+import { isAppError, ValidationError } from './lib/errors';
+// Activate FastifyRequest/FastifyInstance type augmentations
+import './lib/request-context';
 import { deviceRoutes } from './routes/device.routes';
 import { deviceStateRoutes } from './routes/device-state.routes';
 import { organizationRoutes } from './routes/organization.routes';
@@ -124,34 +127,74 @@ export async function createServer() {
     transformSpecificationClone: true,
   });
 
-  // Global error handler
+  // Global error handler — instanceof-based dispatch
   fastify.setErrorHandler((error, request, reply) => {
-    request.log.error(error);
+    // 1. Known AppError (NotFoundError, ConflictError, ValidationError, etc.)
+    if (isAppError(error)) {
+      if (error.statusCode < 500) {
+        request.log.warn({ err: error }, error.message);
+      } else {
+        request.log.error({ err: error }, error.message);
+      }
+      return reply.code(error.statusCode).send(error.toJSON());
+    }
 
-    // Validation errors (from Zod or Fastify)
+    // 2. Fastify schema validation (built-in ajv)
     if (error.validation) {
+      request.log.warn({ err: error }, 'Fastify schema validation failed');
       return reply.code(400).send({
         success: false,
         error: 'Validation failed',
+        code: 'VALIDATION_ERROR',
         details: error.validation,
       });
     }
 
-    // Database errors
-    if (error.message.includes('Mongo') || error.message.includes('mongoose')) {
-      return reply.code(500).send({
+    // 3. Zod errors that escaped (defensive: should be caught by zodBodyValidator)
+    if (error.name === 'ZodError') {
+      const ve = new ValidationError('Validation failed', (error as any).errors);
+      request.log.warn({ err: error }, 'Unhandled ZodError');
+      return reply.code(400).send(ve.toJSON());
+    }
+
+    // 4. Mongoose ValidationError / CastError → 400
+    if (error.name === 'ValidationError' && 'errors' in error) {
+      request.log.warn({ err: error }, 'Mongoose validation error');
+      return reply.code(400).send({
         success: false,
-        error: 'Database error',
-        message: config.isDevelopment ? error.message : 'Internal server error',
+        error: 'Invalid data',
+        code: 'BAD_REQUEST',
+        details: config.isDevelopment ? error.message : undefined,
       });
     }
 
-    // Generic error response
+    if (error.name === 'CastError') {
+      request.log.warn({ err: error }, 'Mongoose cast error');
+      return reply.code(400).send({
+        success: false,
+        error: 'Invalid ID format',
+        code: 'BAD_REQUEST',
+      });
+    }
+
+    // 5. MongoDB duplicate key → 409
+    if ((error as any).code === 11000) {
+      request.log.warn({ err: error }, 'MongoDB duplicate key');
+      return reply.code(409).send({
+        success: false,
+        error: 'Duplicate entry',
+        code: 'CONFLICT',
+      });
+    }
+
+    // 6. Unhandled — 500
+    request.log.error({ err: error }, 'Unhandled error');
     const statusCode = error.statusCode || 500;
     return reply.code(statusCode).send({
       success: false,
-      error: error.message || 'Internal server error',
-      ...(config.isDevelopment && { stack: error.stack }),
+      error: statusCode < 500 ? error.message : 'Internal server error',
+      code: 'INTERNAL_SERVER_ERROR',
+      ...(config.isDevelopment && statusCode >= 500 && { stack: error.stack }),
     });
   });
 

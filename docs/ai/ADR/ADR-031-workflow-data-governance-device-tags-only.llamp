@@ -1,0 +1,36 @@
+// LLAMP-SPEC v1 | ADR-031
+=adr: 031
+=title: Workflow Data Governance — Two-Collection Storage Split
+=date: 2026-02-25
+=status: accepted supersedes=ADR-030
+
+#ctx
+~problem: ADR-030 collapsed raw+derived into one regular collection → write amplification on time-series data + mixed mutability concerns
+~requirement: raw telemetry immutable; workflow outputs mutable per-device
+
+#decision
+=chosen: two-collection pattern
+=device_states: time_series collection, append-only, TTL 5yr → raw sensor telemetry ONLY
+=device_derived_states: regular collection, unique index on deviceId → workflow outputs only
+=derived_doc: { deviceId, derived:{ key:value,... }, lastSeen:Date, sourceEventId:ObjectId }
+
+=namespace_semantics: {
+  workspace.*: read-only → resolves from device_states.data.* (triggering doc),
+  derived.*: workflow writes → device_derived_states.derived.*
+}
+
+=rules: {
+  rule1: writeDeviceState validates each key against device.attributes (reject if undefined),
+  rule2: dashboard reads ONLY from device_derived_states,
+  rule3: no_ad_hoc_field_creation → undefined attribute keys rejected at runtime,
+  rule4: device_derived_states upserted via findOneAndUpdate + per-key $set on derived.*
+}
+
+!upsert_pattern: $set {'derived.key': value} NOT replace whole derived object
+
+#consequences
++pos: [raw_data_immutable, device_derived_states=single_source_for_dashboard, device.attributes_bounds_keys]
+-neg: [two_collections_to_maintain, dashboard_must_NOT_read_device_states_directly]
+
+#scope
+=arch_summary_update: yes

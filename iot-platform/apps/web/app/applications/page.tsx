@@ -1,7 +1,7 @@
 'use client';
 
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/lib/hooks/useAuth';
 import { apiClient } from '@/lib/api-client';
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
@@ -175,6 +175,7 @@ function DeleteConfirmModal({
   const [confirmText, setConfirmText] = useState('');
   const [loading, setLoading] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+  const [blockingEntities, setBlockingEntities] = useState<Record<string, number> | null>(null);
 
   const handleDelete = async () => {
     if (confirmText !== application.name) {
@@ -184,19 +185,20 @@ function DeleteConfirmModal({
 
     setLoading(true);
     setDeleteError('');
+    setBlockingEntities(null);
     try {
       await apiClient.delete(`/applications/${application.applicationId}`);
       toast.success('Application deleted successfully');
       onDelete();
       onClose();
     } catch (error: any) {
-      const errorMsg = error?.message || 'Failed to delete application';
-      if (error?.message?.includes('409') || error?.message?.includes('linked')) {
-        setDeleteError('Cannot delete: devices or workflows are still linked to this application');
+      const blocking = error?.details?.details?.blocking || error?.details?.blocking || error?.blocking;
+      if ((error?.statusCode === 409 || error?.code === 409 || error?.message?.includes('Cannot delete')) && blocking) {
+        setBlockingEntities(blocking);
       } else {
-        setDeleteError(errorMsg);
+        setDeleteError(error?.message || 'Failed to delete application');
+        toast.error(error?.message || 'Failed to delete application');
       }
-      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -210,6 +212,19 @@ function DeleteConfirmModal({
           <p>
             <strong>Warning:</strong> This action will permanently delete this application.
           </p>
+          {blockingEntities && (
+            <div className="rounded border border-red-300 bg-red-50 dark:bg-red-900/20 p-3 text-sm text-red-700 dark:text-red-300">
+              <p className="font-semibold mb-1">Cannot delete — remove these first:</p>
+              <ul className="list-disc pl-4 space-y-1">
+                {blockingEntities.devices && <li>{blockingEntities.devices} Device(s)</li>}
+                {blockingEntities.workflows && <li>{blockingEntities.workflows} Workflow(s)</li>}
+                {blockingEntities.dashboards && <li>{blockingEntities.dashboards} Dashboard(s)</li>}
+              </ul>
+              <p className="mt-2 text-xs text-red-500 dark:text-red-400">
+                Go to the Application detail page to delete linked entities.
+              </p>
+            </div>
+          )}
           {deleteError && (
             <p className="text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 p-2 rounded">
               {deleteError}

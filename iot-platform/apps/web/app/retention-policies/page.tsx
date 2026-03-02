@@ -1,39 +1,22 @@
 'use client';
 
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/lib/hooks/useAuth';
 import { apiClient } from '@/lib/api-client';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Archive, Trash2, Edit2, Plus } from 'lucide-react';
+import { useAppDispatch, useAppSelector } from '@/lib/store';
+import {
+  fetchPolicyData,
+  fetchPolicies,
+  fetchStats,
+  selectPolicies,
+  selectPolicyStats,
+  selectPolicyStatus,
+} from '@/lib/store/slices/policySlice';
 
-interface RetentionPolicy {
-  _id: string;
-  name: string;
-  category: 'device_states' | 'audit_logs' | 'alarms' | 'calibration_records';
-  hotStorageDuration: number;
-  warmStorageDuration: number;
-  coldStorageDuration: number;
-  totalRetentionDuration: number;
-  archiveEnabled: boolean;
-  archiveDestination?: string;
-  compressionEnabled: boolean;
-  compressionThreshold?: number;
-  regulatoryRequirement?: string;
-  minimumRetentionDays: number;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface StatCard {
-  category: string;
-  label: string;
-  hotDays: number;
-  warmDays: number;
-  coldDays: number;
-  totalDays: number;
-}
+import type { RetentionPolicy, StatCard } from '@/lib/store/slices/policySlice';
 
 // Utility: convert seconds to human-readable duration
 function secondsToDuration(seconds: number): string {
@@ -403,54 +386,30 @@ function DeleteConfirmModal({
 
 function RetentionPoliciesContent() {
   const { user } = useAuth();
-  const [policies, setPolicies] = useState<RetentionPolicy[]>([]);
-  const [stats, setStats] = useState<StatCard[]>([]);
+  const dispatch = useAppDispatch();
+
+  // --- Redux state: fetched data ---
+  const policies = useAppSelector(selectPolicies);
+  const stats = useAppSelector(selectPolicyStats);
+  const policyStatus = useAppSelector(selectPolicyStatus);
+  const loading = policyStatus === 'loading' || policyStatus === 'idle';
+
+  // --- Local state: transient UI ---
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
   const [editingPolicy, setEditingPolicy] = useState<RetentionPolicy | null>(null);
   const [deletingPolicy, setDeletingPolicy] = useState<RetentionPolicy | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   const isSuperAdmin = user?.role === 'SuperAdmin';
 
-  const fetchPolicies = async () => {
-    try {
-      const response = await apiClient.get<RetentionPolicy[]>('/retention-policies');
-      setPolicies(response.data);
-    } catch (error) {
-      toast.error('Failed to fetch policies');
-    }
-  };
-
-  const fetchStats = async () => {
-    const results = await Promise.allSettled(
-      CATEGORIES.map((cat) =>
-        apiClient.get<any>(`/retention-policies/stats/${cat.value}`).then((response) => ({
-          category: cat.value,
-          label: cat.label,
-          hotDays: response.data.hotStorageDays || 0,
-          warmDays: response.data.warmStorageDays || 0,
-          coldDays: response.data.coldStorageDays || 0,
-          totalDays: response.data.totalRetentionDays || 0,
-        }))
-      )
-    );
-    const statsData: StatCard[] = results.map((result, i) =>
-      result.status === 'fulfilled'
-        ? result.value
-        : { category: CATEGORIES[i].value, label: CATEGORIES[i].label, hotDays: 0, warmDays: 0, coldDays: 0, totalDays: 0 }
-    );
-    setStats(statsData);
+  const refreshData = () => {
+    dispatch(fetchPolicies());
+    dispatch(fetchStats());
   };
 
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      await Promise.all([fetchPolicies(), fetchStats()]);
-      setLoading(false);
-    };
-    load();
-  }, []);
+    dispatch(fetchPolicyData());
+  }, [dispatch]);
 
   const filteredPolicies = selectedCategory
     ? policies.filter((p) => p.category === selectedCategory)
@@ -604,10 +563,7 @@ function RetentionPoliciesContent() {
             setShowCreateModal(false);
             setEditingPolicy(null);
           }}
-          onSave={() => {
-            fetchPolicies();
-            fetchStats();
-          }}
+          onSave={refreshData}
         />
       ) : null}
 
@@ -615,10 +571,7 @@ function RetentionPoliciesContent() {
         <DeleteConfirmModal
           policy={deletingPolicy}
           onClose={() => setDeletingPolicy(null)}
-          onDelete={() => {
-            fetchPolicies();
-            fetchStats();
-          }}
+          onDelete={refreshData}
         />
       )}
     </div>

@@ -1,0 +1,28 @@
+// LLAMP-SPEC v1 | ADR-025
+=adr: 025
+=title: Dashboard as Named Entities with List/Detail Routing
+=date: 2026-02-23
+=status: accepted
+
+#ctx
+~problem: single hardcoded /dashboard-builder page, dashboardId="main"; multi-dashboard backend already exists
+~existing_backend: Dashboard model + 6 API routes already implemented
+
+#decision
+=routes: {
+  /dashboards → list page (all user dashboards),
+  /dashboards/new → create dialog,
+  /dashboards/[dashboardId] → DashboardBuilder detail/editor,
+  /applications/[appId] Dashboards_tab → scoped list by applicationId
+}
+=nav: sidebar Dashboards → /dashboards (was /dashboard-builder)
+=DashboardBuilder: receives dashboardId from URL params (not hardcoded)
+=create_in_app: applicationId set from route context (ADR-024 pattern)
+=retired: [/dashboard static_live_demo, /dashboard-builder hardcoded_single_builder]
+
+#consequences
++pos: [multi_dashboard_capability_exposed, application_scoping, named_entity_CRUD]
+-neg: [old_/dashboard+/dashboard-builder removed_or_redirected]
+
+#scope
+=arch_summary_update: yes

@@ -1,0 +1,26 @@
+// LLAMP-SPEC v1 | ADR-027
+=adr: 027
+=title: Losant-Style Mapping UI for action:writeDeviceState
+=date: 2026-02-24
+=status: accepted
+
+#ctx
+~problem: action:writeDeviceState node config panel had raw JSON textarea for mappings field
+~user_pain: hand-write [{key:"...",expression:"..."}] JSON — error-prone
+~reference: Losant uses individual-field rows per mapping
+
+#decision
+=chosen: replace textarea with mapping-list field type
+=ui: Attribute/Expression column grid + per-row ✕ remove + "+ Add Mapping" dashed button
+=autocomplete: Attribute column wired to deviceAttributes datalist
+=state: mappingRows: MappingRow[] local to NodeConfigPanel; synced via handleFieldChange to formData.config.mappings
+=reset_effect: keyed on selectedNode?.id to handle node switching
+!no_backend_changes: backend already expects config.mappings:[{key,expression}]
+
+#consequences
++pos: [better_UX_no_raw_JSON, consistent_with_backend, autocomplete_from_deviceAttributes]
+-neg: [adds_mapping-list_to_FieldConfig.type_union]
+~reuse: deviceAttributes datalist already computed for device-field type
+
+#scope
+=arch_summary_update: no

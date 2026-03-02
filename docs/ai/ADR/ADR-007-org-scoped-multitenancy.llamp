@@ -1,0 +1,29 @@
+// LLAMP-SPEC v1 | ADR-007
+=adr: 007
+=title: Organization-Scoped Multi-Tenancy
+=date: 2026-02-12
+=status: accepted
+
+#ctx
+~model: B2B SaaS → data isolation between customers
+~requirements: [secure_separation, RBAC_integration, shared_infrastructure]
+
+#opts
+~alt1: database-per-tenant (rejected: higher cost, complex ops)
+~alt2: schema-per-tenant (rejected: MongoDB doesn't support well)
+
+#decision
+=chosen: orgId:ObjectId on all resources
+=scoped_models: [Device, User, Workflow, Dashboard, Alarm, AuditLog, RetentionPolicy, ValidationRule]
+=indexes: compound (orgId, deviceId), (orgId, isEnabled, updatedAt)
+=middleware: requireSameOrganization() enforces scope
+=superadmin: can access all orgs
+!query_filter: every_query_MUST_include_orgId
+
+#consequences
++pos: [cost_effective_shared_infra, single_DB_deploy, cross_org_analytics_for_superadmin]
+-neg: [security_risk_if_orgId_missed, index_bloat, application_level_isolation_only]
+~tests: integration tests verify orgId filtering on all routes
+
+#scope
+=arch_summary_update: yes

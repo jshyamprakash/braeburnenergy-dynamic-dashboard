@@ -50,7 +50,10 @@ export class WorkflowTriggerDispatcher {
               field,
               value,
               stateId: (stateData as any)._id?.toString(),
-              stateData,
+              // ADR-037: workspace = device_states.data (raw telemetry snapshot)
+              // Supports nested paths: {{workspace.meter_Params.frequence}}
+              workspace: (stateData as any).data ?? {},
+              timestamp: stateData.timestamp,
             },
           })
           .catch(err => {

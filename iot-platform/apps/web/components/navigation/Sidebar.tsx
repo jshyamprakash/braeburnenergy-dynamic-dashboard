@@ -7,31 +7,24 @@ import {
   Menu,
   X,
   Home,
-  Smartphone,
-  Workflow,
   Bell,
   Settings,
   ClipboardList,
-  Grid,
-  Edit,
-  Eye,
   BookOpen,
   Archive,
   Users,
   Wifi,
   LayoutGrid,
 } from 'lucide-react';
+import { useAppDispatch, useAppSelector } from '@/lib/store';
+import { toggleSidebar, selectSidebarOpen } from '@/lib/store/slices/uiSlice';
 
 const menuItems = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/applications', label: 'Applications', icon: LayoutGrid },
-  { href: '/devices', label: 'Devices', icon: Smartphone },
-  { href: '/workflows', label: 'Workflows', icon: Workflow },
   { href: '/alarms', label: 'Alarms', icon: Bell },
   { href: '/alarm-rules', label: 'Rules', icon: Settings },
   { href: '/audit-logs', label: 'Audit Logs', icon: ClipboardList },
-  { href: '/dashboards', label: 'Dashboards', icon: Grid },
-  { href: '/dashboard-demo', label: 'Demo', icon: Eye },
   { href: '/guide', label: 'Guide', icon: BookOpen },
   { href: '/retention-policies', label: 'Retention', icon: Archive },
   { href: '/organizations', label: 'Organizations', icon: Users },
@@ -40,24 +33,12 @@ const menuItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const [isExpanded, setIsExpanded] = useState(true);
+  const dispatch = useAppDispatch();
+  const isExpanded = useAppSelector(selectSidebarOpen);
   const [isMounted, setIsMounted] = useState(false);
 
-  // Load collapsed state from localStorage
-  useEffect(() => {
-    setIsMounted(true);
-    const savedState = localStorage.getItem('sidebar-expanded');
-    if (savedState !== null) {
-      setIsExpanded(JSON.parse(savedState));
-    }
-  }, []);
-
-  // Persist collapsed state to localStorage
-  const toggleSidebar = () => {
-    const newState = !isExpanded;
-    setIsExpanded(newState);
-    localStorage.setItem('sidebar-expanded', JSON.stringify(newState));
-  };
+  // isMounted prevents hydration mismatch (Redux reads localStorage; SSR does not)
+  useEffect(() => { setIsMounted(true); }, []);
 
   if (!isMounted) return null;
 
@@ -73,7 +54,7 @@ export function Sidebar() {
           <h2 className="text-lg font-bold text-gray-900 dark:text-white">IoT</h2>
         )}
         <button
-          onClick={toggleSidebar}
+          onClick={() => dispatch(toggleSidebar())}
           className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
           aria-label={isExpanded ? 'Collapse' : 'Expand'}
         >

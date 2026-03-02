@@ -2,6 +2,7 @@
 
 ## Completed
 
+- ADR-039 Dashboard Derived State Endpoint — GET /devices/:deviceId/derived-state added (DeviceStateController + route); useDeviceRealtime queryFn switched from /states/latest (time-series) to /derived-state (device_derived_states); staleMeta seeded from API response; RealTimeGaugeBlock verified compatible
 - Historical Trend Charts on IOT Operations Dashboard (all 12 tasks: hook time-range support, timeRange selector UI, 4 chart blocks in seed, DashboardBuilder integration, field filtering)
 - ADR-031 End-to-End Verification & Demo Hardening (all 13 tasks: seed script fixed, backend verified, simulator triggers workflows, derived state written to MongoDB, WebSocket broadcasts verified, frontend hooks correct)
 - Visual Workflow Editor Week 2: React Flow Canvas (nodes, edges, palette, list/builder pages)
@@ -115,6 +116,42 @@
   now stored in same document as raw sensor data; upsertDerived() rewritten to use per-key $set paths;
   getLatest() simplified to single query; device_derived_states collection & DeviceDerivedState model
   deleted; ARCH_SUMMARY.md and indexes updated; ADR-028 voided, ADR-029 superseded.
+
+- ADR-034 Stale Derived State Indicator — DeviceDerivedState gains stale+staledAt fields;
+  WorkflowService.delete() calls markAllStale(); upsert() resets stale on write; GET /devices/:id
+  returns derivedStateMeta; useDeviceRealtime returns {state,stale,staledAt}; RealTimeGaugeBlock
+  shows amber ring + Stale badge + tooltip when stale=true.
+
+- ADR-035 Entity Creation Prerequisites Guard — Workflow creation requires ≥1 device; Dashboard
+  creation requires ≥1 device + ≥1 workflow. Frontend: disabled buttons with contextual tooltips on
+  Application Detail page (no extra API calls — uses existing state). Backend: Device.countDocuments()
+  guard in WorkflowService.create(); Device + Workflow countDocuments() guards in
+  DashboardService.saveDashboard(). Returns 422 if applicationId set and prerequisite count = 0.
+
+- ADR-036 Application-Scoped Entity Creation — All entity creation (Device, Workflow, Dashboard)
+  requires applicationId. Backend: DeviceService.create() throws 422 if no applicationId; WorkflowService
+  removes conditional guard (applicationId now required, not optional); DashboardService same. Controllers
+  catch 'requires an application' → 422. Frontend: /devices, /workflows, /dashboards global pages check
+  applicationCount on mount; Create buttons disabled with tooltip if 0 applications; empty-state links
+  to /applications instead of opening create modal.
+
+- Streetlight Live Data Expression Path Fix — WorkflowTriggerDispatcher now flattens
+  stateData.data into stateData so {{trigger.stateData.voltage}} resolves directly;
+  workflow-variables.ts updated from trigger.data.* to trigger.stateData.*; VariablePicker
+  filter strings updated; NodeConfigPanel debug + mapping placeholders updated to match.
+
+- ADR-037 workspace/derived Variable Convention — Clean break from trigger.stateData.*:
+  dispatcher passes workspace: stateData.data at trigger root; engine seeds context.workspace
+  at init + after trigger fires; handlers parse {{derived.attr}} mapping keys; seed script
+  updated (context.workspace.*, {{derived.*}} mapping keys); VariablePicker section header
+  "Workspace Variables"; NodeConfigPanel column headers Output(derived.*)/Input(workspace.*).
+
+- ADR-038 Dashboard orgId+applicationId Linkage — Removed userId/organizationId (string) from Dashboard
+  model; added orgId (ObjectId) + made applicationId required; indexes updated to { orgId, dashboardId }
+  unique; DashboardService all filters use orgId+applicationId; removed shareDashboard/sharedWith (no
+  user-ownership semantics); added requireAuth preHandler to all dashboard routes; applicationService
+  delete guard now org-safe; frontend CreateDashboardModal no longer sends organizationId in POST body;
+  Redux dashboardSlice organizationId → applicationId throughout; seed script updated.
 
 ## In Progress
 

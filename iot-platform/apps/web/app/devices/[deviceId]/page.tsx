@@ -47,7 +47,7 @@ export default function DeviceDetailPage() {
             <p className="text-red-600">Device not found or error loading device.</p>
           </div>
           <button
-            onClick={() => router.push('/devices')}
+            onClick={() => router.back()}
             className="text-blue-600 hover:text-blue-800"
           >
             ← Back to Devices
@@ -59,7 +59,7 @@ export default function DeviceDetailPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => router.push('/devices')}
+            onClick={() => router.back()}
             className="text-gray-600 hover:text-gray-900"
           >
             ←

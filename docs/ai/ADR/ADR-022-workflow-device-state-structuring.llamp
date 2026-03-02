@@ -1,0 +1,24 @@
+// LLAMP-SPEC v1 | ADR-022
+=adr: 022
+=title: Workflow-Driven Device State Structuring
+=date: 2026-02-23
+=status: accepted
+
+#ctx
+~problem: raw device telemetry stored as arbitrary JSON; no normalisation or type-cast mechanism
+~need: workflows re-structure raw input into typed output written back to DeviceState
+
+#decision
+=chosen: action:writeDeviceState node
+=flow: DeviceState saved (raw) → dispatcher fires {deviceId, field, value, stateId} → workflow executes → action:writeDeviceState patches DeviceState.data via $set
+=node_inputs: [stateId from trigger, config.mappings: [{key, expression}]]
+=type_cast: values cast to type defined in device.attributes (ADR-021)
+=new_backend: [stateId in dispatcher input, PATCH /devices/:id/states/:stateId, DeviceStateService.patchData(), action:writeDeviceState handler]
+
+#consequences
++pos: [raw_data_gets_typed_overlay, device.attributes_drives_type_cast]
+-neg: [stateId_ObjectId_must_be_in_workflow_context_at_trigger_time]
+~dependency: ADR-021 device.attributes required for type casting
+
+#scope
+=arch_summary_update: yes

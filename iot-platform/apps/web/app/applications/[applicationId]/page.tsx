@@ -12,6 +12,7 @@ import CreateWorkflowModal from '@/components/workflow/CreateWorkflowModal';
 import type { Application, Workflow as WorkflowType } from '@repo/types';
 import type { Device } from '@/lib/types';
 import { ulid } from 'ulid';
+import { PREREQ_TOOLTIPS } from '@/lib/constants/ui-messages';
 
 interface ApplicationDetailPageProps {
   params: Promise<{
@@ -47,6 +48,10 @@ function ApplicationDetailContent({ applicationId }: { applicationId: string }) 
   const [isDeviceFormOpen, setIsDeviceFormOpen] = useState(false);
   const [isWorkflowModalOpen, setIsWorkflowModalOpen] = useState(false);
   const [isCreateDashboardOpen, setIsCreateDashboardOpen] = useState(false);
+  const [editingDevice, setEditingDevice] = useState<Device | null>(null);
+  const [deletingDeviceId, setDeletingDeviceId] = useState<string | null>(null);
+  const [deletingWorkflowId, setDeletingWorkflowId] = useState<string | null>(null);
+  const [deletingDashboardId, setDeletingDashboardId] = useState<string | null>(null);
 
   // Fetch application
   useEffect(() => {
@@ -66,11 +71,8 @@ function ApplicationDetailContent({ applicationId }: { applicationId: string }) 
   useEffect(() => {
     const fetchDevices = async () => {
       try {
-        const response = await apiClient.get<any>('/devices?limit=100&offset=0');
-        const allDevices = response.data || [];
-        // Filter by applicationId
-        const filtered = allDevices.filter((d: Device) => (d as any).applicationId === applicationId);
-        setDevices(filtered);
+        const response = await apiClient.get<any>(`/devices?limit=100&offset=0&applicationId=${applicationId}`);
+        setDevices(response.data || []);
       } catch (error) {
         console.error('Failed to fetch devices:', error);
       }
@@ -82,11 +84,8 @@ function ApplicationDetailContent({ applicationId }: { applicationId: string }) 
   useEffect(() => {
     const fetchWorkflows = async () => {
       try {
-        const response = await apiClient.get<WorkflowType[]>('/workflows');
-        const allWorkflows = response.data || [];
-        // Filter by applicationId
-        const filtered = allWorkflows.filter((w) => (w as any).applicationId === applicationId);
-        setWorkflows(filtered);
+        const response = await apiClient.get<WorkflowType[]>(`/workflows?applicationId=${applicationId}`);
+        setWorkflows(response.data || []);
       } catch (error) {
         console.error('Failed to fetch workflows:', error);
       }
@@ -98,11 +97,8 @@ function ApplicationDetailContent({ applicationId }: { applicationId: string }) 
   useEffect(() => {
     const fetchDashboards = async () => {
       try {
-        const response = await apiClient.get<any>('/dashboards');
-        const allDashboards = response.data || [];
-        // Filter by applicationId
-        const filtered = allDashboards.filter((d: DashboardItem) => (d as any).applicationId === applicationId);
-        setDashboards(filtered);
+        const response = await apiClient.get<any>(`/dashboards?applicationId=${applicationId}`);
+        setDashboards(response.data || []);
       } catch (error) {
         console.error('Failed to fetch dashboards:', error);
       } finally {
@@ -112,52 +108,80 @@ function ApplicationDetailContent({ applicationId }: { applicationId: string }) 
     fetchDashboards();
   }, [applicationId]);
 
+  const refreshDevices = async () => {
+    try {
+      const response = await apiClient.get<any>(`/devices?limit=100&offset=0&applicationId=${applicationId}`);
+      setDevices(response.data || []);
+    } catch (error) {
+      console.error('Failed to refresh devices:', error);
+    }
+  };
+
+  const refreshWorkflows = async () => {
+    try {
+      const response = await apiClient.get<WorkflowType[]>(`/workflows?applicationId=${applicationId}`);
+      setWorkflows(response.data || []);
+    } catch (error) {
+      console.error('Failed to refresh workflows:', error);
+    }
+  };
+
+  const refreshDashboards = async () => {
+    try {
+      const response = await apiClient.get<any>(`/dashboards?applicationId=${applicationId}`);
+      setDashboards(response.data || []);
+    } catch (error) {
+      console.error('Failed to refresh dashboards:', error);
+    }
+  };
+
   const handleDeviceFormSuccess = () => {
     setIsDeviceFormOpen(false);
-    // Refresh devices list
-    const fetchDevices = async () => {
-      try {
-        const response = await apiClient.get<any>('/devices?limit=100&offset=0');
-        const allDevices = response.data || [];
-        const filtered = allDevices.filter((d: Device) => (d as any).applicationId === applicationId);
-        setDevices(filtered);
-      } catch (error) {
-        console.error('Failed to refresh devices:', error);
-      }
-    };
-    fetchDevices();
+    setEditingDevice(null);
+    refreshDevices();
   };
 
   const handleWorkflowSuccess = () => {
     setIsWorkflowModalOpen(false);
-    // Refresh workflows list
-    const fetchWorkflows = async () => {
-      try {
-        const response = await apiClient.get<WorkflowType[]>('/workflows');
-        const allWorkflows = response.data || [];
-        const filtered = allWorkflows.filter((w) => (w as any).applicationId === applicationId);
-        setWorkflows(filtered);
-      } catch (error) {
-        console.error('Failed to refresh workflows:', error);
-      }
-    };
-    fetchWorkflows();
+    refreshWorkflows();
   };
 
   const handleDashboardSuccess = () => {
     setIsCreateDashboardOpen(false);
-    // Refresh dashboards list
-    const fetchDashboards = async () => {
-      try {
-        const response = await apiClient.get<any>('/dashboards');
-        const allDashboards = response.data || [];
-        const filtered = allDashboards.filter((d: DashboardItem) => (d as any).applicationId === applicationId);
-        setDashboards(filtered);
-      } catch (error) {
-        console.error('Failed to refresh dashboards:', error);
-      }
-    };
-    fetchDashboards();
+    refreshDashboards();
+  };
+
+  const handleDeleteDevice = async (deviceId: string) => {
+    try {
+      await apiClient.delete(`/devices/${deviceId}`);
+      toast.success('Device deleted');
+      setDeletingDeviceId(null);
+      refreshDevices();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete device');
+    }
+  };
+
+  const handleDeleteWorkflow = async (workflowId: string) => {
+    try {
+      await apiClient.delete(`/workflows/${workflowId}`);
+      toast.success('Workflow deleted');
+      setDeletingWorkflowId(null);
+      refreshWorkflows();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete workflow');
+    }
+  };
+
+  const handleDeleteDashboard = async (dashboardId: string) => {
+    try {
+      await apiClient.delete(`/dashboards/${dashboardId}`);
+      toast.success('Dashboard deleted');
+      setDeletingDashboardId(null);
+      refreshDashboards();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete dashboard');
+    }
   };
 
   if (loading) {
@@ -266,7 +290,7 @@ function ApplicationDetailContent({ applicationId }: { applicationId: string }) 
                   : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
               }`}
             >
-              Dashboards
+              Dashboards ({dashboards.length})
             </button>
           </div>
         </div>
@@ -319,9 +343,22 @@ function ApplicationDetailContent({ applicationId }: { applicationId: string }) 
                           {formatDate(device.createdAt)}
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={() => { setEditingDevice(device); setIsDeviceFormOpen(true); }}
+                              className="text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                              title="Edit"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => setDeletingDeviceId(device.deviceId)}
+                              className="text-red-600 hover:text-red-700 dark:text-red-400"
+                              title="Delete"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -337,7 +374,13 @@ function ApplicationDetailContent({ applicationId }: { applicationId: string }) 
             <div className="flex justify-end">
               <button
                 onClick={() => setIsWorkflowModalOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+                disabled={devices.length === 0}
+                title={devices.length === 0 ? PREREQ_TOOLTIPS.NO_DEVICE_FOR_WORKFLOW : ''}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                  devices.length === 0
+                    ? 'bg-gray-400 text-gray-200 cursor-not-allowed opacity-60'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
               >
                 <Plus className="h-4 w-4" />
                 Add Workflow
@@ -356,6 +399,7 @@ function ApplicationDetailContent({ applicationId }: { applicationId: string }) 
                       <th className="px-4 py-3 text-left text-sm font-semibold">Type</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">Status</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold">Created</th>
+                      <th className="px-4 py-3 text-right text-sm font-semibold">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -387,6 +431,24 @@ function ApplicationDetailContent({ applicationId }: { applicationId: string }) 
                         <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
                           {workflow.createdAt ? formatDate(workflow.createdAt) : '—'}
                         </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex justify-end gap-2">
+                            <Link
+                              href={`/workflows/${workflow.workflowId}`}
+                              className="text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                              title="Edit Canvas"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </Link>
+                            <button
+                              onClick={() => setDeletingWorkflowId(workflow.workflowId)}
+                              className="text-red-600 hover:text-red-700 dark:text-red-400"
+                              title="Delete"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -401,7 +463,21 @@ function ApplicationDetailContent({ applicationId }: { applicationId: string }) 
             <div className="flex justify-end">
               <button
                 onClick={() => setIsCreateDashboardOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+                disabled={devices.length === 0 || workflows.length === 0}
+                title={
+                  devices.length === 0 && workflows.length === 0
+                    ? PREREQ_TOOLTIPS.NO_DEVICE_AND_WORKFLOW_FOR_DASHBOARD
+                    : devices.length === 0
+                      ? PREREQ_TOOLTIPS.NO_DEVICE_FOR_DASHBOARD
+                      : workflows.length === 0
+                        ? PREREQ_TOOLTIPS.NO_WORKFLOW_FOR_DASHBOARD
+                        : ''
+                }
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                  devices.length === 0 || workflows.length === 0
+                    ? 'bg-gray-400 text-gray-200 cursor-not-allowed opacity-60'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
               >
                 <Plus className="h-4 w-4" />
                 Create Dashboard
@@ -430,7 +506,7 @@ function ApplicationDetailContent({ applicationId }: { applicationId: string }) 
                       >
                         <td className="px-4 py-3 font-medium">
                           <Link
-                            href={`/dashboards/${dashboard.dashboardId}`}
+                            href={`/dashboards/${dashboard.dashboardId}?applicationId=${applicationId}`}
                             className="text-blue-600 hover:text-blue-700 dark:text-blue-400"
                           >
                             {dashboard.name}
@@ -443,13 +519,22 @@ function ApplicationDetailContent({ applicationId }: { applicationId: string }) 
                           {formatDate(dashboard.updatedAt)}
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <Link
-                            href={`/dashboards/${dashboard.dashboardId}`}
-                            className="text-blue-600 hover:text-blue-700 dark:text-blue-400"
-                            title="Edit"
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </Link>
+                          <div className="flex justify-end gap-2">
+                            <Link
+                              href={`/dashboards/${dashboard.dashboardId}?applicationId=${applicationId}`}
+                              className="text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                              title="Edit"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </Link>
+                            <button
+                              onClick={() => setDeletingDashboardId(dashboard.dashboardId)}
+                              className="text-red-600 hover:text-red-700 dark:text-red-400"
+                              title="Delete"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -463,7 +548,8 @@ function ApplicationDetailContent({ applicationId }: { applicationId: string }) 
         {/* Modals */}
         <DeviceForm
           isOpen={isDeviceFormOpen}
-          onClose={() => setIsDeviceFormOpen(false)}
+          onClose={() => { setIsDeviceFormOpen(false); setEditingDevice(null); }}
+          device={editingDevice}
           applicationId={applicationId}
           onSuccess={handleDeviceFormSuccess}
         />
@@ -483,6 +569,84 @@ function ApplicationDetailContent({ applicationId }: { applicationId: string }) 
             onClose={() => setIsCreateDashboardOpen(false)}
             onSuccess={handleDashboardSuccess}
           />
+        )}
+
+        {/* Delete Confirm — Device */}
+        {deletingDeviceId && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+            <div className="w-full max-w-sm rounded-lg bg-white p-6 dark:bg-gray-900 dark:text-white shadow-xl">
+              <h2 className="mb-2 text-xl font-bold text-red-600">Delete Device</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                Are you sure? All device states and derived data will be lost.
+              </p>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setDeletingDeviceId(null)}
+                  className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleDeleteDevice(deletingDeviceId)}
+                  className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirm — Workflow */}
+        {deletingWorkflowId && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+            <div className="w-full max-w-sm rounded-lg bg-white p-6 dark:bg-gray-900 dark:text-white shadow-xl">
+              <h2 className="mb-2 text-xl font-bold text-red-600">Delete Workflow</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                Are you sure? This cannot be undone.
+              </p>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setDeletingWorkflowId(null)}
+                  className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleDeleteWorkflow(deletingWorkflowId)}
+                  className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirm — Dashboard */}
+        {deletingDashboardId && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+            <div className="w-full max-w-sm rounded-lg bg-white p-6 dark:bg-gray-900 dark:text-white shadow-xl">
+              <h2 className="mb-2 text-xl font-bold text-red-600">Delete Dashboard</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                Are you sure? This cannot be undone.
+              </p>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setDeletingDashboardId(null)}
+                  className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleDeleteDashboard(deletingDashboardId)}
+                  className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>
@@ -513,7 +677,6 @@ function CreateDashboardModalComponent({
     try {
       await apiClient.post('/dashboards', {
         dashboardId: ulid(),
-        organizationId: 'aaaaaaaaaaaaaaaaaaaaaaaa',
         name: name.trim(),
         description: description.trim() || undefined,
         applicationId,

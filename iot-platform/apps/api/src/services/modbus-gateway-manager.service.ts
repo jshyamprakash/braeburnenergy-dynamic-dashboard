@@ -1,7 +1,9 @@
+import mongoose from 'mongoose';
 import { ModbusGateway, IModbusGateway } from '../models/modbus-gateway.model';
 import { ModbusClientService } from './modbus-client.service';
 import { deviceService } from './device.service';
 import { deviceStateService } from './device-state.service';
+import { Device } from '../models/device.model';
 
 /**
  * ModbusGatewayManager Service
@@ -179,17 +181,13 @@ class ModbusGatewayManagerService {
       const deviceName = `${gateway.deviceMapping.deviceIdPrefix || 'MODBUS_'}${register.name}`;
       const orgId = gateway.orgId.toString();
 
-      // Check if device exists (search by name)
-      const result = await deviceService.list(orgId, {
-        search: deviceName,
-        limit: 1,
-        offset: 0,
-        sortBy: 'createdAt',
-        sortOrder: 'desc',
-      });
-
-      if (result.data.length > 0) {
-        return result.data[0].deviceId;
+      // Check if device exists by name — use Device model directly to bypass application-scoped list
+      const existing = await Device.findOne({
+        orgId: new mongoose.Types.ObjectId(orgId),
+        name: deviceName,
+      }).lean();
+      if (existing) {
+        return existing.deviceId;
       }
 
       // Create new device
