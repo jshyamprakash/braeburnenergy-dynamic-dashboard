@@ -1,0 +1,162 @@
+// LLAMP-SPEC v1 | Frontend Implementation Patterns
+// src: iot-platform/apps/web/
+// ver: 1.0 | updated: 2026-03-03
+// target: @sonnet @haiku
+// purpose: canonical reference — read once per session before writing any frontend code
+
+---
+
+// ── PROVIDER STACK (fixed — never change order) ──
+=providers: ReduxProvider > QueryClientProvider > WebSocketProvider > {children}
+// file: lib/providers.tsx
+// QueryClient defaults: staleTime=60s, refetchOnWindowFocus=false, retry=1
+
+---
+
+// ── LAYER MAP ──
+=layers: {
+  middleware:    app/middleware.ts,                 // Edge auth (cookie-based, runs before render)
+  page:          app/[route]/page.tsx,              // thin shell — data fetch + layout only
+  _components:   app/[route]/_components/*.tsx,     // co-located heavy sections for the route
+  shared_ui:     components/ui/*.tsx,               // primitives: Skeleton, Modal, etc.
+  shared_domain: components/[domain]/*.tsx,         // reusable forms/views (e.g. device/, workflow/)
+  hooks:         lib/hooks/use[Resource].ts,        // all React Query + WS hooks here
+  store:         lib/store/slices/[name]Slice.ts,   // Redux slices — shared UI state only
+  api:           lib/api-client.ts,                 // singleton apiClient (import, never re-create)
+  types:         @repo/types                        // all shared types from here
+}
+!rule: no fetch() calls in components (always use apiClient or a hook)
+!rule: no business logic in page shells (push to _components or hooks)
+!rule: no localStorage access in components (use Redux authSlice or apiClient)
+
+---
+
+// ── DATA FETCHING DECISION RULE ──
+=state_routing: {
+  server_data:      useQuery / useMutation  (TanStack Query v5),  // all API data
+  shared_ui_state:  Redux slice + useAppSelector/useAppDispatch,   // auth, dashboard, ws, alarm, workflow
+  local_state:      useState / useReducer,                         // form fields, modal open/close, tab
+  realtime_data:    useWebSocket hooks in lib/hooks/useWebSocket.ts
+}
+!never: store server responses in Redux (use React Query cache)
+!never: use useState for API data (use useQuery)
+!never: call apiClient directly in a component (wrap in a hook)
+
+---
+
+// ── UNIT OF WORK: building a new feature ──
+// (1) types → (2) hook → (3) loading.tsx + error.tsx → (4) page shell → (5) _components
+=unit_of_work_steps: [
+  1. import/confirm types from @repo/types,
+  2. create lib/hooks/use[Resource].ts with query key factory + hooks,
+  3. create app/[route]/loading.tsx  (Skeleton component),
+  4. create app/[route]/error.tsx    ('use client' + reset button),
+  5. write thin page shell in app/[route]/page.tsx,
+  6. split heavy sections into app/[route]/_components/[Section].tsx,
+  7. put reusable form/view in components/[domain]/[Form|Card|Table].tsx
+]
+
+---
+
+// ── HOOK PATTERN (lib/hooks/use[Resource].ts) ──
+=hook_template:
+  // 1. Query key factory (always export for invalidation)
+  export const [resource]Keys = {
+    all:    ['[resource]'] as const,
+    list:   () => [[resource]Keys.all, 'list'] as const,
+    detail: (id: string) => [[resource]Keys.all, 'detail', id] as const,
+  }
+  // 2. Query hook
+  export function use[Resources]() {
+    return useQuery({
+      queryKey: [resource]Keys.list(),
+      queryFn:  async () => {
+        const { data } = await apiClient.get<[Resource][]>('/[resources]');
+        return data;
+      },
+    });
+  }
+  // 3. Mutation hook
+  export function useCreate[Resource]() {
+    const qc = useQueryClient();
+    return useMutation({
+      mutationFn: (payload: Create[Resource]Dto) =>
+        apiClient.post<[Resource]>('/[resources]', payload).then(r => r.data),
+      onSuccess: () => qc.invalidateQueries({ queryKey: [resource]Keys.all }),
+    });
+  }
+
+---
+
+// ── PAGE SHELL ANATOMY ──
+=page_anatomy:
+  'use client'                           // only if interactive (forms, hooks)
+  // imports: hooks, _components, types
+  export default function [Name]Page() {
+    const { data, isLoading, error } = use[Resources]();
+    // No fetching here — just hooks + layout
+    return <[Section]Component data={data} />;
+  }
+// loading.tsx → export default function Loading() { return <TableRowSkeleton rows={5} /> }
+// error.tsx   → 'use client'; export default function Error({ reset }) { ... }
+// not-found.tsx → Server component, no 'use client'
+
+---
+
+// ── COMPONENT CONVENTIONS ──
+=component_rules: {
+  co_located:    app/[route]/_components/[SectionName].tsx,   // one-off heavy sections
+  shared_domain: components/[domain]/[ComponentName].tsx,      // reusable across routes
+  shared_ui:     components/ui/[Name].tsx,                     // primitives only
+  naming:        PascalCase files + exports,
+  client_marker: 'use client' required when using: useState, useEffect, useQuery, useAppSelector
+}
+!never: put shared components inside _components/ (they belong in components/[domain]/)
+!never: create a new Modal component (import { Modal } from '@/components/Modal')
+
+---
+
+// ── REDUX SLICES (8 slices — use existing, never add without ADR) ──
+=slices: { auth, ui, dashboard, websocket, workflow, alarm, user, policy }
+=typed_hooks: { dispatch: useAppDispatch(), selector: useAppSelector() }
+// from: lib/store/index.ts
+// use Redux for: auth state, dashboard layout, WS connection status, alarm list, workflow exec
+
+---
+
+// ── WEBSOCKET PATTERN ──
+=ws_hooks: {
+  connection_status:   useWebSocket()                                 → { socket, isConnected },
+  device_realtime:     useDeviceStateUpdates(deviceId, onUpdate),
+  workflow_realtime:   useWorkflowExecutionUpdates(workflowId, ...),
+  raw_socket:          useWebSocketContext()                          → Socket
+}
+// all in lib/hooks/useWebSocket.ts — never create new socket instances
+
+---
+
+// ── API CLIENT ──
+=api_methods: {
+  get:         apiClient.get<T>(endpoint)                   → Promise<{ data: T }>,
+  post:        apiClient.post<T>(endpoint, body)            → Promise<{ data: T }>,
+  patch:       apiClient.patch<T>(endpoint, body)           → Promise<{ data: T }>,
+  delete:      apiClient.delete(endpoint)                   → Promise<void>,
+  paginated:   apiClient.getPaginated<T>(endpoint)          → Promise<{ data:T[], pagination:{} }>
+}
+// auto: JWT injection, 401 → refresh → retry, non-JSON error handling
+// import { apiClient } from '@/lib/api-client'  — singleton, never instantiate new ApiClient
+
+---
+
+// ── ANTI-PATTERNS (never do these) ──
+!never: [
+  fetch() directly in a component or page,
+  new ApiClient() — use the exported singleton,
+  useState for server data — use useQuery,
+  storing API responses in Redux — use React Query cache,
+  module-level socket (io()) — use WebSocketProvider + useWebSocketContext(),
+  ProtectedRoute wrapper — middleware.ts handles all auth guards,
+  any type in hook return or component props — use @repo/types,
+  creating components/ui/ primitives that already exist (Modal, Skeleton),
+  inline API URL strings — use apiClient methods with relative paths
+]

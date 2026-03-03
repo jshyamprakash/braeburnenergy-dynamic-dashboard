@@ -30,7 +30,9 @@ export interface DeviceStatusUpdate {
 export function createWebSocketServer(httpServer?: HTTPServer) {
   const io = new SocketIOServer(httpServer, {
     cors: {
-      origin: config.cors.origin,
+      origin: config.isDevelopment
+        ? true
+        : config.cors.origin.split(',').map((o) => o.trim()),
       credentials: config.cors.credentials,
       methods: ['GET', 'POST'],
     },

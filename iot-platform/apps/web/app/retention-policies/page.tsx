@@ -1,6 +1,5 @@
 'use client';
 
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { apiClient } from '@/lib/api-client';
 import { useState, useEffect } from 'react';
@@ -580,12 +579,12 @@ function RetentionPoliciesContent() {
 
 export default function RetentionPoliciesPage() {
   return (
-    <ProtectedRoute>
+    <>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-950 px-4 py-8 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <RetentionPoliciesContent />
         </div>
       </div>
-    </ProtectedRoute>
+    </>
   );
 }

@@ -1,6 +1,5 @@
 'use client';
 
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { CodeBlock } from '@/components/guide/CodeBlock';
 import { Printer, Menu, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -559,8 +558,8 @@ function GuideContent() {
 
 export default function GuidePage() {
   return (
-    <ProtectedRoute>
+    <>
       <GuideContent />
-    </ProtectedRoute>
+    </>
   );
 }

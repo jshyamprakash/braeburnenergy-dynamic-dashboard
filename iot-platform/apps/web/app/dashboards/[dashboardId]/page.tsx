@@ -1,7 +1,6 @@
 'use client';
 
 import { DashboardBuilder } from '@/components/dashboard/DashboardBuilder';
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { apiClient } from '@/lib/api-client';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
@@ -39,8 +38,7 @@ function DashboardDetailContent({ dashboardId }: { dashboardId: string }) {
   }, [dashboardId, applicationIdFromUrl]);
 
   return (
-    <ProtectedRoute>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
         {/* Header */}
         <div className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-7xl flex items-center gap-4">
@@ -67,7 +65,6 @@ function DashboardDetailContent({ dashboardId }: { dashboardId: string }) {
           <DashboardBuilder dashboardId={dashboardId} applicationId={applicationId} />
         </div>
       </div>
-    </ProtectedRoute>
   );
 }
 

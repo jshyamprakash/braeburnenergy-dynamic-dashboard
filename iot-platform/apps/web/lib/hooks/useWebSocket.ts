@@ -1,88 +1,25 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { io, type Socket } from 'socket.io-client';
 import type { WebSocketEvent, DeviceState } from '../types';
-import { connectionToasts } from '../utils/toast';
-
-const WEBSOCKET_URL =
-  process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'http://localhost:3001';
-
-// Singleton socket instance - shared across all components
-let socketInstance: Socket | null = null;
-let connectionCount = 0;
-let toastShown = false;
-
-function getSocketInstance(): Socket {
-  if (!socketInstance) {
-    socketInstance = io(WEBSOCKET_URL, {
-      path: '/ws',
-      transports: ['websocket', 'polling'],
-      autoConnect: true,
-    });
-
-    // Connection event handlers (only set once)
-    socketInstance.on('connect', () => {
-      console.log('[WebSocket] Connected:', socketInstance!.id);
-      if (!toastShown) {
-        connectionToasts.connected();
-        toastShown = true;
-      }
-    });
-
-    socketInstance.on('disconnect', () => {
-      console.log('[WebSocket] Disconnected');
-      connectionToasts.disconnected();
-      toastShown = false;
-    });
-
-    socketInstance.on('connect_error', (error) => {
-      console.error('[WebSocket] Connection Error:', error);
-      if (!toastShown) {
-        connectionToasts.error(error);
-      }
-    });
-
-    socketInstance.on('error', (error) => {
-      console.error('[WebSocket] Error:', error);
-    });
-  }
-
-  return socketInstance;
-}
+import { useWebSocketContext } from '../providers/WebSocketProvider';
 
 export function useWebSocket() {
+  const socket = useWebSocketContext();
   const [isConnected, setIsConnected] = useState(false);
-  const socket = getSocketInstance();
 
   useEffect(() => {
-    connectionCount++;
-    console.log(`[WebSocket] Component mounted (${connectionCount} active)`);
-
-    // Update connection state
     setIsConnected(socket.connected);
 
-    // Listen for connection state changes
     const handleConnect = () => setIsConnected(true);
     const handleDisconnect = () => setIsConnected(false);
 
     socket.on('connect', handleConnect);
     socket.on('disconnect', handleDisconnect);
 
-    // Cleanup on unmount - but DON'T disconnect the shared socket
     return () => {
-      connectionCount--;
-      console.log(`[WebSocket] Component unmounted (${connectionCount} remaining)`);
-
       socket.off('connect', handleConnect);
       socket.off('disconnect', handleDisconnect);
-
-      // Only disconnect if no components are using the socket
-      if (connectionCount === 0) {
-        console.log('[WebSocket] No active components, keeping connection alive');
-        // Note: We keep the connection alive for better UX
-        // Socket will auto-reconnect if needed
-      }
     };
   }, [socket]);
 
@@ -108,7 +45,7 @@ export function useDeviceStateUpdates(
     socket.emit('subscribe:device', deviceId);
 
     // Listen for state updates (backend emits 'device:state')
-    const handleStateUpdate = (update: { deviceId: string; data: any; derived?: Record<string, any>; timestamp: Date }) => {
+    const handleStateUpdate = (update: { deviceId: string; data: Record<string, unknown>; derived?: Record<string, unknown>; timestamp: Date }) => {
       console.log('[WebSocket] Received device state:', update);
       // Convert backend format to DeviceState format
       onUpdate({
@@ -141,13 +78,13 @@ export function useDeviceUpdates(onUpdate: (event: WebSocketEvent) => void) {
     console.log('[WebSocket] Subscribing to all device updates');
 
     // Listen for device events
-    const handlers = {
-      'device:state:created': (payload: any) =>
-        onUpdate({ type: 'device:state:created', payload }),
-      'device:updated': (payload: any) =>
-        onUpdate({ type: 'device:updated', payload }),
-      'device:deleted': (payload: any) =>
-        onUpdate({ type: 'device:deleted', payload }),
+    const handlers: Record<string, (payload: unknown) => void> = {
+      'device:state:created': (payload: unknown) =>
+        onUpdate({ type: 'device:state:created', payload } as any),
+      'device:updated': (payload: unknown) =>
+        onUpdate({ type: 'device:updated', payload } as any),
+      'device:deleted': (payload: unknown) =>
+        onUpdate({ type: 'device:deleted', payload } as any),
     };
 
     Object.entries(handlers).forEach(([event, handler]) => {
@@ -166,9 +103,9 @@ export function useDeviceUpdates(onUpdate: (event: WebSocketEvent) => void) {
 // Hook for subscribing to workflow execution updates
 export function useWorkflowExecutionUpdates(
   workflowId: string | null,
-  onStepUpdate: (step: any) => void,
-  onComplete: (completion: any) => void,
-  onDebugMessage?: (msg: any) => void
+  onStepUpdate: (step: unknown) => void,
+  onComplete: (completion: unknown) => void,
+  onDebugMessage?: (msg: unknown) => void
 ) {
   const { socket, isConnected } = useWebSocket();
 
@@ -181,19 +118,19 @@ export function useWorkflowExecutionUpdates(
     socket.emit('subscribe:workflow', workflowId);
 
     // Listen for step updates
-    const handleStepUpdate = (step: any) => {
+    const handleStepUpdate = (step: unknown) => {
       console.log('[WebSocket] Received workflow step:', step);
       onStepUpdate(step);
     };
 
     // Listen for completion
-    const handleCompletion = (completion: any) => {
+    const handleCompletion = (completion: unknown) => {
       console.log('[WebSocket] Workflow execution completed:', completion);
       onComplete(completion);
     };
 
     // Listen for debug messages
-    const handleDebugMessage = (msg: any) => {
+    const handleDebugMessage = (msg: unknown) => {
       console.log('[WebSocket] Received debug message:', msg);
       onDebugMessage?.(msg);
     };

@@ -89,11 +89,11 @@ export class DeviceStateController {
     // Dispatch to trigger workflows (fire-and-forget)
     const triggerDispatcher = request.server.triggerDispatcher;
     if (triggerDispatcher) {
-      for (const [field, value] of Object.entries(validatedData.data as Record<string, any>)) {
-        triggerDispatcher.dispatchDeviceStateChange(orgId, deviceId, field, value, state as any).catch((err: any) => {
-          request.log.error(err, `Workflow trigger dispatch failed for field ${field}`);
+      triggerDispatcher
+        .dispatchDeviceStateBatch(orgId, deviceId, validatedData.data as Record<string, any>, state as any)
+        .catch((err: any) => {
+          request.log.error(err, 'Workflow device state batch dispatch failed');
         });
-      }
 
       for (const alarm of triggeredAlarms) {
         triggerDispatcher.dispatchAlarmTriggered(orgId, alarm).catch((err: any) => {

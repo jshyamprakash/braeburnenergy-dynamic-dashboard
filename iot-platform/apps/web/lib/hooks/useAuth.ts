@@ -32,7 +32,7 @@ export function useAuth() {
     isLoading,
     error,
     login: (username: string, password: string) =>
-      dispatch(loginThunk({ username, password })),
+      dispatch(loginThunk({ username, password })).unwrap(),
     logout: () => dispatch(logoutThunk()),
     refreshToken: () => dispatch(refreshTokenThunk()),
     clearError: () => dispatch(clearError()),

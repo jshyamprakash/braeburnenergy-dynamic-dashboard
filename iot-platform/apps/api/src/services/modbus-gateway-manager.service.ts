@@ -1,8 +1,10 @@
 import mongoose from 'mongoose';
+import type { Logger } from 'pino';
 import { ModbusGateway, IModbusGateway } from '../models/modbus-gateway.model';
 import { ModbusClientService } from './modbus-client.service';
 import { deviceService } from './device.service';
 import { deviceStateService } from './device-state.service';
+import type { WorkflowTriggerDispatcher } from './workflow-trigger-dispatcher.service';
 import { Device } from '../models/device.model';
 
 /**
@@ -10,6 +12,7 @@ import { Device } from '../models/device.model';
  *
  * Manages Modbus gateway connections, polling, and data mapping.
  * Handles automatic device registration and state updates.
+ * Dispatches to workflow triggers when device states are created.
  */
 
 interface GatewayConnection {
@@ -22,6 +25,16 @@ interface GatewayConnection {
 class ModbusGatewayManagerService {
   private connections: Map<string, GatewayConnection> = new Map();
   private readonly MAX_RETRY_ATTEMPTS = 5;
+  private triggerDispatcher?: WorkflowTriggerDispatcher;
+  private logger?: Logger;
+
+  /**
+   * Register trigger dispatcher (call from index.ts after creating dispatcher)
+   */
+  setTriggerDispatcher(dispatcher: WorkflowTriggerDispatcher, logger: Logger): void {
+    this.triggerDispatcher = dispatcher;
+    this.logger = logger;
+  }
 
   /**
    * Start gateway connection and polling
@@ -49,19 +62,18 @@ class ModbusGatewayManagerService {
       // Connect to Modbus device
       await client.connect(gateway.connection);
 
-      // Update gateway status
+      // Update gateway status and enable polling
       gateway.status = 'connected';
       gateway.lastConnected = new Date();
       gateway.lastError = undefined;
+      gateway.polling.enabled = true;
       await gateway.save();
 
       // Store connection
       this.connections.set(gatewayId, connection);
 
-      // Start polling if enabled
-      if (gateway.polling.enabled) {
-        this.startPolling(gatewayId);
-      }
+      // Always start polling when startGateway is called
+      this.startPolling(gatewayId);
 
       console.log(`✅ Modbus gateway started: ${gateway.name} (${gateway.getConnectionString()})`);
     } catch (error) {
@@ -73,12 +85,24 @@ class ModbusGatewayManagerService {
   }
 
   /**
-   * Stop gateway connection and polling
+   * Stop gateway connection and polling.
+   * If the gateway is not in memory (e.g. after a server restart), we still
+   * reset the DB state so the UI can transition back to the "stopped" state.
    */
   async stopGateway(gatewayId: string): Promise<void> {
     const connection = this.connections.get(gatewayId);
+
     if (!connection) {
-      throw new Error(`Gateway not running: ${gatewayId}`);
+      // Not running in memory — reset DB state and return gracefully
+      const gateway = await ModbusGateway.findById(gatewayId);
+      if (!gateway) {
+        throw new Error(`Gateway not found: ${gatewayId}`);
+      }
+      gateway.status = 'disconnected';
+      gateway.polling.enabled = false;
+      await gateway.save();
+      console.log(`⏹️  Modbus gateway stopped (DB reset only, was not running): ${gateway.name}`);
+      return;
     }
 
     // Stop polling
@@ -92,6 +116,7 @@ class ModbusGatewayManagerService {
 
     // Update gateway status
     connection.gateway.status = 'disconnected';
+    connection.gateway.polling.enabled = false;
     await connection.gateway.save();
 
     // Remove connection
@@ -137,9 +162,14 @@ class ModbusGatewayManagerService {
 
   /**
    * Poll all registers for a gateway
+   * Batches registers by device: groups all registers mapped to the same device,
+   * reads them all, then creates ONE device state document with all fields.
    */
   private async pollRegisters(connection: GatewayConnection): Promise<void> {
     const { gateway, client } = connection;
+
+    // Phase 1: Read all registers and collect by deviceId
+    const statesByDevice: Record<string, { data: Record<string, any>; registers: any[] }> = {};
 
     for (const register of gateway.registers) {
       try {
@@ -149,20 +179,50 @@ class ModbusGatewayManagerService {
         // Get or create device
         const deviceId = await this.getOrCreateDevice(gateway, register);
 
-        // Create device state
-        await deviceStateService.create(gateway.orgId.toString(), {
-          deviceId,
-          data: {
-            [register.name]: value,
-            ...(register.unit && { [`${register.name}_unit`]: register.unit }),
-          },
-          timestamp: new Date(),
-        });
+        // Initialize device state if not seen before
+        if (!statesByDevice[deviceId]) {
+          statesByDevice[deviceId] = { data: {}, registers: [] };
+        }
+
+        // Add field and unit to device state
+        statesByDevice[deviceId].data[register.name] = value;
+        if (register.unit) {
+          statesByDevice[deviceId].data[`${register.name}_unit`] = register.unit;
+        }
+        statesByDevice[deviceId].registers.push(register);
 
         console.log(`📊 ${gateway.name} > ${register.name}: ${value}${register.unit || ''}`);
       } catch (error) {
         console.error(`❌ Failed to read register ${register.name}:`, (error as Error).message);
         // Continue with next register
+      }
+    }
+
+    // Phase 2: Create ONE device state per unique device with all its fields
+    for (const [deviceId, { data }] of Object.entries(statesByDevice)) {
+      try {
+        const state = await deviceStateService.create(gateway.orgId.toString(), {
+          deviceId,
+          data,
+          timestamp: new Date(),
+        });
+
+        // Dispatch to workflow triggers (fire-and-forget, just like device-state controller)
+        if (this.triggerDispatcher) {
+          // Pass data without _unit fields
+          const triggerData = Object.fromEntries(
+            Object.entries(data).filter(([k]) => !k.endsWith('_unit'))
+          );
+          this.triggerDispatcher
+            .dispatchDeviceStateBatch(gateway.orgId.toString(), deviceId, triggerData, state as any)
+            .catch((err: any) => {
+              if (this.logger) {
+                this.logger.error(err, 'Workflow device state batch dispatch failed for Modbus gateway');
+              }
+            });
+        }
+      } catch (error) {
+        console.error(`❌ Failed to write state for device ${deviceId}:`, (error as Error).message);
       }
     }
   }
@@ -190,9 +250,15 @@ class ModbusGatewayManagerService {
         return existing.deviceId;
       }
 
+      // Auto-registration requires an applicationId (ADR-036)
+      if (!gateway.applicationId) {
+        throw new Error(`Gateway "${gateway.name}" has no applicationId — set one to enable auto-device-registration`);
+      }
+
       // Create new device
       const newDevice = await deviceService.create(orgId, {
         name: deviceName,
+        applicationId: gateway.applicationId,
         tags: {
           protocol: gateway.protocol,
           source: 'modbus',
@@ -256,6 +322,28 @@ class ModbusGatewayManagerService {
    */
   getRunningGateways(): string[] {
     return Array.from(this.connections.keys());
+  }
+
+  /**
+   * Restore gateways that were running before a server restart.
+   * Called once at startup — re-starts all gateways with polling.enabled = true.
+   */
+  async restoreRunningGateways(): Promise<void> {
+    const gateways = await ModbusGateway.find({ 'polling.enabled': true });
+    if (gateways.length === 0) return;
+
+    console.log(`🔄 Restoring ${gateways.length} Modbus gateway(s) from database...`);
+    for (const gateway of gateways) {
+      try {
+        await this.startGateway(gateway._id.toString());
+      } catch (error) {
+        console.error(`❌ Failed to restore gateway ${gateway.name}:`, (error as Error).message);
+        // Mark as error so the UI reflects the real state
+        gateway.status = 'error';
+        gateway.lastError = `Failed to restore after restart: ${(error as Error).message}`;
+        await gateway.save();
+      }
+    }
   }
 
   /**

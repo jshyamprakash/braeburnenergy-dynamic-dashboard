@@ -51,8 +51,10 @@ export default function LoginPage() {
       toast.success('Login successful!');
       // Redirect happens automatically via useEffect above
     } catch (err) {
-      // Error is handled by AuthContext and displayed below
-      const errorMessage = err instanceof Error ? err.message : 'Login failed';
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : (err as { message?: string })?.message || 'Login failed';
       toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);

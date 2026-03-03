@@ -6,6 +6,7 @@ import { initializeTimeSeriesCollections } from './models';
 import { WorkflowService } from './services/workflow.service';
 import { WorkflowEngineService } from './services/workflow-engine.service';
 import { WorkflowTriggerDispatcher } from './services/workflow-trigger-dispatcher.service';
+import { modbusGatewayManager } from './services/modbus-gateway-manager.service';
 
 /**
  * Application Entry Point
@@ -45,6 +46,9 @@ async function main() {
       fastify.log as any
     );
     fastify.decorate('triggerDispatcher', triggerDispatcher);
+
+    // Register trigger dispatcher with Modbus gateway manager (for workflow dispatch on polling)
+    modbusGatewayManager.setTriggerDispatcher(triggerDispatcher, fastify.log as any);
 
     // Now start the server
     await fastify.listen({

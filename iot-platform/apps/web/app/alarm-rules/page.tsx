@@ -11,7 +11,6 @@ import {
   unshelveAlarmRule,
   type AlarmRule,
 } from '@/lib/store/slices/alarmSlice';
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Plus, Trash2, Clock, CheckCircle } from 'lucide-react';
 
 const priorityColors: Record<string, string> = {
@@ -352,8 +351,8 @@ function AlarmRulesContent() {
 
 export default function AlarmRulesPage() {
   return (
-    <ProtectedRoute>
+    <>
       <AlarmRulesContent />
-    </ProtectedRoute>
+    </>
   );
 }

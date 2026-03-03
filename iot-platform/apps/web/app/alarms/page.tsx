@@ -10,7 +10,6 @@ import {
   setFilterState,
   setFilterPriority,
 } from '@/lib/store/slices/alarmSlice';
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { AlertCircle, Bell, Clock } from 'lucide-react';
 
 const stateColors: Record<string, { bg: string; text: string; badge: string }> = {
@@ -228,8 +227,8 @@ function AlarmContent() {
 
 export default function AlarmsPage() {
   return (
-    <ProtectedRoute>
+    <>
       <AlarmContent />
-    </ProtectedRoute>
+    </>
   );
 }

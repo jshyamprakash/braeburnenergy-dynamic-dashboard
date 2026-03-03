@@ -24,7 +24,7 @@
 - Visual Workflow Editor Week 5.3: Node Copy-Paste (Ctrl+C/V, in-memory clipboard, offset paste, hook extension, help modal update)
 - E2E Tests: Workflow Editor Critical Paths (Playwright setup, auth mocking, 3 tests for list/template/canvas)
 - Alarm Management Dashboard (Redux alarmSlice, /alarms & /alarm-rules pages, real-time WebSocket feed, role-based actions)
-- Modbus Gateway UI (list page, create/edit modal, detail view, start/stop polling, test connection, TCP/RTU conditional forms)
+- Modbus Gateway UI — REVERTED (page never implemented in web app; re-queued as active task 2026-03-03)
 - Audit Log Viewer (EPA 21 CFR Part 11 compliant, statistics bar, filter bar, paginated table, detail panel, CSV export)
 - Data Quality Dashboard (EPA QAPP quality scores per device, validation rules table, water quality compliance reports, sampling requirements)
 - User Guide Documentation (/guide page, 9 content sections, CodeBlock component, IntersectionObserver TOC tracking, print support)
@@ -155,7 +155,7 @@
 
 ## In Progress
 
-(None)
+- Modbus Gateway Management UI (10 tasks: hooks, list page, create/edit modal, detail panel, app detail tab, sidebar nav)
 
 ## Backlog
 

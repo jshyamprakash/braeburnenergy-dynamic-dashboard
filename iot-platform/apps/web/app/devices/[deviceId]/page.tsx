@@ -7,7 +7,6 @@ import { useDevice } from '@/lib/hooks/useDevices';
 import { useDeviceStates, useLatestDeviceState } from '@/lib/hooks/useDeviceStates';
 import { useDeviceStateUpdates } from '@/lib/hooks/useWebSocket';
 import type { DeviceState } from '@/lib/types';
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { toast } from 'sonner';
 
 export default function DeviceDetailPage() {
@@ -36,7 +35,7 @@ export default function DeviceDetailPage() {
   const currentState = realtimeState || latestState;
 
   return (
-    <ProtectedRoute>
+    <>
       {deviceLoading ? (
         <div className="bg-white shadow sm:rounded-lg p-6">
           <p className="text-gray-500">Loading device...</p>
@@ -260,6 +259,6 @@ export default function DeviceDetailPage() {
       </div>
     </div>
       )}
-    </ProtectedRoute>
+    </>
   );
 }

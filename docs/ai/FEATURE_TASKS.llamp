@@ -1,2 +1,34 @@
-// LLAMP-SPEC v1 | FEATURE_TASKS
-// (empty — no active task)
+// LLAMP-SPEC v1 | FEATURE_TASKS — Modbus Gateway UI Verify & Polish
+// ver: 1.1 | updated: 2026-03-03
+// target: @haiku
+
+=tasks: [
+
+  { id:1, status:pending, title:"Seed DB with one Modbus gateway",
+    detail:"POST to /modbus-gateways: name='Water Treatment', protocol=tcp, host=localhost, port=1502, slaveId=1, 4 registers (temperature/input/0/int16, pressure/input/1/int16, flow_rate/input/2/int16, pump_status/coil/0/boolean). Use curl or update seed script." },
+
+  { id:2, status:pending, title:"Verify /modbus-gateways list page",
+    detail:"Navigate to /modbus-gateways. Confirm table renders with gateway row, status badge, polling interval. No console errors. Loading skeleton shown during fetch." },
+
+  { id:3, status:pending, title:"Verify GatewayModal TCP/RTU field switching",
+    detail:"Open create modal. Switch protocol between TCP and RTU. Confirm host+port visible for TCP, serialPort+baudRate visible for RTU. Confirm mutual exclusion." },
+
+  { id:4, status:pending, title:"Verify register rows in GatewayModal",
+    detail:"Add 4 registers (temperature/input/0, pressure/input/1, flow_rate/input/2, pump_status/coil/0). Confirm rows add/remove. Submit — confirm gateway created via API response." },
+
+  { id:5, status:pending, title:"Verify GatewayTable edit/delete",
+    detail:"Edit a gateway — confirm modal pre-fills existing values. Delete a gateway — confirm row removed + sonner toast shown." },
+
+  { id:6, status:pending, title:"Verify GatewayDetailPanel start/stop/test",
+    detail:"Click row to open detail panel. Start modbus simulator (node scripts/modbus-simulator.js 1502). Click Test Connection — confirm toast. Click Start — confirm status changes. Click Stop — confirm stopped." },
+
+  { id:7, status:pending, title:"Verify ModbusTab inside Application Detail",
+    detail:"Navigate to /applications/[id] — click Modbus tab — confirm gateways filtered by applicationId shown. Add Gateway button opens modal with applicationId pre-filled." },
+
+  { id:8, status:pending, title:"Fix verified bugs only",
+    detail:"Fix only defects found in T2-T7. No speculative improvements." },
+
+  { id:9, status:pending, title:"Final build check",
+    detail:"pnpm build --filter=web — must pass with 0 TypeScript errors." }
+
+]

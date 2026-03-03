@@ -4,12 +4,17 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useAuth } from '@/lib/hooks/useAuth';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export function TopBar() {
   const router = useRouter();
   const { user, isAuthenticated, logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <div className="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 sm:px-6 lg:px-8 sticky top-0 z-40">
@@ -23,8 +28,8 @@ export function TopBar() {
       <div className="flex items-center gap-4">
         <ThemeToggle />
 
-        {/* User Menu */}
-        {isAuthenticated && user ? (
+        {/* User Menu — defer until mounted to avoid SSR/client hydration mismatch */}
+        {mounted && isAuthenticated && user ? (
           <div className="relative">
             <button
               onClick={() => setShowUserMenu(!showUserMenu)}

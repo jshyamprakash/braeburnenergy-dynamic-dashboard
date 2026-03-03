@@ -15,7 +15,6 @@ import ExecutionHistoryModal from '@/components/workflow/ExecutionHistoryModal';
 import ValidationPanel from '@/components/workflow/ValidationPanel';
 import KeyboardShortcutsHelp from '@/components/workflow/KeyboardShortcutsHelp';
 import ContextDebugPanel from '@/components/workflow/ContextDebugPanel';
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { useWorkflowKeyboardShortcuts } from '@/hooks/useWorkflowKeyboardShortcuts';
 import { exportWorkflowToJSON } from '@/lib/utils/workflow-export';
 import { apiClient } from '@/lib/api-client';
@@ -121,18 +120,18 @@ function WorkflowBuilderPage() {
     workflowId, // Only subscribe when we have a workflow ID
     // Handle step updates
     (step) => {
-      dispatch(addExecutionLogEntry(step));
+      dispatch(addExecutionLogEntry(step as any));
     },
     // Handle completion
     (completion) => {
       dispatch(completeExecutionStream({
-        status: completion.status,
-        error: completion.error?.message,
+        status: (completion as any).status,
+        error: (completion as any).error?.message,
       }));
     },
     // Handle debug messages
     (debugMsg) => {
-      dispatch(addDebugMessage(debugMsg));
+      dispatch(addDebugMessage(debugMsg as any));
     }
   );
 
@@ -464,8 +463,8 @@ function WorkflowBuilderPage() {
 // Wrap with ProtectedRoute
 export default function Page() {
   return (
-    <ProtectedRoute>
+    <>
       <WorkflowBuilderPage />
-    </ProtectedRoute>
+    </>
   );
 }

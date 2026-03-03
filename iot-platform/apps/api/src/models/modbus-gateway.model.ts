@@ -58,6 +58,7 @@ export interface IModbusDeviceMapping {
 export interface IModbusGateway extends Document {
   _id: mongoose.Types.ObjectId;
   orgId: mongoose.Types.ObjectId;         // Organization ID (multi-tenancy)
+  applicationId?: string;                 // Application scope (ULID) — required for auto-device-registration
   name: string;                           // Gateway name
   description?: string;                   // Optional description
   protocol: ModbusProtocol;               // Modbus protocol
@@ -135,6 +136,7 @@ const ModbusGatewaySchema = new Schema<IModbusGateway>(
       ref: 'Organization',
       index: true
     },
+    applicationId: { type: String, index: true },   // ULID — scope for auto-device-registration
     name: { type: String, required: true },
     description: { type: String },
     protocol: { type: String, required: true, enum: ['tcp', 'rtu'] },

@@ -53,14 +53,17 @@
 // ── S1: SESSION ANCHOR (run on every new session) ──
 @self #anchor
 cmd: read seq=[
-  docs/ai/ARCH_SUMMARY.llamp,          // model reads from .llamp (human reads .md)
-  docs/ai/BACKEND_PATTERNS.llamp,      // backend lib/controller/route/service conventions
+  docs/ai/ARCH_SUMMARY.llamp,                                        // always
+  docs/ai/BACKEND_PATTERNS.llamp  ?if:task.type==backend|api|db,     // backend tasks only
+  docs/ai/FRONTEND_PATTERNS.llamp ?if:task.type==frontend|ui|hook,   // frontend tasks only
   docs/ai/ADR/           !filenames_only !format:*.llamp,
   docs/ai/AI_PROTOCOL.llamp ?if:exists,
   docs/ai/TASK_HISTORY.md ?if:exists,
   docs/ai/CURRENT_TASK.llamp ?if:exists,
   docs/ai/CURRENT_DECISIONS.llamp ?if:exists
 ]
+// task.type is read from CURRENT_TASK.llamp → =task.type field
+// if no CURRENT_TASK.llamp exists: load both patterns files (safe default)
 !no_full_scan           // scan full repo only if: new_task|drift|explicit
 <text: "Anchored. Ready."
 
@@ -206,13 +209,15 @@ cmd: step [
 
 // ── S9: DOC CONSTRAINTS & FORMAT MAP ──
 =limits: {
-  ARCH_SUMMARY.llamp:      40ln  !format:llamp-spec-v1,    // model reads
-  ARCH_SUMMARY.md:         40ln  !format:natural_language, // human reads (keep both)
-  ADR/*.llamp:             40ln  !format:llamp-spec-v1,
-  CURRENT_TASK.llamp:      40ln  !format:llamp-spec-v1,
-  FEATURE_TASKS.llamp:     15tasks !format:llamp-spec-v1,
-  CURRENT_DECISIONS.llamp: 40ln  !format:llamp-spec-v1,
-  TASK_HISTORY.md:         80ln  !format:natural_language  // human reads only
+  ARCH_SUMMARY.llamp:       40ln  !format:llamp-spec-v1,    // model reads
+  ARCH_SUMMARY.md:          40ln  !format:natural_language, // human reads (keep both)
+  BACKEND_PATTERNS.llamp:   no_limit !format:llamp-spec-v1, // backend conventions ref
+  FRONTEND_PATTERNS.llamp:  no_limit !format:llamp-spec-v1, // frontend conventions ref
+  ADR/*.llamp:              40ln  !format:llamp-spec-v1,
+  CURRENT_TASK.llamp:       40ln  !format:llamp-spec-v1,
+  FEATURE_TASKS.llamp:      15tasks !format:llamp-spec-v1,
+  CURRENT_DECISIONS.llamp:  40ln  !format:llamp-spec-v1,
+  TASK_HISTORY.md:          80ln  !format:natural_language  // human reads only
 }
 !no_expand_beyond_limits
 

@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Provider as ReduxProvider } from 'react-redux';
 import { useState, type ReactNode } from 'react';
 import { store } from './store';
+import { WebSocketProvider } from './providers/WebSocketProvider';
 
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -22,7 +23,9 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <ReduxProvider store={store}>
       <QueryClientProvider client={queryClient}>
-        {children}
+        <WebSocketProvider>
+          {children}
+        </WebSocketProvider>
       </QueryClientProvider>
     </ReduxProvider>
   );

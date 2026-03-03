@@ -1,26 +1,14 @@
 'use client';
 
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { apiClient } from '@/lib/api-client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 import { Copy, Trash2, Edit2, Plus, Check } from 'lucide-react';
-
-interface Organization {
-  _id: string;
-  id: string;
-  name: string;
-  slug: string;
-  settings?: Record<string, any>;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface OrgStats {
-  deviceCount: number;
-  stateCount: number;
-}
+import { useQueryClient } from '@tanstack/react-query';
+import { useOrganizations, organizationKeys, type Organization, type OrgStats } from '@/lib/hooks/useOrganizations';
+import { TableRowSkeleton } from '@/components/ui/Skeleton';
+import { useDebounce } from '@/lib/hooks/useDebounce';
 
 // Utility: Generate slug from name
 function generateSlug(name: string): string {
@@ -40,17 +28,6 @@ function formatDate(dateString: string): string {
   });
 }
 
-// Utility: Debounce hook
-function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState(value);
-
-  useEffect(() => {
-    const handler = setTimeout(() => setDebouncedValue(value), delay);
-    return () => clearTimeout(handler);
-  }, [value, delay]);
-
-  return debouncedValue;
-}
 
 function CreateEditModal({
   organization,
@@ -244,61 +221,26 @@ function DeleteConfirmModal({
 
 function OrganizationsContent() {
   const { user } = useAuth();
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [stats, setStats] = useState<Record<string, OrgStats>>({});
+  const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [offset, setOffset] = useState(0);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
   const [editingOrg, setEditingOrg] = useState<Organization | null>(null);
   const [deletingOrg, setDeletingOrg] = useState<Organization | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [stats, setStats] = useState<Record<string, OrgStats>>({});
 
   const isSuperAdmin = user?.role === 'SuperAdmin';
   const debouncedSearch = useDebounce(search, 300);
   const limit = 10;
 
-  const fetchOrganizations = useCallback(async () => {
-    try {
-      const params = new URLSearchParams({
-        limit: limit.toString(),
-        offset: offset.toString(),
-      });
-      if (debouncedSearch) {
-        params.append('search', debouncedSearch);
-      }
+  const { data, isLoading } = useOrganizations({
+    search: debouncedSearch,
+    limit,
+    offset,
+  });
 
-      const response = await apiClient.get<any>(`/organizations?${params.toString()}`);
-      setOrganizations(response.data || []);
-      setTotal((response as any).pagination?.total || 0);
-
-      // Fetch stats for all organizations in parallel
-      if (response.data && response.data.length > 0) {
-        const statsPromises = response.data.map((org: Organization) =>
-          apiClient.get<OrgStats>(`/organizations/${org._id}/stats`)
-            .then((res) => ({ [org._id]: res.data }))
-            .catch(() => ({ [org._id]: { deviceCount: 0, stateCount: 0 } }))
-        );
-
-        const statsResults = await Promise.all(statsPromises);
-        const statsMap = statsResults.reduce((acc, curr) => ({ ...acc, ...curr }), {});
-        setStats(statsMap);
-      }
-    } catch (error) {
-      toast.error('Failed to fetch organizations');
-    } finally {
-      setLoading(false);
-    }
-  }, [offset, debouncedSearch]);
-
-  useEffect(() => {
-    setLoading(true);
-    setOffset(0);
-  }, [debouncedSearch]);
-
-  useEffect(() => {
-    fetchOrganizations();
-  }, [offset, debouncedSearch, fetchOrganizations]);
+  const organizations = data?.data ?? [];
+  const total = data?.pagination?.total ?? 0;
 
   const handleCopySlug = (slug: string) => {
     navigator.clipboard.writeText(slug);
@@ -344,8 +286,14 @@ function OrganizationsContent() {
       </div>
 
       {/* Table */}
-      {loading ? (
-        <div className="text-center py-8">Loading organizations...</div>
+      {isLoading ? (
+        <div className="rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 overflow-hidden">
+          <table className="w-full">
+            <tbody>
+              {[...Array(5)].map((_, i) => <TableRowSkeleton key={i} cols={6} />)}
+            </tbody>
+          </table>
+        </div>
       ) : organizations.length === 0 ? (
         <div className="text-center py-12 border rounded-lg border-gray-200 dark:border-gray-700">
           <p className="text-gray-600 dark:text-gray-400">
@@ -459,7 +407,7 @@ function OrganizationsContent() {
             setShowCreateModal(false);
             setEditingOrg(null);
           }}
-          onSave={() => fetchOrganizations()}
+          onSave={() => qc.invalidateQueries({ queryKey: organizationKeys.all })}
         />
       ) : null}
 
@@ -467,7 +415,7 @@ function OrganizationsContent() {
         <DeleteConfirmModal
           organization={deletingOrg}
           onClose={() => setDeletingOrg(null)}
-          onDelete={() => fetchOrganizations()}
+          onDelete={() => qc.invalidateQueries({ queryKey: organizationKeys.all })}
         />
       )}
     </div>
@@ -476,12 +424,10 @@ function OrganizationsContent() {
 
 export default function OrganizationsPage() {
   return (
-    <ProtectedRoute>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl">
-          <OrganizationsContent />
-        </div>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl">
+        <OrganizationsContent />
       </div>
-    </ProtectedRoute>
+    </div>
   );
 }

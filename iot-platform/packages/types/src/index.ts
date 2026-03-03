@@ -295,3 +295,88 @@ export interface WorkflowDebugMessageEvent {
   rawData: any;
   timestamp: string;
 }
+
+// ===========================
+// Modbus Gateway Types
+// ===========================
+
+/**
+ * Modbus gateway connection configuration
+ */
+export interface ModbusConnection {
+  host?: string;              // TCP: hostname/IP
+  port?: number;              // TCP: port (default 502)
+  serialPort?: string;        // RTU: /dev/ttyUSB0 or COM3
+  baudRate?: number;          // RTU: 9600, 19200, etc
+  unitId: number;             // Modbus slave ID (1-247)
+}
+
+/**
+ * Modbus polling configuration
+ */
+export interface ModbusPolling {
+  enabled: boolean;
+  interval: number;           // milliseconds
+}
+
+/**
+ * Modbus register mapping
+ */
+export interface ModbusRegister {
+  name: string;
+  address: number;
+  type: 'holding' | 'input' | 'coil' | 'discrete';
+  dataType: 'int16' | 'uint16' | 'int32' | 'uint32' | 'float' | 'boolean';
+  deviceId?: string;          // Optional: map to device
+  scale?: number;
+  offset?: number;
+  unit?: string;
+}
+
+/**
+ * Modbus gateway entity
+ */
+export interface ModbusGateway {
+  id: string;
+  gatewayId?: string;         // ULID if stored
+  name: string;
+  description?: string;
+  applicationId?: string;     // ADR-036: scoped to application
+  protocol: 'tcp' | 'rtu';
+  connection: ModbusConnection;
+  polling: ModbusPolling;
+  registers: ModbusRegister[];
+  deviceMapping?: { autoRegister: boolean; deviceIdPrefix?: string };
+  status: 'connected' | 'disconnected' | 'error';
+  lastConnected?: string | Date;
+  lastError?: string;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+}
+
+/**
+ * Create Modbus gateway input
+ */
+export interface CreateModbusGatewayInput {
+  name: string;
+  description?: string;
+  applicationId?: string;
+  protocol: 'tcp' | 'rtu';
+  connection: ModbusConnection;
+  polling: ModbusPolling;
+  registers?: ModbusRegister[];
+  deviceMapping?: { autoRegister: boolean; deviceIdPrefix?: string };
+}
+
+/**
+ * Update Modbus gateway input
+ */
+export interface UpdateModbusGatewayInput {
+  name?: string;
+  description?: string;
+  protocol?: 'tcp' | 'rtu';
+  connection?: Partial<ModbusConnection>;
+  polling?: Partial<ModbusPolling>;
+  registers?: ModbusRegister[];
+  deviceMapping?: { autoRegister: boolean; deviceIdPrefix?: string };
+}

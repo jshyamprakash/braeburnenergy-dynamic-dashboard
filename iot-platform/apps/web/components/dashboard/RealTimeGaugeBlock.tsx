@@ -75,7 +75,7 @@ export function RealTimeGaugeBlock({
       <GaugeBlock
         {...gaugeProps}
         value={currentValue}
-        lastUpdated={latestState?.timestamp}
+        lastUpdated={latestState?.timestamp instanceof Date ? latestState.timestamp.toISOString() : latestState?.timestamp}
       />
     </div>
   );

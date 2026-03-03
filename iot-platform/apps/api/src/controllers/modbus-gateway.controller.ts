@@ -23,7 +23,7 @@ export class ModbusGatewayController {
   }
 
   async listGateways(
-    request: FastifyRequest<{ Querystring: { page?: string; limit?: string; protocol?: string; status?: string } }>,
+    request: FastifyRequest<{ Querystring: { page?: string; limit?: string; protocol?: string; status?: string; applicationId?: string } }>,
     reply: FastifyReply
   ) {
     const { orgId } = getRequestContext(request);
@@ -34,6 +34,7 @@ export class ModbusGatewayController {
     const filter: any = { orgId: new mongoose.Types.ObjectId(orgId) };
     if (request.query.protocol) filter.protocol = request.query.protocol;
     if (request.query.status) filter.status = request.query.status;
+    if (request.query.applicationId) filter.applicationId = request.query.applicationId;
 
     const [gateways, total] = await Promise.all([
       ModbusGateway.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),

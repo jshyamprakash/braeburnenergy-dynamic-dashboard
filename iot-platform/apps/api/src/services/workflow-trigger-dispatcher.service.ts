@@ -21,8 +21,74 @@ export class WorkflowTriggerDispatcher {
   ) {}
 
   /**
+   * Dispatch device state change event to matching workflows (batch mode)
+   * Fires each matching workflow ONCE per device state change, regardless of field count.
+   * Uses trigger node's config.field as a filter hint only.
+   * Called after successful device state save (fire-and-forget)
+   */
+  async dispatchDeviceStateBatch(
+    orgId: string,
+    deviceId: string,
+    data: Record<string, any>,
+    stateData: IDeviceState
+  ): Promise<void> {
+    try {
+      // Query workflows that match this trigger (device filter only, no field)
+      const workflows = await this.workflowService.findTriggerWorkflows(
+        orgId,
+        'trigger:deviceStateChange',
+        { deviceId }
+      );
+
+      // Fire each matching workflow (fire-and-forget)
+      for (const workflow of workflows) {
+        // Check if this workflow's trigger node has a field filter
+        const triggerNode = workflow.nodes?.find((n: any) => n.type === 'trigger:deviceStateChange');
+        const fieldFilter = triggerNode?.data?.config?.field;
+
+        // If field filter is set, only match if that field exists in data
+        if (fieldFilter && !(fieldFilter in data)) {
+          continue;
+        }
+
+        this.workflowEngineService
+          .execute(workflow.workflowId, {
+            type: 'deviceStateChange',
+            source: deviceId,
+            data: {
+              deviceId,
+              stateId: (stateData as any)._id?.toString(),
+              // ADR-037: workspace = device_states.data (raw telemetry snapshot)
+              // Supports nested paths: {{workspace.meter_Params.frequence}}
+              workspace: data,
+              timestamp: stateData.timestamp,
+            },
+          })
+          .catch(err => {
+            this.logger.error(
+              {
+                err,
+                workflowId: workflow.workflowId,
+                deviceId,
+              },
+              'Workflow execution failed in dispatcher'
+            );
+          });
+      }
+    } catch (err) {
+      this.logger.error(
+        { err, orgId, deviceId },
+        'Error dispatching device state batch'
+      );
+    }
+  }
+
+  /**
    * Dispatch device state change event to matching workflows
    * Called after successful device state save (fire-and-forget)
+   *
+   * @deprecated Use dispatchDeviceStateBatch instead.
+   * Kept for backwards compatibility but not called from any callers.
    */
   async dispatchDeviceStateChange(
     orgId: string,

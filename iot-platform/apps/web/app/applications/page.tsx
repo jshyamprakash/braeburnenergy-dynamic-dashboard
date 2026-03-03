@@ -1,18 +1,16 @@
 'use client';
 
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { apiClient } from '@/lib/api-client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Copy, Trash2, Edit2, Plus, ToggleLeft, ToggleRight } from 'lucide-react';
 import Link from 'next/link';
-import type { Application, PaginatedResponse } from '@repo/types';
-
-interface AppStats {
-  deviceCount: number;
-  workflowCount: number;
-}
+import { useQueryClient } from '@tanstack/react-query';
+import { useApplications, applicationKeys } from '@/lib/hooks/useApplications';
+import { TableRowSkeleton } from '@/components/ui/Skeleton';
+import { useDebounce } from '@/lib/hooks/useDebounce';
+import type { Application } from '@repo/types';
 
 function generateSlug(name: string): string {
   return name
@@ -30,16 +28,6 @@ function formatDate(dateString: string): string {
   });
 }
 
-function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState(value);
-
-  useEffect(() => {
-    const handler = setTimeout(() => setDebouncedValue(value), delay);
-    return () => clearTimeout(handler);
-  }, [value, delay]);
-
-  return debouncedValue;
-}
 
 function CreateEditModal({
   application,
@@ -261,12 +249,9 @@ function DeleteConfirmModal({
 
 function ApplicationsContent() {
   const { user } = useAuth();
-  const [applications, setApplications] = useState<Application[]>([]);
-  const [stats, setStats] = useState<Record<string, AppStats>>({});
+  const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [offset, setOffset] = useState(0);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
   const [editingApp, setEditingApp] = useState<Application | null>(null);
   const [deletingApp, setDeletingApp] = useState<Application | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -275,43 +260,14 @@ function ApplicationsContent() {
   const debouncedSearch = useDebounce(search, 300);
   const limit = 10;
 
-  const fetchApplications = useCallback(async () => {
-    try {
-      const params = new URLSearchParams({
-        limit: limit.toString(),
-        offset: offset.toString(),
-      });
-      if (debouncedSearch) {
-        params.append('search', debouncedSearch);
-      }
+  const { data, isLoading } = useApplications({
+    search: debouncedSearch,
+    limit,
+    offset,
+  });
 
-      const response = await apiClient.get<any>(`/applications?${params.toString()}`);
-      setApplications(response.data || []);
-      setTotal((response as any).pagination?.total || 0);
-
-      // For now, set default stats (backend doesn't return device/workflow counts in list)
-      if (response.data && response.data.length > 0) {
-        const defaultStats: Record<string, AppStats> = {};
-        response.data.forEach((app: Application) => {
-          defaultStats[app.applicationId] = { deviceCount: 0, workflowCount: 0 };
-        });
-        setStats(defaultStats);
-      }
-    } catch (error) {
-      toast.error('Failed to fetch applications');
-    } finally {
-      setLoading(false);
-    }
-  }, [offset, debouncedSearch]);
-
-  useEffect(() => {
-    setLoading(true);
-    setOffset(0);
-  }, [debouncedSearch]);
-
-  useEffect(() => {
-    fetchApplications();
-  }, [offset, debouncedSearch, fetchApplications]);
+  const applications = data?.data ?? [];
+  const total = data?.pagination?.total ?? 0;
 
   const handleCopySlug = (slug: string) => {
     navigator.clipboard.writeText(slug);
@@ -324,7 +280,7 @@ function ApplicationsContent() {
         isActive: !app.isActive,
       });
       toast.success(`Application ${!app.isActive ? 'enabled' : 'disabled'}`);
-      fetchApplications();
+      qc.invalidateQueries({ queryKey: applicationKeys.all });
     } catch (error) {
       toast.error('Failed to update application');
     }
@@ -369,8 +325,14 @@ function ApplicationsContent() {
       </div>
 
       {/* Table */}
-      {loading ? (
-        <div className="text-center py-8">Loading applications...</div>
+      {isLoading ? (
+        <div className="rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 overflow-hidden">
+          <table className="w-full">
+            <tbody>
+              {[...Array(5)].map((_, i) => <TableRowSkeleton key={i} cols={5} />)}
+            </tbody>
+          </table>
+        </div>
       ) : applications.length === 0 ? (
         <div className="text-center py-12 border rounded-lg border-gray-200 dark:border-gray-700">
           <p className="text-gray-600 dark:text-gray-400">
@@ -511,7 +473,7 @@ function ApplicationsContent() {
             setShowCreateModal(false);
             setEditingApp(null);
           }}
-          onSave={() => fetchApplications()}
+          onSave={() => qc.invalidateQueries({ queryKey: applicationKeys.all })}
         />
       ) : null}
 
@@ -519,7 +481,7 @@ function ApplicationsContent() {
         <DeleteConfirmModal
           application={deletingApp}
           onClose={() => setDeletingApp(null)}
-          onDelete={() => fetchApplications()}
+          onDelete={() => qc.invalidateQueries({ queryKey: applicationKeys.all })}
         />
       )}
     </div>
@@ -528,12 +490,10 @@ function ApplicationsContent() {
 
 export default function ApplicationsPage() {
   return (
-    <ProtectedRoute>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl">
-          <ApplicationsContent />
-        </div>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl">
+        <ApplicationsContent />
       </div>
-    </ProtectedRoute>
+    </div>
   );
 }

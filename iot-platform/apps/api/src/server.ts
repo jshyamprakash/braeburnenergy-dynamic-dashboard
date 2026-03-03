@@ -49,8 +49,13 @@ export async function createServer() {
   });
 
   // Register CORS
+  // In development: allow all origins (supports IP-based access on local network).
+  // In production: allow only origins listed in CORS_ORIGIN (comma-separated).
+  const corsOrigin = config.isDevelopment
+    ? true
+    : config.cors.origin.split(',').map((o) => o.trim());
   await fastify.register(cors, {
-    origin: config.cors.origin,
+    origin: corsOrigin,
     credentials: config.cors.credentials,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'x-request-id'],
@@ -291,6 +296,12 @@ export async function startServer() {
     fastify.log.info(
       `Server listening on http://${config.server.host}:${config.server.port}`
     );
+
+    // Restore Modbus gateways that were running before this server restart
+    const { modbusGatewayManager } = await import('./services/modbus-gateway-manager.service');
+    modbusGatewayManager.restoreRunningGateways().catch((err) => {
+      fastify.log.error('Failed to restore Modbus gateways:', err);
+    });
 
     // Graceful shutdown
     const signals = ['SIGINT', 'SIGTERM'];

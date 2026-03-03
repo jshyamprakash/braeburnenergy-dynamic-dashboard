@@ -99,6 +99,32 @@ function clearAuthFromStorage() {
 }
 
 /**
+ * Set auth cookie for middleware
+ */
+function setAuthCookie(token: string) {
+  if (typeof document === 'undefined') return;
+
+  try {
+    document.cookie = `iot_access_token=${token}; path=/; SameSite=Lax`;
+  } catch (error) {
+    console.error('Failed to set auth cookie:', error);
+  }
+}
+
+/**
+ * Clear auth cookie
+ */
+function clearAuthCookie() {
+  if (typeof document === 'undefined') return;
+
+  try {
+    document.cookie = 'iot_access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+  } catch (error) {
+    console.error('Failed to clear auth cookie:', error);
+  }
+}
+
+/**
  * Initial state
  */
 const initialState: AuthState = {
@@ -152,6 +178,7 @@ const authSlice = createSlice({
       state.error = null;
 
       saveAuthToStorage(state);
+      setAuthCookie(action.payload.accessToken);
     },
 
     /**
@@ -166,6 +193,7 @@ const authSlice = createSlice({
       state.error = null;
 
       clearAuthFromStorage();
+      clearAuthCookie();
     },
 
     /**
@@ -182,6 +210,7 @@ const authSlice = createSlice({
       state.refreshToken = action.payload.refreshToken;
 
       saveAuthToStorage(state);
+      setAuthCookie(action.payload.accessToken);
     },
 
     /**

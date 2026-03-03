@@ -15,6 +15,7 @@ import {
   Users,
   Wifi,
   LayoutGrid,
+  Radio,
 } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/lib/store';
 import { toggleSidebar, selectSidebarOpen } from '@/lib/store/slices/uiSlice';
@@ -25,6 +26,7 @@ const menuItems = [
   { href: '/alarms', label: 'Alarms', icon: Bell },
   { href: '/alarm-rules', label: 'Rules', icon: Settings },
   { href: '/audit-logs', label: 'Audit Logs', icon: ClipboardList },
+  { href: '/modbus-gateways', label: 'Modbus', icon: Radio },
   { href: '/guide', label: 'Guide', icon: BookOpen },
   { href: '/retention-policies', label: 'Retention', icon: Archive },
   { href: '/organizations', label: 'Organizations', icon: Users },

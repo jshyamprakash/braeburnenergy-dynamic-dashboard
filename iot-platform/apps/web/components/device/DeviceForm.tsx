@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Modal } from './Modal';
+import { Modal } from '../Modal';
 import { useCreateDevice, useUpdateDevice } from '@/lib/hooks/useDevices';
 import type { Device } from '@repo/types';
 

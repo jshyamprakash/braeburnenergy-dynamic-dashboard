@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { apiClient } from '@/lib/api-client';
 import { Download, X, ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -414,8 +413,8 @@ function AuditLogContent() {
 
 export default function AuditLogsPage() {
   return (
-    <ProtectedRoute>
+    <>
       <AuditLogContent />
-    </ProtectedRoute>
+    </>
   );
 }

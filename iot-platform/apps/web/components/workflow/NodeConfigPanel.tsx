@@ -147,6 +147,7 @@ const NODE_CONFIG_SCHEMAS: Record<string, FieldConfig[]> = {
   'action:writeDeviceState': [
     { key: 'label', label: 'Node Label', type: 'text', placeholder: 'e.g., Structure Telemetry', required: true },
     { key: 'description', label: 'Description', type: 'textarea' },
+    { key: 'deviceId', label: 'Target Device', type: 'device-select', required: true },
     { key: 'mappings', label: 'Field Mappings', type: 'mapping-list', required: true },
   ],
   'transform:mapData': [
@@ -225,36 +226,6 @@ export default function NodeConfigPanel() {
   // Extract devices array from useDevices response
   const devices = devicesData?.devices || [];
 
-  // Fetch device attributes from linked application (ADR-023)
-  useEffect(() => {
-    if (!applicationId) {
-      setDeviceAttributes(null);
-      return;
-    }
-
-    const fetchDeviceAttributes = async () => {
-      try {
-        const response = await apiClient.get<any>(`/devices?limit=100&offset=0&applicationId=${applicationId}`);
-        const devices = response.data || [];
-
-        // Merge attributes from all devices in the application
-        const mergedAttrs: Record<string, string> = {};
-        devices.forEach((device: any) => {
-          if (device.attributes) {
-            Object.assign(mergedAttrs, device.attributes);
-          }
-        });
-
-        setDeviceAttributes(Object.keys(mergedAttrs).length > 0 ? mergedAttrs : null);
-      } catch (error) {
-        // Silently fail - devices may not be available
-        setDeviceAttributes(null);
-      }
-    };
-
-    fetchDeviceAttributes();
-  }, [applicationId]);
-
   // Get selected node
   const selectedNode = useMemo(() => {
     return nodes.find(n => n.id === selectedNodeId);
@@ -281,6 +252,56 @@ export default function NodeConfigPanel() {
     const rows: MappingRow[] = selectedNode?.data?.config?.mappings || [];
     setMappingRows(rows);
   }, [selectedNode?.id]);
+
+  // Fetch device attributes from linked application (ADR-023)
+  // For action:writeDeviceState, scope to the selected device only.
+  // For other nodes, fetch all devices and merge attributes.
+  useEffect(() => {
+    if (!applicationId) {
+      setDeviceAttributes(null);
+      return;
+    }
+
+    const fetchDeviceAttributes = async () => {
+      try {
+        const semanticType = selectedNode?.data?.nodeType ?? selectedNode?.type;
+        const selectedDeviceId = selectedNode?.data?.config?.deviceId;
+
+        // If this is a writeDeviceState node with a device selected, fetch only that device
+        if (semanticType === 'action:writeDeviceState' && selectedDeviceId) {
+          const response = await apiClient.get<any>(`/devices/${selectedDeviceId}`);
+          const device = response.data;
+          if (device?.attributes) {
+            setDeviceAttributes(device.attributes);
+          } else {
+            setDeviceAttributes(null);
+          }
+        } else if (semanticType === 'action:writeDeviceState') {
+          // writeDeviceState with no device selected — show no suggestions
+          setDeviceAttributes(null);
+        } else {
+          // For other node types, fetch all devices and merge attributes (fallback behavior)
+          const response = await apiClient.get<any>(`/devices?limit=100&offset=0&applicationId=${applicationId}`);
+          const devices = response.data || [];
+
+          // Merge attributes from all devices in the application
+          const mergedAttrs: Record<string, string> = {};
+          devices.forEach((device: any) => {
+            if (device.attributes) {
+              Object.assign(mergedAttrs, device.attributes);
+            }
+          });
+
+          setDeviceAttributes(Object.keys(mergedAttrs).length > 0 ? mergedAttrs : null);
+        }
+      } catch (error) {
+        // Silently fail - devices may not be available
+        setDeviceAttributes(null);
+      }
+    };
+
+    fetchDeviceAttributes();
+  }, [applicationId, selectedNode?.id, selectedNode?.data?.config?.deviceId, selectedNode?.data?.nodeType, selectedNode?.type]);
 
   if (!selectedNode) {
     return null;
