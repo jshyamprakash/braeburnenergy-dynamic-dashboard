@@ -428,6 +428,98 @@ async function main() {
     console.log(`⏭️  Updated Workflow B: ${wfBName}`);
   }
 
+  // ── 5.5. Workflow C — OPC-UA Node Monitor ────────────────────────────────────
+  const wfCName = 'OPC-UA Node Monitor';
+
+  const nodeC1 = ulid();
+  const nodeC2 = ulid();
+  const nodeC3 = ulid();
+
+  const wfCNodes = [
+    {
+      id: nodeC1,
+      type: 'trigger:deviceStateChange',
+      position: { x: 250, y: 50 },
+      data: {
+        label: 'OPC-UA Poll Trigger',
+        description: 'Fires when OPC-UA gateway publishes device state changes',
+        config: { deviceId: '', field: '' }, // Intentionally blank — triggers on ANY field from OPC-UA devices
+      },
+    },
+    {
+      id: nodeC2,
+      type: 'condition:comparison',
+      position: { x: 250, y: 200 },
+      data: {
+        label: 'Value Threshold Check',
+        description: 'Branches on whether value exceeds threshold',
+        config: {
+          field: '{{workspace}}', // Monitor workspace (OPC-UA published data)
+          operator: 'exists',
+          value: '',
+        },
+      },
+    },
+    {
+      id: nodeC3,
+      type: 'action:writeDeviceState',
+      position: { x: 250, y: 380 },
+      data: {
+        label: 'Persist OPC-UA Derived State',
+        description: 'Writes OPC-UA monitored values to derived state for dashboard display',
+        config: {
+          mappings: [
+            { key: '{{derived.opcua_last_read}}', expression: '{{trigger.timestamp}}' },
+          ],
+        },
+      },
+    },
+  ];
+
+  const wfCEdges = [
+    { id: `e-${nodeC1}-${nodeC2}`, source: nodeC1, target: nodeC2 },
+    { id: `e-${nodeC2}-${nodeC3}`, source: nodeC2, target: nodeC3, sourceHandle: 'true' },
+  ];
+
+  const existingWfC = await Workflow.findOne({ orgId: orgIdObj, name: wfCName }).lean();
+  if (!existingWfC) {
+    const wfC = new Workflow({
+      workflowId: ulid(),
+      name: wfCName,
+      description: 'Demonstrates OPC-UA gateway → device state → workflow trigger → derived state pipeline.',
+      tags: ['opcua', 'gateway'],
+      orgId: orgIdObj,
+      userId,
+      type: 'Application',
+      applicationId: POC_APPLICATION_ID,
+      nodes: wfCNodes,
+      edges: wfCEdges,
+      isEnabled: true,
+      priority: 'MEDIUM',
+      triggerType: extractTriggerType(wfCNodes as any),
+      executionCount: 0,
+      version: 1,
+      maxConcurrentExecutions: 1,
+      timeoutSeconds: 30,
+    });
+    await wfC.save();
+    console.log(`✅ Created Workflow C: ${wfCName}`);
+  } else {
+    await Workflow.updateOne(
+      { orgId: orgIdObj, name: wfCName },
+      {
+        $set: {
+          applicationId: POC_APPLICATION_ID,
+          nodes: wfCNodes,
+          edges: wfCEdges,
+          isEnabled: true,
+          triggerType: 'trigger:deviceStateChange',
+        },
+      }
+    );
+    console.log(`⏭️  Updated Workflow C: ${wfCName}`);
+  }
+
   // ── 6. Dashboard — IOT Operations Dashboard ────────────────────────────────
   console.log('\n📊 Building dashboard blocks...');
 
@@ -501,6 +593,7 @@ async function main() {
   console.log('  🔔 OHT turbidity alarm rule    (OHT-TURBIDITY-H, threshold > 4 NTU)');
   console.log('  ⚡ Workflow A enabled           Streetlight Power Quality Monitor');
   console.log('  💧 Workflow B enabled           OHT Water Quality Monitor');
+  console.log('  🛰️  Workflow C enabled           OPC-UA Node Monitor (gateway integration)');
   console.log('  📊 Dashboard created            IOT Operations Dashboard (13 gauges)');
   console.log('\nNext steps:');
   console.log('  1. http://localhost:3000/dashboards    — open dashboard');

@@ -6,7 +6,9 @@ import { initializeTimeSeriesCollections } from './models';
 import { WorkflowService } from './services/workflow.service';
 import { WorkflowEngineService } from './services/workflow-engine.service';
 import { WorkflowTriggerDispatcher } from './services/workflow-trigger-dispatcher.service';
+import { workflowSchedulerService } from './services/workflow-scheduler.service';
 import { modbusGatewayManager } from './services/modbus-gateway-manager.service';
+import { opcuaGatewayManager } from './services/opcua-gateway-manager.service';
 
 /**
  * Application Entry Point
@@ -50,6 +52,13 @@ async function main() {
     // Register trigger dispatcher with Modbus gateway manager (for workflow dispatch on polling)
     modbusGatewayManager.setTriggerDispatcher(triggerDispatcher, fastify.log as any);
 
+    // Register trigger dispatcher with OPC-UA gateway manager (for workflow dispatch on polling)
+    opcuaGatewayManager.setTriggerDispatcher(triggerDispatcher, fastify.log as any);
+
+    // Start workflow scheduler for trigger:scheduled workflows
+    console.log('⏰ Starting workflow scheduler...');
+    await workflowSchedulerService.start(workflowEngineService, fastify.log as any);
+
     // Now start the server
     await fastify.listen({
       port: config.server.port,
@@ -68,6 +77,7 @@ async function main() {
     signals.forEach((signal) => {
       process.on(signal, async () => {
         fastify.log.info(`Received ${signal}, closing server gracefully...`);
+        workflowSchedulerService.stop();
         await fastify.close();
         await disconnectDB();
         process.exit(0);

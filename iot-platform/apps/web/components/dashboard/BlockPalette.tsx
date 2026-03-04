@@ -61,6 +61,16 @@ export function BlockPalette({ onAddBlock, onClose }: BlockPaletteProps) {
         </svg>
       ),
     },
+    {
+      type: 'statusText',
+      name: 'Status Indicator',
+      description: 'Color-coded status badge from a derived state field',
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9.348 14.651a3.75 3.75 0 002.604 1.076h.001c1.447 0 2.809-.633 3.753-1.646m-6.479-6.479a3.75 3.75 0 00-2.604 1.076m0 0H3.75m0 0v2.25M3 12.75a9 9 0 1118 0 9 9 0 01-18 0z" />
+        </svg>
+      ),
+    },
   ];
 
   return (

@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { WorkflowController } from '../controllers/workflow.controller';
+import { workflowSchedulerService } from '../services/workflow-scheduler.service';
 import {
   createWorkflowSchema,
   updateWorkflowSchema,
@@ -200,7 +201,13 @@ export async function workflowRoutes(fastify: FastifyInstance) {
       },
     },
     preHandler: [requireAuth, requirePermission('workflow:update'), zodBodyValidator(updateWorkflowSchema)],
-  }, (req: any, reply: any) => workflowController.update(req, reply));
+  }, async (req: any, reply: any) => {
+    const result = await workflowController.update(req, reply);
+    // Fire-and-forget reschedule if this workflow has a scheduled trigger
+    workflowSchedulerService.rescheduleWorkflow(req.params.workflowId)
+      .catch(err => fastify.log.warn({ err }, 'Scheduler reschedule failed'));
+    return result;
+  });
 
   // Delete workflow
   fastify.delete('/workflows/:workflowId', {
@@ -219,7 +226,12 @@ export async function workflowRoutes(fastify: FastifyInstance) {
       },
     },
     preHandler: [requireAuth, requirePermission('workflow:delete')],
-  }, (req: any, reply: any) => workflowController.delete(req, reply));
+  }, async (req: any, reply: any) => {
+    const result = await workflowController.delete(req, reply);
+    // Unschedule the workflow after deletion
+    workflowSchedulerService.unscheduleWorkflow(req.params.workflowId);
+    return result;
+  });
 
   // Execute workflow
   fastify.post('/workflows/:workflowId/execute', {

@@ -51,7 +51,7 @@ const NODE_TYPES: NodeTypeConfig[] = [
     label: 'Scheduled',
     description: 'Run on a cron schedule',
     icon: '⏰',
-    defaultConfig: { cronExpression: '0 0 * * *' },
+    defaultConfig: { cronExpression: '0 0 * * *', timezone: 'UTC' },
   },
   {
     type: 'trigger:alarmTriggered',

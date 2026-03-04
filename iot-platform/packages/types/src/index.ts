@@ -542,3 +542,29 @@ export const OpcuaNodeClass = {
   DataType: 64,
   View: 128,
 } as const;
+
+/**
+ * Notification - Workflow-triggered or system notification
+ */
+export interface Notification {
+  _id?: string;
+  notificationId: string;
+  orgId?: string;
+  title: string;
+  message: string;
+  severity: 'INFO' | 'WARNING' | 'CRITICAL';
+  source: 'workflow' | 'system';
+  workflowId?: string;
+  workflowName?: string;
+  read: boolean;
+  createdAt: string | Date;
+}
+
+/**
+ * Notification list response
+ */
+export interface NotificationListResponse {
+  data: Notification[];
+  total: number;
+  unreadCount: number;
+}

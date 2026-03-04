@@ -25,7 +25,7 @@ export class WorkflowEngineService {
 
   constructor(io?: SocketIOServer) {
     this.workflowService = new WorkflowService();
-    this.nodeHandlers = new WorkflowNodeHandlers();
+    this.nodeHandlers = new WorkflowNodeHandlers(io);
     this.io = io;
   }
 

@@ -456,6 +456,101 @@ export function BlockConfigPanel({ block, onUpdate, onClose, applicationId }: Bl
         );
       }
 
+      case 'statusText':
+        return (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Title
+              </label>
+              <input
+                type="text"
+                value={config.title || ''}
+                onChange={(e) => handleChange('title', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+                placeholder="Status Indicator"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Device
+              </label>
+              <select
+                value={config.deviceId || ''}
+                onChange={(e) => handleChange('deviceId', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Select a device</option>
+                {filteredDevices.map((device) => (
+                  <option key={device.deviceId} value={device.deviceId}>
+                    {device.name} ({device.deviceId.slice(-6)})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Derived Field Name
+              </label>
+              <input
+                type="text"
+                value={config.field || ''}
+                onChange={(e) => handleChange('field', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g., turb_status, water_quality_score"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Compare Mode
+              </label>
+              <select
+                value={config.compareMode || 'string'}
+                onChange={(e) => handleChange('compareMode', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="string">String (exact match)</option>
+                <option value="numeric">Numeric (thresholds)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Good Values (comma-separated)
+              </label>
+              <input
+                type="text"
+                value={Array.isArray(config.goodValues) ? config.goodValues.join(', ') : ''}
+                onChange={(e) => handleChange('goodValues', e.target.value.split(',').map((s) => s.trim()))}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g., NORMAL, GOOD"
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Values that map to GOOD status
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Warning Values (comma-separated)
+              </label>
+              <input
+                type="text"
+                value={Array.isArray(config.warningValues) ? config.warningValues.join(', ') : ''}
+                onChange={(e) => handleChange('warningValues', e.target.value.split(',').map((s) => s.trim()))}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g., WARNING"
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Values that map to WARNING status (else shows CRITICAL)
+              </p>
+            </div>
+          </>
+        );
+
       default:
         return <div>Unknown block type</div>;
     }
@@ -470,7 +565,7 @@ export function BlockConfigPanel({ block, onUpdate, onClose, applicationId }: Bl
             Configure Block
           </h3>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            {block.type === 'gauge' ? 'Gauge' : block.type === 'chart' ? 'Chart' : block.type === 'liveStream' ? 'Live Stream' : 'Active Alarms'}
+            {block.type === 'gauge' ? 'Gauge' : block.type === 'chart' ? 'Chart' : block.type === 'liveStream' ? 'Live Stream' : block.type === 'activeAlarms' ? 'Active Alarms' : 'Status Indicator'}
           </p>
         </div>
         <button

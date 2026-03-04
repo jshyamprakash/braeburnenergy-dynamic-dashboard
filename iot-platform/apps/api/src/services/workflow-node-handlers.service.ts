@@ -1,4 +1,5 @@
 import vm from 'vm';
+import type { Server as SocketIOServer } from 'socket.io';
 import { WorkflowNode } from '../models/workflow.model';
 import { ModbusGateway } from '../models/modbus-gateway.model';
 import { ModbusClientService } from './modbus-client.service';
@@ -6,6 +7,7 @@ import { DeviceService } from './device.service';
 import { deviceStateService } from './device-state.service';
 import { deviceDerivedStateService } from './device-derived-state.service';
 import { modbusGatewayManager } from './modbus-gateway-manager.service';
+import { notificationService } from './notification.service';
 import { DEFAULT_ORG_ID } from '../lib/request-context';
 
 /**
@@ -84,9 +86,11 @@ function castValue(value: any, type?: string): any {
  */
 export class WorkflowNodeHandlers {
   private deviceService: DeviceService;
+  private io?: SocketIOServer;
 
-  constructor() {
+  constructor(io?: SocketIOServer) {
     this.deviceService = new DeviceService();
+    this.io = io;
   }
 
   /**
@@ -287,25 +291,29 @@ export class WorkflowNodeHandlers {
   // ==========================================================================
 
   private async executeActionSendNotification(config: any, context: any): Promise<NodeExecutionResult> {
-    const { message, channels } = config;
+    const { title = 'Workflow Notification', message = '', severity = 'INFO' } = config;
 
-    // Interpolate variables in message
-    const interpolatedMessage = this.interpolateString(message, context.currentData);
+    const resolvedTitle = resolveExpression(title, context);
+    const resolvedMessage = resolveExpression(message, context);
 
-    // Send notification (integrate with notification service)
-    console.log(`[NOTIFICATION] Channels: ${channels.join(', ')}, Message: ${interpolatedMessage}`);
+    const notification = await notificationService.create(DEFAULT_ORG_ID, {
+      title: String(resolvedTitle),
+      message: String(resolvedMessage),
+      severity,
+      source: 'workflow',
+      workflowId: context.workflowId,
+      workflowName: context.workflowName,
+    });
 
-    // TODO: Integrate with actual notification service
-    // - Email: nodemailer
-    // - SMS: Twilio
-    // - WebSocket: Socket.io broadcast
-    // - Webhook: HTTP POST
+    // Broadcast via Socket.io so the frontend bell updates in real time
+    if (this.io) {
+      this.io.emit('notification:new', { notification });
+    }
 
     return {
       output: {
-        ...context.currentData,
         notificationSent: true,
-        notificationMessage: interpolatedMessage,
+        notificationId: notification.notificationId,
       },
     };
   }

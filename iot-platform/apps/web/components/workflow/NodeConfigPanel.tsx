@@ -7,6 +7,9 @@ import { apiClient } from '@/lib/api-client';
 import { getAvailableVariables, getDeviceAttributeVariables } from '@/lib/utils/workflow-variables';
 import { useDevices } from '@/lib/hooks/useDevices';
 import VariablePicker from './VariablePicker';
+import { CronPreview } from './CronPreview';
+import { CRON_PRESETS, COMMON_TIMEZONES } from '@/lib/utils/cron';
+import { apiConfig } from '@/lib/config';
 
 /**
  * Node Configuration Panel
@@ -19,7 +22,7 @@ import VariablePicker from './VariablePicker';
 interface FieldConfig {
   key: string;
   label: string;
-  type: 'text' | 'number' | 'select' | 'textarea' | 'checkbox' | 'device-field' | 'device-select' | 'mapping-list';
+  type: 'text' | 'number' | 'select' | 'textarea' | 'checkbox' | 'device-field' | 'device-select' | 'mapping-list' | 'cron-expression' | 'timezone-select' | 'webhook-url';
   placeholder?: string;
   options?: Array<{ value: string | number; label: string }>;
   required?: boolean;
@@ -41,7 +44,14 @@ const NODE_CONFIG_SCHEMAS: Record<string, FieldConfig[]> = {
   'trigger:scheduled': [
     { key: 'label', label: 'Node Label', type: 'text', placeholder: 'e.g., Daily Report', required: true },
     { key: 'description', label: 'Description', type: 'textarea' },
-    { key: 'cronExpression', label: 'Cron Expression', type: 'text', placeholder: '0 0 * * * (daily)', required: true },
+    { key: 'cronExpression', label: 'Schedule', type: 'cron-expression', required: true },
+    { key: 'timezone', label: 'Timezone', type: 'timezone-select' },
+  ],
+  'trigger:webhook': [
+    { key: 'label', label: 'Node Label', type: 'text', placeholder: 'e.g., Receive External Event', required: true },
+    { key: 'description', label: 'Description', type: 'textarea' },
+    { key: '_webhookUrl', label: 'Webhook URL', type: 'webhook-url', note: 'POST JSON to this URL to trigger the workflow. Body is available via {{trigger.data.*}} in downstream nodes.' },
+    { key: 'webhookSecret', label: 'Signing Secret (optional)', type: 'text', placeholder: 'Leave empty to accept all requests', note: 'If set, caller must include X-Hub-Signature-256: sha256=HMAC(secret, body) header.' },
   ],
   'trigger:alarmTriggered': [
     { key: 'label', label: 'Node Label', type: 'text', placeholder: 'e.g., On Alarm', required: true },
@@ -90,10 +100,21 @@ const NODE_CONFIG_SCHEMAS: Record<string, FieldConfig[]> = {
     { key: 'script', label: 'JavaScript Code', type: 'textarea', placeholder: 'return data.temperature > 30;', required: true },
   ],
   'action:sendNotification': [
-    { key: 'label', label: 'Node Label', type: 'text', placeholder: 'e.g., Alert User', required: true },
+    { key: 'label', label: 'Node Label', type: 'text', placeholder: 'e.g., Send Alert', required: true },
     { key: 'description', label: 'Description', type: 'textarea' },
-    { key: 'recipient', label: 'Recipient', type: 'text', placeholder: 'user@example.com', required: true },
-    { key: 'message', label: 'Message', type: 'textarea', placeholder: 'Email/notification body', required: true },
+    { key: 'title', label: 'Title', type: 'text', placeholder: 'e.g., High Temperature Alert', required: true, note: 'Supports {{variables}}' },
+    { key: 'message', label: 'Message', type: 'textarea', placeholder: 'e.g., Temperature is {{workspace.temperature}}°C', required: true, note: 'Supports {{variables}} for dynamic content' },
+    {
+      key: 'severity',
+      label: 'Severity',
+      type: 'select',
+      options: [
+        { value: 'INFO', label: 'Info' },
+        { value: 'WARNING', label: 'Warning' },
+        { value: 'CRITICAL', label: 'Critical' },
+      ],
+      required: true,
+    },
   ],
   'action:updateDeviceState': [
     { key: 'label', label: 'Node Label', type: 'text', placeholder: 'e.g., Update Device', required: true },
@@ -210,7 +231,7 @@ const NODE_CONFIG_SCHEMAS: Record<string, FieldConfig[]> = {
 
 export default function NodeConfigPanel() {
   const dispatch = useAppDispatch();
-  const { nodes, edges, selectedNodeId, applicationId } = useAppSelector(state => state.workflow);
+  const { nodes, edges, selectedNodeId, applicationId, workflowId } = useAppSelector(state => state.workflow);
   const { data: devicesData } = useDevices({ applicationId: applicationId || undefined });
   const [activeTab, setActiveTab] = useState<'config' | 'info'>('config');
   const [formData, setFormData] = useState<Record<string, any>>({});
@@ -218,6 +239,7 @@ export default function NodeConfigPanel() {
   const [pickerField, setPickerField] = useState<string | null>(null);
   const [pickerPosition, setPickerPosition] = useState({ x: 0, y: 0 });
   const [deviceAttributes, setDeviceAttributes] = useState<Record<string, string> | null>(null);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
   const textFieldRefs = useRef<Record<string, HTMLElement | null>>({});
 
   type MappingRow = { key: string; expression: string };
@@ -569,6 +591,77 @@ export default function NodeConfigPanel() {
                       </button>
                     </div>
                   )}
+
+                  {field.type === 'cron-expression' && (
+                    <div>
+                      <select
+                        value={CRON_PRESETS.find(p => p.value === getFieldValue(field.key))?.value || 'custom'}
+                        onChange={e => {
+                          if (e.target.value !== 'custom') {
+                            handleFieldChange(field.key, e.target.value);
+                          }
+                        }}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2"
+                      >
+                        {CRON_PRESETS.map(preset => (
+                          <option key={preset.value} value={preset.value}>
+                            {preset.label}
+                          </option>
+                        ))}
+                        <option value="custom">Custom...</option>
+                      </select>
+                      <input
+                        type="text"
+                        value={getFieldValue(field.key)}
+                        onChange={e => handleFieldChange(field.key, e.target.value)}
+                        placeholder={field.placeholder || '0 0 * * *'}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <CronPreview expression={getFieldValue(field.key)} timezone={getFieldValue('timezone')} />
+                    </div>
+                  )}
+
+                  {field.type === 'timezone-select' && (
+                    <select
+                      value={getFieldValue(field.key) || 'UTC'}
+                      onChange={e => handleFieldChange(field.key, e.target.value)}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      {COMMON_TIMEZONES.map(tz => (
+                        <option key={tz} value={tz}>
+                          {tz}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+
+                  {field.type === 'webhook-url' && (
+                    <div className="space-y-2">
+                      {workflowId ? (
+                        <div className="flex gap-1">
+                          <input
+                            type="text"
+                            value={`${apiConfig.baseUrl}/webhooks/${workflowId}`}
+                            readOnly
+                            className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                          />
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(`${apiConfig.baseUrl}/webhooks/${workflowId}`);
+                              setCopiedField(field.key);
+                              setTimeout(() => setCopiedField(null), 1500);
+                            }}
+                            className="px-2 py-2 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                          >
+                            {copiedField === field.key ? '✓ Copied' : 'Copy'}
+                          </button>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-400 dark:text-gray-500">Save the workflow first to get a URL</p>
+                      )}
+                    </div>
+                  )}
+
                   {field.note && (
                     <p className="mt-1 text-xs text-gray-400 dark:text-gray-500 leading-relaxed">
                       {field.note}

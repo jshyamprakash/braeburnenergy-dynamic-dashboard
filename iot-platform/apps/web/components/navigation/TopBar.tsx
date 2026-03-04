@@ -2,15 +2,23 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Bell } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { NotificationDropdown } from './NotificationDropdown';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { useNotifications, useNotificationSocket } from '@/lib/hooks/useNotifications';
 import { useState, useEffect } from 'react';
 
 export function TopBar() {
   const router = useRouter();
   const { user, isAuthenticated, logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const [mounted, setMounted] = useState(false);
+
+  const { data: notifData } = useNotifications({ unreadOnly: true });
+  const unreadCount = notifData?.unreadCount ?? 0;
+  useNotificationSocket();
 
   useEffect(() => {
     setMounted(true);
@@ -24,9 +32,31 @@ export function TopBar() {
         <span className="text-xs text-gray-500 dark:text-gray-400">POC v1.0</span>
       </div>
 
-      {/* Right: Theme Toggle + User Menu */}
+      {/* Right: Theme Toggle + Notifications + User Menu */}
       <div className="flex items-center gap-4">
         <ThemeToggle />
+
+        {/* Notification Bell */}
+        {mounted && isAuthenticated && (
+          <div className="relative">
+            <button
+              onClick={() => setShowNotifications(!showNotifications)}
+              className="relative p-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+              title="Notifications"
+            >
+              <Bell className="w-5 h-5" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-600 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </button>
+
+            {showNotifications && (
+              <NotificationDropdown onClose={() => setShowNotifications(false)} />
+            )}
+          </div>
+        )}
 
         {/* User Menu — defer until mounted to avoid SSR/client hydration mismatch */}
         {mounted && isAuthenticated && user ? (

@@ -1,21 +1,28 @@
 // LLAMP-SPEC v1 | CURRENT_DECISIONS
-// task: OPC-UA Node Browser | date: 2026-03-04
+// task: Webhook Trigger Configuration UI | date: 2026-03-04
 
 #what_changed
-=packages/types/src/index.ts: OpcuaBrowseNode interface + OpcuaNodeClass const added
-=lib/hooks/useOpcuaGateways.ts: useBrowseNodes mutation added (POST /opcua-gateways/:id/browse)
-=app/opcua-gateways/_components/BrowseNodeItem.tsx: NEW — single lazy tree row component
-=app/opcua-gateways/_components/OpcuaBrowseModal.tsx: NEW — full tree with lazy expand + multi-select
-=app/opcua-gateways/_components/OpcuaGatewayModal.tsx: "Browse Server" button + handleBrowseConfirm
+=routes/webhook.routes.ts: NEW public unauthenticated route POST /webhooks/:workflowId
+~Loads workflow, validates trigger:webhook node exists
+~Optional HMAC-SHA256 signature validation via X-Hub-Signature-256 header
+~Executes workflow with {type: 'webhook', source: IP, data: requestBody}
+~Returns 202 Accepted with executionId
+=server.ts: IMPORT webhookRoutes; REGISTER after notificationRoutes
+=NodeConfigPanel.tsx: 'webhook-url' added to FieldConfig.type union
+=NODE_CONFIG_SCHEMAS: trigger:webhook schema with _webhookUrl + webhookSecret fields
+=webhook-url renderer: Read-only input + copy-to-clipboard button (checks workflowId exists)
 
 #tech_implications
-~browse_api: POST /opcua-gateways/:id/browse returns flat children [{nodeId, browseName, displayName, nodeClass}]
-~OpcuaNodeClass.Variable = 2 (selectable), OpcuaNodeClass.Object = 1 (expandable only)
-~childrenCache: Map<nodeId, OpcuaBrowseNode[]> keyed per nodeId — avoids re-fetching on collapse/expand
-~handleBrowseConfirm deduplicates by checking existing nodeMappings nodeId values before appending
-~edit_mode_only: Browse button gated on !!gateway && !!gateway.id — safe for create flow
+~Public endpoint — NO requireAuth preHandler — external callers can trigger workflows
+~HMAC validation optional: only enforced if webhookSecret configured on trigger node
+~Timing-safe comparison prevents signature timing attacks
+~JSON.stringify(request.body) used as signed payload (standard for JSON callers)
+~workflowId display requires Redux workflow.workflowId selector (muted message if null)
+~apiConfig.baseUrl sourced from NEXT_PUBLIC_API_URL env var
 
 #constraints
-!rule: Browse button only appears in edit mode (gateway.id required for API call)
-~temporary_connection: Backend creates temp OPC-UA connection if gateway not currently running
-~no_arch_changes: No backend changes — uses existing browse endpoint from ADR-036 scope
+~Workflow must be isEnabled=true; returns 404 otherwise
+~Trigger node type must be trigger:webhook; returns 422 if missing
+~Secret validation case-sensitive; timing-safe comparison used
+~URL display only shows after workflow saved (workflowId must exist in Redux state)
+~Copy button uses navigator.clipboard.writeText() (requires HTTPS in production)

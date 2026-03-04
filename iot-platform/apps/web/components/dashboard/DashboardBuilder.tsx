@@ -6,6 +6,7 @@ import { RealTimeGaugeBlock } from './RealTimeGaugeBlock';
 import { RealTimeChartBlock } from './RealTimeChartBlock';
 import { LiveStreamBlock } from '../blocks/LiveStreamBlock';
 import { ActiveAlarmsBlock } from './ActiveAlarmsBlock';
+import { StatusTextBlock } from './StatusTextBlock';
 import { BlockPalette } from './BlockPalette';
 import { BlockConfigPanel } from './BlockConfigPanel';
 import { toast } from '@/lib/utils/toast';
@@ -285,6 +286,11 @@ export function DashboardBuilder({
         md: { w: 10, h: 8, minW: 4, maxW: 10, minH: 6, maxH: 15 },
         sm: { w: 6, h: 8, minW: 4, maxW: 6, minH: 6, maxH: 15 },
       },
+      statusText: {
+        lg: { w: 3, h: 5, minW: 2, maxW: 6, minH: 4, maxH: 8 },
+        md: { w: 4, h: 5, minW: 2, maxW: 6, minH: 4, maxH: 8 },
+        sm: { w: 3, h: 5, minW: 2, maxW: 6, minH: 4, maxH: 8 },
+      },
     };
 
     const sizes = defaultSizes[type as keyof typeof defaultSizes] ?? defaultSizes.liveStream;
@@ -292,7 +298,7 @@ export function DashboardBuilder({
 
     // Generate default config based on block type
     const defaultConfig: DashboardBlock['config'] = {
-      title: `New ${type === 'gauge' ? 'Gauge' : type === 'chart' ? 'Chart' : type === 'liveStream' ? 'Live Stream' : 'Active Alarms'}`,
+      title: `New ${type === 'gauge' ? 'Gauge' : type === 'chart' ? 'Chart' : type === 'liveStream' ? 'Live Stream' : type === 'activeAlarms' ? 'Active Alarms' : 'Status Indicator'}`,
     };
 
     if (type === 'activeAlarms') {
@@ -300,6 +306,13 @@ export function DashboardBuilder({
       defaultConfig.maxCount = 5;
       defaultConfig.filterByState = ['ACTIVE_UNACKED', 'ACTIVE_ACKED'];
       defaultConfig.filterByPriority = [];
+    }
+
+    if (type === 'statusText') {
+      defaultConfig.title = 'Status Indicator';
+      defaultConfig.goodValues = [];
+      defaultConfig.warningValues = [];
+      defaultConfig.compareMode = 'string';
     }
 
     // Add mock data for chart blocks
@@ -477,6 +490,9 @@ export function DashboardBuilder({
 
         case 'activeAlarms':
           return <ActiveAlarmsBlock block={block} isEditMode={isEditMode} />;
+
+        case 'statusText':
+          return <StatusTextBlock block={block} isEditMode={isEditMode} />;
 
         default:
           return <div>Unknown block type</div>;

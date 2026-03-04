@@ -1,8 +1,10 @@
+import type { Logger } from 'pino';
 import { OpcuaGateway, type IOpcuaGateway } from '../models';
 import { OpcuaClientService } from './opcua-client.service';
 import { DataQualityService } from './data-quality.service';
 import { AlarmService } from './alarm.service';
 import { deviceStateService } from './device-state.service';
+import type { WorkflowTriggerDispatcher } from './workflow-trigger-dispatcher.service';
 import { DEFAULT_ORG_ID } from '../lib/request-context';
 
 const ORG_ID = DEFAULT_ORG_ID;
@@ -26,10 +28,20 @@ export class OpcuaGatewayManager {
   private instances: Map<string, GatewayInstance> = new Map();
   private dataQualityService: DataQualityService;
   private alarmService: AlarmService;
+  private triggerDispatcher?: WorkflowTriggerDispatcher;
+  private logger?: Logger;
 
   constructor() {
     this.dataQualityService = new DataQualityService();
     this.alarmService = new AlarmService();
+  }
+
+  /**
+   * Register trigger dispatcher (call from index.ts after creating dispatcher)
+   */
+  setTriggerDispatcher(dispatcher: WorkflowTriggerDispatcher, logger: Logger): void {
+    this.triggerDispatcher = dispatcher;
+    this.logger = logger;
   }
 
   /**
@@ -176,6 +188,17 @@ export class OpcuaGatewayManager {
         data: (validationResult as any).data || data,
         timestamp: new Date(),
       } as any);
+
+      // Dispatch to workflow triggers (fire-and-forget, just like device-state controller)
+      if (this.triggerDispatcher) {
+        this.triggerDispatcher
+          .dispatchDeviceStateBatch(ORG_ID, gateway.deviceId, (validationResult as any).data || data, state as any)
+          .catch((err: any) => {
+            if (this.logger) {
+              this.logger.error(err, 'Workflow device state batch dispatch failed for OPC-UA gateway');
+            }
+          });
+      }
 
       // Evaluate alarm conditions
       const device = { tags: [] }; // TODO: Fetch device tags

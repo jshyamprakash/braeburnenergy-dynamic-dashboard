@@ -22,6 +22,8 @@ import { modbusGatewayRoutes } from './routes/modbus-gateway.routes';
 import { opcuaGatewayRoutes } from './routes/opcua-gateway.routes';
 import { waterQualityRoutes } from './routes/water-quality.routes';
 import { workflowRoutes } from './routes/workflow.routes';
+import { notificationRoutes } from './routes/notification.routes';
+import { webhookRoutes } from './routes/webhook.routes';
 import { registerAuditMiddleware } from './middleware/audit.middleware';
 
 /**
@@ -230,6 +232,8 @@ export async function createServer() {
   await fastify.register(dashboardRoutes);
   await fastify.register(deviceRoutes);
   await fastify.register(deviceStateRoutes);
+  await fastify.register(notificationRoutes);
+  await fastify.register(webhookRoutes);
 
   // Root endpoint
   fastify.get('/', async (_request, reply) => {
