@@ -3,8 +3,9 @@ import bcrypt from 'bcrypt';
 import { User } from '../models/user.model';
 import { Organization } from '../models/organization.model';
 import { connectDB } from '../lib/mongoose';
+import { DEFAULT_ORG_ID as POC_ORG_ID_STR } from '../lib/request-context';
 
-const DEFAULT_ORG_ID = new mongoose.Types.ObjectId('aaaaaaaaaaaaaaaaaaaaaaaa');
+const DEFAULT_ORG_ID = new mongoose.Types.ObjectId(POC_ORG_ID_STR);
 
 async function seedAdmin() {
   try {

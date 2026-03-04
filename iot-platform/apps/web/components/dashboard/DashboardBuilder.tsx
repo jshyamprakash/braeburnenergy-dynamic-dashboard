@@ -5,6 +5,7 @@ import { Responsive as ResponsiveGridLayout } from 'react-grid-layout';
 import { RealTimeGaugeBlock } from './RealTimeGaugeBlock';
 import { RealTimeChartBlock } from './RealTimeChartBlock';
 import { LiveStreamBlock } from '../blocks/LiveStreamBlock';
+import { ActiveAlarmsBlock } from './ActiveAlarmsBlock';
 import { BlockPalette } from './BlockPalette';
 import { BlockConfigPanel } from './BlockConfigPanel';
 import { toast } from '@/lib/utils/toast';
@@ -137,10 +138,14 @@ export function DashboardBuilder({
   const isEditMode = externalEditMode !== undefined ? externalEditMode : reduxEditMode;
 
   // Local UI state (not shared across components)
+  const [mounted, setMounted] = useState(false);
   const [showPalette, setShowPalette] = useState(false);
   const [containerWidth, setContainerWidth] = useState(1200);
   const [blockMenuOpen, setBlockMenuOpen] = useState<string | null>(null);
   const gridContainerRef = useRef<HTMLDivElement>(null);
+
+  // Defer sync status rendering until after hydration to avoid SSR/client mismatch
+  useEffect(() => { setMounted(true); }, []);
 
   // Initialize dashboard: localStorage first (instant), then backend (sync)
   useEffect(() => {
@@ -275,15 +280,27 @@ export function DashboardBuilder({
         md: { w: 10, h: 7, minW: 3, maxW: 10, minH: 5, maxH: 15 },
         sm: { w: 6, h: 7, minW: 3, maxW: 6, minH: 5, maxH: 15 },
       },
+      activeAlarms: {
+        lg: { w: 6, h: 8, minW: 4, maxW: 12, minH: 6, maxH: 15 },
+        md: { w: 10, h: 8, minW: 4, maxW: 10, minH: 6, maxH: 15 },
+        sm: { w: 6, h: 8, minW: 4, maxW: 6, minH: 6, maxH: 15 },
+      },
     };
 
-    const sizes = defaultSizes[type];
+    const sizes = defaultSizes[type as keyof typeof defaultSizes] ?? defaultSizes.liveStream;
     const baseX = (blocks.length * 2) % 12;
 
     // Generate default config based on block type
     const defaultConfig: DashboardBlock['config'] = {
-      title: `New ${type === 'gauge' ? 'Gauge' : type === 'chart' ? 'Chart' : 'Live Stream'}`,
+      title: `New ${type === 'gauge' ? 'Gauge' : type === 'chart' ? 'Chart' : type === 'liveStream' ? 'Live Stream' : 'Active Alarms'}`,
     };
+
+    if (type === 'activeAlarms') {
+      defaultConfig.title = 'Active Alarms';
+      defaultConfig.maxCount = 5;
+      defaultConfig.filterByState = ['ACTIVE_UNACKED', 'ACTIVE_ACKED'];
+      defaultConfig.filterByPriority = [];
+    }
 
     // Add mock data for chart blocks
     if (type === 'chart') {
@@ -458,6 +475,9 @@ export function DashboardBuilder({
             />
           );
 
+        case 'activeAlarms':
+          return <ActiveAlarmsBlock block={block} isEditMode={isEditMode} />;
+
         default:
           return <div>Unknown block type</div>;
       }
@@ -563,8 +583,8 @@ export function DashboardBuilder({
               {blocks.length} block{blocks.length !== 1 ? 's' : ''}
             </span>
 
-            {/* Sync Status Indicator */}
-            <div className="flex items-center gap-2">
+            {/* Sync Status Indicator — mounted guard prevents SSR/client hydration mismatch */}
+            <div className="flex items-center gap-2">{mounted && (<>
               {syncStatus === 'loading' && (
                 <div className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400">
                   <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse" />
@@ -601,7 +621,7 @@ export function DashboardBuilder({
                   <span>Offline</span>
                 </div>
               )}
-            </div>
+            </>)}</div>
           </div>
 
           <div className="flex items-center gap-2">

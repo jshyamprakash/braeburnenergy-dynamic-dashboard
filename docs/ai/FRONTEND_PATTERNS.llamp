@@ -160,3 +160,16 @@
   creating components/ui/ primitives that already exist (Modal, Skeleton),
   inline API URL strings — use apiClient methods with relative paths
 ]
+
+---
+
+// ── CONSTANTS CONVENTION ──
+=constants_files: {
+  poc:      lib/constants/poc.ts,       // POC defaults: DEFAULT_ORG_ID, DEFAULT_USER_ID
+  ui_msgs:  lib/constants/ui-messages.ts, // PREREQ_TOOLTIPS, EMPTY_STATE_GUIDANCE
+  config:   lib/config.ts               // env vars + app config (api, auth, dashboard, ui, ws)
+}
+!rule: never hardcode DEFAULT_ORG_ID / DEFAULT_USER_ID inline — import from lib/constants/poc.ts
+!rule: in hooks/services, assign short working name: const ORG_ID = DEFAULT_ORG_ID
+!rule: never redefine a constant that already exists in constants/ — import it
+~pattern: import { DEFAULT_ORG_ID } from '@/lib/constants/poc'; const ORG_ID = DEFAULT_ORG_ID;

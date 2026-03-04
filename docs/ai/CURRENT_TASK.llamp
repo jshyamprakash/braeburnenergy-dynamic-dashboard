@@ -1,41 +1,22 @@
 // LLAMP-SPEC v1 | CURRENT_TASK
-// ver: 1.1 | updated: 2026-03-03
-// target: @haiku
+// status: COMPLETE ✅ (All 6 subtasks finished 2026-03-04)
+// model: @haiku | duration: ~45 minutes
 
-=task: Modbus Gateway Management UI — Verify & Polish
-=task.type: frontend
-=arch_impact: false
+=task.id: opcua-node-browser
+=task.status: COMPLETE
+=task.summary: OPC-UA Node Browser all 6 tasks delivered
 
-#status:
-  implementation: COMPLETE (all 9 scope items exist, build passes)
-  remaining: verification + polish only
+#deliverables_shipped
+~T01: OpcuaBrowseNode interface + OpcuaNodeClass constants in @repo/types
+~T02: useBrowseNodes mutation hook in useOpcuaGateways.ts
+~T03: BrowseNodeItem component (lazy tree row with indent, icons, checkbox)
+~T04: OpcuaBrowseModal component (full tree UI with multi-select + confirm)
+~T05: "Browse Server" button in OpcuaGatewayModal (edit mode only, Search icon)
+~T06: handleBrowseConfirm handler wiring selected nodes → nodeMappings rows
 
-#what_exists:
-  hooks:       lib/hooks/useModbusGateways.ts          (208 lines)
-  list_page:   app/modbus-gateways/page.tsx            (218 lines)
-  loading:     app/modbus-gateways/loading.tsx         (28 lines)
-  error:       app/modbus-gateways/error.tsx           (36 lines)
-  table:       _components/GatewayTable.tsx            (182 lines)
-  modal:       _components/GatewayModal.tsx            (475 lines)
-  detail:      _components/GatewayDetailPanel.tsx      (219 lines)
-  modbus_tab:  app/applications/[id]/_components/ModbusTab.tsx (214 lines)
-  app_page:    app/applications/[id]/page.tsx — Modbus tab wired
-  sidebar:     Sidebar.tsx — Modbus link present
-
-#verification_scope:
-  1. Seed DB: reseed so there is data to test against
-  2. /modbus-gateways page: list renders, create opens modal
-  3. GatewayModal: TCP fields vs RTU fields switch correctly on protocol change
-  4. GatewayModal: register rows can be added/removed, submit works
-  5. GatewayDetailPanel: start/stop/test buttons call correct endpoints + toast
-  6. GatewayDetailPanel: register list renders with address/type/unit columns
-  7. ModbusTab in Application Detail: scoped to applicationId, shows gateways
-  8. Sidebar Modbus link: active state highlights correctly on /modbus-gateways
-  9. Build: pnpm build --filter=web must pass (currently passes)
-
-#constraints:
-  - Fix bugs found during verification only — no scope creep
-  - TCP fields: host + port; RTU fields: serialPort + baudRate (conditional)
-  - Use existing toast (sonner) for all feedback
-  - No new Redux slice — React Query only
-  - simulator runs on localhost:1502 (node scripts/modbus-simulator.js 1502)
+#key_features
+~lazy_tree: Children fetched per expand; cached client-side
+~multi_select: Checkboxes on Variable nodes (nodeClass=2) only
+~no_duplicates: Skip nodes already in nodeMappings on confirm
+~auto_field_name: displayName or browseName → field name in new mapping rows
+~edit_mode_only: Browse button hidden when creating (no gateway ID)

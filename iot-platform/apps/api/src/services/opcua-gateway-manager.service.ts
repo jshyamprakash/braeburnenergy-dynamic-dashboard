@@ -3,9 +3,9 @@ import { OpcuaClientService } from './opcua-client.service';
 import { DataQualityService } from './data-quality.service';
 import { AlarmService } from './alarm.service';
 import { deviceStateService } from './device-state.service';
+import { DEFAULT_ORG_ID } from '../lib/request-context';
 
-// Default organization ID for POC (multi-tenancy frontend not implemented)
-const DEFAULT_ORG_ID = 'aaaaaaaaaaaaaaaaaaaaaaaa';
+const ORG_ID = DEFAULT_ORG_ID;
 
 /**
  * OpcuaGatewayManager
@@ -171,7 +171,7 @@ export class OpcuaGatewayManager {
       );
 
       // Create device state with quality metadata
-      const state = await deviceStateService.create(DEFAULT_ORG_ID, {
+      const state = await deviceStateService.create(ORG_ID, {
         deviceId: gateway.deviceId,
         data: (validationResult as any).data || data,
         timestamp: new Date(),

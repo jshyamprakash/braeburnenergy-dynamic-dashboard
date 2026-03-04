@@ -6,6 +6,7 @@ import { DeviceService } from './device.service';
 import { deviceStateService } from './device-state.service';
 import { deviceDerivedStateService } from './device-derived-state.service';
 import { modbusGatewayManager } from './modbus-gateway-manager.service';
+import { DEFAULT_ORG_ID } from '../lib/request-context';
 
 /**
  * Node execution result
@@ -314,11 +315,10 @@ export class WorkflowNodeHandlers {
 
     // Update device attributes
     // Note: orgId would need to be passed in context for multi-tenancy
-    // For MVP, using DEFAULT_ORG_ID
-    const DEFAULT_ORG_ID = 'aaaaaaaaaaaaaaaaaaaaaaaa';
+    const ORG_ID = DEFAULT_ORG_ID;
 
     try {
-      await this.deviceService.update(DEFAULT_ORG_ID, deviceId, {
+      await this.deviceService.update(ORG_ID, deviceId, {
         attributes: updates as Record<string, 'string' | 'number' | 'boolean' | 'timestamp'>,
       });
 
@@ -433,19 +433,56 @@ export class WorkflowNodeHandlers {
   }
 
   private async executeActionCallWebhook(config: any, context: any): Promise<NodeExecutionResult> {
-    const { url, method, headers, body } = config;
+    const { method, headers, body, bodyTemplate, timeoutMs } = config;
+
+    // Merge context for variable resolution
+    const resolveCtx = { ...context.currentData, ...context };
+
+    // T1+T2: Resolve and validate URL
+    const resolvedUrl: string = resolveExpression(config.url, resolveCtx);
+    if (!resolvedUrl || !/^https?:\/\//i.test(resolvedUrl)) {
+      throw new Error(`Webhook URL is invalid or missing: "${resolvedUrl}"`);
+    }
+
+    // T3: Resolve header values
+    const resolvedHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (headers && typeof headers === 'object') {
+      for (const [k, v] of Object.entries(headers)) {
+        resolvedHeaders[k] = resolveExpression(v, resolveCtx);
+      }
+    }
+
+    // T4: Resolve body
+    let resolvedBody: string;
+    if (bodyTemplate && typeof bodyTemplate === 'string') {
+      resolvedBody = resolveExpression(bodyTemplate, resolveCtx);
+    } else if (body !== undefined && body !== null) {
+      resolvedBody = JSON.stringify(body);
+    } else {
+      resolvedBody = JSON.stringify(context.currentData);
+    }
+
+    // T5: Timeout via AbortController
+    const timeout = typeof timeoutMs === 'number' ? timeoutMs : 10000;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeout);
 
     try {
-      const response = await fetch(url, {
+      const response = await fetch(resolvedUrl, {
         method: method || 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...headers,
-        },
-        body: JSON.stringify(body || context.currentData),
+        headers: resolvedHeaders,
+        body: resolvedBody,
+        signal: controller.signal,
       });
 
-      const responseData = await response.json();
+      // T6: Handle non-JSON responses
+      let responseData: any;
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        responseData = await response.json();
+      } else {
+        responseData = await response.text();
+      }
 
       return {
         output: {
@@ -455,7 +492,12 @@ export class WorkflowNodeHandlers {
         },
       };
     } catch (error: any) {
+      if (error.name === 'AbortError') {
+        throw new Error(`Webhook call timed out after ${timeout}ms`);
+      }
       throw new Error(`Webhook call failed: ${error.message}`);
+    } finally {
+      clearTimeout(timer);
     }
   }
 
@@ -672,9 +714,9 @@ export class WorkflowNodeHandlers {
   private async executeDataQueryDeviceStates(config: any, context: any): Promise<NodeExecutionResult> {
     const { deviceId, startTime, endTime, limit = 100, outputField = 'deviceStates' } = config;
 
-    const DEFAULT_ORG_ID = 'aaaaaaaaaaaaaaaaaaaaaaaa';
+    const ORG_ID = DEFAULT_ORG_ID;
 
-    const result = await deviceStateService.getStates(DEFAULT_ORG_ID, deviceId, {
+    const result = await deviceStateService.getStates(ORG_ID, deviceId, {
       startTime: startTime ? new Date(startTime) : undefined,
       endTime: endTime ? new Date(endTime) : undefined,
       limit: Number(limit) || 100,
@@ -750,10 +792,10 @@ export class WorkflowNodeHandlers {
     const resolveCtx = { ...context.currentData, ...context };
 
     // Load device.attributes for validation
-    const DEFAULT_ORG_ID = 'aaaaaaaaaaaaaaaaaaaaaaaa';
+    const ORG_ID = DEFAULT_ORG_ID;
     let deviceAttributes: Record<string, string> = {};
     try {
-      const device = await this.deviceService.getByDeviceId(DEFAULT_ORG_ID, deviceId);
+      const device = await this.deviceService.getByDeviceId(ORG_ID, deviceId);
       deviceAttributes = (device?.attributes as Record<string, string>) ?? {};
     } catch {
       // If device lookup fails, allow write (graceful degradation)

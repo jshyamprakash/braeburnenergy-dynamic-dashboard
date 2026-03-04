@@ -1,34 +1,49 @@
-// LLAMP-SPEC v1 | FEATURE_TASKS — Modbus Gateway UI Verify & Polish
-// ver: 1.1 | updated: 2026-03-03
-// target: @haiku
+// LLAMP-SPEC v1 | FEATURE_TASKS
+// task: OPC-UA Node Browser | date: 2026-03-04
+// model: @haiku
 
 =tasks: [
 
-  { id:1, status:pending, title:"Seed DB with one Modbus gateway",
-    detail:"POST to /modbus-gateways: name='Water Treatment', protocol=tcp, host=localhost, port=1502, slaveId=1, 4 registers (temperature/input/0/int16, pressure/input/1/int16, flow_rate/input/2/int16, pump_status/coil/0/boolean). Use curl or update seed script." },
+  T01: {
+    id: types,
+    title: "Add OpcuaBrowseNode type to @repo/types",
+    desc: "Add interface OpcuaBrowseNode { nodeId: string; browseName: string; displayName: string; nodeClass: number; hasChildren?: boolean } and const OpcuaNodeClass = { Object: 1, Variable: 2, Method: 4 } to packages/types/src/index.ts. Export both.",
+    done: true
+  },
 
-  { id:2, status:pending, title:"Verify /modbus-gateways list page",
-    detail:"Navigate to /modbus-gateways. Confirm table renders with gateway row, status badge, polling interval. No console errors. Loading skeleton shown during fetch." },
+  T02: {
+    id: hook,
+    title: "Add useBrowseNodes mutation to useOpcuaGateways.ts",
+    desc: "Add useBrowseNodes() to lib/hooks/useOpcuaGateways.ts: useMutation({ mutationFn: async ({ gatewayId, nodeId }: { gatewayId: string; nodeId?: string }) => apiClient.post<{ nodeId: string; nodes: OpcuaBrowseNode[] }>(`/opcua-gateways/${gatewayId}/browse`, { nodeId }) }). Returns mutation object.",
+    done: true
+  },
 
-  { id:3, status:pending, title:"Verify GatewayModal TCP/RTU field switching",
-    detail:"Open create modal. Switch protocol between TCP and RTU. Confirm host+port visible for TCP, serialPort+baudRate visible for RTU. Confirm mutual exclusion." },
+  T03: {
+    id: node_item,
+    title: "Create BrowseNodeItem component",
+    desc: "app/opcua-gateways/_components/BrowseNodeItem.tsx — single tree row: indent, ChevronRight (rotate when expanded), icon (Folder for Object, Variable for Variable), displayName, checkbox (Variable only). Props: { node, depth, isExpanded, isSelected, isLoading, onExpand, onSelect }.",
+    done: true
+  },
 
-  { id:4, status:pending, title:"Verify register rows in GatewayModal",
-    detail:"Add 4 registers (temperature/input/0, pressure/input/1, flow_rate/input/2, pump_status/coil/0). Confirm rows add/remove. Submit — confirm gateway created via API response." },
+  T04: {
+    id: browse_modal,
+    title: "Create OpcuaBrowseModal component",
+    desc: "app/opcua-gateways/_components/OpcuaBrowseModal.tsx — Modal sized 'lg': fetches RootFolder on open; renders flat list of BrowseNodeItems with lazy children (keyed by nodeId); multi-select checkboxes on Variable nodes; tracks expandedNodes: Set<string> and childrenCache: Map<string, OpcuaBrowseNode[]>; 'Add N Mappings' button at bottom calls onConfirm(selectedNodes). Props: { isOpen, onClose, gatewayId, onConfirm(nodes: OpcuaBrowseNode[]) }.",
+    done: true
+  },
 
-  { id:5, status:pending, title:"Verify GatewayTable edit/delete",
-    detail:"Edit a gateway — confirm modal pre-fills existing values. Delete a gateway — confirm row removed + sonner toast shown." },
+  T05: {
+    id: modal_integration,
+    title: "Integrate Browse button and BrowseModal into OpcuaGatewayModal",
+    desc: "In OpcuaGatewayModal.tsx: add isBrowseOpen state. In Node Mappings section header, add 'Browse Server' button (Search icon) that sets isBrowseOpen=true. Button only rendered when gateway prop is non-null (edit mode). Render <OpcuaBrowseModal isOpen={isBrowseOpen} onClose={...} gatewayId={gateway.id} onConfirm={handleBrowseConfirm} /> after form.",
+    done: true
+  },
 
-  { id:6, status:pending, title:"Verify GatewayDetailPanel start/stop/test",
-    detail:"Click row to open detail panel. Start modbus simulator (node scripts/modbus-simulator.js 1502). Click Test Connection — confirm toast. Click Start — confirm status changes. Click Stop — confirm stopped." },
-
-  { id:7, status:pending, title:"Verify ModbusTab inside Application Detail",
-    detail:"Navigate to /applications/[id] — click Modbus tab — confirm gateways filtered by applicationId shown. Add Gateway button opens modal with applicationId pre-filled." },
-
-  { id:8, status:pending, title:"Fix verified bugs only",
-    detail:"Fix only defects found in T2-T7. No speculative improvements." },
-
-  { id:9, status:pending, title:"Final build check",
-    detail:"pnpm build --filter=web — must pass with 0 TypeScript errors." }
+  T06: {
+    id: auto_populate,
+    title: "Wire browse selection → append nodeMappings rows",
+    desc: "In OpcuaGatewayModal.tsx add handleBrowseConfirm(nodes: OpcuaBrowseNode[]): appends each selected node as new NodeMappingRow { _tempId: Date.now()+i, field: node.displayName || node.browseName, nodeId: node.nodeId, dataType: undefined }. Skip duplicates (nodeId already in nodeMappings). Close BrowseModal after confirm.",
+    done: true
+  }
 
 ]

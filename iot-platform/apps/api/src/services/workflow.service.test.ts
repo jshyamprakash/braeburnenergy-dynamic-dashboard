@@ -3,8 +3,8 @@ import { connectDB, disconnectDB } from '../lib/mongoose';
 import { WorkflowService } from './workflow.service';
 import { Workflow } from '../models/workflow.model';
 import mongoose from 'mongoose';
+import { DEFAULT_ORG_ID } from '../test/helpers';
 
-const DEFAULT_ORG_ID = 'aaaaaaaaaaaaaaaaaaaaaaaa';
 const DEFAULT_ORG_ID_MONGO = new mongoose.Types.ObjectId(DEFAULT_ORG_ID);
 
 describe('WorkflowService - triggerType Auto-Population', () => {

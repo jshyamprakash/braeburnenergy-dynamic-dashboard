@@ -2,6 +2,7 @@ import { ulid } from 'ulid';
 import mongoose from 'mongoose';
 import { Device } from '../models/device.model';
 import { DeviceState } from '../models/device-state.model';
+import { DEFAULT_ORG_ID } from '../lib/request-context';
 
 /**
  * Test Data Helpers
@@ -9,10 +10,7 @@ import { DeviceState } from '../models/device-state.model';
  * Utilities for creating test data in integration tests
  */
 
-/**
- * Default organization ID for tests (matches seeded default org)
- */
-export const DEFAULT_ORG_ID = 'aaaaaaaaaaaaaaaaaaaaaaaa';
+export { DEFAULT_ORG_ID };
 
 /**
  * Create a test device

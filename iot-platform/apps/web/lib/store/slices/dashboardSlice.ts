@@ -28,7 +28,7 @@ export type Layouts = { [breakpoint: string]: Layout[] };
  */
 export interface DashboardBlock {
   id: string;
-  type: 'gauge' | 'chart' | 'liveStream';
+  type: 'gauge' | 'chart' | 'liveStream' | 'activeAlarms';
   layouts: {
     lg: Layout;
     md: Layout;

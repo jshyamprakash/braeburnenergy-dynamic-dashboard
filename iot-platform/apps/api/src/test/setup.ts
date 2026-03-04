@@ -5,8 +5,7 @@ import { Organization } from '../models/organization.model';
 import { Device } from '../models/device.model';
 import { DeviceState } from '../models/device-state.model';
 import { initializeTimeSeriesCollections } from '../models';
-
-const DEFAULT_ORG_ID = 'aaaaaaaaaaaaaaaaaaaaaaaa';
+import { DEFAULT_ORG_ID } from './helpers';
 
 /**
  * Test Database Setup

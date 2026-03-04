@@ -377,6 +377,85 @@ export function BlockConfigPanel({ block, onUpdate, onClose, applicationId }: Bl
           </>
         );
 
+      case 'activeAlarms': {
+        const stateOptions = ['ACTIVE_UNACKED', 'ACTIVE_ACKED', 'CLEARED_UNACKED', 'CLEARED_ACKED'];
+        const priorityOptions = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO'];
+        const currentStates: string[] = config.filterByState ?? [];
+        const currentPriorities: string[] = config.filterByPriority ?? [];
+
+        const toggleArrayItem = (key: string, current: string[], value: string) => {
+          const next = current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
+          handleChange(key, next);
+        };
+
+        return (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Title</label>
+              <input
+                type="text"
+                value={config.title || ''}
+                onChange={(e) => handleChange('title', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+                placeholder="Active Alarms"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Max alarms to show
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={20}
+                value={config.maxCount ?? 5}
+                onChange={(e) => handleChange('maxCount', Number(e.target.value))}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                State filter (empty = all)
+              </label>
+              <div className="space-y-1.5">
+                {stateOptions.map((state) => (
+                  <label key={state} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={currentStates.includes(state)}
+                      onChange={() => toggleArrayItem('filterByState', currentStates, state)}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">{state.replace(/_/g, ' ')}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Priority filter (empty = all)
+              </label>
+              <div className="space-y-1.5">
+                {priorityOptions.map((priority) => (
+                  <label key={priority} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={currentPriorities.includes(priority)}
+                      onChange={() => toggleArrayItem('filterByPriority', currentPriorities, priority)}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">{priority}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </>
+        );
+      }
+
       default:
         return <div>Unknown block type</div>;
     }
@@ -391,7 +470,7 @@ export function BlockConfigPanel({ block, onUpdate, onClose, applicationId }: Bl
             Configure Block
           </h3>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            {block.type === 'gauge' ? 'Gauge' : block.type === 'chart' ? 'Chart' : 'Live Stream'}
+            {block.type === 'gauge' ? 'Gauge' : block.type === 'chart' ? 'Chart' : block.type === 'liveStream' ? 'Live Stream' : 'Active Alarms'}
           </p>
         </div>
         <button

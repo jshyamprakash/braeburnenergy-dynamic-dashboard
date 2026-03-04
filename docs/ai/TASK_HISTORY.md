@@ -153,9 +153,14 @@
   delete guard now org-safe; frontend CreateDashboardModal no longer sends organizationId in POST body;
   Redux dashboardSlice organizationId → applicationId throughout; seed script updated.
 
-## In Progress
+- Modbus Gateway Management UI — COMPLETE (useModbusGateways hook, list page, GatewayTable, GatewayModal TCP/RTU conditional, GatewayDetailPanel start/stop/test, ModbusTab in Application Detail, sidebar nav; verified end-to-end with simulator → workflow → dashboard)
+- Workflow Trigger Batch Dispatch Fix — COMPLETE (dispatchDeviceStateBatch fires once per device state change; field filter applied locally; Modbus gateway + device-state controller updated)
+- API Key Management UI — COMPLETE (ApiKey types in @repo/types; useApiKeys hook with 6 mutations; CreateApiKeyModal with permissions checklist + prefix toggle + expiry; ApiKeyCreatedModal one-time reveal + copy; ApiKeysSection table with revoke/delete/rotate; wired into /profile page)
+- Webhook Action Handler Enhancement — COMPLETE (executeActionCallWebhook hardened: resolveExpression on URL+headers+bodyTemplate; URL validation http/https; AbortController timeout configurable via timeoutMs default 10s; non-JSON response text fallback; build verified)
+- OPC-UA Gateway Management UI — COMPLETE (T01-T11: OpcuaGateway types in @repo/types; useOpcuaGateways hook (9 queries/mutations); OpcuaGatewayTable/Modal/DetailPanel components; /opcua-gateways list page with modal + detail panel; OpcuaTab for Application Detail; /applications/[appId]/opcua sub-page; Sidebar entity entry + main nav link with Network icon; loading.tsx skeleton + error.tsx 'use client' reset button)
+- OPC-UA Node Browser — COMPLETE (T01-T06: OpcuaBrowseNode type + OpcuaNodeClass constants; useBrowseNodes mutation hook; BrowseNodeItem tree row component; OpcuaBrowseModal with lazy loading + multi-select; "Browse Server" button in edit mode; auto-populate nodeMappings from selected nodes)
 
-- Modbus Gateway Management UI (10 tasks: hooks, list page, create/edit modal, detail panel, app detail tab, sidebar nav)
+## In Progress
 
 ## Backlog
 

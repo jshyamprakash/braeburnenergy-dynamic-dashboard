@@ -15,12 +15,12 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated (e.g. visiting /login while logged in)
   useEffect(() => {
-    if (isAuthenticated && !authLoading) {
+    if (isAuthenticated) {
       router.push('/');
     }
-  }, [isAuthenticated, authLoading, router]);
+  }, [isAuthenticated, router]);
 
   // Clear error when component unmounts
   useEffect(() => {
@@ -49,7 +49,8 @@ export default function LoginPage() {
     try {
       await login(username.trim(), password);
       toast.success('Login successful!');
-      // Redirect happens automatically via useEffect above
+      const returnUrl = new URLSearchParams(window.location.search).get('returnUrl') || '/';
+      router.push(returnUrl);
     } catch (err) {
       const errorMessage =
         err instanceof Error

@@ -5,6 +5,7 @@ import { connectDB, disconnectDB } from '../lib/mongoose';
 import { OpcuaGateway } from '../models/opcua-gateway.model';
 import { Device } from '../models/device.model';
 import mongoose from 'mongoose';
+import { DEFAULT_ORG_ID } from '../test/helpers';
 
 /**
  * OPC UA Gateway Routes Integration Tests
@@ -14,7 +15,6 @@ import mongoose from 'mongoose';
 
 describe('OPC UA Gateway Routes', () => {
   let server: FastifyInstance;
-  const DEFAULT_ORG_ID = 'aaaaaaaaaaaaaaaaaaaaaaaa';
   let testGatewayId: string;
 
   const sampleGateway = {

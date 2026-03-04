@@ -8,8 +8,8 @@ import { Device } from '../models/device.model';
 import { DeviceState } from '../models/device-state.model';
 import { AlarmRule, AlarmInstance } from '../models';
 import mongoose from 'mongoose';
+import { DEFAULT_ORG_ID } from '../test/helpers';
 
-const DEFAULT_ORG_ID = 'aaaaaaaaaaaaaaaaaaaaaaaa';
 const DEFAULT_ORG_ID_MONGO = new mongoose.Types.ObjectId(DEFAULT_ORG_ID);
 
 describe('Workflow Trigger Dispatcher Integration Tests', () => {

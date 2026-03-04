@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { ProfileInfoSection } from './_components/ProfileInfoSection';
 import { ChangePasswordSection } from './_components/ChangePasswordSection';
 import { ActiveSessionsSection } from './_components/ActiveSessionsSection';
+import { ApiKeysSection } from './_components/ApiKeysSection';
 
 function ProfileContent() {
   const dispatch = useAppDispatch();
@@ -33,6 +34,7 @@ function ProfileContent() {
           <ProfileInfoSection />
           <ChangePasswordSection />
           <ActiveSessionsSection />
+          <ApiKeysSection />
         </>
       )}
     </div>

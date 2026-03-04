@@ -380,3 +380,165 @@ export interface UpdateModbusGatewayInput {
   registers?: ModbusRegister[];
   deviceMapping?: { autoRegister: boolean; deviceIdPrefix?: string };
 }
+
+// ===========================
+// API Key Types
+// ===========================
+
+/**
+ * ApiKey - Machine-to-machine authentication token
+ */
+export interface ApiKey {
+  id: string;
+  name: string;
+  prefix: 'iot_live_' | 'iot_test_';
+  permissions: string[];
+  expiresAt?: string;
+  lastUsedAt?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+/**
+ * Create API key input
+ */
+export interface CreateApiKeyInput {
+  name: string;
+  prefix?: 'iot_live_' | 'iot_test_';
+  permissions?: string[];
+  expiresAt?: string;
+}
+
+/**
+ * Update API key input
+ */
+export interface UpdateApiKeyInput {
+  name?: string;
+  permissions?: string[];
+  expiresAt?: string;
+}
+
+// ===========================
+// OPC-UA Gateway Types
+// ===========================
+
+/**
+ * OPC-UA node mapping (field → node ID)
+ */
+export interface OpcuaNodeMapping {
+  field: string;
+  nodeId: string;
+  dataType?: string;
+  scale?: number;
+  offset?: number;
+  unit?: string;
+  description?: string;
+}
+
+/**
+ * OPC-UA subscription settings
+ */
+export interface OpcuaSubscriptionSettings {
+  publishingInterval?: number;
+  maxNotificationsPerPublish?: number;
+  priority?: number;
+  samplingInterval?: number;
+  queueSize?: number;
+}
+
+/**
+ * OPC-UA gateway
+ */
+export interface OpcuaGateway {
+  id: string;
+  name: string;
+  description?: string;
+  applicationId?: string;
+  deviceId: string;
+  endpointUrl: string;
+  securityMode: 'None' | 'Sign' | 'SignAndEncrypt';
+  securityPolicy?: string;
+  username?: string;
+  password?: string;
+  monitoringMode: 'Polling' | 'Subscription';
+  pollingInterval?: number;
+  subscriptionSettings?: OpcuaSubscriptionSettings;
+  nodeMappings: OpcuaNodeMapping[];
+  isActive: boolean;
+  isConnected: boolean;
+  lastError?: string;
+  consecutiveFailures: number;
+  totalReads: number;
+  successfulReads: number;
+  failedReads: number;
+  averageResponseTime?: number;
+  lastPollTimestamp?: string | Date;
+  lastSuccessTimestamp?: string | Date;
+  lastErrorTimestamp?: string | Date;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+}
+
+/**
+ * Create OPC-UA gateway input
+ */
+export interface CreateOpcuaGatewayInput {
+  name: string;
+  description?: string;
+  applicationId?: string;
+  deviceId: string;
+  endpointUrl: string;
+  securityMode: 'None' | 'Sign' | 'SignAndEncrypt';
+  securityPolicy?: string;
+  username?: string;
+  password?: string;
+  monitoringMode: 'Polling' | 'Subscription';
+  pollingInterval?: number;
+  subscriptionSettings?: OpcuaSubscriptionSettings;
+  nodeMappings?: OpcuaNodeMapping[];
+}
+
+/**
+ * Update OPC-UA gateway input
+ */
+export interface UpdateOpcuaGatewayInput {
+  name?: string;
+  description?: string;
+  deviceId?: string;
+  endpointUrl?: string;
+  securityMode?: 'None' | 'Sign' | 'SignAndEncrypt';
+  securityPolicy?: string;
+  username?: string;
+  password?: string;
+  monitoringMode?: 'Polling' | 'Subscription';
+  pollingInterval?: number;
+  subscriptionSettings?: OpcuaSubscriptionSettings;
+  nodeMappings?: OpcuaNodeMapping[];
+}
+
+/**
+ * OPC-UA browse tree node (from server discovery)
+ */
+export interface OpcuaBrowseNode {
+  nodeId: string;
+  browseName: string;
+  displayName: string;
+  nodeClass: number;
+  hasChildren?: boolean;
+}
+
+/**
+ * OPC-UA node class constants (IEC 62541-6)
+ */
+export const OpcuaNodeClass = {
+  Unspecified: 0,
+  Object: 1,
+  Variable: 2,
+  Method: 4,
+  ObjectType: 8,
+  VariableType: 16,
+  ReferenceType: 32,
+  DataType: 64,
+  View: 128,
+} as const;

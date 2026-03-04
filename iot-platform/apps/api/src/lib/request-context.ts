@@ -13,8 +13,8 @@ import type { FastifyRequest } from 'fastify';
 /**
  * POC defaults — single source of truth, replaces 38 per-file duplicates
  */
-export const POC_DEFAULT_ORG_ID = 'aaaaaaaaaaaaaaaaaaaaaaaa';
-export const POC_DEFAULT_USER_ID = 'admin-user';
+export const DEFAULT_ORG_ID = 'aaaaaaaaaaaaaaaaaaaaaaaa';
+export const DEFAULT_USER_ID = 'admin-user';
 
 /**
  * Typed user attached to request by auth middleware
@@ -63,8 +63,8 @@ export function getRequestContext(request: FastifyRequest): {
 
   // POC fallback — non-auth routes continue to work
   return {
-    orgId: POC_DEFAULT_ORG_ID,
-    userId: POC_DEFAULT_USER_ID,
+    orgId: DEFAULT_ORG_ID,
+    userId: DEFAULT_USER_ID,
     role: 'Admin',
   };
 }
