@@ -37,7 +37,8 @@ export class WorkflowEngineService {
     workflowId: string,
     trigger: Omit<ExecutionTrigger, 'timestamp'>,
     userId?: string,
-    bypassEnabled = false
+    bypassEnabled = false,
+    startNodeId?: string
   ): Promise<string> {
     // Find workflow
     const workflow = await Workflow.findOne({ workflowId }).lean();
@@ -72,7 +73,7 @@ export class WorkflowEngineService {
     await execution.save();
 
     // Execute workflow asynchronously (don't await)
-    this.executeWorkflow(execution._id.toString(), workflow).catch(err => {
+    this.executeWorkflow(execution._id.toString(), workflow, startNodeId).catch(err => {
       console.error(`Workflow execution ${executionId} failed:`, err);
     });
 
@@ -82,7 +83,7 @@ export class WorkflowEngineService {
   /**
    * Execute workflow (private async method)
    */
-  private async executeWorkflow(executionMongoId: string, workflow: any) {
+  private async executeWorkflow(executionMongoId: string, workflow: any, startNodeId?: string) {
     const execution = await WorkflowExecution.findById(executionMongoId);
     if (!execution) {
       throw new Error('Execution not found');
@@ -111,17 +112,20 @@ export class WorkflowEngineService {
         currentData: execution.inputData,
         // ADR-037: workspace = device_states.data snapshot (raw telemetry)
         workspace: execution.inputData.workspace ?? {},
+        workflowId: execution.workflowId,
       };
 
-      // Find trigger node (starting point)
-      const triggerNode = workflow.nodes.find((n: WorkflowNode) => n.type.startsWith('trigger:'));
-      if (!triggerNode) {
-        throw new Error('No trigger node found');
+      // Find start node — use explicit startNodeId if provided, otherwise find trigger node
+      const startNode = startNodeId
+        ? workflow.nodes.find((n: WorkflowNode) => n.id === startNodeId)
+        : workflow.nodes.find((n: WorkflowNode) => n.type.startsWith('trigger:'));
+      if (!startNode) {
+        throw new Error(startNodeId ? `Start node ${startNodeId} not found` : 'No trigger node found');
       }
 
       // Execute workflow (depth-first traversal)
       await this.executeNode(
-        triggerNode,
+        startNode,
         workflow.nodes,
         workflow.edges,
         context,
@@ -313,8 +317,19 @@ export class WorkflowEngineService {
       // Find next nodes (follow edges)
       const outgoingEdges = allEdges.filter(e => e.source === node.id);
 
-      // For condition nodes, choose branch based on result
-      if (node.type.startsWith('condition:')) {
+      // For switch nodes, route to specific branch
+      if (node.type === 'logic:switch') {
+        const branch = result.switchBranch ?? 'default';
+        const nextEdge = outgoingEdges.find(e => e.sourceHandle === branch);
+
+        if (nextEdge) {
+          const nextNode = allNodes.find(n => n.id === nextEdge.target);
+          if (nextNode) {
+            await this.executeNode(nextNode, allNodes, allEdges, context, execution);
+          }
+        }
+      } else if (node.type.startsWith('condition:')) {
+        // For condition nodes, choose branch based on result
         const branch = result.conditionMet ? 'true' : 'false';
         const nextEdge = outgoingEdges.find(e => e.sourceHandle === branch);
 

@@ -248,6 +248,11 @@ export const executeWorkflowSchema = z.object({
     .optional()
     .default({})
     .describe('Initial variables'),
+
+  startNodeId: z
+    .string()
+    .optional()
+    .describe('Node ID to start execution from. Defaults to the trigger node.'),
 });
 
 export type ExecuteWorkflowDTO = z.infer<typeof executeWorkflowSchema>;

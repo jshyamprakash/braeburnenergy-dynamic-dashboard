@@ -1,0 +1,2039 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kosmos™ Platform — Braeburn Energy</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap');
+
+  :root {
+    --ultra-light: #D6E6F9;
+    --pale: #A3C8F0;
+    --soft: #6FAAE6;
+    --mid: #3C8CD3;
+    --base: #1560BD;
+    --deep: #0D3C7A;
+    --green: #00B050;
+    --green-dim: #007A38;
+    --green-glow: rgba(0,176,80,0.25);
+    --bg-dark: #060F1E;
+    --bg-card: #0A1A30;
+    --bg-panel: #0D2244;
+    --border: rgba(21,96,189,0.35);
+    --border-bright: rgba(21,96,189,0.7);
+    --text-primary: #E8F3FF;
+    --text-secondary: #8BB8E0;
+    --text-dim: #4A7AAD;
+    --amber: #FFB800;
+    --red: #FF3A3A;
+    --font-main: 'Corbel', 'Segoe UI', sans-serif;
+    --font-tech: 'Share Tech Mono', monospace;
+    --font-display: 'Rajdhani', 'Corbel', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    font-family: var(--font-main);
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+
+  /* GRID BACKGROUND */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(21,96,189,0.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(21,96,189,0.07) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* SCANLINE */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ========== HEADER ========== */
+  header {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    height: 58px;
+    background: linear-gradient(90deg, var(--deep) 0%, var(--bg-panel) 50%, var(--deep) 100%);
+    border-bottom: 2px solid var(--base);
+    box-shadow: 0 2px 20px rgba(21,96,189,0.4);
+  }
+
+  .header-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .be-logo {
+    width: 36px; height: 36px;
+    background: var(--base);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display);
+    font-size: 15px; font-weight: 700;
+    color: white;
+    border: 2px solid var(--soft);
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .be-logo::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    border: 1px solid rgba(21,96,189,0.4);
+    animation: pulse-ring 2.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse-ring {
+    0%,100% { transform: scale(1); opacity: 0.6; }
+    50% { transform: scale(1.15); opacity: 0; }
+  }
+
+  .brand-text { display: flex; flex-direction: column; }
+  .brand-name {
+    font-family: var(--font-display);
+    font-size: 18px; font-weight: 700; letter-spacing: 2px;
+    color: white; line-height: 1;
+  }
+  .brand-sub {
+    font-family: var(--font-tech);
+    font-size: 10px; color: var(--green);
+    letter-spacing: 3px; text-transform: uppercase;
+  }
+
+  .header-platform {
+    font-family: var(--font-display);
+    font-size: 22px; font-weight: 700;
+    letter-spacing: 4px; color: var(--ultra-light);
+    text-shadow: 0 0 20px rgba(111,170,230,0.5);
+  }
+  .header-platform span { color: var(--green); }
+
+  .header-right {
+    display: flex; align-items: center; gap: 16px;
+    font-family: var(--font-tech); font-size: 11px; color: var(--text-secondary);
+  }
+
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: blink 1.8s ease-in-out infinite;
+    display: inline-block; margin-right: 5px;
+  }
+
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  .live-badge {
+    background: rgba(0,176,80,0.15); border: 1px solid var(--green);
+    color: var(--green); padding: 2px 10px; border-radius: 2px;
+    font-size: 10px; letter-spacing: 2px;
+    animation: blink 1.8s ease-in-out infinite;
+  }
+
+  /* ========== NAV TABS ========== */
+  .nav-tabs {
+    position: relative; z-index: 10;
+    display: flex; gap: 2px; padding: 6px 24px 0;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .nav-tab {
+    padding: 8px 18px; cursor: pointer;
+    font-family: var(--font-display); font-size: 13px;
+    font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--text-dim); background: transparent;
+    border: 1px solid transparent; border-bottom: none;
+    border-radius: 4px 4px 0 0;
+    transition: all 0.2s;
+    position: relative;
+  }
+
+  .nav-tab:hover { color: var(--pale); background: rgba(21,96,189,0.1); }
+
+  .nav-tab.active {
+    color: white; background: var(--bg-dark);
+    border-color: var(--border-bright);
+    border-bottom-color: var(--bg-dark);
+  }
+
+  .nav-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -2px; left: 0; right: 0;
+    height: 2px;
+    background: var(--green);
+  }
+
+  /* ========== MAIN LAYOUT ========== */
+  .main {
+    position: relative; z-index: 5;
+    display: grid;
+    padding: 16px 20px;
+    gap: 12px;
+    min-height: calc(100vh - 120px);
+  }
+
+  /* Panel view */
+  .view { display: none; }
+  .view.active { display: contents; }
+
+  /* ========== OVERVIEW LAYOUT ========== */
+  #view-overview {
+    grid-template-columns: 280px 1fr 280px;
+    grid-template-rows: auto auto 1fr;
+    gap: 12px;
+  }
+
+  /* ========== CARD BASE ========== */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--base), transparent);
+  }
+
+  .card.accent-green::before {
+    background: linear-gradient(90deg, transparent, var(--green), transparent);
+  }
+
+  .card-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .card-title {
+    font-family: var(--font-display);
+    font-size: 12px; font-weight: 600;
+    letter-spacing: 2px; text-transform: uppercase;
+    color: var(--soft);
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  .card-title .icon { font-size: 14px; }
+
+  .card-badge {
+    font-family: var(--font-tech); font-size: 10px;
+    padding: 2px 8px; border-radius: 2px;
+    background: rgba(21,96,189,0.2); border: 1px solid var(--border-bright);
+    color: var(--pale);
+  }
+
+  .card-body { padding: 12px 14px; }
+
+  /* ========== ARCHITECTURE DIAGRAM ========== */
+  .arch-diagram {
+    grid-column: 1 / -1;
+    padding: 16px 20px;
+  }
+
+  .arch-flow {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    justify-content: center;
+  }
+
+  .arch-layer {
+    flex: 1;
+    display: flex; flex-direction: column;
+    align-items: center; gap: 8px;
+    padding: 0 8px;
+  }
+
+  .layer-label {
+    font-family: var(--font-tech); font-size: 9px;
+    color: var(--text-dim); letter-spacing: 2px;
+    text-transform: uppercase; text-align: center;
+    margin-bottom: 4px;
+  }
+
+  .arch-block {
+    width: 100%; padding: 10px 8px;
+    border-radius: 4px; text-align: center;
+    font-family: var(--font-display); font-size: 13px;
+    font-weight: 600; letter-spacing: 1px;
+    cursor: pointer; transition: all 0.25s;
+    position: relative;
+  }
+
+  .arch-block:hover { transform: translateY(-2px); filter: brightness(1.2); }
+
+  .arch-block.sensor {
+    background: rgba(13,60,122,0.6); border: 1px solid var(--mid);
+    color: var(--pale);
+  }
+  .arch-block.fusion {
+    background: rgba(21,96,189,0.3); border: 1px solid var(--soft);
+    color: var(--ultra-light);
+  }
+  .arch-block.agent {
+    background: rgba(0,176,80,0.15); border: 1px solid var(--green);
+    color: var(--green);
+    box-shadow: 0 0 12px rgba(0,176,80,0.2);
+  }
+  .arch-block.cloud {
+    background: rgba(60,140,211,0.2); border: 1px solid var(--mid);
+    color: var(--soft);
+  }
+  .arch-block.output {
+    background: rgba(13,60,122,0.4); border: 1px solid var(--base);
+    color: var(--pale);
+  }
+
+  .arch-arrow {
+    display: flex; align-items: center;
+    color: var(--mid); font-size: 20px;
+    padding: 0 4px; flex-shrink: 0;
+    align-self: center;
+  }
+
+  .arch-arrow.bidirectional::after { content: '⇄'; }
+  .arch-arrow.forward::after { content: '→'; }
+
+  /* ========== METRIC CARDS ========== */
+  .metric-row {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+    grid-column: 1 / -1;
+  }
+
+  .metric-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 4px; padding: 12px 16px;
+    position: relative; overflow: hidden;
+  }
+
+  .metric-card::after {
+    content: '';
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--color, var(--base));
+    opacity: 0.7;
+  }
+
+  .metric-label {
+    font-family: var(--font-tech); font-size: 10px;
+    color: var(--text-dim); letter-spacing: 1px;
+    text-transform: uppercase; margin-bottom: 6px;
+  }
+
+  .metric-value {
+    font-family: var(--font-display); font-size: 28px;
+    font-weight: 700; color: var(--color, var(--soft));
+    line-height: 1; margin-bottom: 2px;
+  }
+
+  .metric-unit {
+    font-family: var(--font-tech); font-size: 11px;
+    color: var(--text-secondary);
+  }
+
+  .metric-trend {
+    font-family: var(--font-tech); font-size: 10px;
+    margin-top: 4px;
+  }
+
+  .trend-up { color: var(--green); }
+  .trend-down { color: var(--red); }
+  .trend-flat { color: var(--amber); }
+
+  /* ========== SIGNAL CHART ========== */
+  .chart-container {
+    position: relative;
+    width: 100%; height: 180px;
+    background: rgba(6,15,30,0.6);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  canvas { width: 100% !important; height: 100% !important; }
+
+  /* ========== BE SENSE PANEL ========== */
+  .sense-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;
+  }
+
+  .sensor-item {
+    background: rgba(13,60,122,0.3);
+    border: 1px solid var(--border);
+    border-radius: 3px; padding: 8px 10px;
+    display: flex; align-items: center; justify-content: space-between;
+    cursor: pointer; transition: all 0.2s;
+  }
+
+  .sensor-item:hover { border-color: var(--mid); background: rgba(21,96,189,0.15); }
+
+  .sensor-item.active { border-color: var(--green); background: rgba(0,176,80,0.08); }
+
+  .sensor-name {
+    font-family: var(--font-display); font-size: 12px;
+    font-weight: 600; letter-spacing: 1px; color: var(--pale);
+  }
+
+  .sensor-val {
+    font-family: var(--font-tech); font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  .sensor-status {
+    width: 6px; height: 6px; border-radius: 50%;
+    flex-shrink: 0; margin-left: 6px;
+  }
+
+  .s-ok { background: var(--green); box-shadow: 0 0 5px var(--green); }
+  .s-warn { background: var(--amber); box-shadow: 0 0 5px var(--amber); }
+  .s-off { background: var(--text-dim); }
+
+  /* ========== BE AGENT PANEL ========== */
+  .agent-modules {
+    display: flex; flex-direction: column; gap: 6px;
+  }
+
+  .agent-module {
+    background: rgba(6,15,30,0.7);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--base);
+    border-radius: 0 3px 3px 0;
+    padding: 8px 10px;
+    cursor: pointer; transition: all 0.2s;
+    position: relative;
+  }
+
+  .agent-module:hover { border-left-color: var(--soft); background: rgba(21,96,189,0.1); }
+  .agent-module.active-mod { border-left-color: var(--green); }
+  .agent-module.active-mod .mod-status { color: var(--green); }
+
+  .mod-name {
+    font-family: var(--font-display); font-size: 13px;
+    font-weight: 600; letter-spacing: 1px; color: var(--pale);
+  }
+
+  .mod-desc {
+    font-family: var(--font-main); font-size: 11px;
+    color: var(--text-dim); margin-top: 2px;
+  }
+
+  .mod-status {
+    position: absolute; right: 10px; top: 50%;
+    transform: translateY(-50%);
+    font-family: var(--font-tech); font-size: 10px;
+    color: var(--mid);
+  }
+
+  /* ========== COMBUSTION DL VIEW ========== */
+  #view-combustion { grid-template-columns: 1fr 1fr 320px; gap: 12px; }
+
+  .full-col { grid-column: 1 / -1; }
+
+  .feature-matrix {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px;
+    margin-top: 8px;
+  }
+
+  .feat-cell {
+    aspect-ratio: 1;
+    border-radius: 2px;
+    font-family: var(--font-tech); font-size: 9px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all 0.2s;
+    position: relative;
+  }
+
+  .feat-cell:hover::after {
+    content: attr(data-label);
+    position: absolute; bottom: calc(100% + 4px); left: 50%;
+    transform: translateX(-50%);
+    background: var(--deep); border: 1px solid var(--border-bright);
+    color: var(--text-primary); font-size: 9px;
+    padding: 2px 6px; border-radius: 2px; white-space: nowrap; z-index: 100;
+  }
+
+  .dl-framework {
+    display: flex; flex-direction: column; gap: 6px;
+    margin-top: 8px;
+  }
+
+  .dl-layer-row {
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .dl-layer-label {
+    font-family: var(--font-tech); font-size: 10px;
+    color: var(--text-dim); width: 100px; text-align: right; flex-shrink: 0;
+  }
+
+  .dl-layer-bar {
+    flex: 1; height: 28px; border-radius: 2px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display); font-size: 12px; font-weight: 600;
+    letter-spacing: 1px; position: relative; overflow: hidden;
+  }
+
+  .dl-layer-bar::before {
+    content: '';
+    position: absolute; top: 0; left: -100%;
+    width: 60%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+    animation: shimmer 3s infinite;
+  }
+
+  @keyframes shimmer { to { left: 150%; } }
+
+  .dl-layer-val {
+    font-family: var(--font-tech); font-size: 10px;
+    color: var(--text-secondary); width: 60px; flex-shrink: 0;
+    text-align: left;
+  }
+
+  /* Alert list */
+  .alert-list { display: flex; flex-direction: column; gap: 6px; }
+
+  .alert-item {
+    border-radius: 3px; padding: 8px 10px;
+    border-left: 3px solid;
+    background: rgba(6,15,30,0.6);
+    font-family: var(--font-main); font-size: 12px;
+  }
+
+  .alert-item.critical { border-left-color: var(--red); }
+  .alert-item.warning { border-left-color: var(--amber); }
+  .alert-item.info { border-left-color: var(--base); }
+  .alert-item.ok { border-left-color: var(--green); }
+
+  .alert-time {
+    font-family: var(--font-tech); font-size: 10px;
+    color: var(--text-dim); margin-bottom: 2px;
+  }
+
+  .alert-msg { color: var(--text-primary); }
+  .alert-sub { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+
+  /* ========== KOSMOS VIEW ========== */
+  #view-kosmos { grid-template-columns: 1fr 340px; gap: 12px; }
+
+  .platform-diagram {
+    display: flex; flex-direction: column; gap: 16px; padding: 16px;
+  }
+
+  .plat-layer {
+    border: 1px solid var(--border); border-radius: 4px;
+    padding: 12px 16px; position: relative;
+  }
+
+  .plat-layer-label {
+    position: absolute; top: -10px; left: 12px;
+    font-family: var(--font-tech); font-size: 10px;
+    color: var(--text-secondary); letter-spacing: 2px;
+    background: var(--bg-card); padding: 0 8px;
+    text-transform: uppercase;
+  }
+
+  .plat-boxes {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    margin-top: 4px;
+  }
+
+  .plat-box {
+    padding: 8px 14px; border-radius: 3px;
+    font-family: var(--font-display); font-size: 13px;
+    font-weight: 600; letter-spacing: 1px;
+    cursor: pointer; transition: all 0.2s;
+    border: 1px solid;
+  }
+
+  .plat-box:hover { transform: translateY(-2px); }
+
+  .pb-green { background: rgba(0,176,80,0.12); border-color: var(--green); color: var(--green); }
+  .pb-blue { background: rgba(21,96,189,0.15); border-color: var(--mid); color: var(--soft); }
+  .pb-deep { background: rgba(13,60,122,0.4); border-color: var(--base); color: var(--pale); }
+  .pb-teal { background: rgba(0,176,140,0.1); border-color: #00B08C; color: #00D0A8; }
+
+  /* ========== SCROLLBAR ========== */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg-dark); }
+  ::-webkit-scrollbar-thumb { background: var(--base); border-radius: 2px; }
+
+  /* ========== FOOTER BAR ========== */
+  footer {
+    position: relative; z-index: 10;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 20px;
+    background: var(--deep);
+    border-top: 1px solid var(--base);
+    font-family: var(--font-tech); font-size: 10px; color: var(--text-secondary);
+  }
+
+  .footer-logo {
+    color: var(--green); font-weight: 700; letter-spacing: 1px;
+  }
+
+  .footer-logo span { color: var(--base); }
+
+  /* ========== ANOMALY SCORE ========== */
+  .score-ring {
+    width: 100px; height: 100px; margin: 0 auto;
+    position: relative; display: flex;
+    align-items: center; justify-content: center;
+  }
+
+  .score-ring svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+
+  .score-val {
+    font-family: var(--font-display); font-size: 26px;
+    font-weight: 700; z-index: 1;
+    line-height: 1;
+  }
+
+  .score-label {
+    font-family: var(--font-tech); font-size: 10px;
+    color: var(--text-dim); text-align: center;
+    margin-top: 4px; letter-spacing: 1px;
+  }
+
+  /* ========== CONFIDENCE BARS ========== */
+  .conf-bars { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+
+  .conf-row { display: flex; flex-direction: column; gap: 3px; }
+
+  .conf-label-row {
+    display: flex; justify-content: space-between;
+    font-family: var(--font-tech); font-size: 10px; color: var(--text-secondary);
+  }
+
+  .conf-bar-track {
+    height: 6px; background: rgba(21,96,189,0.15);
+    border-radius: 3px; overflow: hidden;
+  }
+
+  .conf-bar-fill {
+    height: 100%; border-radius: 3px;
+    transition: width 1s ease;
+  }
+
+  /* ========== ANIMATIONS ========== */
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .card, .metric-card {
+    animation: fadeInUp 0.4s ease forwards;
+  }
+
+  /* ========== RESPONSIVE MAINS ========== */
+  #view-overview.active {
+    display: grid;
+    grid-template-columns: 280px 1fr 280px;
+    grid-template-rows: auto auto 1fr auto;
+  }
+
+  #view-combustion.active {
+    display: grid;
+    grid-template-columns: 1fr 1fr 300px;
+  }
+
+  #view-kosmos.active {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+  }
+
+  #view-agent.active {
+    display: grid;
+    grid-template-columns: 320px 1fr 320px;
+  }
+
+  /* TAG */
+  .tag {
+    display: inline-block;
+    font-family: var(--font-tech); font-size: 9px;
+    padding: 2px 6px; border-radius: 2px; letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .tag-blue { background: rgba(21,96,189,0.2); color: var(--soft); border: 1px solid var(--border-bright); }
+  .tag-green { background: rgba(0,176,80,0.15); color: var(--green); border: 1px solid var(--green); }
+  .tag-amber { background: rgba(255,184,0,0.12); color: var(--amber); border: 1px solid rgba(255,184,0,0.4); }
+  .tag-red { background: rgba(255,58,58,0.12); color: var(--red); border: 1px solid rgba(255,58,58,0.4); }
+
+  /* divider */
+  .divider {
+    height: 1px; background: var(--border); margin: 8px 0;
+  }
+
+  /* section heading */
+  .section-heading {
+    font-family: var(--font-display); font-size: 11px;
+    letter-spacing: 2px; text-transform: uppercase;
+    color: var(--text-dim); margin-bottom: 8px;
+  }
+
+  /* ========== CHAT / AGENT UI ========== */
+  .agent-chat {
+    display: flex; flex-direction: column;
+    height: 100%; min-height: 300px;
+  }
+
+  .chat-messages {
+    flex: 1; overflow-y: auto; padding: 10px;
+    display: flex; flex-direction: column; gap: 8px;
+    background: rgba(6,15,30,0.5);
+    border: 1px solid var(--border); border-radius: 3px;
+    min-height: 240px; max-height: 340px;
+  }
+
+  .chat-msg {
+    padding: 8px 10px; border-radius: 3px;
+    font-family: var(--font-main); font-size: 12px; line-height: 1.5;
+    max-width: 90%;
+  }
+
+  .chat-msg.system {
+    background: rgba(13,60,122,0.3); border-left: 2px solid var(--mid);
+    align-self: flex-start; color: var(--text-primary);
+  }
+
+  .chat-msg.agent {
+    background: rgba(0,176,80,0.1); border-left: 2px solid var(--green);
+    align-self: flex-start; color: var(--text-primary);
+  }
+
+  .chat-msg.user-q {
+    background: rgba(21,96,189,0.15); border-right: 2px solid var(--base);
+    align-self: flex-end; color: var(--text-primary);
+  }
+
+  .chat-msg-label {
+    font-family: var(--font-tech); font-size: 9px;
+    letter-spacing: 1px; margin-bottom: 4px; opacity: 0.7;
+  }
+
+  .chat-input-row {
+    display: flex; gap: 6px; margin-top: 8px;
+  }
+
+  .chat-input {
+    flex: 1; background: rgba(6,15,30,0.8);
+    border: 1px solid var(--border); border-radius: 3px;
+    color: var(--text-primary); font-family: var(--font-main); font-size: 12px;
+    padding: 7px 10px; outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .chat-input:focus { border-color: var(--base); }
+
+  .chat-send {
+    background: var(--base); border: none; border-radius: 3px;
+    color: white; padding: 7px 14px; cursor: pointer;
+    font-family: var(--font-display); font-size: 13px;
+    font-weight: 600; letter-spacing: 1px;
+    transition: background 0.2s;
+  }
+
+  .chat-send:hover { background: var(--mid); }
+
+  /* typing indicator */
+  .typing-dots { display: inline-flex; gap: 3px; align-items: center; }
+  .typing-dots span {
+    width: 4px; height: 4px; border-radius: 50%;
+    background: var(--green); display: inline-block;
+    animation: tdot 1.2s infinite;
+  }
+  .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes tdot { 0%,80%,100%{transform:scale(0.6);opacity:0.5} 40%{transform:scale(1);opacity:1} }
+
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="header-brand">
+    <div class="be-logo">3≡</div>
+    <div class="brand-text">
+      <div class="brand-name">BRAEBURN ENERGY</div>
+      <div class="brand-sub">BE THE FUTURE</div>
+    </div>
+  </div>
+
+  <div class="header-platform">KOSMOS<span>™</span> PLATFORM</div>
+
+  <div class="header-right">
+    <div><span class="status-dot"></span>EDGE: ONLINE</div>
+    <div id="live-time" style="color:var(--pale)">—</div>
+    <div class="live-badge">● LIVE</div>
+  </div>
+</header>
+
+<!-- NAV TABS -->
+<div class="nav-tabs">
+  <div class="nav-tab active" onclick="switchView('overview')">⬡ Overview</div>
+  <div class="nav-tab" onclick="switchView('combustion')">◈ Combustion DL</div>
+  <div class="nav-tab" onclick="switchView('agent')">⟳ BE Agent</div>
+  <div class="nav-tab" onclick="switchView('kosmos')">⬡ Kosmos Architecture</div>
+</div>
+
+<!-- MAIN -->
+<div class="main" id="main-grid">
+
+  <!-- ===== OVERVIEW VIEW ===== -->
+  <div class="view active" id="view-overview">
+
+    <!-- LEFT: BE Sense Inputs -->
+    <div class="card" style="grid-row: span 3;">
+      <div class="card-header">
+        <div class="card-title"><span class="icon">◈</span> BE SENSE™</div>
+        <div class="card-badge">SENSOR FUSION</div>
+      </div>
+      <div class="card-body">
+        <div class="section-heading">Multimodal Inputs</div>
+        <div class="sense-grid">
+          <div class="sensor-item active">
+            <div>
+              <div class="sensor-name">CD-P01</div>
+              <div class="sensor-val">4.2 kPa</div>
+            </div>
+            <div class="sensor-status s-ok"></div>
+          </div>
+          <div class="sensor-item active">
+            <div>
+              <div class="sensor-name">CD-P02</div>
+              <div class="sensor-val">4.1 kPa</div>
+            </div>
+            <div class="sensor-status s-ok"></div>
+          </div>
+          <div class="sensor-item active">
+            <div>
+              <div class="sensor-name">T-EGT</div>
+              <div class="sensor-val">612°C</div>
+            </div>
+            <div class="sensor-status s-ok"></div>
+          </div>
+          <div class="sensor-item">
+            <div>
+              <div class="sensor-name">VIB-X</div>
+              <div class="sensor-val">2.1 mm/s</div>
+            </div>
+            <div class="sensor-status s-warn"></div>
+          </div>
+          <div class="sensor-item active">
+            <div>
+              <div class="sensor-name">NOx</div>
+              <div class="sensor-val">18.4 ppm</div>
+            </div>
+            <div class="sensor-status s-ok"></div>
+          </div>
+          <div class="sensor-item active">
+            <div>
+              <div class="sensor-name">CO</div>
+              <div class="sensor-val">12.1 ppm</div>
+            </div>
+            <div class="sensor-status s-ok"></div>
+          </div>
+          <div class="sensor-item active">
+            <div>
+              <div class="sensor-name">CV</div>
+              <div class="sensor-val">38.2 MJ/m³</div>
+            </div>
+            <div class="sensor-status s-ok"></div>
+          </div>
+          <div class="sensor-item active">
+            <div>
+              <div class="sensor-name">H₂%</div>
+              <div class="sensor-val">3.2 %</div>
+            </div>
+            <div class="sensor-status s-ok"></div>
+          </div>
+        </div>
+
+        <div class="divider" style="margin: 12px 0;"></div>
+        <div class="section-heading">Acquisition</div>
+
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-family:var(--font-tech);font-size:10px;color:var(--text-dim);">SAMPLE RATE</span>
+            <span style="font-family:var(--font-tech);font-size:11px;color:var(--soft);">50 kHz</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-family:var(--font-tech);font-size:10px;color:var(--text-dim);">CHANNELS</span>
+            <span style="font-family:var(--font-tech);font-size:11px;color:var(--soft);">16 Active</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-family:var(--font-tech);font-size:10px;color:var(--text-dim);">LATENCY</span>
+            <span style="font-family:var(--font-tech);font-size:11px;color:var(--green);">&lt; 8 ms</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-family:var(--font-tech);font-size:10px;color:var(--text-dim);">EDGE NODE</span>
+            <span class="tag tag-green">ACTIVE</span>
+          </div>
+        </div>
+
+        <div class="divider" style="margin:12px 0;"></div>
+        <div class="section-heading">CalorieSense™ Link</div>
+        <div style="background:rgba(21,96,189,0.1);border:1px solid var(--border);border-radius:3px;padding:8px;">
+          <div style="font-family:var(--font-tech);font-size:10px;color:var(--text-dim);margin-bottom:4px;">CALORIFIC VALUE</div>
+          <div style="font-family:var(--font-display);font-size:22px;font-weight:700;color:var(--soft);">38.2 <span style="font-size:13px;color:var(--text-secondary);">MJ/m³</span></div>
+          <div style="font-family:var(--font-tech);font-size:10px;color:var(--text-secondary);margin-top:2px;">1024.7 BTU/SCF</div>
+          <div style="display:flex;gap:6px;margin-top:6px;">
+            <span class="tag tag-green">CV ✓</span>
+            <span class="tag tag-green">H2F ✓</span>
+            <span class="tag tag-blue">CARI</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CENTER TOP: Metrics Row -->
+    <div style="grid-column:2/3; display:grid; grid-template-columns: repeat(3,1fr); gap:10px;">
+      <div class="metric-card" style="--color: var(--green)">
+        <div class="metric-label">CD ANOMALY SCORE</div>
+        <div class="metric-value" id="m-anomaly">0.14</div>
+        <div class="metric-unit">Normalised Index</div>
+        <div class="metric-trend trend-down">▼ LOW RISK</div>
+      </div>
+      <div class="metric-card" style="--color: var(--soft)">
+        <div class="metric-label">TURBINE LOAD</div>
+        <div class="metric-value" id="m-load">84.2</div>
+        <div class="metric-unit">% MCR</div>
+        <div class="metric-trend trend-flat">◆ STEADY</div>
+      </div>
+      <div class="metric-card" style="--color: var(--amber)">
+        <div class="metric-label">EGT SPREAD</div>
+        <div class="metric-value" id="m-egt">12.4</div>
+        <div class="metric-unit">°C Δ</div>
+        <div class="metric-trend trend-flat">▲ MONITOR</div>
+      </div>
+    </div>
+
+    <!-- CENTER: Real-time CD Signal -->
+    <div class="card" style="grid-column:2/3;">
+      <div class="card-header">
+        <div class="card-title"><span class="icon">〜</span> COMBUSTION DYNAMICS — REAL-TIME</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <span class="tag tag-green">DFT ACTIVE</span>
+          <span class="tag tag-blue">50 kHz</span>
+        </div>
+      </div>
+      <div class="card-body" style="padding:8px;">
+        <div class="chart-container" style="height:160px;">
+          <canvas id="cdChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- CENTER BOTTOM: Architecture flow -->
+    <div class="card arch-diagram" style="grid-column:2/3;">
+      <div class="card-header">
+        <div class="card-title"><span class="icon">⬡</span> DATA FLOW — KOSMOS PLATFORM</div>
+        <div class="card-badge">OEM-AGNOSTIC</div>
+      </div>
+      <div class="card-body">
+        <div class="arch-flow">
+          <div class="arch-layer">
+            <div class="layer-label">Physical Layer</div>
+            <div class="arch-block sensor">Gas Turbine<br><small style="font-size:10px;opacity:0.7;">GE / Siemens / MHI</small></div>
+            <div class="arch-block sensor" style="margin-top:4px;">Balance of Plant</div>
+          </div>
+          <div class="arch-arrow bidirectional"></div>
+          <div class="arch-layer">
+            <div class="layer-label">BE Sense™</div>
+            <div class="arch-block fusion">Multimodal<br>Sensor Fusion</div>
+            <div class="arch-block fusion" style="margin-top:4px;">CalorieSense™<br>Edge</div>
+          </div>
+          <div class="arch-arrow forward"></div>
+          <div class="arch-layer">
+            <div class="layer-label">BE Agent™</div>
+            <div class="arch-block agent">Agentic AI<br>Framework</div>
+            <div class="arch-block agent" style="margin-top:4px;">CD Precursor<br>Detection</div>
+          </div>
+          <div class="arch-arrow bidirectional"></div>
+          <div class="arch-layer">
+            <div class="layer-label">Cloud / On-Prem</div>
+            <div class="arch-block cloud">Fleet<br>Analytics</div>
+            <div class="arch-block cloud" style="margin-top:4px;">Asset Life<br>Management</div>
+          </div>
+          <div class="arch-arrow forward"></div>
+          <div class="arch-layer">
+            <div class="layer-label">Outputs</div>
+            <div class="arch-block output">CMMS<br>Integration</div>
+            <div class="arch-block output" style="margin-top:4px;">Operator<br>Dashboard</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: BE Agent Status -->
+    <div class="card" style="grid-row: span 3;">
+      <div class="card-header">
+        <div class="card-title"><span class="icon">⟳</span> BE AGENT™</div>
+        <div class="card-badge">AGENTIC AI</div>
+      </div>
+      <div class="card-body">
+        <div class="section-heading">Active Modules</div>
+        <div class="agent-modules">
+          <div class="agent-module active-mod">
+            <div class="mod-name">CD Precursor</div>
+            <div class="mod-desc">Feature-driven DL anomaly detection</div>
+            <div class="mod-status">● RUN</div>
+          </div>
+          <div class="agent-module active-mod">
+            <div class="mod-name">Thermo Perf.</div>
+            <div class="mod-desc">Compressor / turbine efficiency</div>
+            <div class="mod-status">● RUN</div>
+          </div>
+          <div class="agent-module">
+            <div class="mod-name">Vibration</div>
+            <div class="mod-desc">Rotor dynamics & blade health</div>
+            <div class="mod-status">○ IDLE</div>
+          </div>
+          <div class="agent-module">
+            <div class="mod-name">Emissions Opt.</div>
+            <div class="mod-desc">NOx/CO optimisation loop</div>
+            <div class="mod-status">○ IDLE</div>
+          </div>
+          <div class="agent-module">
+            <div class="mod-name">Fuel Quality</div>
+            <div class="mod-desc">CalorieSense™ adaptive tuning</div>
+            <div class="mod-status">● RUN</div>
+          </div>
+          <div class="agent-module">
+            <div class="mod-name">Asset Life</div>
+            <div class="mod-desc">Creep / LCF remaining life</div>
+            <div class="mod-status">○ IDLE</div>
+          </div>
+        </div>
+
+        <div class="divider" style="margin: 12px 0;"></div>
+        <div class="section-heading">Alerts</div>
+        <div class="alert-list">
+          <div class="alert-item ok">
+            <div class="alert-time">14:58:02</div>
+            <div class="alert-msg">Combustion stable</div>
+            <div class="alert-sub">CD anomaly score nominal</div>
+          </div>
+          <div class="alert-item warning">
+            <div class="alert-time">14:52:17</div>
+            <div class="alert-msg">VIB-X elevated</div>
+            <div class="alert-sub">2.1 mm/s — monitor bearing</div>
+          </div>
+          <div class="alert-item info">
+            <div class="alert-time">14:40:00</div>
+            <div class="alert-msg">CV shift detected</div>
+            <div class="alert-sub">H₂ fraction +0.4% — adapting</div>
+          </div>
+        </div>
+
+        <div class="divider" style="margin:12px 0;"></div>
+        <div style="text-align:center;">
+          <div class="score-ring">
+            <svg viewBox="0 0 100 100" width="100" height="100">
+              <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(21,96,189,0.15)" stroke-width="8"/>
+              <circle cx="50" cy="50" r="40" fill="none" stroke="var(--green)" stroke-width="8"
+                stroke-dasharray="251" stroke-dashoffset="35" stroke-linecap="round"/>
+            </svg>
+            <div>
+              <div class="score-val" style="color:var(--green)">86</div>
+              <div style="font-family:var(--font-tech);font-size:9px;color:var(--text-dim)">HEALTH</div>
+            </div>
+          </div>
+          <div class="score-label">TURBINE HEALTH INDEX</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end overview -->
+
+
+  <!-- ===== COMBUSTION DL VIEW ===== -->
+  <div class="view" id="view-combustion">
+
+    <!-- Row 1: full-width title -->
+    <div class="card full-col" style="grid-column:1/-1;">
+      <div class="card-header">
+        <div class="card-title"><span class="icon">◈</span> FEATURE-DRIVEN DEEP LEARNING — GT2026 PAPER DEMO</div>
+        <div style="display:flex;gap:8px;">
+          <span class="tag tag-blue">GT2026-179161</span>
+          <span class="tag tag-green">LIVE INFERENCE</span>
+        </div>
+      </div>
+      <div class="card-body" style="padding:10px 14px;">
+        <div style="display:flex;gap:20px;align-items:center;">
+          <div>
+            <div style="font-family:var(--font-main);font-size:12px;color:var(--text-secondary);max-width:600px;">
+              Agentic AI framework applying physics-informed feature extraction from high-speed combustion dynamics pressure signals.
+              Autoencoder + LSTM network detects thermoacoustic precursors prior to visible lean blowout or flashback events.
+              Features: DFT amplitude spectra, SPL, Hurst exponent, Shannon entropy, mutual information.
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;flex-shrink:0;margin-left:auto;">
+            <span class="tag tag-green">AUTOENCODER</span>
+            <span class="tag tag-blue">LSTM</span>
+            <span class="tag tag-blue">DFT FEATURES</span>
+            <span class="tag tag-amber">THERMO-ACOUSTIC</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Col 1: Signal + Features -->
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">◈ CD PRESSURE SIGNAL</div>
+          <span class="tag tag-blue">50 kHz</span>
+        </div>
+        <div class="card-body" style="padding:8px;">
+          <div class="chart-container" style="height:130px;">
+            <canvas id="cdChart2"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">◈ FREQUENCY SPECTRUM (DFT)</div>
+          <span class="tag tag-green">FFT LIVE</span>
+        </div>
+        <div class="card-body" style="padding:8px;">
+          <div class="chart-container" style="height:130px;">
+            <canvas id="fftChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">◈ EXTRACTED FEATURES</div>
+        </div>
+        <div class="card-body">
+          <div class="feature-matrix" id="featMatrix">
+            <!-- filled by JS -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Col 2: DL Architecture + Reconstruction -->
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">⬡ DL FRAMEWORK PIPELINE</div>
+          <span class="tag tag-green">ACTIVE</span>
+        </div>
+        <div class="card-body">
+          <div class="dl-framework">
+            <div class="dl-layer-row">
+              <div class="dl-layer-label">INPUT</div>
+              <div class="dl-layer-bar" style="background:rgba(13,60,122,0.5);border:1px solid var(--mid);color:var(--pale);">
+                Raw CD Signal [N×1]
+              </div>
+              <div class="dl-layer-val">50 kHz</div>
+            </div>
+            <div class="dl-layer-row">
+              <div class="dl-layer-label">FEATURE EXT.</div>
+              <div class="dl-layer-bar" style="background:rgba(21,96,189,0.25);border:1px solid var(--soft);color:var(--ultra-light);">
+                Physics-Informed Features
+              </div>
+              <div class="dl-layer-val">DFT·SPL·H·S</div>
+            </div>
+            <div class="dl-layer-row">
+              <div class="dl-layer-label">ENCODER</div>
+              <div class="dl-layer-bar" style="background:rgba(0,176,80,0.12);border:1px solid var(--green);color:var(--green);">
+                Conv1D Autoencoder
+              </div>
+              <div class="dl-layer-val">128→32</div>
+            </div>
+            <div class="dl-layer-row">
+              <div class="dl-layer-label">TEMPORAL</div>
+              <div class="dl-layer-bar" style="background:rgba(0,176,80,0.12);border:1px solid var(--green);color:var(--green);">
+                Bi-LSTM Sequence
+              </div>
+              <div class="dl-layer-val">32→64</div>
+            </div>
+            <div class="dl-layer-row">
+              <div class="dl-layer-label">DECODER</div>
+              <div class="dl-layer-bar" style="background:rgba(21,96,189,0.2);border:1px solid var(--mid);color:var(--soft);">
+                Reconstruction
+              </div>
+              <div class="dl-layer-val">64→128</div>
+            </div>
+            <div class="dl-layer-row">
+              <div class="dl-layer-label">ANOMALY</div>
+              <div class="dl-layer-bar" style="background:rgba(255,184,0,0.1);border:1px solid var(--amber);color:var(--amber);">
+                Reconstruction Error → Score
+              </div>
+              <div class="dl-layer-val" id="recon-err">0.14</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">◈ ANOMALY SCORE TREND</div>
+          <span class="tag tag-green">LOW RISK</span>
+        </div>
+        <div class="card-body" style="padding:8px;">
+          <div class="chart-container" style="height:130px;">
+            <canvas id="anomChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">◈ PHYSICS FEATURE METRICS</div>
+        </div>
+        <div class="card-body">
+          <div class="conf-bars">
+            <div class="conf-row">
+              <div class="conf-label-row"><span>SPL (Overall)</span><span id="spl-val">142.3 dB</span></div>
+              <div class="conf-bar-track"><div class="conf-bar-fill" style="width:72%;background:var(--soft);"></div></div>
+            </div>
+            <div class="conf-row">
+              <div class="conf-label-row"><span>Hurst Exponent</span><span id="hurst-val">0.63</span></div>
+              <div class="conf-bar-track"><div class="conf-bar-fill" style="width:63%;background:var(--mid);"></div></div>
+            </div>
+            <div class="conf-row">
+              <div class="conf-label-row"><span>Shannon Entropy</span><span id="entropy-val">4.21 nats</span></div>
+              <div class="conf-bar-track"><div class="conf-bar-fill" style="width:55%;background:var(--green);"></div></div>
+            </div>
+            <div class="conf-row">
+              <div class="conf-label-row"><span>Mutual Info (P·T)</span><span id="mi-val">0.38</span></div>
+              <div class="conf-bar-track"><div class="conf-bar-fill" style="width:38%;background:var(--amber);"></div></div>
+            </div>
+            <div class="conf-row">
+              <div class="conf-label-row"><span>DFT Dominant Freq.</span><span id="dft-val">186 Hz</span></div>
+              <div class="conf-bar-track"><div class="conf-bar-fill" style="width:45%;background:var(--base);"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Col 3: Classifier + Actions -->
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div class="card accent-green">
+        <div class="card-header">
+          <div class="card-title">⟳ PRECURSOR CLASSIFICATION</div>
+        </div>
+        <div class="card-body" style="text-align:center;">
+          <div class="score-ring" style="margin-bottom:8px;">
+            <svg viewBox="0 0 100 100" width="100" height="100">
+              <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(0,176,80,0.1)" stroke-width="9"/>
+              <circle cx="50" cy="50" r="40" fill="none" stroke="var(--green)" stroke-width="9"
+                stroke-dasharray="251" stroke-dashoffset="35" stroke-linecap="round"/>
+            </svg>
+            <div>
+              <div class="score-val" style="color:var(--green)">86%</div>
+              <div style="font-family:var(--font-tech);font-size:9px;color:var(--text-dim)">CONFIDENCE</div>
+            </div>
+          </div>
+          <div style="font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--green);letter-spacing:2px;margin-bottom:4px;">
+            NORMAL OPERATION
+          </div>
+          <div style="font-family:var(--font-tech);font-size:10px;color:var(--text-secondary);">
+            No precursor signature detected
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">◈ CLASSIFIER OUTPUTS</div>
+        </div>
+        <div class="card-body">
+          <div class="conf-bars">
+            <div class="conf-row">
+              <div class="conf-label-row"><span>Normal Operation</span><span style="color:var(--green)">86%</span></div>
+              <div class="conf-bar-track"><div class="conf-bar-fill" style="width:86%;background:var(--green);"></div></div>
+            </div>
+            <div class="conf-row">
+              <div class="conf-label-row"><span>Lean Blowout Risk</span><span style="color:var(--amber)">9%</span></div>
+              <div class="conf-bar-track"><div class="conf-bar-fill" style="width:9%;background:var(--amber);"></div></div>
+            </div>
+            <div class="conf-row">
+              <div class="conf-label-row"><span>Flashback Risk</span><span style="color:var(--mid)">3%</span></div>
+              <div class="conf-bar-track"><div class="conf-bar-fill" style="width:3%;background:var(--mid);"></div></div>
+            </div>
+            <div class="conf-row">
+              <div class="conf-label-row"><span>Thermo-acoustic Instb.</span><span style="color:var(--red)">2%</span></div>
+              <div class="conf-bar-track"><div class="conf-bar-fill" style="width:2%;background:var(--red);"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">◈ TRAINING PERFORMANCE</div>
+        </div>
+        <div class="card-body">
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <div style="display:flex;justify-content:space-between;">
+              <span style="font-family:var(--font-tech);font-size:10px;color:var(--text-dim);">DETECTION F1</span>
+              <span style="font-family:var(--font-tech);font-size:11px;color:var(--green);">0.94</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;">
+              <span style="font-family:var(--font-tech);font-size:10px;color:var(--text-dim);">PRECISION</span>
+              <span style="font-family:var(--font-tech);font-size:11px;color:var(--soft);">0.92</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;">
+              <span style="font-family:var(--font-tech);font-size:10px;color:var(--text-dim);">RECALL</span>
+              <span style="font-family:var(--font-tech);font-size:11px;color:var(--soft);">0.96</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;">
+              <span style="font-family:var(--font-tech);font-size:10px;color:var(--text-dim);">LEAD TIME</span>
+              <span style="font-family:var(--font-tech);font-size:11px;color:var(--green);">~45 sec</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;">
+              <span style="font-family:var(--font-tech);font-size:10px;color:var(--text-dim);">TRAIN DATA</span>
+              <span style="font-family:var(--font-tech);font-size:11px;color:var(--pale);">8,400 windows</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">◈ TURBINE INFO</div>
+        </div>
+        <div class="card-body">
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <div style="display:flex;justify-content:space-between;">
+              <span style="font-family:var(--font-tech);font-size:10px;color:var(--text-dim);">UNIT</span>
+              <span style="font-family:var(--font-tech);font-size:10px;color:var(--pale);">GT-DLE Frame 6B</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;">
+              <span style="font-family:var(--font-tech);font-size:10px;color:var(--text-dim);">OEM</span>
+              <span style="font-family:var(--font-tech);font-size:10px;color:var(--pale);">OEM-Agnostic</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;">
+              <span style="font-family:var(--font-tech);font-size:10px;color:var(--text-dim);">COMBUSTOR</span>
+              <span style="font-family:var(--font-tech);font-size:10px;color:var(--pale);">DLE / Lean Pre-mix</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;">
+              <span style="font-family:var(--font-tech);font-size:10px;color:var(--text-dim);">FUEL</span>
+              <span style="font-family:var(--font-tech);font-size:10px;color:var(--pale);">NG + H₂ blend</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end combustion -->
+
+
+  <!-- ===== AGENT VIEW ===== -->
+  <div class="view" id="view-agent">
+
+    <!-- Left: Module roster -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="icon">⟳</span> BE AGENT™ MODULES</div>
+        <div class="card-badge">v2.1</div>
+      </div>
+      <div class="card-body">
+        <div class="agent-modules">
+          <div class="agent-module active-mod" style="cursor:pointer" onclick="selectModule(this,'CD Precursor Detection','Physics-informed DL framework for combustion instability precursor identification. Autoencoder-LSTM pipeline with 45-second advance warning on lean blowout and flashback events.')">
+            <div class="mod-name">CD Precursor Detection</div>
+            <div class="mod-desc">GT2026 — Autoencoder·LSTM·DFT features</div>
+            <div class="mod-status">● ACTIVE</div>
+          </div>
+          <div class="agent-module active-mod" onclick="selectModule(this,'Thermodynamic Performance','Compressor and turbine section efficiency tracking using isentropic analysis. Fouling detection via compressor map deviation.')">
+            <div class="mod-name">Thermodynamic Performance</div>
+            <div class="mod-desc">Compressor map · efficiency tracking</div>
+            <div class="mod-status">● ACTIVE</div>
+          </div>
+          <div class="agent-module" onclick="selectModule(this,'Fuel Quality Adaptation','Real-time calorific value and H₂ fraction feed from CalorieSense™ edge device. Adaptive combustion tuning to prevent emissions exceedance during fuel quality swings.')">
+            <div class="mod-name">Fuel Quality Adaptation</div>
+            <div class="mod-desc">CalorieSense™ link · CV · H₂ adaptive</div>
+            <div class="mod-status">● ACTIVE</div>
+          </div>
+          <div class="agent-module" onclick="selectModule(this,'Vibration & Rotor Dynamics','Spectral vibration analysis from shaft-riding probes. Blade pass frequency, sub-synchronous detection, bearing wear trending.')">
+            <div class="mod-name">Vibration & Rotor Dynamics</div>
+            <div class="mod-desc">Blade pass · sub-sync · bearing</div>
+            <div class="mod-status">○ IDLE</div>
+          </div>
+          <div class="agent-module" onclick="selectModule(this,'Emissions Optimisation','Closed-loop NOx and CO optimisation using CEMS data. Model-based combustion tuning respecting emissions constraints while maximising efficiency.')">
+            <div class="mod-name">Emissions Optimisation</div>
+            <div class="mod-desc">NOx · CO · CEMS closed-loop</div>
+            <div class="mod-status">○ IDLE</div>
+          </div>
+          <div class="agent-module" onclick="selectModule(this,'Asset Life Management','Creep life consumption modelling for hot section components. Low-cycle fatigue counting, remaining useful life estimation, and maintenance scheduling.')">
+            <div class="mod-name">Asset Life Management</div>
+            <div class="mod-desc">Creep · LCF · RUL · hot section</div>
+            <div class="mod-status">○ IDLE</div>
+          </div>
+          <div class="agent-module" onclick="selectModule(this,'Inlet Conditioning','Inlet temperature and humidity tracking. Evap cooler / chiller optimisation for performance enhancement under high-ambient conditions.')">
+            <div class="mod-name">Inlet Conditioning</div>
+            <div class="mod-desc">Evap cooler · chiller · fogging</div>
+            <div class="mod-status">○ IDLE</div>
+          </div>
+          <div class="agent-module" onclick="selectModule(this,'Balance of Plant','HRSG, fuel gas compressor, and electrical balance-of-plant cross-system interaction analytics. True root-cause analysis across boundaries.')">
+            <div class="mod-name">Balance of Plant</div>
+            <div class="mod-desc">HRSG · FGC · electrical systems</div>
+            <div class="mod-status">○ IDLE</div>
+          </div>
+          <div class="agent-module" onclick="selectModule(this,'Multi-fleet Benchmarking','Cross-site, cross-OEM benchmarking of KPIs normalised for ambient and duty cycle. Identify best-practice and underperforming units within the fleet.')">
+            <div class="mod-name">Multi-fleet Benchmarking</div>
+            <div class="mod-desc">OEM-agnostic KPI normalisation</div>
+            <div class="mod-status">○ IDLE</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Centre: Module detail + Agent chat -->
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div class="card" id="module-detail-card">
+        <div class="card-header">
+          <div class="card-title" id="module-detail-title"><span class="icon">◈</span> CD PRECURSOR DETECTION</div>
+          <span class="tag tag-green" id="module-detail-status">ACTIVE</span>
+        </div>
+        <div class="card-body" id="module-detail-body">
+          <div style="font-family:var(--font-main);font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:12px;">
+            Physics-informed DL framework for combustion instability precursor identification. Autoencoder-LSTM pipeline with 45-second advance warning on lean blowout and flashback events.
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+            <div class="metric-card" style="--color:var(--green);padding:8px;">
+              <div class="metric-label" style="font-size:9px;">ANOMALY SCORE</div>
+              <div class="metric-value" style="font-size:20px;">0.14</div>
+            </div>
+            <div class="metric-card" style="--color:var(--soft);padding:8px;">
+              <div class="metric-label" style="font-size:9px;">LEAD TIME</div>
+              <div class="metric-value" style="font-size:20px;">~45s</div>
+            </div>
+            <div class="metric-card" style="--color:var(--amber);padding:8px;">
+              <div class="metric-label" style="font-size:9px;">F1 SCORE</div>
+              <div class="metric-value" style="font-size:20px;">0.94</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Agent Chat -->
+      <div class="card" style="flex:1;">
+        <div class="card-header">
+          <div class="card-title"><span class="icon">⟳</span> BE AGENT™ — NATURAL LANGUAGE INTERFACE</div>
+          <span class="tag tag-green">ONLINE</span>
+        </div>
+        <div class="card-body" style="display:flex;flex-direction:column;height:calc(100% - 44px);">
+          <div class="chat-messages" id="chat-messages">
+            <div class="chat-msg system">
+              <div class="chat-msg-label">SYSTEM</div>
+              BE Agent™ online. Kosmos platform active. All sensor streams nominal.
+            </div>
+            <div class="chat-msg agent">
+              <div class="chat-msg-label">BE AGENT</div>
+              Combustion dynamics module running. Current anomaly score: 0.14 — nominal. CD pressure showing stable DLE operation at 84% load. Fuel H₂ fraction 3.2% — CalorieSense™ adapted.
+            </div>
+            <div class="chat-msg user-q">
+              <div class="chat-msg-label">OPERATOR</div>
+              What is the risk of lean blowout given current fuel quality?
+            </div>
+            <div class="chat-msg agent" id="agent-response-1">
+              <div class="chat-msg-label">BE AGENT</div>
+              Lean blowout risk is currently LOW (9% classifier probability). H₂ fraction at 3.2% provides additional flame stability margin vs. pure methane. DFT dominant frequency 186 Hz is within normal DLE range. Hurst exponent 0.63 indicates persistent, stable combustion dynamics. No precursor signatures present. Recommend monitoring VIB-X bearing channel — mildly elevated at 2.1 mm/s.
+            </div>
+          </div>
+          <div class="chat-input-row" style="margin-top:8px;">
+            <input class="chat-input" id="chat-input" type="text" placeholder="Ask BE Agent about turbine condition, features, or risk..." onkeydown="if(event.key==='Enter')sendChat()">
+            <button class="chat-send" onclick="sendChat()">▶ ASK</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Live status panels -->
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">◈ PLATFORM STATUS</div>
+        </div>
+        <div class="card-body">
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-family:var(--font-tech);font-size:10px;color:var(--text-dim);">EDGE NODE</span>
+              <span class="tag tag-green">ONLINE</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-family:var(--font-tech);font-size:10px;color:var(--text-dim);">CLOUD SYNC</span>
+              <span class="tag tag-green">LIVE</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-family:var(--font-tech);font-size:10px;color:var(--text-dim);">BE SENSE™</span>
+              <span class="tag tag-green">FUSED</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-family:var(--font-tech);font-size:10px;color:var(--text-dim);">CALORIESENSE™</span>
+              <span class="tag tag-green">LINKED</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-family:var(--font-tech);font-size:10px;color:var(--text-dim);">CMMS BRIDGE</span>
+              <span class="tag tag-amber">STANDBY</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-family:var(--font-tech);font-size:10px;color:var(--text-dim);">DATA OWNER</span>
+              <span class="tag tag-blue">OPERATOR</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title">◈ FLEET OVERVIEW</div></div>
+        <div class="card-body">
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <div style="display:flex;justify-content:space-between;">
+              <span style="font-family:var(--font-tech);font-size:10px;color:var(--text-dim);">TOTAL UNITS</span>
+              <span style="font-family:var(--font-tech);font-size:11px;color:var(--pale);">12</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;">
+              <span style="font-family:var(--font-tech);font-size:10px;color:var(--text-dim);">ONLINE</span>
+              <span style="font-family:var(--font-tech);font-size:11px;color:var(--green);">10</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;">
+              <span style="font-family:var(--font-tech);font-size:10px;color:var(--text-dim);">ALERTS ACTIVE</span>
+              <span style="font-family:var(--font-tech);font-size:11px;color:var(--amber);">2</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;">
+              <span style="font-family:var(--font-tech);font-size:10px;color:var(--text-dim);">OEMs MONITORED</span>
+              <span style="font-family:var(--font-tech);font-size:11px;color:var(--soft);">GE / SE / MHI</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title">◈ RECENT AGENT ACTIONS</div></div>
+        <div class="card-body">
+          <div class="alert-list">
+            <div class="alert-item ok">
+              <div class="alert-time">14:58:02</div>
+              <div class="alert-msg">CD module: nominal state confirmed</div>
+            </div>
+            <div class="alert-item info">
+              <div class="alert-time">14:52:30</div>
+              <div class="alert-msg">Fuel adaptation: CV shift +0.3%</div>
+            </div>
+            <div class="alert-item warning">
+              <div class="alert-time">14:48:10</div>
+              <div class="alert-msg">VIB-X: maintenance flag raised</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end agent -->
+
+
+  <!-- ===== KOSMOS ARCHITECTURE VIEW ===== -->
+  <div class="view" id="view-kosmos">
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="icon">⬡</span> KOSMOS™ — PLATFORM ARCHITECTURE</div>
+        <div class="card-badge">BRAEBURN ENERGY</div>
+      </div>
+      <div class="card-body platform-diagram">
+        <!-- Layer 0: Physical Assets -->
+        <div class="plat-layer" style="border-color:rgba(60,140,211,0.3);">
+          <div class="plat-layer-label">PHYSICAL ASSETS — OEM-AGNOSTIC</div>
+          <div class="plat-boxes">
+            <div class="plat-box pb-deep">GE Frame 6B / 7FA</div>
+            <div class="plat-box pb-deep">Siemens SGT-700/800</div>
+            <div class="plat-box pb-deep">MHI M501 / H-Class</div>
+            <div class="plat-box pb-deep">Solar Taurus / Titan</div>
+            <div class="plat-box pb-deep">Balance of Plant</div>
+            <div class="plat-box pb-deep">HRSG / Aux Systems</div>
+          </div>
+        </div>
+
+        <div style="text-align:center;color:var(--mid);font-size:18px;line-height:1;">⇅</div>
+
+        <!-- Layer 1: BE Sense -->
+        <div class="plat-layer" style="border-color:rgba(21,96,189,0.5);">
+          <div class="plat-layer-label" style="color:var(--soft);">BE SENSE™ — MULTIMODAL SENSOR FUSION</div>
+          <div class="plat-boxes">
+            <div class="plat-box pb-blue">CalorieSense™ CV/H₂</div>
+            <div class="plat-box pb-blue">CD Pressure (50 kHz)</div>
+            <div class="plat-box pb-blue">Vibration / Rotor</div>
+            <div class="plat-box pb-blue">Thermocouples / EGT</div>
+            <div class="plat-box pb-blue">CEMS Emissions</div>
+            <div class="plat-box pb-blue">Inlet / Ambient</div>
+            <div class="plat-box pb-blue">Performance KPIs</div>
+            <div class="plat-box pb-blue">Controls / DCS Feed</div>
+          </div>
+        </div>
+
+        <div style="text-align:center;color:var(--mid);font-size:18px;line-height:1;">⇅</div>
+
+        <!-- Layer 2: BE Agent -->
+        <div class="plat-layer" style="border-color:rgba(0,176,80,0.5);">
+          <div class="plat-layer-label" style="color:var(--green);">BE AGENT™ — AGENTIC AI FRAMEWORK</div>
+          <div class="plat-boxes">
+            <div class="plat-box pb-green">CD Precursor (GT2026)</div>
+            <div class="plat-box pb-green">Thermo Performance</div>
+            <div class="plat-box pb-green">Emissions Optimisation</div>
+            <div class="plat-box pb-green">Asset Life / RUL</div>
+            <div class="plat-box pb-green">Vibration Analytics</div>
+            <div class="plat-box pb-green">Fuel Quality Adapt.</div>
+            <div class="plat-box pb-green">Fleet Benchmarking</div>
+            <div class="plat-box pb-green">NL Agent Interface</div>
+          </div>
+        </div>
+
+        <div style="text-align:center;color:var(--mid);font-size:18px;line-height:1;">⇅</div>
+
+        <!-- Layer 3: Platform -->
+        <div class="plat-layer" style="border-color:rgba(0,176,140,0.4);">
+          <div class="plat-layer-label" style="color:#00D0A8;">KOSMOS™ PLATFORM — EDGE + CLOUD / ON-PREM</div>
+          <div class="plat-boxes">
+            <div class="plat-box pb-teal">Edge Compute Node</div>
+            <div class="plat-box pb-teal">Private Cloud Deploy</div>
+            <div class="plat-box pb-teal">On-Prem Server</div>
+            <div class="plat-box pb-teal">Fleet Dashboard</div>
+            <div class="plat-box pb-teal">Data Historian</div>
+            <div class="plat-box pb-teal">REST / OPC-UA APIs</div>
+          </div>
+        </div>
+
+        <div style="text-align:center;color:var(--mid);font-size:18px;line-height:1;">⇅</div>
+
+        <!-- Layer 4: Outputs -->
+        <div class="plat-layer" style="border-color:rgba(13,60,122,0.6);">
+          <div class="plat-layer-label">OPERATOR OUTPUTS</div>
+          <div class="plat-boxes">
+            <div class="plat-box pb-deep">CMMS / Maximo</div>
+            <div class="plat-box pb-deep">Work Order Gen.</div>
+            <div class="plat-box pb-deep">Operator Alerts</div>
+            <div class="plat-box pb-deep">Performance Reports</div>
+            <div class="plat-box pb-deep">Regulatory Filing</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right column: USP + Comparisons -->
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div class="card accent-green">
+        <div class="card-header">
+          <div class="card-title">◈ VS OEM PLATFORMS</div>
+          <span class="tag tag-green">USP</span>
+        </div>
+        <div class="card-body">
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <div style="font-family:var(--font-tech);font-size:10px;color:var(--text-dim);letter-spacing:1px;margin-bottom:4px;">KOSMOS™ ADVANTAGE</div>
+            <div style="display:flex;gap:6px;align-items:flex-start;">
+              <span style="color:var(--green);margin-top:1px;">✓</span>
+              <span style="font-family:var(--font-main);font-size:12px;color:var(--text-primary);">OEM-agnostic — GE, Siemens, MHI, Solar</span>
+            </div>
+            <div style="display:flex;gap:6px;align-items:flex-start;">
+              <span style="color:var(--green);margin-top:1px;">✓</span>
+              <span style="font-family:var(--font-main);font-size:12px;color:var(--text-primary);">Full data ownership — operator retained</span>
+            </div>
+            <div style="display:flex;gap:6px;align-items:flex-start;">
+              <span style="color:var(--green);margin-top:1px;">✓</span>
+              <span style="font-family:var(--font-main);font-size:12px;color:var(--text-primary);">Transparent models — no black box</span>
+            </div>
+            <div style="display:flex;gap:6px;align-items:flex-start;">
+              <span style="color:var(--green);margin-top:1px;">✓</span>
+              <span style="font-family:var(--font-main);font-size:12px;color:var(--text-primary);">Rapid deployment — weeks not years</span>
+            </div>
+            <div style="display:flex;gap:6px;align-items:flex-start;">
+              <span style="color:var(--green);margin-top:1px;">✓</span>
+              <span style="font-family:var(--font-main);font-size:12px;color:var(--text-primary);">No LTSA conflict of interest</span>
+            </div>
+            <div style="display:flex;gap:6px;align-items:flex-start;">
+              <span style="color:var(--green);margin-top:1px;">✓</span>
+              <span style="font-family:var(--font-main);font-size:12px;color:var(--text-primary);">50 kHz high-speed combustion data</span>
+            </div>
+            <div style="display:flex;gap:6px;align-items:flex-start;">
+              <span style="color:var(--green);margin-top:1px;">✓</span>
+              <span style="font-family:var(--font-main);font-size:12px;color:var(--text-primary);">Cross-OEM fleet benchmarking</span>
+            </div>
+            <div style="display:flex;gap:6px;align-items:flex-start;">
+              <span style="color:var(--green);margin-top:1px;">✓</span>
+              <span style="font-family:var(--font-main);font-size:12px;color:var(--text-primary);">Edge + cloud / on-prem deployment</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title">◈ DEPLOYMENT MODES</div></div>
+        <div class="card-body">
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div style="border:1px solid var(--border);border-radius:3px;padding:8px 10px;">
+              <div style="font-family:var(--font-display);font-size:13px;font-weight:700;color:var(--soft);letter-spacing:1px;">EDGE</div>
+              <div style="font-family:var(--font-main);font-size:11px;color:var(--text-secondary);margin-top:2px;">Sub-8ms latency · on-site compute · no cloud dependency</div>
+            </div>
+            <div style="border:1px solid var(--border);border-radius:3px;padding:8px 10px;">
+              <div style="font-family:var(--font-display);font-size:13px;font-weight:700;color:var(--mid);letter-spacing:1px;">PRIVATE CLOUD</div>
+              <div style="font-family:var(--font-main);font-size:11px;color:var(--text-secondary);margin-top:2px;">Fleet-wide analytics · historian · dashboards</div>
+            </div>
+            <div style="border:1px solid var(--border);border-radius:3px;padding:8px 10px;">
+              <div style="font-family:var(--font-display);font-size:13px;font-weight:700;color:var(--base);letter-spacing:1px;">ON-PREMISES</div>
+              <div style="font-family:var(--font-main);font-size:11px;color:var(--text-secondary);margin-top:2px;">Air-gapped · operator data sovereignty</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title">◈ CONFERENCE INFO</div></div>
+        <div class="card-body">
+          <div style="font-family:var(--font-tech);font-size:10px;color:var(--text-dim);letter-spacing:1px;margin-bottom:8px;">ASME TURBO EXPO 2026</div>
+          <div style="font-family:var(--font-main);font-size:12px;color:var(--text-secondary);line-height:1.5;">
+            Paper GT2026-179161: Feature-Driven Deep Learning Framework for Combustion Dynamics Precursor Detection in Gas Turbines
+          </div>
+          <div style="margin-top:8px;display:flex;flex-direction:column;gap:4px;">
+            <span class="tag tag-blue" style="display:inline-block;width:fit-content;">GT2026-179161</span>
+            <span class="tag tag-green" style="display:inline-block;width:fit-content;margin-top:4px;">BRAEBURN ENERGY</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end kosmos -->
+
+</div><!-- end main -->
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">3≡ BRAEBURN ENERGY <span>— KOSMOS™ PLATFORM</span></div>
+  <div id="footer-status">Edge: Online · Cloud: Sync · BE Sense: Active · BE Agent: Running</div>
+  <div style="color:var(--text-dim);">© 2026 Braeburn Energy Ltd</div>
+</footer>
+
+<!-- CHART.JS CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+<script>
+// ===== LIVE CLOCK =====
+function updateClock() {
+  const now = new Date();
+  document.getElementById('live-time').textContent =
+    now.toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ===== VIEW SWITCHING =====
+function switchView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('view-'+id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ===== CHARTS =====
+const chartDefaults = {
+  responsive: true, maintainAspectRatio: false,
+  animation: { duration: 0 },
+  plugins: { legend: { display: false } },
+  scales: {
+    x: { display: false },
+    y: {
+      grid: { color: 'rgba(21,96,189,0.12)' },
+      ticks: { color: '#4A7AAD', font: { family: "'Share Tech Mono'", size: 10 } },
+      border: { color: 'rgba(21,96,189,0.3)' }
+    }
+  }
+};
+
+// CD Signal data generation
+let cdBuf = Array.from({length:200}, () => (Math.random()-0.5)*2);
+let cdBuf2 = [...cdBuf];
+
+function genCDPoint(prev, t) {
+  const base = 0.6 * Math.sin(2*Math.PI*186*t/50000);
+  const noise = (Math.random()-0.5)*0.4;
+  return 0.7*prev + 0.3*(base+noise);
+}
+
+function genFFT() {
+  const freqs = [50,80,120,186,240,280,320,370,420,480,500];
+  const amps  = [0.3,0.2,0.4,1.0,0.3,0.15,0.25,0.18,0.12,0.08,0.06];
+  return {freqs, amps: amps.map(a => a + (Math.random()-0.5)*0.05)};
+}
+
+// Chart 1: CD overview
+const cdCtx = document.getElementById('cdChart');
+let cdChart = null;
+if(cdCtx) {
+  cdChart = new Chart(cdCtx, {
+    type: 'line',
+    data: {
+      labels: Array.from({length:200}, (_,i)=>i),
+      datasets: [{
+        data: [...cdBuf],
+        borderColor: '#1560BD',
+        borderWidth: 1.5,
+        pointRadius: 0,
+        fill: true,
+        backgroundColor: 'rgba(21,96,189,0.05)',
+        tension: 0.3
+      }]
+    },
+    options: {
+      ...chartDefaults,
+      scales: {
+        x: { display: false },
+        y: { ...chartDefaults.scales.y, min: -3, max: 3,
+          ticks: { color: '#4A7AAD', font: { family:"'Share Tech Mono'", size:9 } } }
+      }
+    }
+  });
+}
+
+// Chart 2: CD combustion view
+const cdCtx2 = document.getElementById('cdChart2');
+let cdChart2 = null;
+if(cdCtx2) {
+  cdChart2 = new Chart(cdCtx2, {
+    type: 'line',
+    data: {
+      labels: Array.from({length:200},(_,i)=>i),
+      datasets: [{
+        data: [...cdBuf2],
+        borderColor: '#00B050',
+        borderWidth: 1.5,
+        pointRadius: 0,
+        fill: true,
+        backgroundColor: 'rgba(0,176,80,0.04)',
+        tension: 0.3
+      }]
+    },
+    options: {
+      ...chartDefaults,
+      scales: {
+        x: { display: false },
+        y: { ...chartDefaults.scales.y, min: -3, max: 3,
+          ticks: { color: '#4A7AAD', font: { family:"'Share Tech Mono'", size:9 } } }
+      }
+    }
+  });
+}
+
+// FFT Chart
+const fftCtx = document.getElementById('fftChart');
+let fftChart = null;
+if(fftCtx) {
+  const fft = genFFT();
+  fftChart = new Chart(fftCtx, {
+    type: 'bar',
+    data: {
+      labels: fft.freqs.map(f=>f+' Hz'),
+      datasets: [{
+        data: fft.amps,
+        backgroundColor: fft.amps.map((a,i) => i===3 ? 'rgba(0,176,80,0.6)' : 'rgba(21,96,189,0.5)'),
+        borderColor: fft.amps.map((a,i) => i===3 ? '#00B050' : '#1560BD'),
+        borderWidth: 1
+      }]
+    },
+    options: {
+      ...chartDefaults,
+      scales: {
+        x: { ticks: { color:'#4A7AAD', font:{family:"'Share Tech Mono'",size:9} }, grid:{display:false}, border:{color:'rgba(21,96,189,0.3)'} },
+        y: { ...chartDefaults.scales.y, min: 0, max: 1.2 }
+      }
+    }
+  });
+}
+
+// Anomaly score trend
+const anomBuf = Array.from({length:60}, (_,i) => 0.1 + 0.05*Math.sin(i*0.3) + Math.random()*0.04);
+const anomCtx = document.getElementById('anomChart');
+let anomChart = null;
+if(anomCtx) {
+  anomChart = new Chart(anomCtx, {
+    type: 'line',
+    data: {
+      labels: anomBuf.map((_,i)=>i),
+      datasets: [{
+        data: [...anomBuf],
+        borderColor: '#FFB800',
+        borderWidth: 2,
+        pointRadius: 0,
+        fill: true,
+        backgroundColor: 'rgba(255,184,0,0.05)',
+        tension: 0.4
+      },{
+        data: Array(60).fill(0.5),
+        borderColor: 'rgba(255,58,58,0.4)',
+        borderWidth: 1,
+        borderDash: [4,3],
+        pointRadius: 0
+      }]
+    },
+    options: {
+      ...chartDefaults,
+      scales: {
+        x: { display: false },
+        y: { ...chartDefaults.scales.y, min: 0, max: 0.8,
+          ticks: { color: '#4A7AAD', font: { family:"'Share Tech Mono'", size:9 } } }
+      }
+    }
+  });
+}
+
+// ===== FEATURE MATRIX =====
+const featureLabels = [
+  'DFT-50Hz','DFT-80Hz','DFT-120Hz','DFT-186Hz','DFT-240Hz',
+  'SPL-RMS','SPL-Peak','SPL-Var','SPL-dB','SPL-idx',
+  'Hurst-H','Hurst-R/S','Hurst-var','Hurst-lag','Hurst-fit',
+  'Entropy-S','Entropy-R','Entropy-P','Entropy-K','Entropy-J',
+  'MI-P/T','MI-T/N','MI-N/P','MI-cross','MI-auto'
+];
+
+const featEl = document.getElementById('featMatrix');
+if(featEl) {
+  featureLabels.forEach((label, i) => {
+    const val = Math.random();
+    const hue = val < 0.3 ? 210 : val < 0.7 ? 140 : 35;
+    const alpha = 0.2 + val * 0.5;
+    const div = document.createElement('div');
+    div.className = 'feat-cell';
+    div.setAttribute('data-label', label);
+    div.style.background = `hsla(${hue}, 70%, 50%, ${alpha})`;
+    div.style.border = `1px solid hsla(${hue}, 70%, 60%, 0.3)`;
+    div.style.color = `hsla(${hue}, 70%, 80%, 0.9)`;
+    div.textContent = val.toFixed(2);
+    featEl.appendChild(div);
+  });
+}
+
+// ===== REAL-TIME UPDATE =====
+let tick = 0;
+function updateRealtime() {
+  tick++;
+  // Update CD buffers
+  const newPoint = genCDPoint(cdBuf[cdBuf.length-1], tick);
+  cdBuf.push(newPoint); cdBuf.shift();
+  cdBuf2.push(genCDPoint(cdBuf2[cdBuf2.length-1], tick)); cdBuf2.shift();
+
+  if(cdChart) { cdChart.data.datasets[0].data = [...cdBuf]; cdChart.update('none'); }
+  if(cdChart2) { cdChart2.data.datasets[0].data = [...cdBuf2]; cdChart2.update('none'); }
+
+  // Update anomaly
+  const newAnom = 0.1 + 0.04*Math.sin(tick*0.05) + Math.random()*0.03;
+  anomBuf.push(newAnom); anomBuf.shift();
+  if(anomChart) { anomChart.data.datasets[0].data = [...anomBuf]; anomChart.update('none'); }
+
+  // Update FFT occasionally
+  if(tick % 15 === 0 && fftChart) {
+    const f = genFFT();
+    fftChart.data.datasets[0].data = f.amps;
+    fftChart.update('none');
+  }
+
+  // Update metric displays
+  if(tick % 10 === 0) {
+    const a = (0.1 + 0.04*Math.sin(tick*0.05) + Math.random()*0.02).toFixed(2);
+    const el = document.getElementById('m-anomaly');
+    if(el) el.textContent = a;
+    const re = document.getElementById('recon-err');
+    if(re) re.textContent = a;
+  }
+}
+setInterval(updateRealtime, 80);
+
+// ===== MODULE DETAIL =====
+function selectModule(el, name, desc) {
+  document.querySelectorAll('.agent-module').forEach(m => m.style.borderLeftColor = '');
+  el.style.borderLeftColor = 'var(--green)';
+  const title = document.getElementById('module-detail-title');
+  if(title) title.innerHTML = `<span class="icon">◈</span> ${name.toUpperCase()}`;
+  const body = document.getElementById('module-detail-body');
+  if(body) body.querySelector ? (body.querySelector('div') || body).innerHTML = desc : null;
+  if(body) {
+    body.innerHTML = `
+      <div style="font-family:var(--font-main);font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:12px;">${desc}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <span class="tag tag-green">BRAEBURN ENERGY</span>
+        <span class="tag tag-blue">OEM-AGNOSTIC</span>
+        <span class="tag tag-blue">KOSMOS™</span>
+      </div>`;
+  }
+}
+
+// ===== AGENT CHAT =====
+const agentResponses = {
+  default: [
+    "All combustion dynamics parameters are nominal. CD anomaly score 0.14 — well below the 0.5 threshold. DFT spectrum shows stable DLE operation with dominant frequency at 186 Hz.",
+    "Fuel quality data from CalorieSense™ edge device: CV = 38.2 MJ/m³, H₂ fraction 3.2%. BE Agent has adapted combustion model accordingly. No emissions exceedance risk.",
+    "Thermodynamic performance module indicates compressor efficiency 87.4%, turbine efficiency 91.2%. No fouling signatures in the compressor map deviation analysis.",
+    "Fleet benchmarking shows this unit is performing at 94th percentile for fuel efficiency vs comparable DLE units on the Kosmos network.",
+    "Health index is 86/100. Primary concern is mildly elevated VIB-X channel (2.1 mm/s). Recommend bearing inspection at next planned outage. No immediate action required."
+  ]
+};
+
+let responseIdx = 0;
+
+function sendChat() {
+  const input = document.getElementById('chat-input');
+  const msgs = document.getElementById('chat-messages');
+  if(!input || !msgs || !input.value.trim()) return;
+
+  const q = input.value.trim();
+  input.value = '';
+
+  // User message
+  const userDiv = document.createElement('div');
+  userDiv.className = 'chat-msg user-q';
+  userDiv.innerHTML = `<div class="chat-msg-label">OPERATOR</div>${q}`;
+  msgs.appendChild(userDiv);
+
+  // Typing indicator
+  const typingDiv = document.createElement('div');
+  typingDiv.className = 'chat-msg agent';
+  typingDiv.innerHTML = `<div class="chat-msg-label">BE AGENT</div><div class="typing-dots"><span></span><span></span><span></span></div>`;
+  msgs.appendChild(typingDiv);
+  msgs.scrollTop = msgs.scrollHeight;
+
+  setTimeout(() => {
+    typingDiv.innerHTML = `<div class="chat-msg-label">BE AGENT</div>${agentResponses.default[responseIdx % agentResponses.default.length]}`;
+    responseIdx++;
+    msgs.scrollTop = msgs.scrollHeight;
+  }, 1200 + Math.random()*600);
+}
+</script>
+
+</body>
+</html>

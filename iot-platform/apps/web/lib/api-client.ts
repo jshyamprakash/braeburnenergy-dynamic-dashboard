@@ -71,8 +71,8 @@ class ApiClient {
         localStorage.removeItem(REFRESH_TOKEN_KEY);
         localStorage.removeItem('iot_user');
 
-        // Redirect to login page if we're in the browser
-        if (typeof window !== 'undefined') {
+        // Redirect to login page if we're in the browser and not already there
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
           window.location.href = '/login';
         }
 

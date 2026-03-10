@@ -27,10 +27,11 @@
 
 =security: {
   jwt: JTI stored in TokenSession (DB-backed revocation, +10ms per request),
-  rbac: 4 roles (SuperAdmin > Admin > Operator > Viewer) + 24 permissions,
+  rbac: 4 roles (SuperAdmin > Admin > Operator > Viewer) + 28 permissions,
   api_keys: bcrypt hash, prefix iot_live_|iot_test_, granular permissions (ADR-033),
   lockout: track failed attempts + exponential backoff,
-  audit: immutable audit logs all CRUD (EPA 21 CFR Part 11)
+  audit: immutable audit logs all CRUD (EPA 21 CFR Part 11),
+  dashboard_sharing: user-based (ADR-045) — Dashboard.sharedWithUsers[] ObjectIds — public shareToken removed
 }
 
 =api_patterns: {
@@ -49,18 +50,32 @@
   protected_routes: ProtectedRoute wrapper with returnUrl,
   api_client: generic type params REQUIRED → apiClient.get<T>(),
   imports: named imports for named exports (no default mismatch),
-  tailwind: darkMode:'class' REQUIRED in tailwind.config.ts
+  tailwind: darkMode:'class' REQUIRED in tailwind.config.ts,
+  viewer_kiosk: role==Viewer → /viewer route (fullscreen, no sidebar/topbar) — ADR-045
 }
 
 =workflow_editor: {
   backend: Workflow + WorkflowExecution Mongoose models,
-  node_types: 19 (5 triggers, 5 conditions, 6 actions, 4 transforms) + Losant_5_category,
+  node_types: 20 (6 triggers, 5 conditions, 6 actions, 4 transforms) + Losant_5_category,
+  triggers: [deviceStateChange, scheduled, manual, alarmTriggered, webhook, deviceOffline(ADR-041)],
   engine: depth-first execution + step logging,
   canvas: React Flow + Background + Controls + MiniMap,
   custom_nodes: [TriggerNode, ConditionNode, ActionNode, TransformNode],
   routes: /workflows (list) | /workflows/:id (canvas),
   sidebar: 220px left nav via ADR-019,
-  rbac: [workflow:create, workflow:read, workflow:execute]
+  rbac: [workflow:create, workflow:read, workflow:execute],
+  manual_trigger: openExecutionModal(nodeId) dispatched from TriggerNode Run button,
+  start_node_id: executeWorkflow accepts startNodeId — engine starts from node not trigger,
+  workflow_storage: scoped (orgId+workflowId+deviceId+key) unique_compound_index
+}
+
+=heartbeat: {
+  service: HeartbeatService singleton (ADR-041),
+  poll_interval: 60s (node-cron),
+  offline_threshold: OFFLINE_THRESHOLD_MS env default 300000 (5min),
+  detection: Device.lastSeenAt < now-threshold OR null,
+  on_offline: [raise ISA-18.2 alarm, dispatchDeviceOffline() → matching workflows],
+  wired: index.ts after scheduler init (same teardown pattern as ADR-040)
 }
 
 =compliance: {
@@ -69,6 +84,7 @@
   ISA-18.2: alarm state machine ACTIVE_UNACKED→ACTIVE_ACKED→CLEARED,
   AWWA_M36: water audit methodology + quality scoring,
   IEC_61158: Modbus TCP/RTU gateway + register mapping,
+  modbus_word_order: configurable per register (big-endian|big-endian-swapped) applies_to: float|int32|uint32 default:big-endian (ADR-043),
   OPC-UA: subscription-based node monitoring
 }
 
@@ -81,5 +97,9 @@
   p6: Redux async thunks need explicit type params: createAsyncThunk<ReturnType,ArgType,ThunkConfig>,
   p7: React Flow Handles use id prop for branching (true/false),
   p8: API client POST requires body param (use {} if no body),
-  p9: useDeviceRealtime returns {state,stale,staledAt} — destructure required (ADR-034)
+  p9: useDeviceRealtime returns {state,stale,staledAt} — destructure required (ADR-034),
+  p10: WorkflowStorage storageGet deviceId MUST match storageSet deviceId (scope mismatch = silent miss),
+  p11: startNodeId bypasses trigger node detection — caller provides valid nodeId,
+  p12: storageGet outputs value under key name directly (no outputField),
+  p13: 10K sensor scale NOT production-ready — see new_architecture.md sec 2h for bottleneck map
 }

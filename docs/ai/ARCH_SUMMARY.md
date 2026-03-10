@@ -9,8 +9,10 @@
 - Redux Toolkit 2.11.2 (6 slices: auth, ui, dashboard, websocket, workflow, alarm)
 - React Query 5.90.20 (device queries + realtime state; NOT being phased out)
 - React Flow 11.11.4 (visual workflow editor)
-- Socket.io 4.6.0 (WebSocket)
+- Socket.io 4.6.0 (WebSocket; to be replaced by dedicated WS Gateway at scale — ADR-043)
 - Zod 3.22.4 (validation)
+- **Production additions (ADR-043):** NATS JetStream (streaming bus), Redis 7 + ioredis (real-time cache), BullMQ (workflow dispatch queue + storage worker batch)
+- **Dashboard model (ADR-044):** Kosmos unified free-canvas — KosmosPage.widgets[] flat array (replaces columns{left,middle,right}); all 17 widget types on one react-grid-layout; WidgetConfigPanel (320px right panel); 5 new widgets: confidenceBars, keyValueTable, frequencyChart, platformDiagram, agentChat; public route GET /share/:token/devices/:deviceId/derived-state
 
 ## Database
 - Time series collection: `device_states` (TTL 5yr, append-only raw telemetry, history/charts ONLY) — ADR-031
@@ -26,7 +28,8 @@
 ## Security & Compliance
 - JWT with JTI stored in TokenSession model (database-backed revocation)
 - Every token validation = database lookup (+10ms acceptable overhead)
-- RBAC: 4 roles (SuperAdmin > Admin > Operator > Viewer), 24 permissions
+- RBAC: 4 roles (SuperAdmin > Admin > Operator > Viewer), 28 permissions
+- Dashboard sharing: user-based access (ADR-045) — `sharedWithUsers: ObjectId[]` on Dashboard model; public shareToken removed; Viewer role → `/viewer` kiosk after login
 - Account lockout: track failed attempts, exponential backoff
 - Immutable audit logs (EPA 21 CFR Part 11) - all CRUD captured
 - API keys: bcrypt hash, prefix `iot_live_|iot_test_`, granular permissions
@@ -56,7 +59,17 @@
 
 ## Visual Workflow Editor (Week 3 - Sidebar Navigation)
 - Backend: Workflow + WorkflowExecution Mongoose models
-- 19 node types: 5 triggers, 5 conditions, 6 actions, 4 transforms
+- 20 node types: 6 triggers, 5 conditions, 6 actions, 4 transforms
+- Triggers: deviceStateChange, scheduled, manual, alarmTriggered, webhook, deviceOffline (ADR-041)
+- Manual trigger: ▶ Run button on canvas node dispatches openExecutionModal(nodeId)
+- executeWorkflow accepts startNodeId — engine starts from that node, not auto-detected trigger
+- WorkflowStorage: scoped (orgId, workflowId, deviceId?, key); unique index on all 4 fields
+
+## Device Heartbeat & Offline Detection (ADR-041)
+- `HeartbeatService` singleton: 60s cron poll, OFFLINE_THRESHOLD_MS env (default 5min)
+- Device model gains `lastSeenAt: Date` — updated on every state save
+- On offline: auto-raise ISA-18.2 alarm + dispatch `trigger:deviceOffline` workflows
+- Wired in index.ts alongside ADR-040 scheduler
 - WorkflowService: CRUD with cycle detection, orphan validation
 - WorkflowEngineService: Depth-first execution with step logging
 - React Flow canvas: Background, Controls, MiniMap
@@ -76,6 +89,8 @@
 - ISA-18.2: Alarm state machine (ACTIVE_UNACKED → ACTIVE_ACKED → CLEARED)
 - AWWA M36: Water audit methodology, quality scoring
 - IEC 61158: Modbus TCP/RTU gateway with register mapping
+  - Modbus register wordOrder: big-endian | big-endian-swapped per register (see §2d new_architecture.md)
+    Applies to float/int32/uint32 only. Default: big-endian.
 - OPC-UA: Subscription-based node monitoring
 
 ## Critical Pitfalls
@@ -90,3 +105,7 @@
 - `useDeviceRealtime` returns `{ state, stale, staledAt }` — callers MUST destructure (ADR-034)
 - Dashboard live snapshot: GET /devices/:deviceId/derived-state → device_derived_states (ADR-039)
 - device_states is history/charts/exports ONLY — never queried for live dashboard display
+- WorkflowStorage scope: (orgId, workflowId, deviceId, key) — storageGet deviceId MUST match storageSet deviceId
+- Workflow startNodeId bypasses trigger detection — engine starts from specified node directly
+- storageGet outputs value under the key name directly (no outputField)
+- 10K sensor scale: NOT production-ready without parallel reads + device ID cache + pool tuning (see new_architecture.md §2h)

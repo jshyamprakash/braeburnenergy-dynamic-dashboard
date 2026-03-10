@@ -1,0 +1,45 @@
+'use client';
+
+import { useEffect } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { useAppSelector } from '@/lib/store';
+import { selectUser } from '@/lib/store/slices/authSlice';
+import { TopBar } from './TopBar';
+import { Sidebar } from './Sidebar';
+
+/**
+ * LayoutShell — conditional wrapper for root layout
+ *
+ * For /viewer route: renders children only (no sidebar/topbar for kiosk fullscreen)
+ * For other routes: renders with TopBar + Sidebar
+ */
+export function LayoutShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const user = useAppSelector(selectUser);
+  const isViewerRoute = pathname.startsWith('/viewer');
+  const isAuthRoute = pathname === '/login';
+
+  useEffect(() => {
+    if (user && user.role === 'Viewer' && !isViewerRoute && !isAuthRoute) {
+      router.replace('/viewer');
+    }
+  }, [user, isViewerRoute, isAuthRoute, router]);
+
+  if (isViewerRoute || isAuthRoute) {
+    return <>{children}</>;
+  }
+
+  // Standard layout with sidebar + topbar
+  return (
+    <>
+      <TopBar />
+      <div className="flex h-[calc(100vh-64px)]">
+        <Sidebar />
+        <main className="flex-1 overflow-auto px-4 sm:px-6 lg:px-8 py-8">
+          {children}
+        </main>
+      </div>
+    </>
+  );
+}

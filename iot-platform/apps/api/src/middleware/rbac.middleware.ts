@@ -65,6 +65,12 @@ const PERMISSIONS: Record<string, UserRole[]> = {
   'workflow:update': ['SuperAdmin', 'Admin'],
   'workflow:delete': ['SuperAdmin', 'Admin'],
   'workflow:execute': ['SuperAdmin', 'Admin', 'Operator'],
+
+  // Dashboard management (ADR-045)
+  'dashboard:read': ['SuperAdmin', 'Admin', 'Operator', 'Viewer'],
+  'dashboard:write': ['SuperAdmin', 'Admin', 'Operator'],
+  'dashboard:share': ['SuperAdmin', 'Admin', 'Operator'],
+  'dashboard:delete': ['SuperAdmin', 'Admin'],
 };
 
 /**

@@ -19,6 +19,8 @@ export interface Device {
   tags: Record<string, string>;
   /** Device data schema: field name → data type (ADR-021) */
   attributes: Record<string, string> | null;
+  /** Last time a state was received from this device (ADR-041) */
+  lastSeenAt?: string | Date;
   orgId?: string;
   createdAt: string | Date;
   updatedAt: string | Date;
@@ -46,6 +48,24 @@ export interface Organization {
   id: string;
   name: string;
   settings: Record<string, any> | null;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+}
+
+/**
+ * User - Authentication and authorization
+ */
+export type UserRole = 'SuperAdmin' | 'Admin' | 'Operator' | 'Viewer';
+
+export interface User {
+  id: string;                          // MongoDB ObjectId
+  username: string;
+  email: string;
+  role: UserRole;
+  isActive: boolean;
+  failedLoginAttempts: number;
+  lockedUntil?: string | Date | null;  // Account lock timestamp (if locked)
+  lastLogin?: string | Date | null;    // Last login timestamp
   createdAt: string | Date;
   updatedAt: string | Date;
 }
@@ -162,11 +182,20 @@ export interface WebSocketConnectionEvent {
 }
 
 /**
+ * Device offline event (ADR-041) — raised by HeartbeatService when device stops sending data
+ */
+export interface DeviceOfflineEvent {
+  deviceId: string;
+  offlineSinceMs: number;
+  timestamp: Date | string;
+}
+
+/**
  * Workflow node type union — kept in sync with workflow.model.ts (ADR-017)
  */
 export type NodeType =
   | 'trigger:deviceStateChange' | 'trigger:scheduled' | 'trigger:manual'
-  | 'trigger:alarmTriggered' | 'trigger:webhook'
+  | 'trigger:alarmTriggered' | 'trigger:webhook' | 'trigger:deviceOffline'  // ADR-041
   | 'condition:comparison' | 'condition:threshold' | 'condition:ifElse'
   | 'condition:timeBased' | 'condition:deviceStatus'
   | 'action:sendNotification' | 'action:updateDevice' | 'action:createAlarm'
@@ -174,7 +203,8 @@ export type NodeType =
   | 'transform:mathOperation' | 'transform:stringOperation'
   | 'transform:aggregation' | 'transform:dataMapping'
   | 'data:modbusRead' | 'data:modbusWrite' | 'data:queryDeviceStates'
-  | 'logic:function';
+  | 'data:storageGet' | 'data:storageSet' | 'data:opcuaRead' | 'data:opcuaWrite'
+  | 'logic:function' | 'logic:switch' | 'logic:loop' | 'logic:delay' | 'logic:mutate';
 
 /**
  * Workflow type (deployment target/use case)
@@ -544,6 +574,18 @@ export const OpcuaNodeClass = {
 } as const;
 
 /**
+ * WorkflowStorageEntry - Persistent key-value storage for workflows (ADR-042)
+ */
+export interface WorkflowStorageEntry {
+  orgId: string;
+  key: string;
+  value: unknown;
+  workflowId?: string;
+  expiresAt?: Date;
+  updatedAt: Date;
+}
+
+/**
  * Notification - Workflow-triggered or system notification
  */
 export interface Notification {
@@ -567,4 +609,22 @@ export interface NotificationListResponse {
   data: Notification[];
   total: number;
   unreadCount: number;
+}
+
+/**
+ * Dashboard - Kosmos unified dashboard with user-based sharing (ADR-045)
+ */
+export interface Dashboard {
+  id: string;
+  dashboardId: string;      // ULID - user-facing identifier
+  applicationId: string;    // Required parent (ADR-036)
+  orgId?: string;           // MongoDB ObjectId
+  name: string;
+  description?: string;
+  blocks?: any[];           // Legacy react-grid-layout blocks
+  layouts?: Record<string, any>;
+  pages?: any[];            // Kosmos pages with unified widgets[]
+  sharedWithUsers: string[]; // List of User ObjectIds with viewer access (ADR-045)
+  createdAt: string | Date;
+  updatedAt: string | Date;
 }

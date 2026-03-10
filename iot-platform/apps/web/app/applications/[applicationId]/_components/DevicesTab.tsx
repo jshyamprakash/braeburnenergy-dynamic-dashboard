@@ -47,6 +47,14 @@ export function DevicesTab({ applicationId, devices, onRefresh }: DevicesTabProp
     });
   }
 
+  function isDeviceOnline(device: Device): boolean {
+    if (!device.lastSeenAt) return false;
+    const now = Date.now();
+    const lastSeenMs = new Date(device.lastSeenAt).getTime();
+    const offlineThresholdMs = 5 * 60 * 1000; // 5 minutes (ADR-041)
+    return now - lastSeenMs < offlineThresholdMs;
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
@@ -69,6 +77,7 @@ export function DevicesTab({ applicationId, devices, onRefresh }: DevicesTabProp
             <thead className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
               <tr>
                 <th className="px-4 py-3 text-left text-sm font-semibold">Name</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold">Status</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold">Attributes</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold">Created</th>
                 <th className="px-4 py-3 text-right text-sm font-semibold">Actions</th>
@@ -87,6 +96,19 @@ export function DevicesTab({ applicationId, devices, onRefresh }: DevicesTabProp
                     >
                       {device.name}
                     </Link>
+                  </td>
+                  <td className="px-4 py-3 text-sm">
+                    {isDeviceOnline(device) ? (
+                      <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-xs font-semibold">
+                        <span className="w-2 h-2 rounded-full bg-green-600 dark:bg-green-400"></span>
+                        Online
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-300 text-xs font-semibold">
+                        <span className="w-2 h-2 rounded-full bg-gray-600 dark:bg-gray-400"></span>
+                        Offline
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
                     {device.attributes ? Object.keys(device.attributes).length : 0} fields

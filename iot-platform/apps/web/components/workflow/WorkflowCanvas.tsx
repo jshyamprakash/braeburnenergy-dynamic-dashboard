@@ -21,6 +21,7 @@ import TriggerNode from './nodes/TriggerNode';
 import ConditionNode from './nodes/ConditionNode';
 import ActionNode from './nodes/ActionNode';
 import TransformNode from './nodes/TransformNode';
+import SwitchNode from './nodes/SwitchNode';
 
 // Module-level constant — same object reference across ALL renders and StrictMode remounts.
 // Defining inside the component (even with useMemo) creates a new reference on each mount,
@@ -30,6 +31,7 @@ const NODE_TYPES: NodeTypes = {
   condition: ConditionNode,
   action: ActionNode,
   transform: TransformNode,
+  switch: SwitchNode,
 };
 
 interface WorkflowCanvasProps {
@@ -230,6 +232,8 @@ export default function WorkflowCanvas({ onNodeContextMenu }: WorkflowCanvasProp
                 return '#3b82f6'; // blue-500
               case 'transform':
                 return '#a855f7'; // purple-500
+              case 'switch':
+                return '#a78bfa'; // violet-400
               default:
                 return '#6b7280'; // gray-500
             }

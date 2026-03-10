@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
   Menu, X, Bell, Settings, ClipboardList, BookOpen,
   Archive, Users, Wifi, LayoutGrid, ChevronRight, Cpu,
-  GitBranch, LayoutDashboard, Radio, Network,
+  GitBranch, LayoutDashboard, Radio, Network, User,
 } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/lib/store';
 import { toggleSidebar, selectSidebarOpen } from '@/lib/store/slices/uiSlice';
@@ -18,6 +18,7 @@ const mainNavItems = [
   { href: '/audit-logs', label: 'Audit Logs', icon: ClipboardList },
   { href: '/guide', label: 'Guide', icon: BookOpen },
   { href: '/retention-policies', label: 'Retention', icon: Archive },
+  { href: '/users', label: 'Users', icon: User },
   { href: '/organizations', label: 'Organizations', icon: Users },
   { href: '/websocket-test', label: 'WebSocket', icon: Wifi },
 ];

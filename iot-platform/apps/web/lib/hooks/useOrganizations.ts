@@ -16,6 +16,7 @@ export interface Organization {
 export interface OrgStats {
   deviceCount: number;
   stateCount: number;
+  userCount: number;
 }
 
 export const organizationKeys = {

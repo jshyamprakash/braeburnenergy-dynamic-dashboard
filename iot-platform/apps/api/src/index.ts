@@ -7,6 +7,7 @@ import { WorkflowService } from './services/workflow.service';
 import { WorkflowEngineService } from './services/workflow-engine.service';
 import { WorkflowTriggerDispatcher } from './services/workflow-trigger-dispatcher.service';
 import { workflowSchedulerService } from './services/workflow-scheduler.service';
+import { heartbeatService } from './services/heartbeat.service';
 import { modbusGatewayManager } from './services/modbus-gateway-manager.service';
 import { opcuaGatewayManager } from './services/opcua-gateway-manager.service';
 
@@ -55,9 +56,16 @@ async function main() {
     // Register trigger dispatcher with OPC-UA gateway manager (for workflow dispatch on polling)
     opcuaGatewayManager.setTriggerDispatcher(triggerDispatcher, fastify.log as any);
 
+    // Register trigger dispatcher with heartbeat service (ADR-041: device offline detection)
+    heartbeatService.setTriggerDispatcher(triggerDispatcher, fastify.log as any);
+
     // Start workflow scheduler for trigger:scheduled workflows
     console.log('⏰ Starting workflow scheduler...');
     await workflowSchedulerService.start(workflowEngineService, fastify.log as any);
+
+    // Start device heartbeat monitor (ADR-041)
+    console.log('💓 Starting device heartbeat monitor...');
+    heartbeatService.start(fastify.log as any);
 
     // Now start the server
     await fastify.listen({
@@ -78,6 +86,7 @@ async function main() {
       process.on(signal, async () => {
         fastify.log.info(`Received ${signal}, closing server gracefully...`);
         workflowSchedulerService.stop();
+        heartbeatService.stop();
         await fastify.close();
         await disconnectDB();
         process.exit(0);

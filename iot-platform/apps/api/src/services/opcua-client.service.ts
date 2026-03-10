@@ -253,9 +253,49 @@ export class OpcuaClientService {
   }
 
   /**
+   * Read value from a specific node
+   */
+  async readNode(nodeId: string): Promise<any> {
+    if (!this.session) {
+      throw new Error('No active session');
+    }
+
+    const dataValue = await this.session.read({
+      nodeId,
+      attributeId: AttributeIds.Value,
+    });
+
+    if (!dataValue.value || dataValue.value.value === null || dataValue.value.value === undefined) {
+      return null;
+    }
+
+    return dataValue.value.value;
+  }
+
+  /**
    * Write value to node
    */
   async write(nodeId: string, value: any): Promise<void> {
+    if (!this.session) {
+      throw new Error('No active session');
+    }
+
+    await this.session.write({
+      nodeId,
+      attributeId: AttributeIds.Value,
+      value: {
+        value: {
+          dataType: 'Double', // TODO: Detect data type
+          value,
+        },
+      },
+    });
+  }
+
+  /**
+   * Write value to a specific node
+   */
+  async writeNode(nodeId: string, value: any): Promise<void> {
     if (!this.session) {
       throw new Error('No active session');
     }

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useDevice } from '@/lib/hooks/useDevices';
 import { useDeviceStates, useLatestDeviceState } from '@/lib/hooks/useDeviceStates';
 import { useDeviceStateUpdates } from '@/lib/hooks/useWebSocket';
-import type { DeviceState } from '@/lib/types';
+import type { DeviceState, Device } from '@/lib/types';
 import { toast } from 'sonner';
 
 export default function DeviceDetailPage() {
@@ -33,6 +33,26 @@ export default function DeviceDetailPage() {
 
   // Use real-time state if available, otherwise use latest from API
   const currentState = realtimeState || latestState;
+
+  // Helper functions for ADR-041 offline detection
+  const isDeviceOnline = (d: Device): boolean => {
+    if (!d.lastSeenAt) return false;
+    const now = Date.now();
+    const lastSeenMs = new Date(d.lastSeenAt).getTime();
+    const offlineThresholdMs = 5 * 60 * 1000; // 5 minutes
+    return now - lastSeenMs < offlineThresholdMs;
+  };
+
+  const formatLastSeen = (d: Device): string => {
+    if (!d.lastSeenAt) return 'Never';
+    return new Date(d.lastSeenAt).toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+  };
 
   return (
     <>
@@ -64,21 +84,39 @@ export default function DeviceDetailPage() {
             ←
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{device.name}</h1>
-            <div className="flex items-center gap-2 mt-1">
-              <p className="text-sm text-gray-500 font-mono">{device.deviceId}</p>
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(device.deviceId);
-                  toast.success('Device ID copied');
-                }}
-                className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
-                title="Copy device ID"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.216 0-2.318.595-2.972 1.5H11.25a3 3 0 013 3V9A3 3 0 008.25 9v5.25c0 .804.648 1.5 1.5 1.5h5.25a1.5 1.5 0 001.5-1.5V9a3 3 0 013-3z" />
-                </svg>
-              </button>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{device.name}</h1>
+            <div className="flex items-center gap-3 mt-2">
+              <div className="flex items-center gap-2">
+                <p className="text-sm text-gray-500 dark:text-gray-400 font-mono">{device.deviceId}</p>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(device.deviceId);
+                    toast.success('Device ID copied');
+                  }}
+                  className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                  title="Copy device ID"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.216 0-2.318.595-2.972 1.5H11.25a3 3 0 013 3V9A3 3 0 008.25 9v5.25c0 .804.648 1.5 1.5 1.5h5.25a1.5 1.5 0 001.5-1.5V9a3 3 0 013-3z" />
+                  </svg>
+                </button>
+              </div>
+              {device && (
+                <>
+                  {isDeviceOnline(device) ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-xs font-semibold">
+                      <span className="w-2 h-2 rounded-full bg-green-600 dark:bg-green-400"></span>
+                      Online
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-300 text-xs font-semibold">
+                      <span className="w-2 h-2 rounded-full bg-gray-600 dark:bg-gray-400"></span>
+                      Offline
+                    </span>
+                  )}
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Last seen: {formatLastSeen(device)}</p>
+                </>
+              )}
             </div>
           </div>
         </div>

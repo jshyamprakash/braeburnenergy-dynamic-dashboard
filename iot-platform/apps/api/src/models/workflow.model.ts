@@ -17,6 +17,7 @@ export type NodeType =
   | 'trigger:manual'
   | 'trigger:alarmTriggered'
   | 'trigger:webhook'
+  | 'trigger:deviceOffline'  // ADR-041
   // Conditions (legacy — frozen, use logic:* for new nodes)
   | 'condition:comparison'
   | 'condition:threshold'
@@ -40,8 +41,16 @@ export type NodeType =
   | 'data:modbusRead'
   | 'data:modbusWrite'
   | 'data:queryDeviceStates'
+  | 'data:storageGet'
+  | 'data:storageSet'
+  | 'data:opcuaRead'
+  | 'data:opcuaWrite'
   // Logic (new taxonomy — ADR-017)
   | 'logic:function'
+  | 'logic:switch'
+  | 'logic:loop'
+  | 'logic:delay'
+  | 'logic:mutate'
   // Action: write structured data back to DeviceState (ADR-022)
   | 'action:writeDeviceState';
 
@@ -153,8 +162,16 @@ const workflowNodeSchema = new Schema<WorkflowNode>({
       'data:modbusRead',
       'data:modbusWrite',
       'data:queryDeviceStates',
+      'data:storageGet',
+      'data:storageSet',
+      'data:opcuaRead',
+      'data:opcuaWrite',
       // Logic (ADR-017)
       'logic:function',
+      'logic:switch',
+      'logic:loop',
+      'logic:delay',
+      'logic:mutate',
       // Action: write structured data back to DeviceState (ADR-022)
       'action:writeDeviceState',
     ],

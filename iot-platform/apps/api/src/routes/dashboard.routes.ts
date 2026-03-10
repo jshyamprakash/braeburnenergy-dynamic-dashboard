@@ -4,8 +4,11 @@ import {
   getUserDashboards,
   saveDashboard,
   deleteDashboard,
+  shareWithUsers,
+  getViewerDashboards,
 } from '../controllers/dashboard.controller';
 import { requireAuth } from '../middleware/auth.middleware';
+import { requirePermission } from '../middleware/rbac.middleware';
 import { successResponse, errorResponse } from '../utils/swagger';
 
 const dashboardSchema = {
@@ -134,6 +137,49 @@ export async function dashboardRoutes(fastify: FastifyInstance) {
       },
     },
   }, saveDashboard);
+
+  // ADR-045: Share dashboard with specific org users (replaces public shareToken)
+  fastify.post('/dashboards/:dashboardId/share', {
+    preHandler: [requireAuth, requirePermission('dashboard:share')],
+    schema: {
+      tags: ['Dashboards'],
+      summary: 'Share dashboard with users',
+      description: 'Grants Viewer-role users access to this dashboard (ADR-045)',
+      security: [{ bearerAuth: [] }],
+      params: {
+        type: 'object',
+        properties: { dashboardId: { type: 'string' } },
+        required: ['dashboardId'],
+      },
+      body: {
+        type: 'object',
+        properties: {
+          userIds: { type: 'array', items: { type: 'string' }, description: 'User ObjectIds to grant access' },
+        },
+        required: ['userIds'],
+      },
+      response: {
+        200: successResponse(
+          { type: 'object', properties: { sharedWithUsers: { type: 'array', items: { type: 'string' } } }, additionalProperties: false },
+          'Dashboard shared with users'
+        ),
+      },
+    },
+  }, shareWithUsers);
+
+  // ADR-045: Viewer-only endpoint — returns dashboards assigned to the authenticated user
+  fastify.get('/dashboards/my', {
+    preHandler: requireAuth,
+    schema: {
+      tags: ['Dashboards'],
+      summary: 'Get my assigned dashboards (Viewer)',
+      description: 'Returns all dashboards shared with the authenticated user (ADR-045)',
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: successResponse({ type: 'array', items: dashboardSchema }, 'Viewer dashboards retrieved'),
+      },
+    },
+  }, getViewerDashboards);
 
   // Delete dashboard
   fastify.delete('/dashboards/:dashboardId', {

@@ -1,0 +1,26 @@
+TITLE: ADR-044 Unified Free-Canvas Dashboard
+DATE: 2026-03-09
+STATUS: Accepted
+
+CONTEXT:
+KosmosPage stored widgets in three fixed columns (left/middle/right).
+Each column had different resize semantics (height px vs layout {x,y,w,h}).
+Client requirement: every widget freely placeable anywhere on page — one unified canvas.
+
+DECISION:
+- KosmosPage.columns{left,middle,right} → KosmosPage.widgets[] (flat array)
+- KosmosWidget.height removed; KosmosWidget.layout {x,y,w,h} always required
+- New components: UnifiedCanvas (react-grid-layout, full-width), WidgetConfigPanel (320px right panel)
+- ColumnStack and MiddleCanvas replaced by UnifiedCanvas (files retained but unused)
+- 5 new widget types: confidenceBars, keyValueTable, frequencyChart, platformDiagram, agentChat
+- Redux: removed reorderKosmosWidgets, updateKosmosWidgetHeight; added updateKosmosWidgetConfig
+- Old dashboards with columns format migrated on load (concat left+middle+right, assign grid layouts)
+- Share view updated to render widgets[] with read-only UnifiedCanvas
+- New public route: GET /share/:token/devices/:deviceId/derived-state (validates token, returns device state)
+- New hook: useSharedDeviceState for public viewers polling live data without JWT
+
+CONSEQUENCES:
+- Breaking: old dashboards lose precise widget placement (columns migrated to flat list)
+- All 13 widget types first-class grid citizens; no column placement restrictions remain
+- WidgetConfigPanel enables in-dashboard device/field binding without code changes
+- Palette column badges removed; all widgets draggable to any canvas position

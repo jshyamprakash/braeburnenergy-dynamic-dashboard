@@ -2,6 +2,7 @@ import type { FastifyRequest, FastifyReply } from 'fastify';
 import { deviceService } from '../services/device.service';
 import { deviceStateService } from '../services/device-state.service';
 import { deviceDerivedStateService } from '../services/device-derived-state.service';
+import { Device } from '../models/device.model';
 import { DataQualityService } from '../services/data-quality.service';
 import { AlarmService } from '../services/alarm.service';
 import { NotFoundError, BadRequestError } from '../lib/errors';
@@ -85,6 +86,12 @@ export class DeviceStateController {
         'Alarms triggered'
       );
     }
+
+    // Stamp lastSeenAt on device (ADR-041: heartbeat tracking, fire-and-forget)
+    Device.updateOne(
+      { orgId: device.orgId, deviceId },
+      { $set: { lastSeenAt: new Date() } }
+    ).catch((err: any) => request.log.warn(err, 'Failed to stamp lastSeenAt'));
 
     // Dispatch to trigger workflows (fire-and-forget)
     const triggerDispatcher = request.server.triggerDispatcher;

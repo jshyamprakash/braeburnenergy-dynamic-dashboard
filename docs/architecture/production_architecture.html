@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kosmos™ Platform — Production Architecture</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap');
+
+  :root {
+    --ultra-light: #D6E6F9;
+    --pale: #A3C8F0;
+    --soft: #6FAAE6;
+    --mid: #3C8CD3;
+    --base: #1560BD;
+    --deep: #0D3C7A;
+    --green: #00B050;
+    --green-dim: #007A38;
+    --green-glow: rgba(0,176,80,0.20);
+    --bg-dark: #060F1E;
+    --bg-card: #0A1A30;
+    --bg-panel: #0D2244;
+    --border: rgba(21,96,189,0.35);
+    --border-bright: rgba(21,96,189,0.70);
+    --text-primary: #E8F3FF;
+    --text-secondary: #8BB8E0;
+    --text-dim: #4A7AAD;
+    --amber: #FFB800;
+    --red: #FF3A3A;
+    --font-main: 'Corbel', 'Segoe UI', sans-serif;
+    --font-tech: 'Share Tech Mono', monospace;
+    --font-display: 'Rajdhani', 'Corbel', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    font-family: var(--font-main);
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(21,96,189,0.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(21,96,189,0.07) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Scanline */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.025) 2px, rgba(0,0,0,0.025) 4px);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ===== HEADER ===== */
+  header {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+    height: 62px;
+    background: linear-gradient(90deg, var(--deep) 0%, var(--bg-panel) 50%, var(--deep) 100%);
+    border-bottom: 2px solid var(--base);
+    box-shadow: 0 2px 24px rgba(21,96,189,0.45);
+  }
+
+  .header-left { display: flex; align-items: center; gap: 16px; }
+
+  .logo-mark {
+    width: 36px; height: 36px;
+    border: 2px solid var(--base);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(21,96,189,0.2);
+  }
+
+  .logo-mark svg { width: 22px; height: 22px; fill: var(--soft); }
+
+  .brand {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .brand span { color: var(--soft); }
+
+  .doc-meta {
+    font-family: var(--font-tech);
+    font-size: 11px;
+    color: var(--text-dim);
+    text-align: right;
+    line-height: 1.5;
+  }
+
+  /* ===== MAIN ===== */
+  main {
+    position: relative;
+    z-index: 1;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 32px 24px 64px;
+  }
+
+  /* ===== SECTION ===== */
+  section { margin-bottom: 40px; }
+
+  .section-label {
+    font-family: var(--font-tech);
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--mid);
+    margin-bottom: 8px;
+  }
+
+  h2 {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-bright);
+  }
+
+  h3 {
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--soft);
+    letter-spacing: 0.5px;
+    margin: 20px 0 10px;
+    text-transform: uppercase;
+  }
+
+  p { color: var(--text-secondary); margin-bottom: 10px; }
+
+  /* ===== EXEC SUMMARY CARD ===== */
+  .exec-card {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-bright);
+    border-left: 3px solid var(--base);
+    border-radius: 6px;
+    padding: 18px 22px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+  }
+
+  .exec-card strong { color: var(--ultra-light); }
+
+  /* ===== DATA FLOW DIAGRAM ===== */
+  .flow-diagram {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 24px;
+    overflow-x: auto;
+  }
+
+  .flow-diagram pre {
+    font-family: var(--font-tech);
+    font-size: 12px;
+    color: var(--soft);
+    line-height: 1.8;
+    white-space: pre;
+  }
+
+  .flow-diagram pre .hl { color: var(--green); }
+  .flow-diagram pre .dim { color: var(--text-dim); }
+  .flow-diagram pre .accent { color: var(--amber); }
+
+  /* ===== 3-COLUMN DASHBOARD VIZ ===== */
+  .dashboard-preview {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    gap: 0;
+    border: 1px solid var(--border-bright);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .dash-header {
+    background: linear-gradient(90deg, var(--deep), var(--bg-panel), var(--deep));
+    border-bottom: 1px solid var(--base);
+    padding: 8px 16px;
+    font-family: var(--font-tech);
+    font-size: 11px;
+    color: var(--text-dim);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .dash-header .dash-title { color: var(--soft); font-weight: 600; letter-spacing: 2px; }
+  .dash-header .dash-status { display: flex; gap: 12px; }
+  .dash-header .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--green); margin-right: 4px; box-shadow: 0 0 6px var(--green); }
+
+  .dash-body {
+    display: grid;
+    grid-template-columns: 200px 1fr 200px;
+    min-height: 320px;
+    background: var(--bg-dark);
+  }
+
+  .dash-col {
+    padding: 14px;
+    border-right: 1px solid var(--border);
+  }
+  .dash-col:last-child { border-right: none; border-left: 1px solid var(--border); }
+
+  .dash-col-label {
+    font-family: var(--font-tech);
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+  }
+
+  .sensor-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(21,96,189,0.15);
+    font-size: 12px;
+  }
+  .sensor-row .label { color: var(--text-secondary); }
+  .sensor-row .value { font-family: var(--font-tech); color: var(--green); font-size: 13px; }
+  .sensor-row .value.warn { color: var(--amber); }
+  .sensor-row .value.alert { color: var(--red); }
+
+  .palette-block {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+  }
+
+  .palette-block .pb-label {
+    font-family: var(--font-tech);
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .kpi-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+  .kpi-card {
+    background: rgba(21,96,189,0.12);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 8px;
+    text-align: center;
+  }
+  .kpi-card .kv { font-family: var(--font-tech); font-size: 18px; color: var(--green); }
+  .kpi-card .kl { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+
+  .chart-placeholder {
+    height: 60px;
+    background: linear-gradient(90deg,
+      rgba(21,96,189,0.1) 0%, rgba(0,176,80,0.15) 30%,
+      rgba(21,96,189,0.1) 60%, rgba(255,184,0,0.10) 100%);
+    border-radius: 3px;
+    position: relative;
+    overflow: hidden;
+  }
+  .chart-placeholder::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(90deg,
+      transparent, transparent 10px,
+      rgba(21,96,189,0.15) 10px, rgba(21,96,189,0.15) 11px);
+  }
+
+  .alert-item {
+    padding: 5px 8px;
+    border-left: 3px solid var(--red);
+    background: rgba(255,58,58,0.07);
+    border-radius: 0 3px 3px 0;
+    margin-bottom: 4px;
+    font-size: 11px;
+    color: var(--text-secondary);
+  }
+  .alert-item.amber { border-left-color: var(--amber); background: rgba(255,184,0,0.07); }
+  .alert-item.blue { border-left-color: var(--mid); background: rgba(21,96,189,0.10); }
+  .alert-item.green { border-left-color: var(--green); background: rgba(0,176,80,0.07); }
+
+  .fleet-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 4px 0; border-bottom: 1px solid rgba(21,96,189,0.12); font-size: 12px;
+  }
+  .fleet-item .fi-name { color: var(--text-secondary); }
+  .badge {
+    font-family: var(--font-tech); font-size: 10px; padding: 2px 6px;
+    border-radius: 3px; letter-spacing: 1px;
+  }
+  .badge.online { background: rgba(0,176,80,0.2); color: var(--green); }
+  .badge.offline { background: rgba(255,58,58,0.2); color: var(--red); }
+  .badge.warn { background: rgba(255,184,0,0.2); color: var(--amber); }
+
+  /* ===== TABLES ===== */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+    font-size: 13px;
+  }
+
+  thead tr {
+    background: var(--bg-panel);
+    border-bottom: 2px solid var(--base);
+  }
+
+  th {
+    padding: 10px 14px;
+    text-align: left;
+    font-family: var(--font-tech);
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--mid);
+    font-weight: normal;
+  }
+
+  td {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-secondary);
+    vertical-align: top;
+  }
+
+  tr:hover td { background: rgba(21,96,189,0.06); }
+
+  td code, th code {
+    font-family: var(--font-tech);
+    font-size: 12px;
+    color: var(--soft);
+    background: rgba(21,96,189,0.15);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  td strong { color: var(--ultra-light); }
+
+  .sev-critical { color: var(--red); font-family: var(--font-tech); font-size: 12px; }
+  .sev-high { color: var(--amber); font-family: var(--font-tech); font-size: 12px; }
+  .sev-medium { color: var(--soft); font-family: var(--font-tech); font-size: 12px; }
+  .resolved { color: var(--green); font-size: 12px; }
+
+  /* ===== COMPLIANCE BADGES ===== */
+  .badge-grid {
+    display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;
+  }
+
+  .comp-badge {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-bright);
+    border-radius: 6px;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .comp-badge .cb-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--green); box-shadow: 0 0 8px var(--green);
+    flex-shrink: 0;
+  }
+
+  .comp-badge .cb-text { font-size: 12px; }
+  .comp-badge .cb-std { font-family: var(--font-tech); color: var(--soft); font-size: 11px; display: block; }
+  .comp-badge .cb-desc { color: var(--text-dim); font-size: 11px; display: block; margin-top: 2px; }
+
+  /* ===== CHECKLIST ===== */
+  .checklist-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+
+  .checklist-section h3 { margin-top: 0; }
+
+  .check-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(21,96,189,0.12);
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  .check-box {
+    width: 16px; height: 16px; flex-shrink: 0;
+    border: 1px solid var(--border-bright);
+    border-radius: 3px;
+    margin-top: 2px;
+    background: rgba(21,96,189,0.08);
+  }
+
+  /* ===== STACK TABLE TAGS ===== */
+  .tag-new {
+    font-family: var(--font-tech);
+    font-size: 10px;
+    padding: 2px 6px;
+    background: rgba(0,176,80,0.2);
+    color: var(--green);
+    border-radius: 3px;
+    margin-left: 6px;
+  }
+
+  /* ===== PRINT ===== */
+  @media print {
+    body::before, body::after { display: none; }
+    body { background: #fff; color: #111; }
+    header { background: #0D3C7A; }
+    .flow-diagram pre { color: #0D3C7A; }
+    .dash-body { background: #f8f9fa; }
+    @page { margin: 20mm; }
+  }
+
+  /* Lightbox thumbnail */
+  .diagram-thumb {
+    display: block; width: 100%; padding: 0; border: none;
+    background: none; cursor: zoom-in;
+  }
+  .diagram-thumb img { width: 100%; display: block; border-radius: 4px; }
+  .diagram-hint {
+    display: block; text-align: center; margin-top: 6px;
+    font-family: var(--font-tech); font-size: 11px; color: var(--text-dim);
+    letter-spacing: 1px;
+  }
+
+  /* Lightbox dialog */
+  .diagram-modal {
+    background: var(--bg-dark); border: 1px solid var(--border-bright);
+    border-radius: 8px; padding: 0; max-width: 95vw; max-height: 92vh;
+    /* Do NOT set display here — browser sets display:none on closed <dialog>;
+       overriding it would prevent the dialog from hiding on close. */
+  }
+  .diagram-modal[open] { display: flex; flex-direction: column; }
+  .diagram-modal::backdrop { background: rgba(0,0,0,0.80); backdrop-filter: blur(4px); }
+  .modal-close {
+    align-self: flex-end; margin: 10px 14px 0;
+    background: none; border: 1px solid var(--border-bright); border-radius: 4px;
+    color: var(--soft); font-family: var(--font-tech); font-size: 11px;
+    padding: 4px 10px; cursor: pointer; letter-spacing: 1px;
+  }
+  .modal-close:hover { background: rgba(21,96,189,0.2); }
+  .modal-canvas {
+    overflow: auto; flex: 1; padding: 16px;
+    /* flex-start keeps the image anchored to the left so overflow is
+       reachable via scrollbar; centering with justify-content:center makes
+       left-overflow inaccessible in a scrollable container. */
+    display: flex; align-items: flex-start; justify-content: flex-start;
+  }
+  #modalImg {
+    max-width: none; display: block;
+    transform-origin: top left;
+    transition: transform 0.15s ease;
+  }
+  .modal-hint {
+    text-align: center; font-family: var(--font-tech); font-size: 10px;
+    color: var(--text-dim); padding: 8px; letter-spacing: 1px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== HEADER ===== -->
+<header>
+  <div class="header-left">
+    <div class="logo-mark">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M12 2 L14 8 L20 6 L16 12 L20 18 L14 16 L12 22 L10 16 L4 18 L8 12 L4 6 L10 8 Z" fill-rule="evenodd"/>
+      </svg>
+    </div>
+    <div>
+      <div class="brand">Kosmos<span>™</span></div>
+    </div>
+  </div>
+  <div class="doc-meta">
+    Production Architecture Document<br>
+    v2.0 — 2026-03-06 &nbsp;|&nbsp; CONFIDENTIAL
+  </div>
+</header>
+
+<!-- ===== MAIN ===== -->
+<main>
+
+  <!-- EXECUTIVE SUMMARY -->
+  <section>
+    <div class="section-label">01 — Overview</div>
+    <h2>Executive Summary</h2>
+    <div class="exec-card">
+      The Kosmos platform transitions from a proof-of-concept capable of <strong>~50–200 concurrent devices</strong>
+      to a production architecture targeting <strong>10,000+ sensors at 25Hz</strong>
+      — equivalent to <strong>250,000 data points per second</strong> sustained.<br><br>
+      The production design introduces a streaming bus (<strong>NATS JetStream</strong>), a real-time
+      <strong>Redis 7</strong> cache, a dedicated <strong>WebSocket Gateway</strong>, and a batched
+      <strong>Storage Worker</strong> (BullMQ). All existing REST API contracts, Mongoose data models,
+      compliance certifications, and the visual workflow editor are carried forward <strong>unchanged</strong>.
+    </div>
+  </section>
+
+  <!-- DATA FLOW -->
+  <section>
+    <div class="section-label">02 — Architecture</div>
+    <h2>Full Data Flow</h2>
+    <div class="flow-diagram">
+      <button class="diagram-thumb" onclick="document.getElementById('diagramModal').showModal()">
+        <img src="production_architecture.png" alt="Production Data Flow Diagram">
+        <span class="diagram-hint">&#10562; click to expand</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- KOSMOS DASHBOARD PANEL -->
+  <section>
+    <div class="section-label">03 — Dashboard</div>
+    <h2>Kosmos 3-Column Dashboard Model</h2>
+    <p>The production dashboard follows a fixed 3-column layout. Only the middle column is dynamic (palette-switchable). Left and right columns are static, fed by existing API endpoints and WebSocket subscriptions.</p>
+
+    <div class="dashboard-preview">
+      <div class="dash-header">
+        <div class="dash-title">KOSMOS PLATFORM</div>
+        <div class="dash-status">
+          <span><span class="dot"></span>10,247 SENSORS LIVE</span>
+          <span>WS GATEWAY: CONNECTED</span>
+          <span>2026-03-06 09:41:22</span>
+        </div>
+      </div>
+      <div class="dash-body">
+
+        <!-- LEFT COLUMN -->
+        <div class="dash-col">
+          <div class="dash-col-label">BE Sense · Raw Inputs</div>
+          <div class="sensor-row"><span class="label">Flow Rate</span><span class="value">42.7 L/s</span></div>
+          <div class="sensor-row"><span class="label">Pressure P1</span><span class="value warn">3.1 bar</span></div>
+          <div class="sensor-row"><span class="label">Temp T1</span><span class="value">18.4 °C</span></div>
+          <div class="sensor-row"><span class="label">Turbidity</span><span class="value alert">4.2 NTU</span></div>
+          <div class="sensor-row"><span class="label">pH</span><span class="value">7.32</span></div>
+          <div class="sensor-row"><span class="label">Chlorine</span><span class="value">0.84 mg/L</span></div>
+          <div class="sensor-row"><span class="label">DO</span><span class="value">8.1 mg/L</span></div>
+          <br>
+          <div class="dash-col-label">PLC Status</div>
+          <div class="sensor-row"><span class="label">Gateway A</span><span class="value">OK</span></div>
+          <div class="sensor-row"><span class="label">Gateway B</span><span class="value warn">SLOW</span></div>
+        </div>
+
+        <!-- MIDDLE COLUMN (DYNAMIC) -->
+        <div class="dash-col" style="border-right:none;">
+          <div class="dash-col-label">Dynamic Palette — Active: KPI + Charts</div>
+
+          <div class="palette-block">
+            <div class="pb-label">[B] KPI Cards</div>
+            <div class="kpi-row">
+              <div class="kpi-card"><div class="kv">10,247</div><div class="kl">Sensors Online</div></div>
+              <div class="kpi-card"><div class="kv" style="color:var(--amber)">3</div><div class="kl">Active Alarms</div></div>
+              <div class="kpi-card"><div class="kv">99.1%</div><div class="kl">Gateway Health</div></div>
+              <div class="kpi-card"><div class="kv" style="color:var(--red)">1</div><div class="kl">Offline Devices</div></div>
+            </div>
+          </div>
+
+          <div class="palette-block">
+            <div class="pb-label">[C] Real-Time Signal — Flow Rate</div>
+            <div class="chart-placeholder"></div>
+          </div>
+
+          <div class="palette-block">
+            <div class="pb-label">[E] Alert List</div>
+            <div class="alert-item">Turbidity exceeded 4 NTU — Zone 3 pump station</div>
+            <div class="alert-item amber">Pressure anomaly — Gateway B register 0x0012</div>
+            <div class="alert-item blue">Scheduled maintenance due — Device MOD-019</div>
+            <div class="alert-item green">Alarm cleared — Temperature T2 Zone 1</div>
+          </div>
+        </div>
+
+        <!-- RIGHT COLUMN -->
+        <div class="dash-col" style="border-right:none; border-left:1px solid var(--border)">
+          <div class="dash-col-label">BE Agent · Workflows</div>
+          <div class="sensor-row"><span class="label">Alarm notify</span><span class="badge online">OK</span></div>
+          <div class="sensor-row"><span class="label">Pressure calc</span><span class="badge online">OK</span></div>
+          <div class="sensor-row"><span class="label">Daily export</span><span class="badge warn">QUEUED</span></div>
+          <br>
+          <div class="dash-col-label">Fleet Overview</div>
+          <div class="fleet-item"><span class="fi-name">MOD-001..018</span><span class="badge online">ONLINE</span></div>
+          <div class="fleet-item"><span class="fi-name">MOD-019</span><span class="badge offline">OFFLINE</span></div>
+          <div class="fleet-item"><span class="fi-name">OPC-001..004</span><span class="badge online">ONLINE</span></div>
+          <br>
+          <div class="dash-col-label">Recent Actions</div>
+          <div style="font-size:11px; color:var(--text-dim); line-height:2;">
+            09:41:05 · Alarm raised: Turbidity<br>
+            09:40:51 · Notify sent: ops@client.com<br>
+            09:39:22 · State updated: Zone 3<br>
+            09:38:00 · Scheduled: daily-export<br>
+            09:37:44 · Alarm cleared: T2 Zone 1<br>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PERFORMANCE TARGETS -->
+  <section>
+    <div class="section-label">04 — Performance</div>
+    <h2>Performance Targets</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th>Target</th>
+          <th>Mechanism</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Sensor count</td><td><strong>10,000+</strong> logical sensors</td><td>100 PLCs × 100 registers each (100 TCP sockets)</td></tr>
+        <tr><td>Update rate</td><td><strong>25Hz per sensor</strong> (40ms cadence)</td><td>NATS JetStream backpressure-controlled ingestion</td></tr>
+        <tr><td>Throughput</td><td><strong>250,000 msg/sec</strong> sustained</td><td>NATS JetStream + Processing Engine consumer groups</td></tr>
+        <tr><td>End-to-end latency</td><td><strong>&lt; 150ms P99</strong> (sensor → browser)</td><td>Redis pub/sub + dedicated WS Gateway</td></tr>
+        <tr><td>Concurrent WebSocket clients</td><td><strong>500+</strong></td><td>WS Gateway rooms by sensorId; horizontally scalable</td></tr>
+        <tr><td>MongoDB write throughput</td><td><strong>50,000+ docs/sec</strong></td><td>StorageWorker: 1000 docs / 200ms flush via BullMQ</td></tr>
+        <tr><td>API availability</td><td><strong>99.9%</strong></td><td>pm2 cluster, health checks, separate process isolation</td></tr>
+        <tr><td>Alarm detection latency</td><td><strong>&lt; 500ms</strong></td><td>NATS <code>sensor.alerts</code> stream → AlarmService</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- PRODUCTION STACK -->
+  <section>
+    <div class="section-label">05 — Stack</div>
+    <h2>Production Stack</h2>
+    <table>
+      <thead>
+        <tr><th>Layer</th><th>Technology</th><th>Version</th><th>Role</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Runtime</td><td>Node.js</td><td>20</td><td>All backend services</td></tr>
+        <tr><td>Language</td><td>TypeScript</td><td>5.3.3 strict</td><td>Full codebase</td></tr>
+        <tr><td>Database</td><td>MongoDB</td><td>8</td><td>Time-series + document storage</td></tr>
+        <tr><td>ODM</td><td>Mongoose</td><td>8.23.0</td><td>Model layer (unchanged from POC)</td></tr>
+        <tr><td>Backend API</td><td>Fastify</td><td>4.25.2</td><td>REST + auth + compliance endpoints</td></tr>
+        <tr><td>Frontend</td><td>Next.js</td><td>16.1.6</td><td>Dashboard + workflow editor</td></tr>
+        <tr><td>State</td><td>Redux Toolkit</td><td>2.11.2</td><td>6 slices incl. workflowSlice, alarmSlice</td></tr>
+        <tr><td>Workflow canvas</td><td>React Flow</td><td>11.11.4</td><td>Visual workflow editor</td></tr>
+        <tr><td><strong>Streaming bus</strong></td><td><strong>NATS JetStream</strong></td><td>2.10+</td><td>sensor.raw / sensor.processed / sensor.alerts <span class="tag-new">NEW</span></td></tr>
+        <tr><td><strong>Real-time cache</strong></td><td><strong>Redis 7 + ioredis</strong></td><td>7.x / 5.x</td><td>sensor:latest + pub/sub WebSocket backbone <span class="tag-new">NEW</span></td></tr>
+        <tr><td><strong>Job queue</strong></td><td><strong>BullMQ</strong></td><td>5.x</td><td>StorageWorker batch + workflow dispatch queue <span class="tag-new">NEW</span></td></tr>
+        <tr><td>Validation</td><td>Zod</td><td>3.22.4</td><td>API input + workflow schema validation</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- IMPACT MATRIX -->
+  <section>
+    <div class="section-label">06 — Migration</div>
+    <h2>POC → Production Impact Matrix</h2>
+    <table>
+      <thead>
+        <tr><th>Area</th><th>POC</th><th>Production</th><th>Impact</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Data bus</strong></td>
+          <td>Direct function call (fire-and-forget)</td>
+          <td>NATS JetStream streams</td>
+          <td>New dependency; refactor WorkflowTriggerDispatcher</td>
+        </tr>
+        <tr>
+          <td><strong>Live cache</strong></td>
+          <td>MongoDB <code>device_derived_states</code></td>
+          <td>Redis <code>sensor:latest:{sensorId}</code></td>
+          <td>New Redis dep; new RedisCache service</td>
+        </tr>
+        <tr>
+          <td><strong>WebSocket</strong></td>
+          <td>Socket.io inside main API</td>
+          <td>Dedicated WS Gateway (Redis pub/sub)</td>
+          <td>Extract to separate process</td>
+        </tr>
+        <tr>
+          <td><strong>Storage writes</strong></td>
+          <td>1 insertMany per device per poll</td>
+          <td>StorageWorker: 1000 docs / 200ms flush</td>
+          <td>New StorageWorker service (BullMQ)</td>
+        </tr>
+        <tr>
+          <td><strong>Register reads</strong></td>
+          <td>Sequential <code>await</code> loop</td>
+          <td><code>Promise.all()</code> per gateway</td>
+          <td>Modify modbus-client.service.ts</td>
+        </tr>
+        <tr>
+          <td><strong>Device ID lookup</strong></td>
+          <td><code>Device.findOne()</code> per register</td>
+          <td>In-memory <code>Map</code> cache</td>
+          <td>Modify modbus-gateway-manager.service.ts</td>
+        </tr>
+        <tr>
+          <td><strong>Workflow dispatch</strong></td>
+          <td><code>Workflow.find()</code> per device/poll</td>
+          <td>NATS consumer + workflow ID cache</td>
+          <td>Refactor WorkflowTriggerDispatcher</td>
+        </tr>
+        <tr>
+          <td><strong>MongoDB pool</strong></td>
+          <td>Default 10</td>
+          <td><code>maxPoolSize: 50</code></td>
+          <td>1-line config change</td>
+        </tr>
+        <tr>
+          <td colspan="4" style="color:var(--green); font-size:12px; padding:10px 14px;">
+            STABLE — NO CHANGE: All Mongoose models · All REST API routes · Compliance layer (audit, retention, alarms) · RBAC + JWT + TokenSession · Visual Workflow Editor · Kosmos left/right static columns
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- COMPLIANCE -->
+  <section>
+    <div class="section-label">07 — Compliance</div>
+    <h2>Compliance Certifications</h2>
+    <div class="badge-grid">
+      <div class="comp-badge">
+        <div class="cb-dot"></div>
+        <div class="cb-text">
+          <span class="cb-std">EPA 21 CFR Part 11</span>
+          <span class="cb-desc">Immutable audit logs · Electronic signatures · 10-year retention</span>
+        </div>
+      </div>
+      <div class="comp-badge">
+        <div class="cb-dot"></div>
+        <div class="cb-text">
+          <span class="cb-std">EPA 40 CFR Part 141</span>
+          <span class="cb-desc">5-year water quality data retention (time-series TTL)</span>
+        </div>
+      </div>
+      <div class="comp-badge">
+        <div class="cb-dot"></div>
+        <div class="cb-text">
+          <span class="cb-std">ISA-18.2</span>
+          <span class="cb-desc">Alarm state machine: ACTIVE_UNACKED → ACTIVE_ACKED → CLEARED</span>
+        </div>
+      </div>
+      <div class="comp-badge">
+        <div class="cb-dot"></div>
+        <div class="cb-text">
+          <span class="cb-std">AWWA M36</span>
+          <span class="cb-desc">Water audit methodology · Quality scoring 0–100</span>
+        </div>
+      </div>
+      <div class="comp-badge">
+        <div class="cb-dot"></div>
+        <div class="cb-text">
+          <span class="cb-std">IEC 61158 — Modbus</span>
+          <span class="cb-desc">TCP/RTU gateway · Configurable register mapping · Word order</span>
+        </div>
+      </div>
+      <div class="comp-badge">
+        <div class="cb-dot"></div>
+        <div class="cb-text">
+          <span class="cb-std">OPC-UA</span>
+          <span class="cb-desc">Subscription-based node monitoring · Session pooling</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRODUCTION READINESS CHECKLIST -->
+  <section>
+    <div class="section-label">08 — Readiness</div>
+    <h2>Production Readiness Checklist</h2>
+    <div class="checklist-grid">
+      <div class="checklist-section">
+        <h3>Infrastructure</h3>
+        <div class="check-item"><div class="check-box"></div>NATS JetStream server deployed (v2.10+), 3 streams configured</div>
+        <div class="check-item"><div class="check-box"></div>Redis 7 cluster deployed, pub/sub and keyspace notifications enabled</div>
+        <div class="check-item"><div class="check-box"></div>MongoDB 8 replica set (3 nodes minimum for HA)</div>
+        <div class="check-item"><div class="check-box"></div><code>maxPoolSize: 50</code> set in MongoDB connection string</div>
+        <h3>Services</h3>
+        <div class="check-item"><div class="check-box"></div>Real-Time Processing Engine deployed as standalone Node.js process</div>
+        <div class="check-item"><div class="check-box"></div>StorageWorker deployed with BullMQ; dead-letter queue configured</div>
+        <div class="check-item"><div class="check-box"></div>WebSocket Gateway deployed; sticky sessions configured</div>
+        <div class="check-item"><div class="check-box"></div>WorkflowTriggerDispatcher migrated to NATS consumer</div>
+      </div>
+      <div class="checklist-section">
+        <h3>Protocol Adapters</h3>
+        <div class="check-item"><div class="check-box"></div>Parallel register reads (<code>Promise.all()</code>) implemented per gateway</div>
+        <div class="check-item"><div class="check-box"></div>Device ID in-memory <code>Map</code> cache implemented and tested</div>
+        <div class="check-item"><div class="check-box"></div>Gateway publishing to <code>sensor.raw</code> NATS stream</div>
+        <h3>Dashboard</h3>
+        <div class="check-item"><div class="check-box"></div>Kosmos 3-column layout implemented</div>
+        <div class="check-item"><div class="check-box"></div>Palette switching via <code>dashboardSlice.activePaletteId</code></div>
+        <div class="check-item"><div class="check-box"></div>Chart.js instances retain data across palette switches</div>
+        <div class="check-item"><div class="check-box"></div>WS Gateway subscription by sensorId room</div>
+        <h3>Compliance &amp; Monitoring</h3>
+        <div class="check-item"><div class="check-box"></div>Audit logging verified end-to-end in production</div>
+        <div class="check-item"><div class="check-box"></div>NATS JetStream consumer lag alerting configured</div>
+        <div class="check-item"><div class="check-box"></div>Redis memory usage and StorageWorker dead-letter monitoring</div>
+        <div class="check-item"><div class="check-box"></div>WebSocket connection count dashboard active</div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<dialog id="diagramModal" class="diagram-modal">
+  <button class="modal-close" onclick="this.closest('dialog').close()">&#x2715; close</button>
+  <div class="modal-canvas" id="modalCanvas">
+    <img src="production_architecture.png" alt="Production Data Flow Diagram" id="modalImg">
+  </div>
+  <p class="modal-hint">Scroll to zoom &middot; Click outside or press Esc to close</p>
+</dialog>
+
+<script>
+  const modal = document.getElementById('diagramModal');
+  const canvas = document.getElementById('modalCanvas');
+  const img = document.getElementById('modalImg');
+  let scale = 1;
+
+  modal.addEventListener('click', e => { if (e.target === modal) modal.close(); });
+  modal.addEventListener('close', () => { scale = 1; img.style.transform = ''; });
+
+  canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    scale = Math.min(4, Math.max(0.5, scale + (e.deltaY < 0 ? 0.15 : -0.15)));
+    img.style.transform = `scale(${scale})`;
+    img.style.transformOrigin = 'top left';
+  }, { passive: false });
+</script>
+
+</body>
+</html>

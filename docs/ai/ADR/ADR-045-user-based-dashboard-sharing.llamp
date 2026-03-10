@@ -1,0 +1,36 @@
+// LLAMP-SPEC v1 | ADR-045
+=adr: 045
+=title: user-based-dashboard-sharing
+=date: 2026-03-10
+=status: accepted
+
+#ctx
+~problem: Public shareToken links bypass auth — any URL holder sees the dashboard.
+~requirement: Share dashboards with specific org Viewer accounts; login required.
+~current: Dashboard model has shareToken+shareEnabled (public, no-auth access).
+
+#opts
+~opt1: Keep public link + add user whitelist (sharedWithUsers[]) alongside it
+~opt2: Replace public link entirely with sharedWithUsers[] — auth-only access [CHOSEN]
+
+#decision
+=remove: shareToken, shareEnabled fields from Dashboard model + all /share/:token routes
+=add: sharedWithUsers: ObjectId[] on Dashboard (ref User)
+=index: { sharedWithUsers: 1 }
+=new_routes:
+  POST /dashboards/:id/share  body:{userIds[]}  perm:dashboard:share  (Admin/Operator)
+  GET  /dashboards/my         requireAuth       returns viewer-assigned dashboards
+=viewer_ux: after login role==Viewer → redirect /viewer (kiosk, no sidebar/topbar)
+=multi_dash: viewer sees tab strip if multiple dashboards assigned
+=rbac: dashboard:read, dashboard:write, dashboard:share, dashboard:delete added to PERMISSIONS
+
+#consequences
+~all existing /view/:shareToken URLs break (page deleted)
+~useSharedDeviceState hook deleted (was public-only)
+~getDashboard service gates on sharedWithUsers for Viewer role
+~KosmosShell share button opens ShareUsersModal instead of copying link
+~root layout hides Sidebar+TopBar for role==Viewer
+~login redirects Viewer to /viewer instead of /
+
+#scope
+=arch_summary_update: yes

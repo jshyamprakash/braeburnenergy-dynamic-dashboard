@@ -2,7 +2,8 @@
 
 import { memo } from 'react';
 import { Handle, Position, type NodeProps } from 'reactflow';
-import { useAppSelector } from '@/lib/store';
+import { useAppSelector, useAppDispatch } from '@/lib/store';
+import { openExecutionModal } from '@/lib/store/slices/workflowSlice';
 import NodeErrorBadge from '../NodeErrorBadge';
 import StatusBadge from './StatusBadge';
 
@@ -16,13 +17,17 @@ import StatusBadge from './StatusBadge';
 export interface TriggerNodeData {
   label?: string;
   description?: string;
+  nodeType?: string;
   config: Record<string, any>;
   executionStatus?: 'idle' | 'running' | 'completed' | 'failed';
 }
 
 function TriggerNode({ data, selected, id }: NodeProps<TriggerNodeData>) {
-  const { validationErrors } = useAppSelector(state => state.workflow);
+  const dispatch = useAppDispatch();
+  const { validationErrors, workflowId, executionStatus } = useAppSelector(state => state.workflow);
   const hasError = validationErrors.some(error => error.includes(id));
+  const isManual = data.nodeType === 'trigger:manual';
+
   return (
     <div
       className={`
@@ -36,10 +41,25 @@ function TriggerNode({ data, selected, id }: NodeProps<TriggerNodeData>) {
     >
       {hasError && <NodeErrorBadge />}
       <StatusBadge status={data.executionStatus} />
-      {/* Label only */}
+
       <div className="text-xs font-medium text-gray-900 dark:text-gray-100">
         {data.label || 'Untitled Trigger'}
       </div>
+
+      {/* Run button — only for trigger:manual */}
+      {isManual && (
+        <button
+          onClick={e => {
+            e.stopPropagation();
+            if (workflowId) dispatch(openExecutionModal(id));
+          }}
+          disabled={!workflowId || executionStatus === 'running'}
+          title={!workflowId ? 'Save workflow first' : 'Run workflow'}
+          className="nodrag mt-1.5 w-full flex items-center justify-center gap-1 px-2 py-1 text-xs font-medium rounded bg-green-500 hover:bg-green-600 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors"
+        >
+          ▶ Run
+        </button>
+      )}
 
       {/* Output Handle — bottom centre, diamond */}
       <Handle

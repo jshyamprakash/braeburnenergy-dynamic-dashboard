@@ -16,7 +16,7 @@ export function TopBar() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  const { data: notifData } = useNotifications({ unreadOnly: true });
+  const { data: notifData } = useNotifications({ unreadOnly: true, enabled: isAuthenticated });
   const unreadCount = notifData?.unreadCount ?? 0;
   useNotificationSocket();
 

@@ -10,11 +10,12 @@ export interface UseNotificationsOptions {
   unreadOnly?: boolean;
   limit?: number;
   offset?: number;
+  enabled?: boolean;
 }
 
 export function useNotifications(options: UseNotificationsOptions = {}) {
   const queryClient = useQueryClient();
-  const { unreadOnly = false, limit = 20, offset = 0 } = options;
+  const { unreadOnly = false, limit = 20, offset = 0, enabled = true } = options;
 
   return useQuery({
     queryKey: ['notifications', { unreadOnly, limit, offset }],
@@ -26,7 +27,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       const res = await apiClient.get<NotificationListResponse>(`/notifications?${params.toString()}`);
       return res.data;
     },
-    enabled: true,
+    enabled,
   });
 }
 

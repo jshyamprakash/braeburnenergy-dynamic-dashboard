@@ -3,12 +3,14 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { useAppSelector } from '@/lib/store';
+import { selectUser } from '@/lib/store/slices/authSlice';
 import { toast } from 'sonner';
 
 export default function LoginPage() {
   const router = useRouter();
   const { login, isAuthenticated, isLoading: authLoading, error, clearError } = useAuth();
-
+  const user = useAppSelector(selectUser);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
@@ -17,10 +19,10 @@ export default function LoginPage() {
 
   // Redirect if already authenticated (e.g. visiting /login while logged in)
   useEffect(() => {
-    if (isAuthenticated) {
-      router.push('/');
+    if (isAuthenticated && user) {
+      router.push(user.role === 'Viewer' ? '/viewer' : '/');
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, user, router]);
 
   // Clear error when component unmounts
   useEffect(() => {
@@ -47,10 +49,9 @@ export default function LoginPage() {
     clearError();
 
     try {
-      await login(username.trim(), password);
+      const result = await login(username.trim(), password);
       toast.success('Login successful!');
-      const returnUrl = new URLSearchParams(window.location.search).get('returnUrl') || '/';
-      router.push(returnUrl);
+      router.push(result.user.role === 'Viewer' ? '/viewer' : '/');
     } catch (err) {
       const errorMessage =
         err instanceof Error

@@ -383,6 +383,55 @@ export class OpcuaGatewayManager {
       return client.getCachedData();
     }
   }
+
+  /**
+   * Read value from a specific OPC-UA node
+   */
+  async readNode(gatewayId: string, nodeId: string): Promise<unknown> {
+    const instance = this.instances.get(gatewayId);
+    if (!instance || !instance.isRunning) {
+      throw new Error(`Gateway ${gatewayId} is not running or not found`);
+    }
+
+    const { client } = instance;
+
+    // Check if client has an active session
+    if (!client.getConnectionStatus()) {
+      throw new Error(`OPC-UA client for gateway ${gatewayId} does not have an active session`);
+    }
+
+    // Read the node via the client's session
+    try {
+      const value = await client.readNode(nodeId);
+      return value;
+    } catch (error: any) {
+      throw new Error(`Failed to read OPC-UA node ${nodeId}: ${error.message}`);
+    }
+  }
+
+  /**
+   * Write value to a specific OPC-UA node
+   */
+  async writeNode(gatewayId: string, nodeId: string, value: unknown): Promise<void> {
+    const instance = this.instances.get(gatewayId);
+    if (!instance || !instance.isRunning) {
+      throw new Error(`Gateway ${gatewayId} is not running or not found`);
+    }
+
+    const { client } = instance;
+
+    // Check if client has an active session
+    if (!client.getConnectionStatus()) {
+      throw new Error(`OPC-UA client for gateway ${gatewayId} does not have an active session`);
+    }
+
+    // Write the node via the client's session
+    try {
+      await client.writeNode(nodeId, value);
+    } catch (error: any) {
+      throw new Error(`Failed to write OPC-UA node ${nodeId}: ${error.message}`);
+    }
+  }
 }
 
 // Singleton instance

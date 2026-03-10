@@ -1,28 +1,34 @@
 // LLAMP-SPEC v1 | CURRENT_DECISIONS
-// task: Webhook Trigger Configuration UI | date: 2026-03-04
+// task: ADR-045 User-Based Dashboard Sharing | date: 2026-03-10
 
 #what_changed
-=routes/webhook.routes.ts: NEW public unauthenticated route POST /webhooks/:workflowId
-~Loads workflow, validates trigger:webhook node exists
-~Optional HMAC-SHA256 signature validation via X-Hub-Signature-256 header
-~Executes workflow with {type: 'webhook', source: IP, data: requestBody}
-~Returns 202 Accepted with executionId
-=server.ts: IMPORT webhookRoutes; REGISTER after notificationRoutes
-=NodeConfigPanel.tsx: 'webhook-url' added to FieldConfig.type union
-=NODE_CONFIG_SCHEMAS: trigger:webhook schema with _webhookUrl + webhookSecret fields
-=webhook-url renderer: Read-only input + copy-to-clipboard button (checks workflowId exists)
+=apps/api/src/models/dashboard.model.ts: removed shareToken/shareEnabled/generateShareToken; added sharedWithUsers:ObjectId[] with {sharedWithUsers:1} index
+=apps/api/src/services/dashboard.service.ts: removed shareDashboard/revokeDashboardShare/getSharedDashboard/getSharedDeviceDerivedState; added shareWithUsers(orgId,dashboardId,userIds) with org-membership validation; added getDashboardsForViewer(orgId,userId); getDashboard now accepts {role,userId} options and gates Viewer access on sharedWithUsers; imports User model + ForbiddenError
+=apps/api/src/controllers/dashboard.controller.ts: removed shareDashboard/revokeDashboardShare/getSharedDashboard/getSharedDeviceDerivedState handlers; added shareWithUsers handler (body:{userIds[]}); added getViewerDashboards handler; getDashboard passes {role,userId} from getRequestContext
+=apps/api/src/routes/dashboard.routes.ts: removed 4 old share routes; added POST /dashboards/:id/share [requirePermission('dashboard:share')]; added GET /dashboards/my [requireAuth]; imports requirePermission from rbac.middleware
+=apps/api/src/middleware/rbac.middleware.ts: added dashboard:read/write/share/delete to PERMISSIONS map (28 total)
+=packages/types/src/index.ts: Dashboard interface updated (shareToken/shareEnabled removed, sharedWithUsers:string[] added)
+=apps/web/lib/store/slices/dashboardSlice.ts: removed kosmosShareToken/kosmosShareEnabled/setKosmosShareInfo; added kosmosSharedWithUsers:string[], viewerDashboards:Dashboard[], fetchViewerDashboards thunk, setKosmosSharedWithUsers action
+=apps/web/lib/hooks/useViewerDashboards.ts: NEW — React Query GET /dashboards/my
+=apps/web/components/kosmos/ShareUsersModal.tsx: NEW — Viewer filter + multi-select + POST /share
+=apps/web/components/kosmos/KosmosShell.tsx: readOnly prop added; share button → opens ShareUsersModal; edit controls hidden when readOnly
+=apps/web/components/navigation/LayoutShell.tsx: NEW — client component hides Sidebar/TopBar for /viewer/* paths
+=apps/web/app/layout.tsx: replaced inline TopBar+Sidebar with LayoutShell wrapper
+=apps/web/app/viewer/layout.tsx: NEW — fullscreen kiosk layout
+=apps/web/app/viewer/page.tsx: NEW — viewer kiosk (tab strip, KosmosShell readOnly)
+=apps/web/app/login/page.tsx: Viewer role → redirect to /viewer after login
+=DELETED: apps/web/app/view/[shareToken]/page.tsx, apps/web/lib/hooks/useSharedDeviceState.ts
 
 #tech_implications
-~Public endpoint — NO requireAuth preHandler — external callers can trigger workflows
-~HMAC validation optional: only enforced if webhookSecret configured on trigger node
-~Timing-safe comparison prevents signature timing attacks
-~JSON.stringify(request.body) used as signed payload (standard for JSON callers)
-~workflowId display requires Redux workflow.workflowId selector (muted message if null)
-~apiConfig.baseUrl sourced from NEXT_PUBLIC_API_URL env var
+~All existing /view/:shareToken URLs return 404 (page deleted)
+~Viewer users cannot browse /dashboards, /devices, /workflows — LayoutShell hides nav for /viewer route
+~GET /dashboards/my returns empty array if no dashboards shared (viewer sees empty state)
+~shareWithUsers replaces full list — calling with [] removes all access
+~getDashboard returns ForbiddenError(403) if Viewer attempts to access unshared dashboard
+~Old MongoDB documents retain shareToken/shareEnabled fields (schema has no strict: true) — harmless orphan fields; run db.dashboards.updateMany({},{$unset:{shareToken:'',shareEnabled:''}}) to clean up if needed
 
 #constraints
-~Workflow must be isEnabled=true; returns 404 otherwise
-~Trigger node type must be trigger:webhook; returns 422 if missing
-~Secret validation case-sensitive; timing-safe comparison used
-~URL display only shows after workflow saved (workflowId must exist in Redux state)
-~Copy button uses navigator.clipboard.writeText() (requires HTTPS in production)
+~Viewer role must exist in same org as dashboard (validated in shareWithUsers service)
+~GET /dashboards/my uses orgId+userId from JWT — Viewer must be fully authenticated
+~KosmosShell readOnly=true removes all edit/share/palette controls — no escape hatch
+~LayoutShell uses pathname.startsWith('/viewer') — any sub-routes of /viewer also get kiosk layout

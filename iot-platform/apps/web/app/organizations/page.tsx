@@ -307,6 +307,7 @@ function OrganizationsContent() {
               <tr>
                 <th className="px-4 py-3 text-left text-sm font-semibold">Name</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold">Slug</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold">Users</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold">Devices</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold">States</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold">Created</th>
@@ -335,6 +336,11 @@ function OrganizationsContent() {
                         <Copy className="h-4 w-4" />
                       </button>
                     </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="inline-block px-2 py-1 rounded-full text-sm bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                      {stats[org._id]?.userCount || 0}
+                    </span>
                   </td>
                   <td className="px-4 py-3">
                     <span className="inline-block px-2 py-1 rounded-full text-sm bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">

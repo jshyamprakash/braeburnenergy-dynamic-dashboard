@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kosmos™ — Smart Streetlight Automation | Braeburn Utility</title>
+<style>
+:root {
+  --ul: #D6E6F9; --pale: #A3C8F0; --soft: #6FAAE6;
+  --mid: #3C8CD3; --base: #1560BD; --deep: #0D3C7A;
+  --green: #00B050; --green-g: rgba(0,176,80,0.22);
+  --amber: #FFB800; --red: #FF3B3B; --teal: #00C8A0;
+  --bg: #05101F; --card: #081828; --panel: #0B1F38;
+  --bdr: rgba(21,96,189,0.28); --bdrhi: rgba(21,96,189,0.62);
+  --txt: #DDF0FF; --txts: #7AAFD4; --txtd: #3D6A94;
+  --f: 'Corbel','Segoe UI','Calibri',sans-serif;
+  --fm: 'Consolas','Courier New',monospace;
+  --fd: 'Trebuchet MS','Segoe UI Semibold','Arial',sans-serif;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:100%;height:100%;background:var(--bg);color:var(--txt);font-family:var(--f);overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:linear-gradient(rgba(21,96,189,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(21,96,189,.05) 1px,transparent 1px);
+  background-size:44px 44px;}
+
+/* HEADER */
+#hdr{position:relative;z-index:20;height:58px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;
+  background:linear-gradient(90deg,#06122A,#0D2244 50%,#06122A);
+  border-bottom:2px solid var(--base);box-shadow:0 0 24px rgba(21,96,189,.35);}
+.hlogo{width:40px;height:40px;border-radius:50%;background:var(--base);border:2px solid var(--soft);
+  display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:15px;font-weight:900;color:#fff;
+  flex-shrink:0;position:relative;}
+.hlogo::after{content:'';position:absolute;inset:-5px;border-radius:50%;border:1px solid rgba(21,96,189,.4);animation:pr 3s ease-in-out infinite;}
+@keyframes pr{0%,100%{transform:scale(1);opacity:.5}50%{transform:scale(1.18);opacity:0}}
+.hbrand{display:flex;align-items:center;gap:10px;}
+.hname{display:flex;flex-direction:column;}
+.hn1{font-family:var(--fd);font-size:17px;font-weight:700;letter-spacing:2px;color:#fff;line-height:1;text-transform:uppercase;}
+.hn2{font-family:var(--fm);font-size:10px;color:var(--green);letter-spacing:3px;text-transform:uppercase;margin-top:2px;}
+.htitle{font-family:var(--fd);font-size:22px;font-weight:700;letter-spacing:4px;color:var(--ul);
+  text-shadow:0 0 22px rgba(111,170,230,.4);text-transform:uppercase;}
+.htitle span{color:var(--green);}
+.hright{display:flex;align-items:center;gap:16px;font-family:var(--fm);font-size:11px;color:var(--txts);}
+.ldot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);
+  box-shadow:0 0 8px var(--green);animation:bl 2s ease-in-out infinite;margin-right:5px;}
+@keyframes bl{0%,100%{opacity:1}50%{opacity:.2}}
+.lpill{background:rgba(0,176,80,.12);border:1px solid var(--green);color:var(--green);
+  padding:3px 11px;border-radius:3px;font-size:10px;letter-spacing:2px;animation:bl 2s ease-in-out infinite;}
+#clk{color:var(--pale);font-size:13px;letter-spacing:1px;}
+
+/* NAV */
+#nav{position:relative;z-index:20;display:flex;gap:2px;padding:6px 22px 0;
+  background:var(--panel);border-bottom:1px solid var(--bdr);}
+.tab{padding:8px 20px;cursor:pointer;font-family:var(--fd);font-size:13px;font-weight:700;
+  letter-spacing:1.5px;text-transform:uppercase;color:var(--txtd);background:transparent;
+  border:1px solid transparent;border-bottom:none;border-radius:4px 4px 0 0;transition:all .18s;position:relative;}
+.tab:hover{color:var(--pale);background:rgba(21,96,189,.1);}
+.tab.on{color:#fff;background:var(--bg);border-color:var(--bdrhi);border-bottom-color:var(--bg);}
+.tab.on::after{content:'';position:absolute;bottom:-2px;left:0;right:0;height:2px;background:var(--green);}
+.sub-tag{font-family:var(--fm);font-size:10px;color:var(--teal);letter-spacing:2px;
+  padding-bottom:5px;margin-left:auto;align-self:flex-end;padding-right:4px;}
+
+/* STAGE */
+#stage{position:relative;z-index:5;height:calc(100vh - 106px);overflow:hidden;}
+.view{display:none;width:100%;height:100%;padding:13px 18px;overflow:hidden;}
+.view.on{display:grid;}
+
+/* Layouts */
+#v-ov{ grid-template-columns:260px 1fr 255px;grid-template-rows:auto 1fr 1fr;gap:11px;}
+#v-map{grid-template-columns:1fr 310px;gap:11px;}
+#v-agent{grid-template-columns:270px 1fr 270px;gap:11px;}
+#v-arch{grid-template-columns:1fr 300px;gap:11px;}
+
+/* CARD */
+.card{background:var(--card);border:1px solid var(--bdr);border-radius:4px;
+  position:relative;overflow:hidden;display:flex;flex-direction:column;}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--base),transparent);}
+.card.gc::before{background:linear-gradient(90deg,transparent,var(--green),transparent);}
+.card.tc::before{background:linear-gradient(90deg,transparent,var(--teal),transparent);}
+.ch{display:flex;align-items:center;justify-content:space-between;
+  padding:9px 13px 7px;border-bottom:1px solid var(--bdr);flex-shrink:0;}
+.ct{font-family:var(--fd);font-size:12px;font-weight:700;letter-spacing:2px;
+  text-transform:uppercase;color:var(--soft);display:flex;align-items:center;gap:6px;}
+.cb{padding:11px 13px;flex:1;overflow:hidden;}
+
+/* TAGS */
+.tag{display:inline-block;font-family:var(--fm);font-size:9px;padding:2px 7px;
+  border-radius:2px;letter-spacing:1px;text-transform:uppercase;}
+.tb{background:rgba(21,96,189,.18);color:var(--soft);border:1px solid var(--bdrhi);}
+.tg{background:rgba(0,176,80,.14);color:var(--green);border:1px solid rgba(0,176,80,.5);}
+.ta{background:rgba(255,184,0,.12);color:var(--amber);border:1px solid rgba(255,184,0,.4);}
+.tr{background:rgba(255,59,59,.12);color:var(--red);border:1px solid rgba(255,59,59,.4);}
+.tt{background:rgba(0,200,160,.12);color:var(--teal);border:1px solid rgba(0,200,160,.4);}
+
+/* METRIC */
+.mc{background:var(--card);border:1px solid var(--bdr);border-radius:4px;padding:10px 13px;position:relative;overflow:hidden;}
+.mc::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--c,var(--base));opacity:.7;}
+.ml{font-family:var(--fm);font-size:10px;color:var(--txtd);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;}
+.mv{font-family:var(--fd);font-size:28px;font-weight:700;line-height:1;}
+.mu{font-family:var(--fm);font-size:11px;color:var(--txts);}
+.mt{font-family:var(--fm);font-size:10px;margin-top:3px;}
+.up{color:var(--green)}.dn{color:var(--red)}.fl{color:var(--amber)}
+
+/* STREETLIGHT GRID */
+.slgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:8px;}
+.slnode{border-radius:4px;border:1px solid var(--bdr);padding:7px 6px;text-align:center;
+  cursor:pointer;transition:all .2s;position:relative;}
+.slnode:hover{border-color:var(--mid);}
+.slnode.on-g{background:rgba(0,176,80,.1);border-color:rgba(0,176,80,.5);}
+.slnode.on-a{background:rgba(255,184,0,.08);border-color:rgba(255,184,0,.4);}
+.slnode.on-r{background:rgba(255,59,59,.08);border-color:rgba(255,59,59,.4);}
+.slnode.off{background:rgba(13,60,122,.2);border-color:var(--bdr);opacity:.6;}
+.sl-icon{font-size:18px;line-height:1;margin-bottom:3px;}
+.sl-id{font-family:var(--fm);font-size:9px;color:var(--txts);}
+.sl-watt{font-family:var(--fm);font-size:10px;font-weight:700;}
+.sl-watt.g{color:var(--green)}.sl-watt.a{color:var(--amber)}.sl-watt.r{color:var(--red)}.sl-watt.d{color:var(--txtd)}
+
+/* KV rows */
+.kv{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+.kk{font-family:var(--fm);font-size:10px;color:var(--txtd);letter-spacing:1px;}
+.vv{font-family:var(--fm);font-size:11px;color:var(--pale);}
+.div{height:1px;background:var(--bdr);margin:7px 0;}
+.sh{font-family:var(--fd);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--txtd);margin-bottom:6px;}
+
+/* CONF BARS */
+.cbars{display:flex;flex-direction:column;gap:6px;}
+.crow{display:flex;flex-direction:column;gap:3px;}
+.clbl{display:flex;justify-content:space-between;font-family:var(--fm);font-size:10px;color:var(--txts);}
+.ctrk{height:6px;background:rgba(21,96,189,.1);border-radius:3px;overflow:hidden;}
+.cfil{height:100%;border-radius:3px;transition:width 1s ease;}
+
+/* ALERT LIST */
+.alist{display:flex;flex-direction:column;gap:5px;}
+.aitem{border-radius:3px;padding:7px 9px;border-left:3px solid;background:rgba(5,16,31,.55);font-family:var(--f);font-size:12px;}
+.aitem.ok{border-left-color:var(--green)}.aitem.wn{border-left-color:var(--amber)}
+.aitem.cr{border-left-color:var(--red)}.aitem.nf{border-left-color:var(--base)}
+.atm{font-family:var(--fm);font-size:10px;color:var(--txtd);margin-bottom:1px;}
+.amsg{color:var(--txt)}.asub{font-size:11px;color:var(--txts);margin-top:2px;}
+
+/* AGENT MODULES */
+.amod{background:rgba(5,16,31,.7);border:1px solid var(--bdr);border-left:3px solid var(--base);
+  border-radius:0 3px 3px 0;padding:8px 10px;cursor:pointer;transition:all .18s;position:relative;margin-bottom:5px;}
+.amod:hover{border-left-color:var(--soft);background:rgba(21,96,189,.1);}
+.amod.on{border-left-color:var(--green);}
+.amod-n{font-family:var(--fd);font-size:13px;font-weight:700;letter-spacing:1px;color:var(--pale);}
+.amod-d{font-family:var(--f);font-size:11px;color:var(--txtd);margin-top:2px;}
+.amod-s{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-family:var(--fm);font-size:10px;color:var(--mid);}
+.amod.on .amod-s{color:var(--green);}
+
+/* CHAT */
+.cmsgs{flex:1;overflow-y:auto;padding:9px;display:flex;flex-direction:column;gap:7px;
+  background:rgba(5,16,31,.55);border:1px solid var(--bdr);border-radius:3px;min-height:0;}
+.cmsgs::-webkit-scrollbar{width:3px;}.cmsgs::-webkit-scrollbar-thumb{background:var(--base);}
+.cm{padding:7px 10px;border-radius:3px;font-family:var(--f);font-size:13px;line-height:1.5;max-width:92%;}
+.cm.sys{background:rgba(13,60,122,.28);border-left:2px solid var(--mid);align-self:flex-start;}
+.cm.agt{background:rgba(0,176,80,.09);border-left:2px solid var(--green);align-self:flex-start;}
+.cm.usr{background:rgba(21,96,189,.15);border-right:2px solid var(--base);align-self:flex-end;}
+.cml{font-family:var(--fm);font-size:9px;letter-spacing:1px;margin-bottom:3px;opacity:.6;}
+.crow2{display:flex;gap:7px;margin-top:8px;flex-shrink:0;}
+.cin{flex:1;background:rgba(5,16,31,.8);border:1px solid var(--bdr);border-radius:3px;
+  color:var(--txt);font-family:var(--f);font-size:13px;padding:7px 10px;outline:none;transition:border-color .2s;}
+.cin:focus{border-color:var(--base);}
+.cbtn{background:var(--base);border:none;border-radius:3px;color:#fff;padding:7px 14px;cursor:pointer;
+  font-family:var(--fd);font-size:13px;font-weight:700;letter-spacing:1px;transition:background .2s;}
+.cbtn:hover{background:var(--mid);}
+.tdots{display:inline-flex;gap:3px;align-items:center;}
+.tdots span{width:4px;height:4px;border-radius:50%;background:var(--green);animation:td 1.2s infinite;}
+.tdots span:nth-child(2){animation-delay:.2s}.tdots span:nth-child(3){animation-delay:.4s}
+@keyframes td{0%,80%,100%{transform:scale(.5);opacity:.4}40%{transform:scale(1);opacity:1}}
+
+/* PLATFORM STACK */
+.plyr{border:1px solid var(--bdr);border-radius:4px;padding:11px 14px;position:relative;margin-bottom:9px;}
+.plyr:last-child{margin-bottom:0;}
+.plbl{position:absolute;top:-10px;left:12px;font-family:var(--fm);font-size:10px;color:var(--txts);
+  background:var(--card);padding:0 8px;text-transform:uppercase;letter-spacing:2px;}
+.pboxes{display:flex;gap:7px;flex-wrap:wrap;margin-top:4px;}
+.pb{padding:6px 12px;border-radius:3px;font-family:var(--fd);font-size:12px;font-weight:700;
+  letter-spacing:1px;cursor:pointer;transition:all .2s;border:1px solid;}
+.pb:hover{transform:translateY(-2px);}
+.pbg{background:rgba(0,176,80,.1);border-color:var(--green);color:var(--green);}
+.pbb{background:rgba(21,96,189,.12);border-color:var(--mid);color:var(--soft);}
+.pbd{background:rgba(13,60,122,.35);border-color:var(--base);color:var(--pale);}
+.pbt{background:rgba(0,200,160,.08);border-color:#009975;color:var(--teal);}
+
+/* MAP SIMULATION */
+#map-canvas{width:100%;height:100%;display:block;}
+.col{display:flex;flex-direction:column;gap:10px;}
+.fx1{flex:1;}
+
+/* SCHEDULE TABLE */
+.sched{width:100%;border-collapse:collapse;font-family:var(--fm);font-size:11px;}
+.sched th{text-align:left;padding:5px 8px;color:var(--txtd);border-bottom:1px solid var(--bdr);font-weight:400;letter-spacing:1px;}
+.sched td{padding:5px 8px;border-bottom:1px solid rgba(21,96,189,.1);color:var(--txts);}
+.sched tr:hover td{background:rgba(21,96,189,.07);}
+.sched .active-row td{color:var(--txt);}
+
+/* RING */
+.rwrap{width:92px;height:92px;margin:0 auto;position:relative;display:flex;align-items:center;justify-content:center;}
+.rwrap svg{position:absolute;inset:0;transform:rotate(-90deg);}
+.rinner{z-index:1;text-align:center;}
+.rval{font-family:var(--fd);font-size:24px;font-weight:700;line-height:1;}
+.rlbl{font-family:var(--fm);font-size:9px;color:var(--txtd);}
+
+/* ENERGY CHART */
+canvas.chart{display:block;width:100% !important;}
+::-webkit-scrollbar{width:4px;}.  ::-webkit-scrollbar-thumb{background:var(--base);}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="hdr">
+  <div class="hbrand">
+    <div class="hlogo">3≡</div>
+    <div class="hname">
+      <div class="hn1">Braeburn Utility</div>
+      <div class="hn2">BE THE FUTURE</div>
+    </div>
+  </div>
+  <div class="htitle">KOSMOS<span>™</span> — SMART STREETLIGHT</div>
+  <div class="hright">
+    <span><span class="ldot"></span><span style="color:var(--txts)">EDGE: ONLINE</span></span>
+    <span id="clk">—</span>
+    <span class="lpill">● LIVE</span>
+  </div>
+</div>
+
+<!-- NAV -->
+<div id="nav">
+  <div class="tab on" data-v="ov">⬡ Overview</div>
+  <div class="tab" data-v="map">◈ Zone Map</div>
+  <div class="tab" data-v="agent">⟳ BE Agent™</div>
+  <div class="tab" data-v="arch">⬡ Architecture</div>
+  <span class="sub-tag">Smart City · Streetlight Automation</span>
+</div>
+
+<!-- STAGE -->
+<div id="stage">
+
+<!-- ===== OVERVIEW ===== -->
+<div class="view on" id="v-ov">
+
+  <!-- LEFT: BE Sense sensor panel -->
+  <div class="card" style="grid-row:span 3;">
+    <div class="ch"><div class="ct">◈ BE Sense™</div><span class="tag tb">SENSOR FUSION</span></div>
+    <div class="cb" style="overflow-y:auto;">
+      <div class="sh">Per-Node Sensing</div>
+      <div style="display:flex;flex-direction:column;gap:5px;">
+        <div style="background:rgba(13,60,122,.2);border:1px solid var(--bdr);border-radius:3px;padding:7px 9px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+            <span style="font-family:var(--fd);font-size:12px;font-weight:700;color:var(--pale);">Current (per pole)</span>
+            <span class="tag tg">LIVE</span>
+          </div>
+          <div style="font-family:var(--fd);font-size:22px;font-weight:700;color:var(--soft);" id="s-curr">0.82 <span style="font-size:12px;color:var(--txts)">A</span></div>
+        </div>
+        <div style="background:rgba(13,60,122,.2);border:1px solid var(--bdr);border-radius:3px;padding:7px 9px;">
+          <div style="font-family:var(--fm);font-size:10px;color:var(--txtd);margin-bottom:3px;">VOLTAGE</div>
+          <div style="font-family:var(--fd);font-size:20px;font-weight:700;color:var(--soft);" id="s-volt">229.4 <span style="font-size:12px;color:var(--txts)">V</span></div>
+        </div>
+        <div style="background:rgba(13,60,122,.2);border:1px solid var(--bdr);border-radius:3px;padding:7px 9px;">
+          <div style="font-family:var(--fm);font-size:10px;color:var(--txtd);margin-bottom:3px;">POWER (ACTIVE)</div>
+          <div style="font-family:var(--fd);font-size:20px;font-weight:700;color:var(--green);" id="s-pwr">188 <span style="font-size:12px;color:var(--txts)">W</span></div>
+        </div>
+        <div style="background:rgba(13,60,122,.2);border:1px solid var(--bdr);border-radius:3px;padding:7px 9px;">
+          <div style="font-family:var(--fm);font-size:10px;color:var(--txtd);margin-bottom:3px;">LUMINANCE</div>
+          <div style="font-family:var(--fd);font-size:20px;font-weight:700;color:var(--amber);" id="s-lux">6,240 <span style="font-size:12px;color:var(--txts)">lux</span></div>
+        </div>
+      </div>
+      <div class="div"></div>
+      <div class="sh">Environmental</div>
+      <div class="kv"><span class="kk">AMBIENT LIGHT</span><span class="vv" id="s-amb">4.2 lux</span></div>
+      <div class="kv"><span class="kk">TEMP</span><span class="vv" id="s-temp">28.4°C</span></div>
+      <div class="kv"><span class="kk">HUMIDITY</span><span class="vv">62%</span></div>
+      <div class="kv"><span class="kk">MOTION DETECT</span><span class="tag tg">ACTIVE</span></div>
+      <div class="div"></div>
+      <div class="sh">Connectivity</div>
+      <div class="kv"><span class="kk">PROTOCOL</span><span class="vv">LoRaWAN</span></div>
+      <div class="kv"><span class="kk">LATENCY</span><span style="font-family:var(--fm);font-size:11px;color:var(--green)">&lt;120 ms</span></div>
+      <div class="kv"><span class="kk">EDGE NODE</span><span class="tag tg">ACTIVE</span></div>
+      <div class="kv"><span class="kk">NODES ONLINE</span><span style="font-family:var(--fm);font-size:11px;color:var(--green)">148 / 152</span></div>
+      <div class="div"></div>
+      <div class="sh">Dimming Schedule</div>
+      <table class="sched">
+        <tr><th>TIME</th><th>DIM %</th><th>MODE</th></tr>
+        <tr><td>18:00</td><td>100%</td><td style="color:var(--green)">Full ON</td></tr>
+        <tr class="active-row"><td>22:00</td><td>70%</td><td style="color:var(--amber)">Eco</td></tr>
+        <tr><td>00:00</td><td>40%</td><td style="color:var(--mid)">Night</td></tr>
+        <tr><td>04:00</td><td>70%</td><td style="color:var(--amber)">Pre-Dawn</td></tr>
+        <tr><td>06:00</td><td>OFF</td><td style="color:var(--txtd)">Sunrise</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- TOP METRICS -->
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+    <div class="mc" style="--c:var(--green)">
+      <div class="ml">Energy Saved</div>
+      <div class="mv" id="m-save" style="color:var(--green)">38.4</div>
+      <div class="mu">% vs Baseline</div>
+      <div class="mt up">▲ ADAPTIVE DIM</div>
+    </div>
+    <div class="mc" style="--c:var(--soft)">
+      <div class="ml">Nodes Online</div>
+      <div class="mv" style="color:var(--soft)">148<span style="font-size:14px;color:var(--txts)">/152</span></div>
+      <div class="mu">Active Nodes</div>
+      <div class="mt up">● 97.4% Uptime</div>
+    </div>
+    <div class="mc" style="--c:var(--amber)">
+      <div class="ml">Fault Alerts</div>
+      <div class="mv" id="m-faults" style="color:var(--amber)">4</div>
+      <div class="mu">Active Faults</div>
+      <div class="mt fl">▲ 2 CRITICAL</div>
+    </div>
+  </div>
+
+  <!-- CENTRE: Energy / Power Chart -->
+  <div class="card">
+    <div class="ch">
+      <div class="ct">〜 Network Power Consumption — Real-Time</div>
+      <div style="display:flex;gap:6px;"><span class="tag tg">ADAPTIVE</span><span class="tag tb">152 NODES</span></div>
+    </div>
+    <div class="cb" style="padding:8px;">
+      <canvas id="c-pwr" class="chart" height="150"></canvas>
+    </div>
+  </div>
+
+  <!-- CENTRE BOTTOM: Node status grid -->
+  <div class="card">
+    <div class="ch">
+      <div class="ct">◈ Node Status Grid — Zone A (Residential)</div>
+      <div style="display:flex;gap:6px;"><span class="tag tg">32 Nodes</span><span class="tag ta">2 Faults</span></div>
+    </div>
+    <div class="cb">
+      <div class="slgrid" id="sl-grid"></div>
+    </div>
+  </div>
+
+  <!-- RIGHT: BE Agent + Alerts -->
+  <div class="card" style="grid-row:span 3;">
+    <div class="ch"><div class="ct">⟳ BE Agent™</div><span class="tag tb">AGENTIC AI</span></div>
+    <div class="cb" style="overflow-y:auto;">
+      <div class="sh">Active Modules</div>
+      <div class="amod on"><div class="amod-n">Adaptive Dimming</div><div class="amod-d">Motion + ambient light control</div><div class="amod-s">● RUN</div></div>
+      <div class="amod on"><div class="amod-n">Fault Detection</div><div class="amod-d">Open-circuit, flicker, short</div><div class="amod-s">● RUN</div></div>
+      <div class="amod on"><div class="amod-n">Energy Analytics</div><div class="amod-d">Consumption vs schedule baseline</div><div class="amod-s">● RUN</div></div>
+      <div class="amod"><div class="amod-n">Predictive Maint.</div><div class="amod-d">Driver burn-life, lamp health</div><div class="amod-s">○ IDLE</div></div>
+      <div class="amod"><div class="amod-n">Carbon Reporting</div><div class="amod-d">CO₂ savings · grid emission factor</div><div class="amod-s">○ IDLE</div></div>
+      <div class="div"></div>
+      <div class="sh">Alerts</div>
+      <div class="alist">
+        <div class="aitem cr"><div class="atm">22:41:05</div><div class="amsg">Node SL-A014 — open circuit</div><div class="asub">Zero current draw, lamp unresponsive</div></div>
+        <div class="aitem cr"><div class="atm">22:38:20</div><div class="amsg">Node SL-A027 — voltage anomaly</div><div class="asub">242V detected — above 240V limit</div></div>
+        <div class="aitem wn"><div class="atm">22:30:00</div><div class="amsg">SL-B008 — flicker detected</div><div class="asub">Driver degradation predicted</div></div>
+        <div class="aitem ok"><div class="atm">22:00:00</div><div class="amsg">Eco dim schedule applied</div><div class="asub">152 nodes → 70% dim, 12.4 kW saved</div></div>
+      </div>
+      <div class="div"></div>
+      <div class="sh">Energy Savings</div>
+      <div class="cbars">
+        <div class="crow"><div class="clbl"><span>Today</span><span style="color:var(--green)">38.4%</span></div><div class="ctrk"><div class="cfil" style="width:38%;background:var(--green)"></div></div></div>
+        <div class="crow"><div class="clbl"><span>This Week</span><span style="color:var(--soft)">41.2%</span></div><div class="ctrk"><div class="cfil" style="width:41%;background:var(--soft)"></div></div></div>
+        <div class="crow"><div class="clbl"><span>This Month</span><span style="color:var(--mid)">39.7%</span></div><div class="ctrk"><div class="cfil" style="width:40%;background:var(--mid)"></div></div></div>
+      </div>
+      <div class="div"></div>
+      <div class="rwrap" style="margin-bottom:4px;">
+        <svg viewBox="0 0 100 100" width="92" height="92">
+          <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(0,176,80,.1)" stroke-width="9"/>
+          <circle cx="50" cy="50" r="40" fill="none" stroke="var(--green)" stroke-width="9"
+            stroke-dasharray="251" stroke-dashoffset="40" stroke-linecap="round"/>
+        </svg>
+        <div class="rinner">
+          <div class="rval" style="color:var(--green);">84</div>
+          <div class="rlbl">NETWORK</div>
+        </div>
+      </div>
+      <div style="font-family:var(--fm);font-size:10px;color:var(--txtd);text-align:center;letter-spacing:1px;">HEALTH INDEX</div>
+    </div>
+  </div>
+</div><!-- /overview -->
+
+
+<!-- ===== ZONE MAP ===== -->
+<div class="view" id="v-map">
+  <div class="card">
+    <div class="ch">
+      <div class="ct">◈ Zone Map — Kancheepuram Municipality</div>
+      <div style="display:flex;gap:6px;">
+        <span class="tag tg">Zone A: 52 Nodes</span>
+        <span class="tag tb">Zone B: 48 Nodes</span>
+        <span class="tag tb">Zone C: 52 Nodes</span>
+      </div>
+    </div>
+    <div class="cb" style="padding:8px;flex:1;">
+      <canvas id="c-map" style="width:100%;height:100%;display:block;"></canvas>
+    </div>
+  </div>
+  <div class="col">
+    <div class="card">
+      <div class="ch"><div class="ct">◈ Zone Summary</div></div>
+      <div class="cb">
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <div style="background:rgba(0,176,80,.07);border:1px solid rgba(0,176,80,.3);border-radius:3px;padding:8px 10px;">
+            <div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--green);letter-spacing:1px;">ZONE A — Residential</div>
+            <div class="kv" style="margin-top:4px;margin-bottom:0;"><span class="kk">NODES</span><span class="vv">52</span></div>
+            <div class="kv" style="margin-bottom:0;"><span class="kk">FAULTS</span><span style="font-family:var(--fm);font-size:11px;color:var(--red)">2</span></div>
+            <div class="kv" style="margin-bottom:0;"><span class="kk">SAVING</span><span style="font-family:var(--fm);font-size:11px;color:var(--green)">41%</span></div>
+          </div>
+          <div style="background:rgba(21,96,189,.07);border:1px solid var(--bdr);border-radius:3px;padding:8px 10px;">
+            <div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--soft);letter-spacing:1px;">ZONE B — Commercial</div>
+            <div class="kv" style="margin-top:4px;margin-bottom:0;"><span class="kk">NODES</span><span class="vv">48</span></div>
+            <div class="kv" style="margin-bottom:0;"><span class="kk">FAULTS</span><span style="font-family:var(--fm);font-size:11px;color:var(--amber)">1</span></div>
+            <div class="kv" style="margin-bottom:0;"><span class="kk">SAVING</span><span style="font-family:var(--fm);font-size:11px;color:var(--green)">35%</span></div>
+          </div>
+          <div style="background:rgba(21,96,189,.07);border:1px solid var(--bdr);border-radius:3px;padding:8px 10px;">
+            <div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--soft);letter-spacing:1px;">ZONE C — Main Roads</div>
+            <div class="kv" style="margin-top:4px;margin-bottom:0;"><span class="kk">NODES</span><span class="vv">52</span></div>
+            <div class="kv" style="margin-bottom:0;"><span class="kk">FAULTS</span><span style="font-family:var(--fm);font-size:11px;color:var(--amber)">1</span></div>
+            <div class="kv" style="margin-bottom:0;"><span class="kk">SAVING</span><span style="font-family:var(--fm);font-size:11px;color:var(--green)">38%</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card fx1">
+      <div class="ch"><div class="ct">◈ Power Trend — All Zones</div></div>
+      <div class="cb" style="padding:8px;flex:1;">
+        <canvas id="c-zone" class="chart" style="height:100%;"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ch"><div class="ct">◈ Network KPIs</div></div>
+      <div class="cb">
+        <div class="kv"><span class="kk">TOTAL NODES</span><span class="vv">152</span></div>
+        <div class="kv"><span class="kk">ONLINE</span><span style="font-family:var(--fm);font-size:11px;color:var(--green)">148</span></div>
+        <div class="kv"><span class="kk">TOTAL WATTAGE</span><span class="vv">28.6 kW</span></div>
+        <div class="kv"><span class="kk">BASELINE</span><span class="vv">46.4 kW</span></div>
+        <div class="kv"><span class="kk">CO₂ SAVED TODAY</span><span style="font-family:var(--fm);font-size:11px;color:var(--green)">12.8 kg</span></div>
+        <div class="kv"><span class="kk">MUNICIPALITY</span><span class="vv">Kancheepuram</span></div>
+      </div>
+    </div>
+  </div>
+</div><!-- /map -->
+
+
+<!-- ===== AGENT ===== -->
+<div class="view" id="v-agent">
+  <div class="card">
+    <div class="ch"><div class="ct">⟳ BE Agent™ Modules</div><span class="tag tb">v2.1</span></div>
+    <div class="cb" style="overflow-y:auto;">
+      <div class="amod on"><div class="amod-n">Adaptive Dimming</div><div class="amod-d">Motion-triggered & ambient lux control</div><div class="amod-s">● ACTIVE</div></div>
+      <div class="amod on"><div class="amod-n">Fault Detection</div><div class="amod-d">Open circuit, flicker, driver failure</div><div class="amod-s">● ACTIVE</div></div>
+      <div class="amod on"><div class="amod-n">Energy Analytics</div><div class="amod-d">Real-time vs baseline consumption</div><div class="amod-s">● ACTIVE</div></div>
+      <div class="amod"><div class="amod-n">Predictive Maintenance</div><div class="amod-d">Driver burn-life · lamp lumen depreciation</div><div class="amod-s">○ IDLE</div></div>
+      <div class="amod"><div class="amod-n">Carbon Reporting</div><div class="amod-d">CO₂ savings · grid emission factor</div><div class="amod-s">○ IDLE</div></div>
+      <div class="amod"><div class="amod-n">Schedule Optimiser</div><div class="amod-d">Seasonal sunset/sunrise auto-adjust</div><div class="amod-s">○ IDLE</div></div>
+      <div class="amod"><div class="amod-n">Power Quality</div><div class="amod-d">THD, power factor, harmonics</div><div class="amod-s">○ IDLE</div></div>
+      <div class="amod"><div class="amod-n">Smart City Bridge</div><div class="amod-d">SCADA, GIS, municipality ERP</div><div class="amod-s">○ IDLE</div></div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="card">
+      <div class="ch"><div class="ct" id="ag-title">◈ Adaptive Dimming Module</div><span class="tag tg" id="ag-st">ACTIVE</span></div>
+      <div class="cb" id="ag-body">
+        <div style="font-family:var(--f);font-size:13px;color:var(--txts);line-height:1.6;margin-bottom:10px;">
+          Motion-sensor and ambient-lux-driven dimming logic. Automatically adjusts luminance from 40% to 100% based on real-time pedestrian/vehicle detection and ambient sky conditions. Saves up to 42% energy vs fixed-output legacy networks.
+        </div>
+        <div style="display:flex;gap:7px;flex-wrap:wrap;">
+          <span class="tag tg">MOTION SENSOR</span><span class="tag tb">AMBIENT LUX</span><span class="tag tb">LoRaWAN</span>
+        </div>
+      </div>
+    </div>
+    <div class="card fx1">
+      <div class="ch"><div class="ct">⟳ BE Agent™ — Natural Language Interface</div><span class="tag tg">ONLINE</span></div>
+      <div class="cb" style="flex:1;display:flex;flex-direction:column;min-height:0;padding:10px;">
+        <div class="cmsgs" id="chat-msgs">
+          <div class="cm sys"><div class="cml">SYSTEM</div>BE Agent™ online. Kosmos Smart Streetlight platform active. 148/152 nodes nominal.</div>
+          <div class="cm agt"><div class="cml">BE AGENT</div>Adaptive dimming active across all 3 zones. Current network load 28.6 kW — 38.4% below baseline. Zone A has 2 critical faults: SL-A014 (open circuit) and SL-A027 (overvoltage). Maintenance dispatch recommended.</div>
+          <div class="cm usr"><div class="cml">OPERATOR</div>How much energy have we saved this month?</div>
+          <div class="cm agt"><div class="cml">BE AGENT</div>This month: 39.7% average energy reduction across 152 nodes. Total savings: 847 kWh vs fixed-output baseline. Equivalent to approximately 411 kg CO₂ avoided. Adaptive dimming in Zone A is the top performer at 41.2% reduction due to low late-night pedestrian traffic patterns.</div>
+        </div>
+        <div class="crow2">
+          <input class="cin" id="chat-in" type="text" placeholder="Ask BE Agent about node status, energy savings, fault analysis…" onkeydown="if(event.key==='Enter')doChat()">
+          <button class="cbtn" onclick="doChat()">▶ ASK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="card">
+      <div class="ch"><div class="ct">◈ Platform Status</div></div>
+      <div class="cb">
+        <div class="kv"><span class="kk">EDGE NODE</span><span class="tag tg">ONLINE</span></div>
+        <div class="kv"><span class="kk">CLOUD SYNC</span><span class="tag tg">LIVE</span></div>
+        <div class="kv"><span class="kk">BE SENSE™</span><span class="tag tg">FUSED</span></div>
+        <div class="kv"><span class="kk">LoRaWAN</span><span class="tag tg">LINKED</span></div>
+        <div class="kv"><span class="kk">MUNICIPALITY ERP</span><span class="tag ta">STANDBY</span></div>
+        <div class="kv"><span class="kk">DATA OWNER</span><span class="tag tb">MUNICIPALITY</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ch"><div class="ct">◈ Active Faults</div></div>
+      <div class="cb">
+        <div class="alist">
+          <div class="aitem cr"><div class="atm">SL-A014 · Zone A</div><div class="amsg">Open circuit — no current</div></div>
+          <div class="aitem cr"><div class="atm">SL-A027 · Zone A</div><div class="amsg">Overvoltage 242V</div></div>
+          <div class="aitem wn"><div class="atm">SL-B008 · Zone B</div><div class="amsg">Driver flicker — schedule maint.</div></div>
+          <div class="aitem wn"><div class="atm">SL-C031 · Zone C</div><div class="amsg">Communication loss &gt;15 min</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="card fx1">
+      <div class="ch"><div class="ct">◈ Upcoming: Sewage SCADA</div><span class="tag tt">NEXT</span></div>
+      <div class="cb">
+        <div style="font-family:var(--f);font-size:12px;color:var(--txts);line-height:1.6;margin-bottom:8px;">
+          Kosmos platform next deployment: <strong style="color:var(--teal)">Kancheepuram Municipality Sewage SCADA</strong>. Same BE Sense™ + BE Agent™ architecture — new domain modules for lift stations, pump health, flow metering, and overflow detection.
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <span class="tag tt">SEWAGE SCADA</span>
+          <span class="tag tb">LIFT STATIONS</span>
+          <span class="tag tb">FLOW METERING</span>
+          <span class="tag tb">KANCHEEPURAM</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div><!-- /agent -->
+
+
+<!-- ===== ARCH ===== -->
+<div class="view" id="v-arch">
+  <div class="card">
+    <div class="ch"><div class="ct">⬡ Kosmos™ — Smart Streetlight Architecture</div><span class="tag tb">BRAEBURN UTILITY</span></div>
+    <div class="cb" style="overflow-y:auto;">
+      <div class="plyr" style="border-color:rgba(60,140,211,.3);">
+        <div class="plbl">Physical — Street Infrastructure</div>
+        <div class="pboxes">
+          <div class="pb pbd">LED Luminaires</div>
+          <div class="pb pbd">DALI Drivers</div>
+          <div class="pb pbd">Motion Sensors (PIR)</div>
+          <div class="pb pbd">Ambient Lux Sensor</div>
+          <div class="pb pbd">V / I Measurement</div>
+          <div class="pb pbd">Cabinet Switches</div>
+        </div>
+      </div>
+      <div style="text-align:center;color:var(--mid);font-size:18px;padding:3px 0;">⇅</div>
+      <div class="plyr" style="border-color:rgba(21,96,189,.5);">
+        <div class="plbl" style="color:var(--soft);">BE Sense™ — Multimodal Sensor Fusion</div>
+        <div class="pboxes">
+          <div class="pb pbb">Current Sensing</div>
+          <div class="pb pbb">Voltage Monitor</div>
+          <div class="pb pbb">Luminance (lux)</div>
+          <div class="pb pbb">Motion Detection</div>
+          <div class="pb pbb">Ambient Light</div>
+          <div class="pb pbb">Temperature</div>
+          <div class="pb pbb">Power Quality</div>
+          <div class="pb pbb">LoRaWAN Gateway</div>
+        </div>
+      </div>
+      <div style="text-align:center;color:var(--mid);font-size:18px;padding:3px 0;">⇅</div>
+      <div class="plyr" style="border-color:rgba(0,176,80,.5);">
+        <div class="plbl" style="color:var(--green);">BE Agent™ — Agentic AI Framework</div>
+        <div class="pboxes">
+          <div class="pb pbg">Adaptive Dimming</div>
+          <div class="pb pbg">Fault Detection</div>
+          <div class="pb pbg">Energy Analytics</div>
+          <div class="pb pbg">Predictive Maint.</div>
+          <div class="pb pbg">Carbon Reporting</div>
+          <div class="pb pbg">Schedule Optimiser</div>
+          <div class="pb pbg">Power Quality</div>
+          <div class="pb pbg">NL Agent Interface</div>
+        </div>
+      </div>
+      <div style="text-align:center;color:var(--mid);font-size:18px;padding:3px 0;">⇅</div>
+      <div class="plyr" style="border-color:rgba(0,200,160,.4);">
+        <div class="plbl" style="color:var(--teal);">Kosmos™ Platform — Edge + Cloud / On-Prem</div>
+        <div class="pboxes">
+          <div class="pb pbt">Edge Gateway</div>
+          <div class="pb pbt">Private Cloud</div>
+          <div class="pb pbt">On-Prem Server</div>
+          <div class="pb pbt">Municipality Dashboard</div>
+          <div class="pb pbt">GIS Integration</div>
+          <div class="pb pbt">REST / MQTT APIs</div>
+        </div>
+      </div>
+      <div style="text-align:center;color:var(--mid);font-size:18px;padding:3px 0;">⇅</div>
+      <div class="plyr" style="border-color:rgba(13,60,122,.6);">
+        <div class="plbl">Operator Outputs</div>
+        <div class="pboxes">
+          <div class="pb pbd">SCADA / HMI</div>
+          <div class="pb pbd">Work Order / CMMS</div>
+          <div class="pb pbd">Energy Reports</div>
+          <div class="pb pbd">Carbon Reports</div>
+          <div class="pb pbd">Regulatory Filing</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="card gc">
+      <div class="ch"><div class="ct">◈ Smart City Roadmap</div><span class="tag tg">LIVE</span></div>
+      <div class="cb">
+        <div style="display:flex;flex-direction:column;gap:7px;">
+          <div style="border:1px solid rgba(0,176,80,.4);border-radius:3px;padding:8px 10px;background:rgba(0,176,80,.06);">
+            <div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--green);letter-spacing:1px;">✓ Streetlight Automation</div>
+            <div style="font-family:var(--f);font-size:11px;color:var(--txts);margin-top:2px;">152 nodes · Kancheepuram · LIVE</div>
+          </div>
+          <div style="border:1px solid rgba(0,176,80,.4);border-radius:3px;padding:8px 10px;background:rgba(0,176,80,.06);">
+            <div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--green);letter-spacing:1px;">✓ Water Distribution</div>
+            <div style="font-family:var(--f);font-size:11px;color:var(--txts);margin-top:2px;">mmWave tanks · pump monitoring · LIVE</div>
+          </div>
+          <div style="border:1px solid rgba(0,200,160,.4);border-radius:3px;padding:8px 10px;background:rgba(0,200,160,.06);">
+            <div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--teal);letter-spacing:1px;">⟳ Sewage SCADA</div>
+            <div style="font-family:var(--f);font-size:11px;color:var(--txts);margin-top:2px;">Kancheepuram Municipality · PLANNED</div>
+          </div>
+          <div style="border:1px solid var(--bdr);border-radius:3px;padding:8px 10px;">
+            <div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--txtd);letter-spacing:1px;">○ Traffic Management</div>
+            <div style="font-family:var(--f);font-size:11px;color:var(--txtd);margin-top:2px;">Signal control · flow optimisation · TBD</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ch"><div class="ct">◈ Project Info</div></div>
+      <div class="cb">
+        <div class="kv"><span class="kk">CLIENT</span><span class="vv">Kancheepuram ULB</span></div>
+        <div class="kv"><span class="kk">NODES</span><span class="vv">152 LED Poles</span></div>
+        <div class="kv"><span class="kk">ZONES</span><span class="vv">A · B · C</span></div>
+        <div class="kv"><span class="kk">PROTOCOL</span><span class="vv">LoRaWAN + DALI</span></div>
+        <div class="kv"><span class="kk">DEPLOYMENT</span><span class="vv">Edge + Cloud</span></div>
+        <div class="kv"><span class="kk">ANNUAL SAVING</span><span style="font-family:var(--fm);font-size:11px;color:var(--green)">~309 MWh</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ch"><div class="ct">◈ Deployment Mode</div></div>
+      <div class="cb">
+        <div style="border:1px solid var(--bdr);border-radius:3px;padding:8px;margin-bottom:6px;">
+          <div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--soft);letter-spacing:1px;">EDGE + CLOUD</div>
+          <div style="font-family:var(--f);font-size:11px;color:var(--txts);margin-top:2px;">LoRaWAN gateway on-site · cloud dashboard · municipality owned data</div>
+        </div>
+        <div style="border:1px solid rgba(0,200,160,.3);border-radius:3px;padding:8px;">
+          <div style="font-family:var(--fd);font-size:13px;font-weight:700;color:var(--teal);letter-spacing:1px;">NEXT: ON-PREM SCADA</div>
+          <div style="font-family:var(--f);font-size:11px;color:var(--txts);margin-top:2px;">Sewage system — local server, air-gapped, full municipal sovereignty</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div><!-- /arch -->
+
+</div><!-- /stage -->
+
+<script>
+'use strict';
+// CLOCK
+function tk(){document.getElementById('clk').textContent=new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'});}
+setInterval(tk,1000);tk();
+
+// TABS
+document.querySelectorAll('.tab').forEach((t,i)=>{
+  t.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+    document.querySelectorAll('.view').forEach(x=>x.classList.remove('on'));
+    t.classList.add('on');
+    document.querySelectorAll('.view')[i].classList.add('on');
+    setTimeout(()=>{Object.values(ch).forEach(c=>{if(c)c.draw();});},60);
+  });
+});
+
+// NODE GRID
+const grid=document.getElementById('sl-grid');
+if(grid){
+  const states=['on-g','on-g','on-g','on-g','on-g','on-g','on-g','on-g','on-g','on-g',
+    'on-g','on-g','on-g','on-g','on-r','on-g','on-g','on-a','on-g','on-g',
+    'on-g','on-g','on-g','on-g','on-g','on-r','on-g','on-g','on-g','on-g','on-g','on-g'];
+  const icons={'on-g':'💡','on-a':'⚠️','on-r':'🔴','off':'⭕'};
+  const colors={'on-g':'g','on-a':'a','on-r':'r','off':'d'};
+  states.forEach((s,i)=>{
+    const d=document.createElement('div');
+    d.className=`slnode ${s}`;
+    const idx=String(i+1).padStart(3,'0');
+    d.innerHTML=`<div class="sl-icon">${icons[s]||'💡'}</div><div class="sl-id">SL-A${idx}</div><div class="sl-watt ${colors[s]||'g'}">${s==='on-r'?'—':s==='off'?'OFF':(188+Math.round((Math.random()-.5)*20))+'W'}</div>`;
+    grid.appendChild(d);
+  });
+}
+
+// CANVAS CHARTING (native)
+class LC{
+  constructor(el,opts={}){this.el=el;this.ctx=el.getContext('2d');this.data=opts.data||[];
+    this.color=opts.color||'#1560BD';this.fill=opts.fill||null;
+    this.mn=opts.mn??null;this.mx=opts.mx??null;this.thr=opts.thr||[];}
+  resize(){const r=this.el.parentElement.getBoundingClientRect();const dp=window.devicePixelRatio||1;
+    this.el.width=r.width*dp;this.el.height=(this.el.offsetHeight||r.height)*dp;
+    this.ctx.scale(dp,dp);this.W=r.width;this.H=this.el.offsetHeight||r.height;}
+  update(d){this.data=d;this.draw();}
+  draw(){const c=this.ctx,W=this.W,H=this.H;if(!W||!H||!this.data.length)return;
+    c.clearRect(0,0,W,H);
+    c.strokeStyle='rgba(21,96,189,0.1)';c.lineWidth=1;
+    for(let i=1;i<4;i++){const y=(H/4)*i;c.beginPath();c.moveTo(0,y);c.lineTo(W,y);c.stroke();}
+    const mn=this.mn!==null?this.mn:Math.min(...this.data);
+    const mx=this.mx!==null?this.mx:Math.max(...this.data);
+    const rng=mx-mn||1;const xS=W/(this.data.length-1);
+    const yM=v=>H-((v-mn)/rng)*(H*.86)-H*.07;
+    for(const t of this.thr){c.strokeStyle=t.c||'rgba(255,59,59,0.4)';c.setLineDash([5,4]);c.lineWidth=1;
+      c.beginPath();c.moveTo(0,yM(t.v));c.lineTo(W,yM(t.v));c.stroke();c.setLineDash([]);}
+    if(this.fill){c.beginPath();c.moveTo(0,yM(this.data[0]));
+      for(let i=1;i<this.data.length;i++)c.lineTo(i*xS,yM(this.data[i]));
+      c.lineTo((this.data.length-1)*xS,H);c.lineTo(0,H);c.closePath();c.fillStyle=this.fill;c.fill();}
+    c.beginPath();c.moveTo(0,yM(this.data[0]));
+    for(let i=1;i<this.data.length;i++)c.lineTo(i*xS,yM(this.data[i]));
+    c.strokeStyle=this.color;c.lineWidth=2;c.lineJoin='round';c.stroke();}
+}
+
+// DATA
+let t=0;
+let pwrBuf=Array.from({length:120},(_,i)=>28.6+2*Math.sin(i*.08)+Math.random()*.5);
+let zoneBuf=Array.from({length:80},()=>28+Math.random()*3);
+const ch={};
+
+function initCharts(){
+  const e=id=>document.getElementById(id);
+  if(e('c-pwr')){ch.pwr=new LC(e('c-pwr'),{data:[...pwrBuf],color:'#00B050',fill:'rgba(0,176,80,0.05)',mn:20,mx:50});}
+  if(e('c-zone')){ch.zone=new LC(e('c-zone'),{data:[...zoneBuf],color:'#3C8CD3',fill:'rgba(60,140,211,0.06)',mn:20,mx:50});}
+  Object.values(ch).forEach(c=>{if(c){c.resize();c.draw();}});
+  drawMap();
+}
+
+function drawMap(){
+  const c=document.getElementById('c-map');if(!c)return;
+  const ctx=c.getContext('2d');
+  const dp=window.devicePixelRatio||1;
+  const r=c.parentElement.getBoundingClientRect();
+  c.width=r.width*dp;c.height=r.height*dp;ctx.scale(dp,dp);
+  const W=r.width,H=r.height;
+  // Background
+  ctx.fillStyle='#060F1E';ctx.fillRect(0,0,W,H);
+  // Grid
+  ctx.strokeStyle='rgba(21,96,189,0.08)';ctx.lineWidth=1;
+  for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  // Roads
+  const roads=[[.1,.5,.9,.5],[.5,.1,.5,.9],[.2,.2,.8,.8],[.3,.7,.7,.3],[.15,.35,.85,.35],[.15,.65,.85,.65]];
+  ctx.strokeStyle='rgba(60,140,211,0.25)';ctx.lineWidth=3;
+  roads.forEach(([x1,y1,x2,y2])=>{ctx.beginPath();ctx.moveTo(x1*W,y1*H);ctx.lineTo(x2*W,y2*H);ctx.stroke();});
+  // Zone labels
+  const zones=[{l:'ZONE A\nResidential',x:.18,y:.25,c:'rgba(0,176,80,.2)'},{l:'ZONE B\nCommercial',x:.65,y:.25,c:'rgba(21,96,189,.2)'},{l:'ZONE C\nMain Roads',x:.42,y:.65,c:'rgba(21,96,189,.2)'}];
+  zones.forEach(z=>{
+    ctx.fillStyle=z.c;ctx.beginPath();ctx.arc(z.x*W,z.y*H,55,0,Math.PI*2);ctx.fill();
+    ctx.font=`bold ${11*dp/dp}px Trebuchet MS`;ctx.fillStyle='rgba(163,200,240,0.7)';ctx.textAlign='center';
+    z.l.split('\n').forEach((ln,i)=>ctx.fillText(ln,z.x*W,z.y*H+(i-0.5)*15));
+  });
+  // Nodes
+  const nodeData=[];
+  for(let i=0;i<52;i++){nodeData.push({x:.05+Math.random()*.38,y:.05+Math.random()*.45,z:'A',s:i<50?'ok':i===50?'fault':'warn'});}
+  for(let i=0;i<48;i++){nodeData.push({x:.52+Math.random()*.43,y:.05+Math.random()*.45,z:'B',s:i<47?'ok':'warn'});}
+  for(let i=0;i<52;i++){nodeData.push({x:.1+Math.random()*.8,y:.52+Math.random()*.43,z:'C',s:i<51?'ok':'warn'});}
+  nodeData.forEach(n=>{
+    const col=n.s==='ok'?'#00B050':n.s==='fault'?'#FF3B3B':'#FFB800';
+    ctx.beginPath();ctx.arc(n.x*W,n.y*H,4,0,Math.PI*2);
+    ctx.fillStyle=col+'33';ctx.fill();
+    ctx.beginPath();ctx.arc(n.x*W,n.y*H,2.5,0,Math.PI*2);
+    ctx.fillStyle=col;ctx.fill();
+  });
+  // Legend
+  [['● Online','.1,.88','#00B050'],['● Warning','.35,.88','#FFB800'],['● Fault','.6,.88','#FF3B3B']].forEach(([lbl,pos,col])=>{
+    const [px,py]=pos.split(',').map(Number);
+    ctx.fillStyle=col;ctx.font=`11px Consolas`;ctx.textAlign='left';
+    ctx.fillText(lbl,px*W,py*H);
+  });
+}
+
+function rtUpdate(){
+  t++;
+  const p=28.6+2*Math.sin(t*.04)+Math.random()*.6;
+  pwrBuf.push(p);pwrBuf.shift();
+  const z=28+Math.sin(t*.06)*3+Math.random()*.5;
+  zoneBuf.push(z);zoneBuf.shift();
+  if(ch.pwr)ch.pwr.update([...pwrBuf]);
+  if(ch.zone)ch.zone.update([...zoneBuf]);
+  if(t%8===0){
+    document.getElementById('s-curr').textContent=(0.82+(.Math||Math).random()*.04-.02).toFixed(2)+' A';
+    document.getElementById('s-volt').textContent=(229+Math.random()*2-.5).toFixed(1)+' V';
+    document.getElementById('s-pwr').textContent=Math.round(186+Math.random()*6)+' W';
+  }
+}
+setInterval(rtUpdate,200);
+window.addEventListener('load',()=>{setTimeout(initCharts,80);});
+window.addEventListener('resize',()=>{Object.values(ch).forEach(c=>{if(c){c.resize();c.draw();}});drawMap();});
+
+// CHAT
+const replies=[
+  "Network currently consuming 28.6 kW across 152 nodes — 38.4% below the 46.4 kW fixed-output baseline. Adaptive dimming is active in all 3 zones.",
+  "4 active faults: SL-A014 (open circuit, no current draw), SL-A027 (overvoltage 242V), SL-B008 (driver flicker), SL-C031 (comms loss). Recommend dispatch to Zone A first.",
+  "Carbon savings this month: approximately 411 kg CO₂ avoided based on TNEB grid emission factor 0.82 kg CO₂/kWh. Annual projection: ~4.9 tonnes CO₂.",
+  "Predictive maintenance model estimates SL-B008 driver will fail within 3–5 weeks. Recommend proactive replacement on next maintenance cycle.",
+  "Schedule optimiser: current sunset at 18:47 IST. Proposing auto-adjusting ON time to 18:45 tomorrow based on seasonal almanac. Approve?",
+];
+let ri=0;
+function doChat(){
+  const inp=document.getElementById('chat-in');const box=document.getElementById('chat-msgs');
+  if(!inp||!box||!inp.value.trim())return;
+  const q=inp.value.trim();inp.value='';
+  const u=document.createElement('div');u.className='cm usr';u.innerHTML=`<div class="cml">OPERATOR</div>${q}`;box.appendChild(u);
+  const td=document.createElement('div');td.className='cm agt';td.innerHTML=`<div class="cml">BE AGENT</div><div class="tdots"><span></span><span></span><span></span></div>`;
+  box.appendChild(td);box.scrollTop=99999;
+  setTimeout(()=>{td.innerHTML=`<div class="cml">BE AGENT</div>${replies[ri++%replies.length]}`;box.scrollTop=99999;},900+Math.random()*600);
+}
+</script>
+</body>
+</html>

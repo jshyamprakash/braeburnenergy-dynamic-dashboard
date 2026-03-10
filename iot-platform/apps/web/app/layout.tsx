@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Providers } from "@/lib/providers";
-import { TopBar } from "@/components/navigation/TopBar";
-import { Sidebar } from "@/components/navigation/Sidebar";
+import { LayoutShell } from "@/components/navigation/LayoutShell";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { Toaster } from "sonner";
@@ -28,16 +27,7 @@ export default function RootLayout({
         >
           <ErrorBoundary>
             <Providers>
-              {/* Top Bar */}
-              <TopBar />
-
-              {/* Main Layout: Sidebar + Content */}
-              <div className="flex h-[calc(100vh-64px)]">
-                <Sidebar />
-                <main className="flex-1 overflow-auto px-4 sm:px-6 lg:px-8 py-8">
-                  {children}
-                </main>
-              </div>
+              <LayoutShell>{children}</LayoutShell>
             </Providers>
           </ErrorBoundary>
           <Toaster position="top-right" richColors />

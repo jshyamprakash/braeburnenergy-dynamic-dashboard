@@ -16,6 +16,7 @@ import { DEFAULT_ORG_ID } from '../lib/request-context';
 export interface NodeExecutionResult {
   output?: any;                    // Output data to pass to next node
   conditionMet?: boolean;          // For condition nodes (true/false branch)
+  switchBranch?: string;           // For logic:switch nodes (branch handle name)
   variables?: Record<string, any>; // Variables to update in context
   notes?: string;                  // Human-readable info for debug panel (e.g. log message text)
   debugMessage?: {                 // For action:debug node real-time output
@@ -106,6 +107,7 @@ export class WorkflowNodeHandlers {
       case 'trigger:manual':
       case 'trigger:alarmTriggered':
       case 'trigger:webhook':
+      case 'trigger:deviceOffline': // ADR-041
         return this.executeTrigger(config, context);
 
       // Conditions
@@ -153,10 +155,26 @@ export class WorkflowNodeHandlers {
         return this.executeDataModbusWrite(config, context);
       case 'data:queryDeviceStates':
         return this.executeDataQueryDeviceStates(config, context);
+      case 'data:storageGet':
+        return this.executeDataStorageGet(config, context);
+      case 'data:storageSet':
+        return this.executeDataStorageSet(config, context);
+      case 'data:opcuaRead':
+        return this.executeDataOpcuaRead(config, context);
+      case 'data:opcuaWrite':
+        return this.executeDataOpcuaWrite(config, context);
 
       // Logic (ADR-017)
       case 'logic:function':
         return this.executeLogicFunction(config, context);
+      case 'logic:switch':
+        return this.executeLogicSwitch(config, context);
+      case 'logic:delay':
+        return this.executeLogicDelay(config, context);
+      case 'logic:mutate':
+        return this.executeLogicMutate(config, context);
+      case 'logic:loop':
+        return this.executeLogicLoop(config, context);
 
       // Action: write structured data back to DeviceState (ADR-022)
       case 'action:writeDeviceState':
@@ -740,6 +758,157 @@ export class WorkflowNodeHandlers {
     };
   }
 
+  /**
+   * data:storageGet: Retrieve value from persistent workflow storage
+   * Config: { key: string, outputField: string, defaultValue?: any }
+   */
+  private async executeDataStorageGet(config: any, context: any): Promise<NodeExecutionResult> {
+    const { key, defaultValue = null, deviceId } = config;
+
+    const { WorkflowStorage } = await import('../models/workflow-storage.model');
+    const orgId = DEFAULT_ORG_ID;
+    const scopeQuery: Record<string, any> = { orgId, workflowId: context.workflowId, key };
+    if (deviceId) scopeQuery.deviceId = deviceId;
+
+    try {
+      const entry = await WorkflowStorage.findOne(scopeQuery).lean();
+
+      // Check if entry exists and hasn't expired
+      if (entry && (!entry.expiresAt || new Date(entry.expiresAt) > new Date())) {
+        return {
+          output: {
+            ...context.currentData,
+            [key]: entry.value,
+          },
+        };
+      }
+
+      // Entry doesn't exist or expired, use default value
+      return {
+        output: {
+          ...context.currentData,
+          [key]: defaultValue,
+        },
+      };
+    } catch (error: any) {
+      throw new Error(`Failed to get storage value for key ${key}: ${error.message}`);
+    }
+  }
+
+  /**
+   * data:storageSet: Store value in persistent workflow storage
+   * Config: { key: string, value: any|string (expression), ttlSeconds?: number }
+   */
+  private async executeDataStorageSet(config: any, context: any): Promise<NodeExecutionResult> {
+    const { key, valueExpression: value, ttlSeconds, deviceId } = config;
+
+    const { WorkflowStorage } = await import('../models/workflow-storage.model');
+    const orgId = DEFAULT_ORG_ID;
+    const scopeQuery: Record<string, any> = { orgId, workflowId: context.workflowId, key };
+    if (deviceId) scopeQuery.deviceId = deviceId;
+
+    try {
+      // Resolve value from expression if it's a string with {{...}} syntax
+      let resolvedValue: any;
+      if (typeof value === 'string' && value.startsWith('{{') && value.endsWith('}}')) {
+        const fieldPath = value.slice(2, -2).trim();
+        resolvedValue = this.getNestedValue(context.currentData, fieldPath);
+      } else {
+        resolvedValue = value;
+      }
+
+      // Build update object
+      const updateData: any = {
+        value: resolvedValue,
+        updatedAt: new Date(),
+      };
+
+      // Add expiration if TTL specified
+      if (ttlSeconds && typeof ttlSeconds === 'number') {
+        updateData.expiresAt = new Date(Date.now() + ttlSeconds * 1000);
+      } else {
+        // Remove expiration if not specified
+        updateData.expiresAt = null;
+      }
+
+      // Upsert (create or update)
+      await WorkflowStorage.findOneAndUpdate(
+        scopeQuery,
+        { $set: updateData },
+        { upsert: true, new: true }
+      ).lean();
+
+      return {
+        output: {
+          ...context.currentData,
+          storageSetResult: {
+            key,
+            value: resolvedValue,
+          },
+        },
+      };
+    } catch (error: any) {
+      throw new Error(`Failed to set storage value for key ${key}: ${error.message}`);
+    }
+  }
+
+  /**
+   * data:opcuaRead: Read value from OPC-UA node
+   * Config: { gatewayId: string, nodeId: string, outputField?: string }
+   */
+  private async executeDataOpcuaRead(config: any, context: any): Promise<NodeExecutionResult> {
+    const { gatewayId, nodeId, outputField = 'opcuaValue' } = config;
+
+    try {
+      const { opcuaGatewayManager } = await import('./opcua-gateway-manager.service');
+      const value = await opcuaGatewayManager.readNode(gatewayId, nodeId);
+
+      return {
+        output: {
+          ...context.currentData,
+          [outputField]: value,
+        },
+      };
+    } catch (error: any) {
+      throw new Error(`Failed to read OPC-UA node ${nodeId}: ${error.message}`);
+    }
+  }
+
+  /**
+   * data:opcuaWrite: Write value to OPC-UA node
+   * Config: { gatewayId: string, nodeId: string, value: any|string (expression) }
+   */
+  private async executeDataOpcuaWrite(config: any, context: any): Promise<NodeExecutionResult> {
+    const { gatewayId, nodeId, value } = config;
+
+    try {
+      // Resolve value from expression if it's a string with {{...}} syntax
+      let resolvedValue: any;
+      if (typeof value === 'string' && value.startsWith('{{') && value.endsWith('}}')) {
+        const fieldPath = value.slice(2, -2).trim();
+        resolvedValue = this.getNestedValue(context.currentData, fieldPath);
+      } else {
+        resolvedValue = value;
+      }
+
+      const { opcuaGatewayManager } = await import('./opcua-gateway-manager.service');
+      await opcuaGatewayManager.writeNode(gatewayId, nodeId, resolvedValue);
+
+      return {
+        output: {
+          ...context.currentData,
+          opcuaWriteResult: {
+            nodeId,
+            value: resolvedValue,
+            success: true,
+          },
+        },
+      };
+    } catch (error: any) {
+      throw new Error(`Failed to write OPC-UA node ${nodeId}: ${error.message}`);
+    }
+  }
+
   // ==========================================================================
   // Logic Nodes (ADR-017)
   // ==========================================================================
@@ -766,6 +935,169 @@ export class WorkflowNodeHandlers {
       output: {
         ...context.currentData,
         [outputField]: sandbox.result,
+      },
+    };
+  }
+
+  /**
+   * logic:switch: Branch execution based on expression value
+   * Config: { expression: string, cases: [{ match: string, handle: string }, ...], defaultHandle?: string }
+   */
+  private async executeLogicSwitch(config: any, context: any): Promise<NodeExecutionResult> {
+    const { expression, cases = [], defaultHandle } = config;
+
+    // Resolve expression from context.currentData
+    let resolvedValue: any;
+
+    if (typeof expression === 'string' && expression.startsWith('{{') && expression.endsWith('}}')) {
+      // Extract field path from {{fieldPath}} syntax
+      const fieldPath = expression.slice(2, -2).trim();
+      resolvedValue = this.getNestedValue(context.currentData, fieldPath);
+    } else {
+      // Use expression as literal value
+      resolvedValue = expression;
+    }
+
+    // Convert to string for comparison
+    const valueStr = String(resolvedValue);
+
+    // Find matching case
+    let matchedHandle: string | undefined;
+    for (const caseItem of cases) {
+      if (String(caseItem.match) === valueStr) {
+        matchedHandle = caseItem.handle;
+        break;
+      }
+    }
+
+    // Use matched handle or fall back to default
+    const branch = matchedHandle || defaultHandle || 'default';
+
+    return {
+      output: context.currentData,
+      switchBranch: branch,
+    };
+  }
+
+  /**
+   * logic:delay: Pause execution for specified duration
+   * Config: { delayMs: number }
+   */
+  private async executeLogicDelay(config: any, context: any): Promise<NodeExecutionResult> {
+    const { delayMs = 0 } = config;
+
+    // Clamp delay to [0, 30000]
+    const clampedDelay = Math.max(0, Math.min(30000, Number(delayMs) || 0));
+
+    // Wait for specified duration
+    await new Promise(resolve => setTimeout(resolve, clampedDelay));
+
+    return {
+      output: {
+        ...context.currentData,
+        delayed: clampedDelay,
+      },
+    };
+  }
+
+  /**
+   * logic:mutate: Transform data using set/delete/copy/rename operations
+   * Config: { operations: [{ op: 'set'|'delete'|'copy'|'rename', field?, value?, from?, to? }, ...] }
+   */
+  private async executeLogicMutate(config: any, context: any): Promise<NodeExecutionResult> {
+    const { operations = [] } = config;
+
+    // Deep clone currentData
+    const mutatedData = JSON.parse(JSON.stringify(context.currentData));
+
+    // Apply each operation
+    for (const operation of operations) {
+      const { op, field, value, from, to } = operation;
+
+      switch (op) {
+        case 'set':
+          // Resolve value expression if it's a string with {{...}} syntax
+          let resolvedValue: any;
+          if (typeof value === 'string' && value.startsWith('{{') && value.endsWith('}}')) {
+            const fieldPath = value.slice(2, -2).trim();
+            resolvedValue = this.getNestedValue(context.currentData, fieldPath);
+          } else {
+            resolvedValue = value;
+          }
+          this.setNestedValue(mutatedData, field, resolvedValue);
+          break;
+
+        case 'delete':
+          this.deleteNestedValue(mutatedData, field);
+          break;
+
+        case 'copy':
+          const copyValue = this.getNestedValue(mutatedData, from);
+          this.setNestedValue(mutatedData, to, copyValue);
+          break;
+
+        case 'rename':
+          const renameValue = this.getNestedValue(mutatedData, from);
+          this.setNestedValue(mutatedData, to, renameValue);
+          this.deleteNestedValue(mutatedData, from);
+          break;
+
+        default:
+          throw new Error(`Unknown mutation operation: ${op}`);
+      }
+    }
+
+    return {
+      output: mutatedData,
+    };
+  }
+
+  /**
+   * logic:loop: Iterate over array and execute handler node for each item
+   * Config: { arrayField: string, loopNodeType: string, loopNodeConfig: any, outputField?: string }
+   */
+  private async executeLogicLoop(config: any, context: any): Promise<NodeExecutionResult> {
+    const { arrayField, loopNodeType, loopNodeConfig = {}, outputField = 'loopResults' } = config;
+
+    // Get array at arrayField from currentData
+    const arrayValue = this.getNestedValue(context.currentData, arrayField);
+
+    // Validate it's an array
+    if (!Array.isArray(arrayValue)) {
+      throw new Error(`Field ${arrayField} is not an array`);
+    }
+
+    // Cap at 100 items
+    const items = arrayValue.slice(0, 100);
+    const results: any[] = [];
+
+    // Execute loop for each item
+    for (const item of items) {
+      // Create synthetic node
+      const syntheticNode: WorkflowNode = {
+        id: 'loop-body',
+        type: loopNodeType as any,
+        position: { x: 0, y: 0 },
+        data: {
+          config: loopNodeConfig || {},
+        },
+      };
+
+      // Create scoped context
+      const scopedContext = {
+        ...context,
+        currentData: item,
+      };
+
+      // Execute synthetic node
+      const result = await this.execute(syntheticNode, scopedContext);
+      results.push(result.output);
+    }
+
+    return {
+      output: {
+        ...context.currentData,
+        [outputField]: results,
       },
     };
   }
@@ -929,6 +1261,23 @@ export class WorkflowNodeHandlers {
     }
 
     current[lastKey] = value;
+  }
+
+  /**
+   * Delete nested value in object using dot notation
+   * Example: deleteNestedValue({ a: { b: 1 } }, 'a.b') => { a: {} }
+   */
+  private deleteNestedValue(obj: any, path: string): void {
+    const keys = path.split('.');
+    const lastKey = keys.pop()!;
+    let current = obj;
+
+    for (const key of keys) {
+      if (current[key] === null || current[key] === undefined) return;
+      current = current[key];
+    }
+
+    delete current[lastKey];
   }
 
   /**

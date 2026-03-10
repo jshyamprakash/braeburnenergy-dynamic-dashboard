@@ -78,6 +78,10 @@ export interface WorkflowState {
 
   // Debug panel
   isDebugPanelOpen: boolean;
+
+  // Execution modal
+  isExecutionModalOpen: boolean;
+  executionModalStartNodeId: string | null;
 }
 
 const initialState: WorkflowState = {
@@ -118,6 +122,8 @@ const initialState: WorkflowState = {
   debugMessages: [],
 
   isDebugPanelOpen: false,
+  isExecutionModalOpen: false,
+  executionModalStartNodeId: null,
 };
 
 /**
@@ -191,12 +197,12 @@ export const saveWorkflow = createAsyncThunk<Workflow, void, { state: { workflow
 );
 
 // Execute workflow
-export const executeWorkflow = createAsyncThunk<{ executionId: string }, { workflowId: string; inputData?: any }>(
+export const executeWorkflow = createAsyncThunk<{ executionId: string }, { workflowId: string; inputData?: any; startNodeId?: string | null }>(
   'workflow/execute',
-  async ({ workflowId, inputData }) => {
-    const response = await apiClient.post<{ executionId: string }>(`/workflows/${workflowId}/execute`, {
-      inputData: inputData || {},
-    });
+  async ({ workflowId, inputData, startNodeId }) => {
+    const body: Record<string, any> = { inputData: inputData || {} };
+    if (startNodeId) body.startNodeId = startNodeId;
+    const response = await apiClient.post<{ executionId: string }>(`/workflows/${workflowId}/execute`, body);
     return response.data;
   }
 );
@@ -479,6 +485,16 @@ export const workflowSlice = createSlice({
     toggleDebugPanel: state => {
       state.isDebugPanelOpen = !state.isDebugPanelOpen;
     },
+
+    // Execution modal
+    openExecutionModal: (state, action: PayloadAction<string | undefined>) => {
+      state.isExecutionModalOpen = true;
+      state.executionModalStartNodeId = action.payload ?? null;
+    },
+    closeExecutionModal: state => {
+      state.isExecutionModalOpen = false;
+      state.executionModalStartNodeId = null;
+    },
   },
   extraReducers: builder => {
     // Load workflow
@@ -626,6 +642,8 @@ export const {
   clearDebugMessages,
   markAsSaved,
   toggleDebugPanel,
+  openExecutionModal,
+  closeExecutionModal,
 } = workflowSlice.actions;
 
 export default workflowSlice.reducer;

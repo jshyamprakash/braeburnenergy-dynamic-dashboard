@@ -118,7 +118,7 @@ export class WorkflowController {
   ) {
     const { userId } = getRequestContext(request);
     const { workflowId } = request.params;
-    const { inputData } = request.body as ExecuteWorkflowDTO;
+    const { inputData, startNodeId } = request.body as ExecuteWorkflowDTO;
 
     // workflowService.exists check omitted — engineService.execute throws NotFoundError
     const executionId = await this.engineService.execute(
@@ -129,7 +129,8 @@ export class WorkflowController {
         data: inputData || {},
       },
       userId,
-      true // bypassEnabled: manual test runs always work
+      true, // bypassEnabled: manual test runs always work
+      startNodeId
     );
 
     return sendAccepted(reply, {

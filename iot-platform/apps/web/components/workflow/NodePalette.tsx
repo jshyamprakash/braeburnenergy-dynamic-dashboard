@@ -17,7 +17,7 @@ interface NodeTypeConfig {
   type: string;
   category: 'trigger' | 'condition' | 'action' | 'transform' | 'data' | 'logic';
   /** React Flow node type to render — new categories reuse existing visual components */
-  visualType: 'trigger' | 'condition' | 'action' | 'transform';
+  visualType: 'trigger' | 'condition' | 'action' | 'transform' | 'switch';
   label: string;
   description: string;
   icon: string;
@@ -61,6 +61,15 @@ const NODE_TYPES: NodeTypeConfig[] = [
     description: 'Trigger when alarm fires',
     icon: '🔔',
     defaultConfig: {},
+  },
+  {
+    type: 'trigger:deviceOffline',
+    category: 'trigger',
+    visualType: 'trigger',
+    label: 'Device Offline',
+    description: 'Trigger when device stops sending data',
+    icon: '📵',
+    defaultConfig: { deviceId: '' },
   },
 
   // Conditions
@@ -216,8 +225,44 @@ const NODE_TYPES: NodeTypeConfig[] = [
     icon: '🗄️',
     defaultConfig: { deviceId: '', startTime: '', endTime: '', limit: 100, outputField: 'deviceStates' },
   },
+  {
+    type: 'data:storageGet',
+    category: 'data',
+    visualType: 'action',
+    label: 'Storage Get',
+    description: 'Read persistent value',
+    icon: '📥',
+    defaultConfig: { key: '', defaultValue: '', deviceId: '' },
+  },
+  {
+    type: 'data:storageSet',
+    category: 'data',
+    visualType: 'action',
+    label: 'Storage Set',
+    description: 'Write persistent value',
+    icon: '📤',
+    defaultConfig: { key: '', valueExpression: '', deviceId: '' },
+  },
+  {
+    type: 'data:opcuaRead',
+    category: 'data',
+    visualType: 'action',
+    label: 'OPC-UA Read',
+    description: 'Read OPC-UA node',
+    icon: '📡',
+    defaultConfig: { gatewayId: '', nodeId: '', outputField: 'opcuaValue' },
+  },
+  {
+    type: 'data:opcuaWrite',
+    category: 'data',
+    visualType: 'action',
+    label: 'OPC-UA Write',
+    description: 'Write OPC-UA node',
+    icon: '📡',
+    defaultConfig: { gatewayId: '', nodeId: '', value: '', deviceId: '' },
+  },
 
-  // Logic (ADR-017 — renders as TransformNode visual, purple)
+  // Logic (ADR-017 — renders as TransformNode visual, purple; switch as SwitchNode, violet)
   {
     type: 'logic:function',
     category: 'logic',
@@ -226,6 +271,42 @@ const NODE_TYPES: NodeTypeConfig[] = [
     description: 'Run custom JavaScript (sandboxed)',
     icon: '⚙️',
     defaultConfig: { code: '// result.value = data.value * 2;', outputField: 'computed' },
+  },
+  {
+    type: 'logic:switch',
+    category: 'logic',
+    visualType: 'switch',
+    label: 'Switch',
+    description: 'Multi-branch routing',
+    icon: '🔀',
+    defaultConfig: { expression: '', cases: '[]', deviceId: '' },
+  },
+  {
+    type: 'logic:loop',
+    category: 'logic',
+    visualType: 'transform',
+    label: 'Loop',
+    description: 'Array iteration',
+    icon: '🔁',
+    defaultConfig: { arrayField: 'items', loopNodeType: 'function', outputField: 'loopResults', deviceId: '' },
+  },
+  {
+    type: 'logic:delay',
+    category: 'logic',
+    visualType: 'transform',
+    label: 'Delay',
+    description: 'Pause execution',
+    icon: '⏸️',
+    defaultConfig: { delayMs: 1000 },
+  },
+  {
+    type: 'logic:mutate',
+    category: 'logic',
+    visualType: 'transform',
+    label: 'Mutate',
+    description: 'Field manipulation',
+    icon: '✏️',
+    defaultConfig: { operations: '[]', deviceId: '' },
   },
 ];
 

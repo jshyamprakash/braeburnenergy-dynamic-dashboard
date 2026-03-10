@@ -143,6 +143,41 @@ export class WorkflowTriggerDispatcher {
   }
 
   /**
+   * Dispatch device offline event to matching workflows (ADR-041)
+   * Called by HeartbeatService when a device hasn't sent data within threshold.
+   */
+  async dispatchDeviceOffline(orgId: string, deviceId: string, offlineSinceMs: number): Promise<void> {
+    try {
+      const workflows = await this.workflowService.findTriggerWorkflows(
+        orgId,
+        'trigger:deviceOffline',
+        { deviceId }
+      );
+
+      for (const workflow of workflows) {
+        this.workflowEngineService
+          .execute(workflow.workflowId, {
+            type: 'deviceOffline',
+            source: deviceId,
+            data: {
+              deviceId,
+              offlineSinceMs,
+              workspace: { deviceId, offlineSinceMs },
+            },
+          })
+          .catch(err => {
+            this.logger.error(
+              { err, workflowId: workflow.workflowId, deviceId },
+              'Workflow execution failed in deviceOffline dispatcher'
+            );
+          });
+      }
+    } catch (err) {
+      this.logger.error({ err, orgId, deviceId }, 'Error dispatching device offline event');
+    }
+  }
+
+  /**
    * Dispatch alarm triggered event to matching workflows
    * Called after alarm transitions to ACTIVE_UNACKED (fire-and-forget)
    */

@@ -1,0 +1,37 @@
+// LLAMP-SPEC v1 | ADR-041
+=adr: 041
+=title: Device Heartbeat & Offline Detection
+=date: 2026-03-05
+=status: accepted
+
+#ctx
+~Device model has no lastSeenAt field — no mechanism to detect when a device stops transmitting
+~Workflow trigger taxonomy (ADR-017) has 5 triggers; deviceOffline is absent
+~Auto-trigger dispatcher (ADR-020) dispatches deviceStateChange + alarmTriggered; no offline path
+~ISA-18.2 alarm system (fully implemented) can absorb offline alarms with no model changes
+
+#opts
+=opt_A: Poll-based HeartbeatService (cron) — checks lastSeenAt < threshold — same pattern as ADR-040 scheduler
+=opt_B: TTL-index sentinel document per device — auto-expires on silence — complex, no trigger path
+=opt_C: WebSocket ping/pong per device — fine-grained but requires persistent connections per device
+~selected: opt_A — consistent with ADR-040 pattern, no persistent connections required
+
+#decision
+~Add lastSeenAt:Date to Device model; update on every state save (DeviceStateService.upsert)
+~HeartbeatService singleton: node-cron 60s poll; OFFLINE_THRESHOLD_MS env (default 300000 = 5min)
+~HeartbeatService queries devices where lastSeenAt < now-threshold OR lastSeenAt is null
+~On offline detection: raise ISA-18.2 alarm (AlarmService.createInstance) + dispatchDeviceOffline()
+~Add dispatchDeviceOffline(orgId, deviceId) to WorkflowTriggerDispatcher
+~Add trigger:deviceOffline to WorkflowNodeHandlers (reads trigger context: {deviceId, offlineSinceMs})
+~Add trigger:deviceOffline to WorkflowService.extractTriggerType()
+~Wire HeartbeatService in index.ts after scheduler init (same SIGINT/SIGTERM teardown pattern)
+
+#consequences
+=breaking: none — lastSeenAt is new optional field; existing devices get null until first state save
+=perf: +1 MongoDB query per 60s poll (indexed on orgId + lastSeenAt); negligible
+=alarm: offline alarm uses existing AlarmRule lookup; auto-creates rule if none found (same pattern)
+=frontend: trigger:deviceOffline node in NodePalette + NodeConfigPanel; device list offline badge
+
+#scope
+=arch_summary_update: yes
+=extends_adrs: [ADR-017, ADR-020, ADR-040]

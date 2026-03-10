@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/lib/store';
-import { loadWorkflow, saveWorkflow, resetWorkflow, executeWorkflow, removeNode, addExecutionLogEntry, completeExecutionStream, clearExecutionLog, setNodes, setEdges, updateMetadata, addNode, selectNode, toggleDebugPanel, addDebugMessage, cancelExecution, clearDebugMessages } from '@/lib/store/slices/workflowSlice';
+import { loadWorkflow, saveWorkflow, resetWorkflow, executeWorkflow, removeNode, addExecutionLogEntry, completeExecutionStream, clearExecutionLog, setNodes, setEdges, updateMetadata, addNode, selectNode, toggleDebugPanel, addDebugMessage, cancelExecution, clearDebugMessages, openExecutionModal, closeExecutionModal } from '@/lib/store/slices/workflowSlice';
 import { useWorkflowExecutionUpdates } from '@/lib/hooks/useWebSocket';
 import WorkflowCanvas from '@/components/workflow/WorkflowCanvas';
 import NodePalette from '@/components/workflow/NodePalette';
@@ -54,13 +54,14 @@ function WorkflowBuilderPage() {
     executionStatus,
     selectedNodeId,
     isDebugPanelOpen,
+    isExecutionModalOpen,
+    executionModalStartNodeId,
     executionLog,
     debugMessages,
     applicationId,
   } = useAppSelector(state => state.workflow);
 
   const [isSaving, setIsSaving] = useState(false);
-  const [isExecutionModalOpen, setIsExecutionModalOpen] = useState(false);
   const [isExecutionHistoryModalOpen, setIsExecutionHistoryModalOpen] = useState(false);
   const [isValidationPanelOpen, setIsValidationPanelOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
@@ -197,7 +198,7 @@ function WorkflowBuilderPage() {
   };
 
   const handleTestRun = () => {
-    setIsExecutionModalOpen(true);
+    dispatch(openExecutionModal());
   };
 
   const handleStop = async () => {
@@ -217,11 +218,11 @@ function WorkflowBuilderPage() {
     }
 
     try {
-      const result = await dispatch(executeWorkflow({ workflowId, inputData })).unwrap();
+      const result = await dispatch(executeWorkflow({ workflowId, inputData, startNodeId: executionModalStartNodeId })).unwrap();
       toast.success(`Workflow started: ${result.executionId}`, {
         description: 'Execution ID copied to clipboard',
       });
-      setIsExecutionModalOpen(false);
+      dispatch(closeExecutionModal());
 
       // Auto-clear execution status after 5 seconds
       setTimeout(() => {
@@ -339,7 +340,7 @@ function WorkflowBuilderPage() {
         isLoading={executionStatus === 'running'}
         workflowId={workflowId}
         nodes={nodes}
-        onClose={() => setIsExecutionModalOpen(false)}
+        onClose={() => dispatch(closeExecutionModal())}
         onExecute={handleExecute}
       />
 

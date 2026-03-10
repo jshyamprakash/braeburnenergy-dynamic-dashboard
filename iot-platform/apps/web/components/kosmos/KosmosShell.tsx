@@ -1,0 +1,435 @@
+'use client';
+
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAppDispatch, useAppSelector } from '@/lib/store';
+import {
+  selectKosmosPages,
+  selectKosmosActivePage,
+  selectKosmosSharedWithUsers,
+  addKosmosPage,
+  removeKosmosPage,
+  renameKosmosPage,
+  setKosmosActivePage,
+  reorderKosmosPages,
+  addKosmosWidget,
+  removeKosmosWidget,
+  updateKosmosWidgetLayout,
+  setKosmosSharedWithUsers,
+  initKosmosFromBackend,
+  saveKosmosToBackend,
+} from '@/lib/store/slices/dashboardSlice';
+import type { KosmosWidget } from './types';
+import { PALETTE_ENTRIES } from './types';
+import { UnifiedCanvas } from './UnifiedCanvas';
+import { WidgetConfigPanel } from './WidgetConfigPanel';
+import { WidgetPalette } from './WidgetPalette';
+import ShareUsersModal from './ShareUsersModal';
+import { apiClient } from '@/lib/api-client';
+import { toast } from '@/lib/utils/toast';
+
+/* ─────────────────── helpers ─────────────────── */
+
+function useKosmosTime() {
+  const [t, setT] = useState('');
+  useEffect(() => {
+    const update = () =>
+      setT(new Date().toLocaleTimeString('en-GB', { hour12: false }));
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
+  }, []);
+  return t;
+}
+
+function buildNewWidget(type: string): KosmosWidget {
+  const entry = PALETTE_ENTRIES.find((p) => p.type === type);
+  return {
+    id: `w_${Math.random().toString(36).slice(2, 10)}`,
+    type: type as any,
+    config: entry ? { ...entry.defaultConfig } : {},
+    layout: entry ? { ...entry.defaultLayout } : { x: 0, y: 0, w: 4, h: 3 },
+  };
+}
+
+/* ─────────────────── component ─────────────────── */
+
+interface KosmosShellProps {
+  dashboardId: string;
+  applicationId: string;
+  viewOnly?: boolean;
+  readOnly?: boolean; // ADR-045: read-only for Viewer kiosk
+  skipInit?: boolean; // when true, skip initKosmosFromBackend (viewer provides pages directly)
+}
+
+/**
+ * KosmosShell — the full-screen Kosmos dashboard builder/viewer (ADR-044 unified canvas).
+ *
+ * Layout: fixed inset-0, flex column.
+ * Body: flex row with UnifiedCanvas (flex-1) + optional WidgetConfigPanel (320px).
+ * WidgetPalette: fixed left overlay when open in edit mode.
+ * readOnly: when true (Viewer kiosk), hides share/edit/delete buttons.
+ */
+export function KosmosShell({ dashboardId, applicationId, viewOnly = false, readOnly = false, skipInit = false }: KosmosShellProps) {
+  const dispatch = useAppDispatch();
+  const router = useRouter();
+  const pages = useAppSelector(selectKosmosPages);
+  const activePageId = useAppSelector(selectKosmosActivePage);
+  const sharedWithUsers = useAppSelector(selectKosmosSharedWithUsers);
+
+  const [editMode, setEditMode] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [shareLoading, setShareLoading] = useState(false);
+  const [selectedWidgetId, setSelectedWidgetId] = useState<string | null>(null);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+
+  const time = useKosmosTime();
+  const renameInputRef = useRef<HTMLInputElement>(null);
+
+  const activePage = pages.find((p) => p.id === activePageId) ?? pages[0] ?? null;
+  const selectedWidget = activePage?.widgets.find((w) => w.id === selectedWidgetId) ?? null;
+
+  /* ── Load on mount ── */
+  useEffect(() => {
+    if (skipInit) return;
+    if (!dashboardId || !applicationId) return;
+    dispatch(initKosmosFromBackend({ dashboardId, applicationId }));
+  }, [dashboardId, applicationId, dispatch, skipInit]);
+
+  /* ── Auto-save (debounced 2s) ── */
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const triggerSave = useCallback(() => {
+    if (viewOnly) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      dispatch(saveKosmosToBackend({ dashboardId, applicationId }));
+    }, 2000);
+  }, [dispatch, dashboardId, applicationId, viewOnly]);
+
+  /* ── Tab management ── */
+  const handleAddPage = () => {
+    dispatch(addKosmosPage({ name: `Page ${pages.length + 1}` }));
+    triggerSave();
+  };
+
+  const handleRemovePage = (id: string) => {
+    if (pages.length <= 1) {
+      toast.error('Cannot remove the last page');
+      return;
+    }
+    dispatch(removeKosmosPage(id));
+    triggerSave();
+  };
+
+  const handleStartRename = (id: string, currentName: string) => {
+    setRenamingId(id);
+    setRenameValue(currentName);
+    setTimeout(() => renameInputRef.current?.focus(), 50);
+  };
+
+  const handleFinishRename = () => {
+    if (renamingId && renameValue.trim()) {
+      dispatch(renameKosmosPage({ id: renamingId, name: renameValue.trim() }));
+      triggerSave();
+    }
+    setRenamingId(null);
+  };
+
+  /* ── Widget management ── */
+  const handleDrop = useCallback(
+    (widgetType: string) => {
+      if (!activePage) return;
+      const widget = buildNewWidget(widgetType);
+      dispatch(addKosmosWidget({ pageId: activePage.id, widget }));
+      triggerSave();
+    },
+    [activePage, dispatch, triggerSave]
+  );
+
+  const handleRemoveWidget = useCallback(
+    (widgetId: string) => {
+      if (!activePage) return;
+      dispatch(removeKosmosWidget({ pageId: activePage.id, widgetId }));
+      setSelectedWidgetId(null);
+      triggerSave();
+    },
+    [activePage, dispatch, triggerSave]
+  );
+
+  const handleLayoutChange = useCallback(
+    (layouts: Array<{ i: string; x: number; y: number; w: number; h: number }>) => {
+      if (!activePage) return;
+      layouts.forEach((l) => {
+        dispatch(
+          updateKosmosWidgetLayout({
+            pageId: activePage.id,
+            widgetId: l.i,
+            layout: { x: l.x, y: l.y, w: l.w, h: l.h },
+          })
+        );
+      });
+      triggerSave();
+    },
+    [activePage, dispatch, triggerSave]
+  );
+
+  const handleSelect = useCallback(
+    (widgetId: string | null) => {
+      setSelectedWidgetId(widgetId);
+    },
+    []
+  );
+
+  /* ── Share (ADR-045: user-based) ── */
+  const handleOpenShareModal = () => {
+    setShareModalOpen(true);
+  };
+
+  const handleSaveSharedUsers = (userIds: string[]) => {
+    dispatch(setKosmosSharedWithUsers(userIds));
+  };
+
+  /* ── Project (kiosk view) ── */
+  const handleProject = () => {
+    window.open(`/dashboards/${dashboardId}/view?applicationId=${applicationId}`, '_blank');
+  };
+
+  /* ── Render ── */
+  return (
+    <div
+      className="kosmos-root"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 100,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+      }}
+    >
+      <div className="kosmos-grid-bg" />
+      <div className="kosmos-scanline" />
+
+      {/* ── Header ── */}
+      <header className="k-header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button
+            className="k-btn k-btn-ghost"
+            onClick={() =>
+              readOnly
+                ? router.push('/viewer')
+                : router.push(`/applications/${applicationId}`)
+            }
+            style={{ marginRight: 8 }}
+          >
+            ← BACK
+          </button>
+          <div
+            style={{
+              width: 36, height: 36, background: 'var(--k-base)', borderRadius: '50%',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontFamily: 'var(--k-font-display)', fontSize: 15, fontWeight: 700,
+              color: 'white', border: '2px solid var(--k-soft)', flexShrink: 0,
+            }}
+          >
+            3≡
+          </div>
+          <div>
+            <div style={{ fontFamily: 'var(--k-font-display)', fontSize: 18, fontWeight: 700, letterSpacing: 2, color: 'white', lineHeight: 1 }}>
+              BRAEBURN ENERGY
+            </div>
+            <div style={{ fontFamily: 'var(--k-font-tech)', fontSize: 10, color: 'var(--k-green)', letterSpacing: 3, textTransform: 'uppercase' }}>
+              BE THE FUTURE
+            </div>
+          </div>
+        </div>
+
+        <div style={{ fontFamily: 'var(--k-font-display)', fontSize: 22, fontWeight: 700, letterSpacing: 4, color: 'var(--k-ultra-light)', textShadow: '0 0 20px rgba(111,170,230,0.5)' }}>
+          KOSMOS<span style={{ color: 'var(--k-green)' }}>™</span> PLATFORM
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'var(--k-font-tech)', fontSize: 11, color: 'var(--k-text-secondary)' }}>
+            <span>
+              <span className="k-blink" style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: 'var(--k-green)', boxShadow: '0 0 8px var(--k-green)', marginRight: 5 }} />
+              EDGE: ONLINE
+            </span>
+            <span style={{ color: 'var(--k-pale)' }}>{time}</span>
+            <span className="k-blink" style={{ background: 'rgba(0,176,80,0.15)', border: '1px solid var(--k-green)', color: 'var(--k-green)', padding: '2px 10px', borderRadius: 2, fontSize: 10, letterSpacing: 2 }}>
+              ● LIVE
+            </span>
+          </div>
+
+          {!readOnly && (
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button
+                className={editMode ? 'k-btn k-btn-primary' : 'k-btn k-btn-ghost'}
+                onClick={() => {
+                  setEditMode(!editMode);
+                  if (editMode) {
+                    setPaletteOpen(false);
+                    setSelectedWidgetId(null);
+                  }
+                }}
+              >
+                {editMode ? 'EDITING' : 'EDIT'}
+              </button>
+
+              {editMode && (
+                <button className="k-btn k-btn-ghost" onClick={() => setPaletteOpen(!paletteOpen)}>
+                  {paletteOpen ? 'HIDE PALETTE' : 'WIDGETS'}
+                </button>
+              )}
+
+              <button className="k-btn k-btn-ghost" onClick={handleProject}>
+                ⬡ PROJECT
+              </button>
+
+              <button
+                className="k-btn k-btn-ghost"
+                onClick={handleOpenShareModal}
+                disabled={shareLoading}
+              >
+                👥 SHARE
+              </button>
+            </div>
+          )}
+        </div>
+      </header>
+
+      {/* ── Tab strip ── */}
+      <div className="k-nav-tabs">
+        {pages.map((page) => (
+          <div
+            key={page.id}
+            className={`k-nav-tab ${page.id === activePageId ? 'active' : ''}`}
+            onClick={() => dispatch(setKosmosActivePage(page.id))}
+            onDoubleClick={() => !readOnly && handleStartRename(page.id, page.name)}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, paddingRight: editMode && !readOnly ? 8 : 18 }}
+          >
+            {renamingId === page.id && !readOnly ? (
+              <input
+                ref={renameInputRef}
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                onBlur={handleFinishRename}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleFinishRename();
+                  if (e.key === 'Escape') setRenamingId(null);
+                }}
+                style={{
+                  background: 'transparent', border: 'none', borderBottom: '1px solid var(--k-green)',
+                  color: 'white', fontFamily: 'var(--k-font-display)', fontSize: 13, fontWeight: 600,
+                  letterSpacing: 1.5, outline: 'none', width: Math.max(60, renameValue.length * 9),
+                }}
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <span>{page.name}</span>
+            )}
+            {editMode && !readOnly && pages.length > 1 && (
+              <span
+                onClick={(e) => { e.stopPropagation(); handleRemovePage(page.id); }}
+                style={{ color: 'var(--k-text-dim)', fontSize: 11, lineHeight: 1, cursor: 'pointer', marginLeft: 2 }}
+              >
+                ×
+              </span>
+            )}
+          </div>
+        ))}
+
+        {!readOnly && (
+          <button
+            onClick={handleAddPage}
+            style={{
+              padding: '6px 12px', background: 'none', border: '1px dashed var(--k-border)',
+              borderBottom: 'none', borderRadius: '4px 4px 0 0', color: 'var(--k-text-dim)',
+              cursor: 'pointer', fontFamily: 'var(--k-font-tech)', fontSize: 14, lineHeight: 1,
+              transition: 'all 0.2s', alignSelf: 'flex-end',
+            }}
+          >
+            +
+          </button>
+        )}
+      </div>
+
+      {/* ── Body: UnifiedCanvas + optional WidgetConfigPanel ── */}
+      <div
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'row',
+          overflow: 'hidden',
+          position: 'relative',
+          zIndex: 5,
+          marginLeft: paletteOpen ? 200 : 0,
+          transition: 'margin-left 0.25s ease',
+        }}
+      >
+        {activePage ? (
+          <>
+            <UnifiedCanvas
+              widgets={activePage.widgets}
+              editMode={editMode}
+              onDrop={handleDrop}
+              onRemove={handleRemoveWidget}
+              onLayoutChange={handleLayoutChange}
+              onSelect={handleSelect}
+              selectedWidgetId={selectedWidgetId}
+            />
+
+            {/* Config panel — only in edit mode when a widget is selected */}
+            {editMode && selectedWidget && (
+              <WidgetConfigPanel
+                pageId={activePage.id}
+                widget={selectedWidget}
+                onClose={() => setSelectedWidgetId(null)}
+              />
+            )}
+          </>
+        ) : (
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12 }}>
+            <div style={{ fontFamily: 'var(--k-font-display)', fontSize: 18, color: 'var(--k-text-dim)', letterSpacing: 3 }}>
+              NO PAGES
+            </div>
+            {!viewOnly && (
+              <button className="k-btn k-btn-primary" onClick={handleAddPage}>
+                + ADD PAGE
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Footer ── */}
+      <footer className="k-footer">
+        <span>
+          <span style={{ color: 'var(--k-green)', fontWeight: 700, letterSpacing: 1 }}>
+            KOSMOS<span style={{ color: 'var(--k-base)' }}>™</span>
+          </span>
+          {' '}— Braeburn Energy Platform
+        </span>
+        <span style={{ display: 'flex', gap: 16 }}>
+          {editMode && <span style={{ color: 'var(--k-amber)' }}>● EDIT MODE</span>}
+          {sharedWithUsers.length > 0 && <span style={{ color: 'var(--k-green)' }}>👥 SHARED ({sharedWithUsers.length})</span>}
+          <span>{pages.length} PAGE{pages.length !== 1 ? 'S' : ''}</span>
+        </span>
+      </footer>
+
+      {/* ── Widget palette overlay ── */}
+      {paletteOpen && !readOnly && <WidgetPalette onClose={() => setPaletteOpen(false)} />}
+
+      {/* ── Share Users Modal (ADR-045) ── */}
+      {shareModalOpen && (
+        <ShareUsersModal
+          dashboardId={dashboardId}
+          currentSharedUsers={sharedWithUsers}
+          onClose={() => setShareModalOpen(false)}
+          onSaved={handleSaveSharedUsers}
+        />
+      )}
+    </div>
+  );
+}

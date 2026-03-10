@@ -1,7 +1,7 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { AuthService } from '../services/auth.service';
 import type { UserRole } from '../models';
-import { BadRequestError, UnauthorizedError, NotFoundError } from '../lib/errors';
+import { BadRequestError, UnauthorizedError, NotFoundError, UnprocessableError } from '../lib/errors';
 import { sendSuccess, sendCreated } from '../lib/response';
 import { getRequestContext } from '../lib/request-context';
 
@@ -171,6 +171,57 @@ export class AuthController {
   }
 
   /**
+   * PATCH /auth/users/:userId
+   */
+  async updateUser(request: FastifyRequest, reply: FastifyReply) {
+    const { userId: actorId } = getRequestContext(request);
+    const actorRole = (request.user as any)?.role as UserRole;
+    const { userId: targetUserId } = request.params as { userId: string };
+    const { role, isActive, unlock } = request.body as {
+      role?: UserRole;
+      isActive?: boolean;
+      unlock?: boolean;
+    };
+
+    if (role === undefined && isActive === undefined && unlock === undefined) {
+      throw new BadRequestError('At least one of role, isActive, or unlock must be provided');
+    }
+
+    try {
+      const updated = await authService.updateUser(actorId, actorRole, targetUserId, { role, isActive, unlock });
+      return sendSuccess(reply, {
+        id: updated._id.toString(),
+        username: updated.username,
+        email: updated.email,
+        role: updated.role,
+        isActive: updated.isActive,
+        failedLoginAttempts: updated.failedLoginAttempts,
+        lockedUntil: updated.lockedUntil,
+        updatedAt: updated.updatedAt,
+      });
+    } catch (err: any) {
+      if (err.message === 'User not found') throw new NotFoundError('User');
+      throw new UnprocessableError(err.message);
+    }
+  }
+
+  /**
+   * DELETE /auth/users/:userId
+   */
+  async deleteUser(request: FastifyRequest, reply: FastifyReply) {
+    const { userId: actorId } = getRequestContext(request);
+    const { userId: targetUserId } = request.params as { userId: string };
+
+    try {
+      await authService.deleteUser(actorId, targetUserId);
+      return sendSuccess(reply, { message: 'User deleted successfully' });
+    } catch (err: any) {
+      if (err.message === 'User not found') throw new NotFoundError('User');
+      throw new UnprocessableError(err.message);
+    }
+  }
+
+  /**
    * GET /auth/users
    */
   async listUsers(request: FastifyRequest, reply: FastifyReply) {
@@ -178,11 +229,11 @@ export class AuthController {
     const user = request.user;
     const { organizationId } = request.query as { organizationId?: string };
 
-    let targetOrgId = organizationId;
-
-    if (user?.role !== 'SuperAdmin') {
-      targetOrgId = orgId;
-    }
+    // Non-SuperAdmin: always scoped to their own org (from JWT)
+    // SuperAdmin: use provided organizationId param, fallback to their own org
+    const targetOrgId = user?.role !== 'SuperAdmin'
+      ? orgId
+      : (organizationId || orgId);
 
     if (!targetOrgId) {
       throw new BadRequestError('organizationId is required');
@@ -215,3 +266,5 @@ export const refreshToken = (req: FastifyRequest, reply: FastifyReply) => authCo
 export const getActiveSessions = (req: FastifyRequest, reply: FastifyReply) => authController.getActiveSessions(req, reply);
 export const logoutAll = (req: FastifyRequest, reply: FastifyReply) => authController.logoutAll(req, reply);
 export const listUsers = (req: FastifyRequest, reply: FastifyReply) => authController.listUsers(req, reply);
+export const updateUser = (req: FastifyRequest, reply: FastifyReply) => authController.updateUser(req, reply);
+export const deleteUser = (req: FastifyRequest, reply: FastifyReply) => authController.deleteUser(req, reply);

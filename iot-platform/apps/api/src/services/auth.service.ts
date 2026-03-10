@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import { User, type IUser, type UserRole } from '../models';
 import { TokenSession } from '../models/token-session.model';
 import { config } from '../config/config';
+import { BadRequestError } from '../lib/errors';
 
 /**
  * Authentication Service
@@ -453,7 +454,7 @@ export class AuthService {
   private validatePasswordStrength(password: string): void {
     // Minimum 8 characters
     if (password.length < 8) {
-      throw new Error('Password must be at least 8 characters long');
+      throw new BadRequestError('Password must be at least 8 characters long');
     }
 
     // Must contain uppercase, lowercase, number, and special character
@@ -463,7 +464,7 @@ export class AuthService {
     const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
 
     if (!hasUppercase || !hasLowercase || !hasNumber || !hasSpecial) {
-      throw new Error(
+      throw new BadRequestError(
         'Password must contain uppercase, lowercase, number, and special character'
       );
     }
@@ -502,5 +503,79 @@ export class AuthService {
    */
   async listUsers(organizationId: string): Promise<IUser[]> {
     return User.find({ organizationId }).sort({ createdAt: -1 });
+  }
+
+  /**
+   * Update a user's role, active status, or unlock their account.
+   *
+   * Rules:
+   * - Admin cannot assign or be assigned the SuperAdmin role.
+   * - Actor cannot change their own role.
+   * - Deactivating a user revokes all their active tokens.
+   */
+  async updateUser(
+    actorId: string,
+    actorRole: UserRole,
+    targetUserId: string,
+    updates: { role?: UserRole; isActive?: boolean; unlock?: boolean }
+  ): Promise<IUser> {
+    const target = await User.findById(targetUserId);
+    if (!target) {
+      throw new Error('User not found');
+    }
+
+    // Role change guards
+    if (updates.role !== undefined) {
+      if (actorId === targetUserId) {
+        throw new Error('Cannot change your own role');
+      }
+      if (actorRole !== 'SuperAdmin' && updates.role === 'SuperAdmin') {
+        throw new Error('Only SuperAdmin can assign the SuperAdmin role');
+      }
+      if (actorRole !== 'SuperAdmin' && target.role === 'SuperAdmin') {
+        throw new Error('Only SuperAdmin can modify another SuperAdmin');
+      }
+      target.role = updates.role;
+    }
+
+    // Deactivate: revoke all active tokens
+    if (updates.isActive === false && target.isActive !== false) {
+      await this.logout(targetUserId);
+    }
+    if (updates.isActive !== undefined) {
+      target.isActive = updates.isActive;
+    }
+
+    // Unlock: clear failed attempts and lock timer
+    if (updates.unlock) {
+      target.failedLoginAttempts = 0;
+      target.lockedUntil = undefined;
+    }
+
+    await target.save();
+    return target;
+  }
+
+  /**
+   * Hard-delete a user account (SuperAdmin only).
+   *
+   * Rules:
+   * - Actor cannot delete their own account.
+   * - All active tokens are revoked before deletion.
+   */
+  async deleteUser(actorId: string, targetUserId: string): Promise<void> {
+    if (actorId === targetUserId) {
+      throw new Error('Cannot delete your own account');
+    }
+
+    const target = await User.findById(targetUserId);
+    if (!target) {
+      throw new Error('User not found');
+    }
+
+    // Revoke all tokens before deletion
+    await this.logout(targetUserId);
+
+    await User.findByIdAndDelete(targetUserId);
   }
 }

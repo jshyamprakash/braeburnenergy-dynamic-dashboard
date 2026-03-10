@@ -255,8 +255,12 @@ function ApplicationsContent() {
   const [editingApp, setEditingApp] = useState<Application | null>(null);
   const [deletingApp, setDeletingApp] = useState<Application | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  const isSuperAdmin = user?.role === 'SuperAdmin';
+  useEffect(() => setMounted(true), []);
+
+  // Delay role check until after hydration — user comes from Redux/localStorage (client-only)
+  const isSuperAdmin = mounted && user?.role === 'SuperAdmin';
   const debouncedSearch = useDebounce(search, 300);
   const limit = 10;
 

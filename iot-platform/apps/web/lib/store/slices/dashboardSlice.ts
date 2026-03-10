@@ -1,6 +1,11 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { dashboardConfig } from '@/lib/config';
 import { apiClient } from '@/lib/api-client';
+import type { KosmosPage, KosmosWidget, Dashboard } from '@/components/kosmos/types';
+
+function shortId(): string {
+  return Math.random().toString(36).slice(2, 10);
+}
 
 /**
  * Layout interface (react-grid-layout)
@@ -68,6 +73,46 @@ export interface DashboardState {
   syncStatus: 'idle' | 'loading' | 'syncing' | 'synced' | 'error';
   syncError: string | null;
   isOnline: boolean;
+  // Kosmos multi-page state
+  kosmosPages: KosmosPage[];
+  kosmosActivePage: string | null;
+  kosmosSharedWithUsers: string[]; // List of User ObjectIds (ADR-045)
+  // Viewer dashboards (dashboards shared with current user)
+  viewerDashboards: Dashboard[];
+}
+
+/* ── Kosmos helpers ── */
+function makeDefaultPage(name: string, order: number): KosmosPage {
+  return {
+    id: `page_${shortId()}`,
+    name,
+    order,
+    widgets: [],
+  };
+}
+
+/** Migrate old 3-column format to unified widgets[] (ADR-044) */
+function migratePageFormat(page: any): KosmosPage {
+  if (Array.isArray(page.widgets)) return page as KosmosPage;
+  // Old format: page.columns.{left,middle,right}
+  const left: KosmosWidget[] = (page.columns?.left ?? []).map((w: any) => ({
+    ...w,
+    layout: w.layout ?? { x: 0, y: 0, w: 3, h: 3 },
+  }));
+  const middle: KosmosWidget[] = (page.columns?.middle ?? []).map((w: any) => ({
+    ...w,
+    layout: w.layout ?? { x: 3, y: 0, w: 6, h: 3 },
+  }));
+  const right: KosmosWidget[] = (page.columns?.right ?? []).map((w: any) => ({
+    ...w,
+    layout: w.layout ?? { x: 9, y: 0, w: 3, h: 3 },
+  }));
+  return {
+    id: page.id,
+    name: page.name,
+    order: page.order ?? 0,
+    widgets: [...left, ...middle, ...right],
+  };
 }
 
 /**
@@ -203,6 +248,65 @@ export const syncDashboardWithBackend = createAsyncThunk(
   }
 );
 
+/* ── Kosmos async thunks ── */
+
+export const initKosmosFromBackend = createAsyncThunk(
+  'dashboard/initKosmosFromBackend',
+  async ({ dashboardId, applicationId }: { dashboardId: string; applicationId: string }, { rejectWithValue }) => {
+    try {
+      const res = await apiClient.get<any>(`/dashboards/${dashboardId}?applicationId=${applicationId}`);
+      return res.data ?? null;
+    } catch (err: any) {
+      if (err?.status === 404) return null;
+      return rejectWithValue(err?.message || 'Failed to load dashboard');
+    }
+  }
+);
+
+export const saveKosmosToBackend = createAsyncThunk(
+  'dashboard/saveKosmosToBackend',
+  async (
+    { dashboardId, applicationId }: { dashboardId: string; applicationId: string },
+    { getState, rejectWithValue }
+  ) => {
+    const state = getState() as { dashboard: DashboardState };
+    const { kosmosPages, name, description, blocks, layouts } = state.dashboard;
+    try {
+      const res = await apiClient.post<any>('/dashboards', {
+        dashboardId,
+        applicationId,
+        name,
+        description,
+        blocks,
+        layouts,
+        pages: kosmosPages,
+      });
+      return res.data;
+    } catch (err: any) {
+      return rejectWithValue(err?.message || 'Failed to save');
+    }
+  }
+);
+
+/**
+ * Async Thunk: Fetch dashboards shared with current user (Viewer kiosk)
+ */
+export const fetchViewerDashboards = createAsyncThunk<
+  Dashboard[],
+  void,
+  { rejectValue: string }
+>(
+  'dashboard/fetchViewerDashboards',
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await apiClient.get<Dashboard[]>('/dashboards/my');
+      return res.data ?? [];
+    } catch (error: any) {
+      return rejectWithValue(error?.message || 'Failed to fetch dashboards');
+    }
+  }
+);
+
 /**
  * Initial state
  */
@@ -220,6 +324,11 @@ const initialState: DashboardState = {
   syncStatus: 'idle',
   syncError: null,
   isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
+  // Kosmos
+  kosmosPages: [],
+  kosmosActivePage: null,
+  kosmosSharedWithUsers: [],
+  viewerDashboards: [],
 };
 
 /**
@@ -386,6 +495,112 @@ const dashboardSlice = createSlice({
     markDirty: (state) => {
       state.isDirty = true;
     },
+
+    /* ══ Kosmos Page actions ══ */
+
+    addKosmosPage: (state, action: PayloadAction<{ name: string }>) => {
+      const page = makeDefaultPage(action.payload.name, state.kosmosPages.length);
+      state.kosmosPages.push(page);
+      state.kosmosActivePage = page.id;
+    },
+
+    removeKosmosPage: (state, action: PayloadAction<string>) => {
+      const idx = state.kosmosPages.findIndex((p) => p.id === action.payload);
+      if (idx === -1) return;
+      state.kosmosPages.splice(idx, 1);
+      if (state.kosmosActivePage === action.payload) {
+        state.kosmosActivePage = state.kosmosPages[Math.max(0, idx - 1)]?.id ?? null;
+      }
+    },
+
+    renameKosmosPage: (state, action: PayloadAction<{ id: string; name: string }>) => {
+      const page = state.kosmosPages.find((p) => p.id === action.payload.id);
+      if (page) page.name = action.payload.name;
+    },
+
+    setKosmosActivePage: (state, action: PayloadAction<string>) => {
+      state.kosmosActivePage = action.payload;
+    },
+
+    reorderKosmosPages: (state, action: PayloadAction<string[]>) => {
+      const ordered = action.payload
+        .map((id, i) => {
+          const p = state.kosmosPages.find((pg) => pg.id === id);
+          if (p) p.order = i;
+          return p;
+        })
+        .filter(Boolean) as KosmosPage[];
+      state.kosmosPages = ordered;
+    },
+
+    /* ══ Kosmos Widget actions (ADR-044: unified canvas, no column param) ══ */
+
+    addKosmosWidget: (
+      state,
+      action: PayloadAction<{ pageId: string; widget: KosmosWidget }>
+    ) => {
+      const { pageId, widget } = action.payload;
+      const page = state.kosmosPages.find((p) => p.id === pageId);
+      if (page) page.widgets.push(widget);
+    },
+
+    removeKosmosWidget: (
+      state,
+      action: PayloadAction<{ pageId: string; widgetId: string }>
+    ) => {
+      const { pageId, widgetId } = action.payload;
+      const page = state.kosmosPages.find((p) => p.id === pageId);
+      if (page) {
+        page.widgets = page.widgets.filter((w) => w.id !== widgetId);
+      }
+    },
+
+    updateKosmosWidgetLayout: (
+      state,
+      action: PayloadAction<{
+        pageId: string;
+        widgetId: string;
+        layout: { x: number; y: number; w: number; h: number };
+      }>
+    ) => {
+      const { pageId, widgetId, layout } = action.payload;
+      const page = state.kosmosPages.find((p) => p.id === pageId);
+      if (!page) return;
+      const widget = page.widgets.find((w) => w.id === widgetId);
+      if (widget) widget.layout = layout;
+    },
+
+    updateKosmosWidgetConfig: (
+      state,
+      action: PayloadAction<{
+        pageId: string;
+        widgetId: string;
+        config: Record<string, any>;
+      }>
+    ) => {
+      const { pageId, widgetId, config } = action.payload;
+      const page = state.kosmosPages.find((p) => p.id === pageId);
+      if (!page) return;
+      const widget = page.widgets.find((w) => w.id === widgetId);
+      if (widget) widget.config = { ...widget.config, ...config };
+    },
+
+    setKosmosSharedWithUsers: (state, action: PayloadAction<string[]>) => {
+      state.kosmosSharedWithUsers = action.payload;
+    },
+
+    /** Load pages directly (skip API call) — used by Viewer kiosk (ADR-045) */
+    setKosmosFromDashboard: (
+      state,
+      action: PayloadAction<{ pages: any[]; sharedWithUsers?: string[] }>
+    ) => {
+      const migrated = action.payload.pages.map(migratePageFormat);
+      state.kosmosPages = migrated;
+      state.kosmosActivePage = migrated[0]?.id ?? null;
+      if (action.payload.sharedWithUsers) {
+        state.kosmosSharedWithUsers = action.payload.sharedWithUsers;
+      }
+    },
   },
   extraReducers: (builder) => {
     // Load dashboard from backend
@@ -447,18 +662,57 @@ const dashboardSlice = createSlice({
           state.lastSaved = Date.now();
           state.isDirty = false;
         } else {
-          // Offline - localStorage save succeeded
           state.syncStatus = 'idle';
           state.lastSaved = Date.now();
           state.isDirty = false;
         }
       })
       .addCase(syncDashboardWithBackend.rejected, (state, action: any) => {
-        // Even on backend error, localStorage save succeeded
         state.syncStatus = 'error';
         state.syncError = action.payload?.error || 'Sync failed';
         state.lastSaved = Date.now();
         state.isDirty = false;
+      });
+
+    // Kosmos: init from backend (ADR-044: migrate old columns format on load; ADR-045: use sharedWithUsers)
+    builder
+      .addCase(initKosmosFromBackend.fulfilled, (state, action) => {
+        if (!action.payload) {
+          // New dashboard: seed a default page
+          if (state.kosmosPages.length === 0) {
+            const page = makeDefaultPage('Overview', 0);
+            state.kosmosPages = [page];
+            state.kosmosActivePage = page.id;
+          }
+          return;
+        }
+        const data = action.payload;
+        if (data.pages && Array.isArray(data.pages) && data.pages.length > 0) {
+          // Migrate old column-based pages to unified widgets[] format
+          state.kosmosPages = data.pages.map(migratePageFormat);
+          state.kosmosActivePage = state.kosmosPages[0].id;
+        } else if (state.kosmosPages.length === 0) {
+          const page = makeDefaultPage('Overview', 0);
+          state.kosmosPages = [page];
+          state.kosmosActivePage = page.id;
+        }
+        if (data.sharedWithUsers) state.kosmosSharedWithUsers = data.sharedWithUsers;
+        state.name = data.name || state.name;
+      });
+
+    // Kosmos: save to backend
+    builder
+      .addCase(saveKosmosToBackend.fulfilled, (state, action) => {
+        if (action.payload?.sharedWithUsers) {
+          state.kosmosSharedWithUsers = action.payload.sharedWithUsers;
+        }
+        state.lastSaved = Date.now();
+      });
+
+    // Fetch viewer dashboards
+    builder
+      .addCase(fetchViewerDashboards.fulfilled, (state, action) => {
+        state.viewerDashboards = action.payload;
       });
   },
 });
@@ -480,6 +734,18 @@ export const {
   markDirty,
   setOnlineStatus,
   updateDashboardMetadata,
+  // Kosmos actions
+  addKosmosPage,
+  removeKosmosPage,
+  renameKosmosPage,
+  setKosmosActivePage,
+  reorderKosmosPages,
+  addKosmosWidget,
+  removeKosmosWidget,
+  updateKosmosWidgetLayout,
+  updateKosmosWidgetConfig,
+  setKosmosSharedWithUsers,
+  setKosmosFromDashboard,
 } = dashboardSlice.actions;
 
 /**
@@ -517,3 +783,13 @@ export const selectDashboardMetadata = (state: { dashboard: DashboardState }) =>
   description: state.dashboard.description,
   applicationId: state.dashboard.applicationId,
 });
+
+// Kosmos selectors
+export const selectKosmosPages = (state: { dashboard: DashboardState }) =>
+  state.dashboard.kosmosPages;
+export const selectKosmosActivePage = (state: { dashboard: DashboardState }) =>
+  state.dashboard.kosmosActivePage;
+export const selectKosmosSharedWithUsers = (state: { dashboard: DashboardState }) =>
+  state.dashboard.kosmosSharedWithUsers;
+export const selectViewerDashboards = (state: { dashboard: DashboardState }) =>
+  state.dashboard.viewerDashboards;

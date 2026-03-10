@@ -423,4 +423,98 @@ export async function authRoutes(fastify: FastifyInstance) {
     },
     authController.logoutAll
   );
+
+  /**
+   * PATCH /auth/users/:userId
+   * Update user role, active status, or unlock account (Admin+)
+   */
+  fastify.patch(
+    '/auth/users/:userId',
+    {
+      schema: {
+        tags: ['Authentication'],
+        summary: 'Update user',
+        description: 'Update user role, active status, or unlock account. Admin cannot assign SuperAdmin role.',
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: 'object',
+          required: ['userId'],
+          properties: {
+            userId: { type: 'string', description: 'User MongoDB ObjectId' },
+          },
+        },
+        body: {
+          type: 'object',
+          properties: {
+            role: {
+              type: 'string',
+              enum: ['SuperAdmin', 'Admin', 'Operator', 'Viewer'],
+              description: 'New role to assign',
+            },
+            isActive: { type: 'boolean', description: 'Enable or disable the account' },
+            unlock: { type: 'boolean', description: 'Clear failed login attempts and account lock' },
+          },
+        },
+        response: {
+          200: {
+            description: 'User updated successfully',
+            type: 'object',
+            properties: {
+              success: { type: 'boolean', example: true },
+              data: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string' },
+                  username: { type: 'string' },
+                  email: { type: 'string' },
+                  role: { type: 'string' },
+                  isActive: { type: 'boolean' },
+                  failedLoginAttempts: { type: 'number' },
+                  lockedUntil: { type: 'string', nullable: true },
+                  updatedAt: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+      },
+      preHandler: [requireAuth, requirePermission('user:update')],
+    },
+    authController.updateUser
+  );
+
+  /**
+   * DELETE /auth/users/:userId
+   * Hard-delete a user account (SuperAdmin only)
+   */
+  fastify.delete(
+    '/auth/users/:userId',
+    {
+      schema: {
+        tags: ['Authentication'],
+        summary: 'Delete user',
+        description: 'Permanently delete a user account and revoke all their tokens. SuperAdmin only. Cannot delete own account.',
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: 'object',
+          required: ['userId'],
+          properties: {
+            userId: { type: 'string', description: 'User MongoDB ObjectId' },
+          },
+        },
+        response: {
+          200: {
+            description: 'User deleted successfully',
+            type: 'object',
+            properties: {
+              success: { type: 'boolean', example: true },
+              message: { type: 'string' },
+            },
+          },
+        },
+      },
+      preHandler: [requireAuth, requirePermission('user:delete')],
+    },
+    authController.deleteUser
+  );
 }

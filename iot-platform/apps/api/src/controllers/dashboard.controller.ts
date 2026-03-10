@@ -21,7 +21,7 @@ export class DashboardController {
     request: FastifyRequest<{ Params: { dashboardId: string }; Querystring: { applicationId?: string } }>,
     reply: FastifyReply
   ) {
-    const { orgId } = getRequestContext(request);
+    const { orgId, userId, role } = getRequestContext(request);
     const { dashboardId } = request.params;
     const { applicationId } = request.query;
 
@@ -29,7 +29,7 @@ export class DashboardController {
       throw new BadRequestError('applicationId is required');
     }
 
-    const dashboard = await dashboardService.getDashboard(orgId, dashboardId, applicationId);
+    const dashboard = await dashboardService.getDashboard(orgId, dashboardId, applicationId, { role, userId });
 
     if (!dashboard) {
       throw new NotFoundError('Dashboard');
@@ -68,12 +68,13 @@ export class DashboardController {
         description?: string;
         blocks: any[];
         layouts: Record<string, any>;
+        pages?: any[];
       };
     }>,
     reply: FastifyReply
   ) {
     const { orgId } = getRequestContext(request);
-    const { dashboardId, applicationId, name, description, blocks, layouts } = request.body;
+    const { dashboardId, applicationId, name, description, blocks, layouts, pages } = request.body;
 
     if (!applicationId) {
       throw new BadRequestError('applicationId is required');
@@ -84,9 +85,43 @@ export class DashboardController {
       description,
       blocks,
       layouts,
+      pages,
     });
 
     return sendSuccess(reply, dashboard);
+  }
+
+  /**
+   * POST /dashboards/:dashboardId/share
+   * ADR-045: Share dashboard with specific org users (body: { userIds: string[] })
+   */
+  async shareWithUsers(
+    request: FastifyRequest<{ Params: { dashboardId: string }; Body: { userIds: string[] } }>,
+    reply: FastifyReply
+  ) {
+    const { orgId } = getRequestContext(request);
+    const { dashboardId } = request.params;
+    const { userIds } = request.body;
+
+    if (!Array.isArray(userIds)) {
+      throw new BadRequestError('userIds must be an array');
+    }
+
+    const result = await dashboardService.shareWithUsers(orgId, dashboardId, userIds);
+    return sendSuccess(reply, result);
+  }
+
+  /**
+   * GET /dashboards/my
+   * ADR-045: Returns dashboards assigned to the authenticated Viewer user.
+   */
+  async getViewerDashboards(
+    request: FastifyRequest,
+    reply: FastifyReply
+  ) {
+    const { orgId, userId } = getRequestContext(request);
+    const dashboards = await dashboardService.getDashboardsForViewer(orgId, userId);
+    return sendSuccess(reply, dashboards);
   }
 
   /**
@@ -119,3 +154,7 @@ export const saveDashboard = (req: FastifyRequest<any>, reply: FastifyReply) =>
   dashboardController.saveDashboard(req, reply);
 export const deleteDashboard = (req: FastifyRequest<any>, reply: FastifyReply) =>
   dashboardController.deleteDashboard(req, reply);
+export const shareWithUsers = (req: FastifyRequest<any>, reply: FastifyReply) =>
+  dashboardController.shareWithUsers(req, reply);
+export const getViewerDashboards = (req: FastifyRequest<any>, reply: FastifyReply) =>
+  dashboardController.getViewerDashboards(req, reply);

@@ -9,7 +9,7 @@ export interface User {
   id: string;
   username: string;
   email: string;
-  role: 'SuperAdmin' | 'Admin' | 'Manager' | 'Operator' | 'Viewer';
+  role: 'SuperAdmin' | 'Admin' | 'Operator' | 'Viewer';
   organizationId: string;
   isActive: boolean;
   mustChangePassword: boolean;
@@ -265,6 +265,7 @@ export const loginThunk = createAsyncThunk(
         refreshToken: string;
       }>('/auth/login', { username, password });
       dispatch(loginSuccess(data));
+      return data;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Login failed';
       dispatch(setError(message));

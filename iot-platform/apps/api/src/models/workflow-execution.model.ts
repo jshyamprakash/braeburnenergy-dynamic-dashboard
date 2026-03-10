@@ -14,7 +14,8 @@ export type TriggerType =
   | 'scheduled'
   | 'webhook'
   | 'deviceStateChange'
-  | 'alarmTriggered';
+  | 'alarmTriggered'
+  | 'deviceOffline'; // ADR-041
 
 export interface ExecutionTrigger {
   type: TriggerType;

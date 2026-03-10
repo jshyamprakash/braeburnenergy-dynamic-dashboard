@@ -10,6 +10,8 @@ export interface Device {
   tags: Record<string, string>;
   /** Device data schema: field name → data type (ADR-021) */
   attributes?: Record<string, string>;
+  /** Last time a state was received from this device (ADR-041) */
+  lastSeenAt?: string;
   createdAt: string;
   updatedAt: string;
 }
