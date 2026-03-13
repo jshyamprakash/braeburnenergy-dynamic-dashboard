@@ -88,7 +88,216 @@ function makeDefaultPage(name: string, order: number): KosmosPage {
     name,
     order,
     widgets: [],
+    layoutVersion: 2,
   };
+}
+
+/** Create the mandatory Kosmos Architecture page with seeded subsections */
+function makeArchitecturePage(): KosmosPage {
+  const archWidget: KosmosWidget = {
+    id: `w_arch_${shortId()}`,
+    type: 'platformArchitecture',
+    config: {
+      subsections: [
+        {
+          id: `sub_${shortId()}`,
+          title: 'PHYSICAL ASSETS — OEM-AGNOSTIC',
+          style: 'pb-deep',
+          borderColor: 'rgba(60,140,211,0.3)',
+          cards: [
+            { id: `card_${shortId()}`, text: 'GE Frame 6B / 7FA' },
+            { id: `card_${shortId()}`, text: 'Siemens SGT-700/800' },
+            { id: `card_${shortId()}`, text: 'MHI M501 / H-Class' },
+            { id: `card_${shortId()}`, text: 'Solar Taurus / Titan' },
+            { id: `card_${shortId()}`, text: 'Balance of Plant' },
+            { id: `card_${shortId()}`, text: 'HRSG / Aux Systems' },
+          ],
+        },
+        {
+          id: `sub_${shortId()}`,
+          title: 'BE SENSE™ — MULTIMODAL SENSOR FUSION',
+          style: 'pb-blue',
+          borderColor: 'rgba(21,96,189,0.5)',
+          labelColor: 'var(--k-soft)',
+          cards: [
+            { id: `card_${shortId()}`, text: 'CalorieSense™ CV/H₂' },
+            { id: `card_${shortId()}`, text: 'CD Pressure (50 kHz)' },
+            { id: `card_${shortId()}`, text: 'Vibration / Rotor' },
+            { id: `card_${shortId()}`, text: 'Thermocouples / EGT' },
+            { id: `card_${shortId()}`, text: 'CEMS Emissions' },
+            { id: `card_${shortId()}`, text: 'Inlet / Ambient' },
+            { id: `card_${shortId()}`, text: 'Performance KPIs' },
+            { id: `card_${shortId()}`, text: 'Controls / DCS Feed' },
+          ],
+        },
+        {
+          id: `sub_${shortId()}`,
+          title: 'BE AGENT™ — AGENTIC AI FRAMEWORK',
+          style: 'pb-green',
+          borderColor: 'rgba(0,176,80,0.5)',
+          labelColor: 'var(--k-green)',
+          cards: [
+            { id: `card_${shortId()}`, text: 'CD Precursor (GT2026)' },
+            { id: `card_${shortId()}`, text: 'Thermo Performance' },
+            { id: `card_${shortId()}`, text: 'Emissions Optimisation' },
+            { id: `card_${shortId()}`, text: 'Asset Life / RUL' },
+            { id: `card_${shortId()}`, text: 'Vibration Analytics' },
+            { id: `card_${shortId()}`, text: 'Fuel Quality Adapt.' },
+            { id: `card_${shortId()}`, text: 'Fleet Benchmarking' },
+            { id: `card_${shortId()}`, text: 'NL Agent Interface' },
+          ],
+        },
+        {
+          id: `sub_${shortId()}`,
+          title: 'KOSMOS CORTEX™ PLATFORM — EDGE + CLOUD / ON-PREM',
+          style: 'pb-teal',
+          borderColor: 'rgba(0,176,140,0.4)',
+          labelColor: '#00D0A8',
+          cards: [
+            { id: `card_${shortId()}`, text: 'Edge Compute Node' },
+            { id: `card_${shortId()}`, text: 'Private Cloud Deploy' },
+            { id: `card_${shortId()}`, text: 'On-Prem Server' },
+            { id: `card_${shortId()}`, text: 'Fleet Dashboard' },
+            { id: `card_${shortId()}`, text: 'Data Historian' },
+            { id: `card_${shortId()}`, text: 'REST / OPC-UA APIs' },
+          ],
+        },
+        {
+          id: `sub_${shortId()}`,
+          title: 'OPERATOR OUTPUTS',
+          style: 'pb-deep',
+          borderColor: 'rgba(13,60,122,0.6)',
+          cards: [
+            { id: `card_${shortId()}`, text: 'CMMS / Maximo' },
+            { id: `card_${shortId()}`, text: 'Work Order Gen.' },
+            { id: `card_${shortId()}`, text: 'Operator Alerts' },
+            { id: `card_${shortId()}`, text: 'Performance Reports' },
+            { id: `card_${shortId()}`, text: 'Regulatory Filing' },
+          ],
+        },
+      ],
+    },
+    layout: { x: 0, y: 0, w: 48, h: 80 },
+  };
+
+  return {
+    id: `page_${shortId()}`,
+    name: 'KOSMOS CORTEX™ Architecture',
+    order: 3,
+    widgets: [archWidget],
+    isMandatory: true,
+    mandatoryType: 'kosmosArchitecture',
+    layoutVersion: 2,
+  };
+}
+
+/** Create the mandatory BE Agent page with seeded config */
+function makeBeAgentPage(): KosmosPage {
+  const beAgentWidget: KosmosWidget = {
+    id: `w_beagent_${shortId()}`,
+    type: 'beAgentTabConfig',
+    config: {
+      modules: [
+        { id: `m_${shortId()}`, name: 'CD Precursor Detection', desc: 'GT2026 — Autoencoder·LSTM·DFT features', status: 'ACTIVE', detailDesc: 'Physics-informed DL framework for combustion instability precursor identification. Autoencoder-LSTM pipeline with 45-second advance warning on lean blowout and flashback events.', metrics: [] },
+        { id: `m_${shortId()}`, name: 'Thermodynamic Performance', desc: 'Compressor map · efficiency tracking', status: 'ACTIVE', detailDesc: 'Compressor and turbine section efficiency tracking using isentropic analysis. Fouling detection via compressor map deviation.', metrics: [] },
+        { id: `m_${shortId()}`, name: 'Fuel Quality Adaptation', desc: 'CalorieSense™ link · CV · H₂ adaptive', status: 'ACTIVE', detailDesc: 'Real-time calorific value and H₂ fraction feed from CalorieSense™ edge device. Adaptive combustion tuning to prevent emissions exceedance during fuel quality swings.', metrics: [] },
+        { id: `m_${shortId()}`, name: 'Vibration & Rotor Dynamics', desc: 'Blade pass · sub-sync · bearing', status: 'IDLE', detailDesc: 'Spectral vibration analysis from shaft-riding probes. Blade pass frequency, sub-synchronous detection, bearing wear trending.', metrics: [] },
+        { id: `m_${shortId()}`, name: 'Emissions Optimisation', desc: 'NOx · CO · CEMS closed-loop', status: 'IDLE', detailDesc: 'Closed-loop NOx and CO optimisation using CEMS data. Model-based combustion tuning respecting emissions constraints while maximising efficiency.', metrics: [] },
+        { id: `m_${shortId()}`, name: 'Asset Life Management', desc: 'Creep · LCF · RUL · hot section', status: 'IDLE', detailDesc: 'Creep life consumption modelling for hot section components. Low-cycle fatigue counting, remaining useful life estimation, and maintenance scheduling.', metrics: [] },
+        { id: `m_${shortId()}`, name: 'Inlet Conditioning', desc: 'Evap cooler · chiller · fogging', status: 'IDLE', detailDesc: 'Inlet temperature and humidity tracking. Evap cooler / chiller optimisation for performance enhancement under high-ambient conditions.', metrics: [] },
+        { id: `m_${shortId()}`, name: 'Balance of Plant', desc: 'HRSG · FGC · electrical systems', status: 'IDLE', detailDesc: 'HRSG, fuel gas compressor, and electrical balance-of-plant cross-system interaction analytics. True root-cause analysis across boundaries.', metrics: [] },
+        { id: `m_${shortId()}`, name: 'Multi-fleet Benchmarking', desc: 'OEM-agnostic KPI normalisation', status: 'IDLE', detailDesc: 'Cross-site, cross-OEM benchmarking of KPIs normalised for ambient and duty cycle. Identify best-practice and underperforming units within the fleet.', metrics: [] },
+      ],
+      platformStatus: [
+        { id: `ps_${shortId()}`, label: 'EDGE NODE', value: 'ONLINE', tagType: 'green' },
+        { id: `ps_${shortId()}`, label: 'CLOUD SYNC', value: 'LIVE', tagType: 'green' },
+        { id: `ps_${shortId()}`, label: 'BE SENSE™', value: 'FUSED', tagType: 'green' },
+        { id: `ps_${shortId()}`, label: 'CALORIESENSE™', value: 'LINKED', tagType: 'green' },
+        { id: `ps_${shortId()}`, label: 'CMMS BRIDGE', value: 'STANDBY', tagType: 'amber' },
+        { id: `ps_${shortId()}`, label: 'DATA OWNER', value: 'OPERATOR', tagType: 'blue' },
+      ],
+      fleetOverview: [
+        { id: `fo_${shortId()}`, label: 'TOTAL UNITS', value: '12', color: 'var(--k-pale)' },
+        { id: `fo_${shortId()}`, label: 'ONLINE', value: '10', color: 'var(--k-green)' },
+        { id: `fo_${shortId()}`, label: 'ALERTS ACTIVE', value: '2', color: 'var(--k-amber)' },
+        { id: `fo_${shortId()}`, label: 'OEMs MONITORED', value: 'GE / SE / MHI', color: 'var(--k-soft)' },
+      ],
+      recentActions: [
+        { id: `ra_${shortId()}`, time: '14:58:02', msg: 'CD module: nominal state confirmed', level: 'ok' },
+        { id: `ra_${shortId()}`, time: '14:52:30', msg: 'Fuel adaptation: CV shift +0.3%', level: 'info' },
+        { id: `ra_${shortId()}`, time: '14:48:10', msg: 'VIB-X: maintenance flag raised', level: 'warn' },
+      ],
+      cannedResponses: [
+        'All combustion dynamics parameters are nominal. CD anomaly score 0.14 — well below the 0.5 threshold. DFT spectrum shows stable DLE operation with dominant frequency at 186 Hz.',
+        'Fuel quality data from CalorieSense™ edge device: CV = 38.2 MJ/m³, H₂ fraction 3.2%. BE Agent has adapted combustion model accordingly. No emissions exceedance risk.',
+        'Thermodynamic performance module indicates compressor efficiency 87.4%, turbine efficiency 91.2%. No fouling signatures in the compressor map deviation analysis.',
+        'Fleet benchmarking shows this unit is performing at 94th percentile for fuel efficiency vs comparable DLE units on the Kosmos network.',
+        'Health index is 86/100. Primary concern is mildly elevated VIB-X channel (2.1 mm/s). Recommend bearing inspection at next planned outage. No immediate action required.',
+      ],
+    },
+    layout: { x: 0, y: 0, w: 48, h: 80 },
+  };
+
+  return {
+    id: `page_${shortId()}`,
+    name: 'BE AGENT™',
+    order: 2,
+    widgets: [beAgentWidget],
+    isMandatory: true,
+    mandatoryType: 'beAgent',
+    layoutVersion: 2,
+  };
+}
+
+/**
+ * Read-time scale migration to match the new COL=48/ROW_H=10 grid.
+ * Handles two legacy scales:
+ *   Old 12-col (COL=12, ROW_H=80): all w ≤ 12 → x,w ×4; y,h ×8
+ *   Intermediate (COL=48, ROW_H=20): some w > 12, max(h) > 24 → y,h ×2
+ * Non-destructive — returns original page if already at current scale.
+ */
+function scaleUpPageIfNeeded(page: KosmosPage): KosmosPage {
+  if (page.widgets.length === 0) return page;
+
+  // Pages created with the current grid (layoutVersion >= 2) never need migration
+  if (page.layoutVersion && page.layoutVersion >= 2) return page;
+
+  // Old 12-col scale: all widgets have w ≤ 12
+  const isOld12Col = page.widgets.every((w) => w.layout.w <= 12);
+  if (isOld12Col) {
+    return {
+      ...page,
+      widgets: page.widgets.map((w) => ({
+        ...w,
+        layout: {
+          x: w.layout.x * 4,
+          y: w.layout.y * 4,
+          w: w.layout.w * 4,
+          h: w.layout.h * 8,
+        },
+      })),
+    };
+  }
+
+  // Intermediate 48-col/ROW_H=20 scale: some w > 12 and large h values present
+  const hasLargeH = page.widgets.some((w) => w.layout.h > 24);
+  const hasCol48 = page.widgets.some((w) => w.layout.w > 12);
+  if (hasCol48 && hasLargeH) {
+    return {
+      ...page,
+      widgets: page.widgets.map((w) => ({
+        ...w,
+        layout: {
+          x: w.layout.x,
+          y: w.layout.y * 2,
+          w: w.layout.w,
+          h: w.layout.h * 2,
+        },
+      })),
+    };
+  }
+
+  return page;
 }
 
 /** Migrate old 3-column format to unified widgets[] (ADR-044) */
@@ -97,15 +306,15 @@ function migratePageFormat(page: any): KosmosPage {
   // Old format: page.columns.{left,middle,right}
   const left: KosmosWidget[] = (page.columns?.left ?? []).map((w: any) => ({
     ...w,
-    layout: w.layout ?? { x: 0, y: 0, w: 3, h: 3 },
+    layout: w.layout ?? { x: 0, y: 0, w: 12, h: 24 },
   }));
   const middle: KosmosWidget[] = (page.columns?.middle ?? []).map((w: any) => ({
     ...w,
-    layout: w.layout ?? { x: 3, y: 0, w: 6, h: 3 },
+    layout: w.layout ?? { x: 12, y: 0, w: 24, h: 24 },
   }));
   const right: KosmosWidget[] = (page.columns?.right ?? []).map((w: any) => ({
     ...w,
-    layout: w.layout ?? { x: 9, y: 0, w: 3, h: 3 },
+    layout: w.layout ?? { x: 36, y: 0, w: 12, h: 24 },
   }));
   return {
     id: page.id,
@@ -500,6 +709,7 @@ const dashboardSlice = createSlice({
 
     addKosmosPage: (state, action: PayloadAction<{ name: string }>) => {
       const page = makeDefaultPage(action.payload.name, state.kosmosPages.length);
+      page.layoutVersion = 2;
       state.kosmosPages.push(page);
       state.kosmosActivePage = page.id;
     },
@@ -594,7 +804,7 @@ const dashboardSlice = createSlice({
       state,
       action: PayloadAction<{ pages: any[]; sharedWithUsers?: string[] }>
     ) => {
-      const migrated = action.payload.pages.map(migratePageFormat);
+      const migrated = action.payload.pages.map(migratePageFormat).map(scaleUpPageIfNeeded);
       state.kosmosPages = migrated;
       state.kosmosActivePage = migrated[0]?.id ?? null;
       if (action.payload.sharedWithUsers) {
@@ -678,23 +888,35 @@ const dashboardSlice = createSlice({
     builder
       .addCase(initKosmosFromBackend.fulfilled, (state, action) => {
         if (!action.payload) {
-          // New dashboard: seed a default page
+          // New dashboard: seed default pages (BE Agent + Architecture)
           if (state.kosmosPages.length === 0) {
-            const page = makeDefaultPage('Overview', 0);
-            state.kosmosPages = [page];
-            state.kosmosActivePage = page.id;
+            const beAgentPage = makeBeAgentPage();
+            const archPage = makeArchitecturePage();
+            state.kosmosPages = [beAgentPage, archPage];
+            state.kosmosActivePage = beAgentPage.id;
           }
           return;
         }
         const data = action.payload;
         if (data.pages && Array.isArray(data.pages) && data.pages.length > 0) {
-          // Migrate old column-based pages to unified widgets[] format
-          state.kosmosPages = data.pages.map(migratePageFormat);
+          // Migrate old column-based pages to unified widgets[] format, then scale up if needed
+          const migratedPages: KosmosPage[] = data.pages.map(migratePageFormat).map(scaleUpPageIfNeeded);
+          // Check if architecture page exists; if not, add it
+          const hasArchPage = migratedPages.some((p: KosmosPage) => p.mandatoryType === 'kosmosArchitecture');
+          if (!hasArchPage) {
+            migratedPages.push(makeArchitecturePage());
+          }
+          const hasBeAgentPage = migratedPages.some((p: KosmosPage) => p.mandatoryType === 'beAgent');
+          if (!hasBeAgentPage) {
+            migratedPages.push(makeBeAgentPage());
+          }
+          state.kosmosPages = migratedPages;
           state.kosmosActivePage = state.kosmosPages[0].id;
         } else if (state.kosmosPages.length === 0) {
-          const page = makeDefaultPage('Overview', 0);
-          state.kosmosPages = [page];
-          state.kosmosActivePage = page.id;
+          const beAgentPage = makeBeAgentPage();
+          const archPage = makeArchitecturePage();
+          state.kosmosPages = [beAgentPage, archPage];
+          state.kosmosActivePage = beAgentPage.id;
         }
         if (data.sharedWithUsers) state.kosmosSharedWithUsers = data.sharedWithUsers;
         state.name = data.name || state.name;
