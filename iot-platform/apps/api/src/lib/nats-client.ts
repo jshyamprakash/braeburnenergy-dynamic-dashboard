@@ -29,6 +29,16 @@ export class NatsClient {
   async drain(): Promise<void> {
     await this.nc?.drain();
   }
+
+  getJetStream(): JetStreamClient {
+    if (!this.js) throw new Error('NATS not connected');
+    return this.js;
+  }
+
+  getNatsConnection(): NatsConnection {
+    if (!this.nc) throw new Error('NATS not connected');
+    return this.nc;
+  }
 }
 
 export const natsClient = new NatsClient();

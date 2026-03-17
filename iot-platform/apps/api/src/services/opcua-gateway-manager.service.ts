@@ -1,9 +1,9 @@
 import type { Logger } from 'pino';
 import { OpcuaGateway, type IOpcuaGateway } from '../models';
 import { OpcuaClientService } from './opcua-client.service';
+import mongoose from 'mongoose';
 import { DataQualityService } from './data-quality.service';
 import { AlarmService } from './alarm.service';
-import { deviceStateService } from './device-state.service';
 import type { WorkflowTriggerDispatcher } from './workflow-trigger-dispatcher.service';
 import type { NatsClient } from '../lib/nats-client.js';
 import { DEFAULT_ORG_ID } from '../lib/request-context';
@@ -191,21 +191,19 @@ export class OpcuaGatewayManager {
         new Date()
       );
 
-      // Create device state with quality metadata
-      const state = await deviceStateService.create(ORG_ID, {
-        deviceId: gateway.deviceId,
-        data: (validationResult as any).data || data,
-        timestamp: new Date(),
-      } as any);
+      // Direct DB write removed (ADR-043): Storage Worker consumes sensor.raw and batch-inserts via insertMany
+      const resolvedData = (validationResult as any).data || data;
+      const now = new Date();
+      const syntheticId = new mongoose.Types.ObjectId();
 
-      // Publish to NATS (fire-and-forget, ADR-043)
+      // Publish to NATS (Storage Worker will insert to MongoDB)
       if (this.natsClient) {
         this.natsClient
           .publish(`sensor.raw.${gateway.deviceId}`, {
             orgId: ORG_ID,
             deviceId: gateway.deviceId,
-            data: (validationResult as any).data || data,
-            timestamp: new Date().toISOString(),
+            data: resolvedData,
+            timestamp: now.toISOString(),
             source: 'opcua',
             quality: (validationResult as any).quality,
           })
@@ -216,10 +214,17 @@ export class OpcuaGatewayManager {
           });
       }
 
-      // Dispatch to workflow triggers (fire-and-forget, just like device-state controller)
+      // Dispatch to workflow triggers (synthetic state — no DB write here)
       if (this.triggerDispatcher) {
+        const syntheticState = {
+          _id: syntheticId,
+          deviceId: gateway.deviceId,
+          orgId: ORG_ID,
+          data: resolvedData,
+          timestamp: now,
+        };
         this.triggerDispatcher
-          .dispatchDeviceStateBatch(ORG_ID, gateway.deviceId, (validationResult as any).data || data, state as any)
+          .dispatchDeviceStateBatch(ORG_ID, gateway.deviceId, resolvedData, syntheticState as any)
           .catch((err: any) => {
             if (this.logger) {
               this.logger.error(err, 'Workflow device state batch dispatch failed for OPC-UA gateway');
@@ -232,8 +237,8 @@ export class OpcuaGatewayManager {
       const triggeredAlarms = await this.alarmService.evaluateDeviceState(
         gateway.deviceId,
         device.tags,
-        (validationResult as any).data || data,
-        state._id.toString(),
+        resolvedData,
+        syntheticId.toString(),
         new Date()
       );
 

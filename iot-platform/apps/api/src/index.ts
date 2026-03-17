@@ -11,6 +11,7 @@ import { heartbeatService } from './services/heartbeat.service';
 import { modbusGatewayManager } from './services/modbus-gateway-manager.service';
 import { opcuaGatewayManager } from './services/opcua-gateway-manager.service';
 import { natsClient } from './lib/nats-client.js';
+import { startStorageWorker, stopStorageWorker } from './workers/storage-worker.js';
 
 /**
  * Application Entry Point
@@ -33,6 +34,10 @@ async function main() {
     console.log('📡 Connecting to NATS...');
     await natsClient.connect(config.nats.url);
     console.log(`✅ NATS connected (${config.nats.url})`);
+
+    // Start Storage Worker (ADR-043: NATS → BullMQ → MongoDB insertMany)
+    console.log('💾 Starting Storage Worker...');
+    await startStorageWorker();
 
     // Create Fastify server (but don't start yet)
     console.log('🚀 Creating HTTP server...');
@@ -97,6 +102,7 @@ async function main() {
         fastify.log.info(`Received ${signal}, closing server gracefully...`);
         workflowSchedulerService.stop();
         heartbeatService.stop();
+        await stopStorageWorker();
         await natsClient.drain();
         await fastify.close();
         await disconnectDB();

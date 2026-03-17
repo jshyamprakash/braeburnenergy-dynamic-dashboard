@@ -3,7 +3,6 @@ import type { Logger } from 'pino';
 import { ModbusGateway, IModbusGateway } from '../models/modbus-gateway.model';
 import { ModbusClientService } from './modbus-client.service';
 import { deviceService } from './device.service';
-import { deviceStateService } from './device-state.service';
 import type { WorkflowTriggerDispatcher } from './workflow-trigger-dispatcher.service';
 import { Device } from '../models/device.model';
 import type { NatsClient } from '../lib/nats-client.js';
@@ -207,26 +206,23 @@ class ModbusGatewayManagerService {
       }
     }
 
-    // Phase 2: Create ONE device state per unique device with all its fields
+    // Phase 2: Publish to NATS and dispatch workflow triggers per unique device
+    // Direct DB write removed (ADR-043): Storage Worker consumes sensor.raw and batch-inserts via insertMany
     for (const [deviceId, { data }] of Object.entries(statesByDevice)) {
       try {
-        const state = await deviceStateService.create(gateway.orgId.toString(), {
-          deviceId,
-          data,
-          timestamp: new Date(),
-        });
+        const triggerData = Object.fromEntries(
+          Object.entries(data).filter(([k]) => !k.endsWith('_unit'))
+        );
+        const now = new Date();
 
-        // Publish to NATS (fire-and-forget, ADR-043)
+        // Publish to NATS (Storage Worker will insert to MongoDB)
         if (this.natsClient) {
-          const triggerData = Object.fromEntries(
-            Object.entries(data).filter(([k]) => !k.endsWith('_unit'))
-          );
           this.natsClient
             .publish(`sensor.raw.${deviceId}`, {
               orgId: gateway.orgId.toString(),
               deviceId,
               data: triggerData,
-              timestamp: new Date().toISOString(),
+              timestamp: now.toISOString(),
               source: 'modbus',
             })
             .catch((err: any) => {
@@ -236,14 +232,17 @@ class ModbusGatewayManagerService {
             });
         }
 
-        // Dispatch to workflow triggers (fire-and-forget, just like device-state controller)
+        // Dispatch to workflow triggers (synthetic state — no DB write here)
         if (this.triggerDispatcher) {
-          // Pass data without _unit fields
-          const triggerData = Object.fromEntries(
-            Object.entries(data).filter(([k]) => !k.endsWith('_unit'))
-          );
+          const syntheticState = {
+            _id: new mongoose.Types.ObjectId(),
+            deviceId,
+            orgId: gateway.orgId.toString(),
+            data: triggerData,
+            timestamp: now,
+          };
           this.triggerDispatcher
-            .dispatchDeviceStateBatch(gateway.orgId.toString(), deviceId, triggerData, state as any)
+            .dispatchDeviceStateBatch(gateway.orgId.toString(), deviceId, triggerData, syntheticState as any)
             .catch((err: any) => {
               if (this.logger) {
                 this.logger.error(err, 'Workflow device state batch dispatch failed for Modbus gateway');
@@ -251,7 +250,7 @@ class ModbusGatewayManagerService {
             });
         }
       } catch (error) {
-        console.error(`❌ Failed to write state for device ${deviceId}:`, (error as Error).message);
+        console.error(`❌ Failed to process state for device ${deviceId}:`, (error as Error).message);
       }
     }
   }

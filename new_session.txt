@@ -8,3 +8,15 @@ Start next task.
 /model sonnet
 Task complete.
 
+docker run -d --name redis-iot -p 127.0.0.1:6379:6379 -v redis-iot-data:/data -v ~/redis-iot/redis.conf:/usr/local/etc/redis/redis.conf --restart unless-stopped redis:7-alpine redis-server /usr/local/etc/redis/redis.conf
+
+redis-cli -a a3569166aabb36e52ef849e583806c5397dc92258a041e577b5b88d385d60693 ping
+
+docker run -d --name nats-iot -p 4222:4222 -p 8222:8222 --restart unless-stopped nats:2.10-alpine -js -m 8222
+
+curl -L https://github.com/nats-io/natscli/releases/download/v0.1.5/nats-0.1.5 -linux-amd64.zip -o nats-cli.zip unzip nats-cli.zip sudo mv nats-0.1.5-linux-amd64/nats /usr/local/bin/ nats --version
+
+nats stream add sensor_raw --subjects "sensor.raw.>" --storage file --retention limits --max-age 24h --replicas 1 --defaults
+
+nats stream add sensor_processed --subjects "sensor.processed.>" --storage file --retention limits --max-age 1h --replicas 1 --defaults
+                                                                nats stream add sensor_alerts --subjects "sensor.alerts.>" --storage file --retention limits --max-age 168h --replicas 1 --defaults  

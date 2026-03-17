@@ -1,29 +1,30 @@
-# Current Task: Gateway → NATS Publisher
+# Current Task: ADR-043 Storage Worker
 
 ## Goal
-Publish every raw device state reading to NATS stream sensor.raw.{deviceId}
-from all three ingestion points (Modbus, OPC-UA, REST).
-Dual-write strategy: keep existing MongoDB writes during transition.
+Consume sensor.raw NATS stream via BullMQ Storage Worker.
+Batch device state documents into MongoDB via insertMany.
+Remove direct MongoDB writes from Modbus + OPC-UA gateways.
+REST endpoint keeps direct write (response contract unchanged).
 
 ## Scope
-- New: src/lib/nats-client.ts (singleton NatsClient + SensorRawEvent type)
-- Modify: src/config/config.ts (add natsUrl)
-- Modify: src/index.ts (connect/drain natsClient; inject into gateways)
-- Modify: src/services/modbus-gateway-manager.service.ts (setNatsClient + publish)
-- Modify: src/services/opcua-gateway-manager.service.ts (setNatsClient + publish)
-- Modify: src/controllers/device-state.controller.ts (publish fire-and-forget)
+- New: src/lib/redis-client.ts (ioredis singleton from REDIS_URL)
+- New: src/workers/storage-worker.ts (NATS consumer + batch accumulator + BullMQ flush)
+- Modify: src/config/config.ts (redisUrl, worker.batchSize, worker.flushIntervalMs)
+- Modify: src/index.ts (start worker after NATS; drain/close on shutdown)
+- Modify: src/services/modbus-gateway-manager.service.ts (remove direct DB write)
+- Modify: src/services/opcua-gateway-manager.service.ts (remove direct DB write)
 
 ## Constraints
-- REST response must NOT be blocked by NATS publish (fire-and-forget with .catch)
-- Existing WebSocket broadcast and workflow dispatch unchanged
-- No removal of direct MongoDB writes in this step
-- NATS subject pattern: sensor.raw.{deviceId}
-- Source field required: 'modbus' | 'opcua' | 'rest'
+- BATCH_SIZE: 1000 documents; FLUSH_INTERVAL: 200ms
+- BullMQ retry: 3 attempts, exponential backoff 1000ms
+- insertMany: ordered:false (skip duplicate key errors)
+- Storage Worker filters source='rest' events (REST controller keeps direct write)
+- Graceful shutdown: consumer drain → worker close → redis quit
+- REST POST /devices/:id/states response unchanged (201 + state object)
 
 ## Architectural Impact
-Yes — introduces NATS JetStream as first production streaming dependency.
-ADR-043 implementation begins here.
+Yes — Redis introduced; direct Modbus/OPC-UA writes replaced by NATS→BullMQ path.
 
 ## Done When
-nats stream info sensor_raw shows messages after device state ingestion
-via Modbus poll, OPC-UA poll, and REST POST endpoint.
+Simulator sends states → device_states populated via insertMany (not direct write).
+NATS message count matches MongoDB document count for modbus/opcua sources.

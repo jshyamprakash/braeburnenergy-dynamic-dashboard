@@ -67,6 +67,17 @@ export const config = {
   nats: {
     url: process.env.NATS_URL || 'nats://localhost:4222',
   },
+
+  // Redis Configuration
+  redis: {
+    url: process.env.REDIS_URL || 'redis://localhost:6379',
+  },
+
+  // Storage Worker Configuration (ADR-043)
+  worker: {
+    batchSize: parseInt(process.env.WORKER_BATCH_SIZE || '1000', 10),
+    flushIntervalMs: parseInt(process.env.WORKER_FLUSH_INTERVAL_MS || '200', 10),
+  },
 } as const;
 
 // Validate required configuration
@@ -92,4 +103,4 @@ export function validateConfig() {
 
 // Export individual configs for convenience
 export const { env, isDevelopment, isProduction, isTest } = config;
-export const { server, database, websocket, logging, security, api, nats } = config;
+export const { server, database, websocket, logging, security, api, nats, redis, worker } = config;
