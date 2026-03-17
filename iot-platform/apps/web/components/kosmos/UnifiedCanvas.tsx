@@ -17,12 +17,12 @@ interface UnifiedCanvasProps {
   selectedWidgetId?: string | null;
 }
 
-const COL = 12;
-const ROW_H = 80;
+const COL = 48;
+const ROW_H = 10;
 
 /**
  * UnifiedCanvas — full-width free-canvas for all widgets on a page (ADR-044).
- * Replaces the split ColumnStack + MiddleCanvas approach.
+ * Used as the fallback canvas for non-mandatory/custom pages.
  * All 13+ widget types draggable and resizable anywhere on the canvas.
  */
 export function UnifiedCanvas({
@@ -36,11 +36,18 @@ export function UnifiedCanvas({
 }: UnifiedCanvasProps) {
   const [isOver, setIsOver] = useState(false);
   const [containerWidth, setContainerWidth] = useState(1200);
+  const [containerHeight, setContainerHeight] = useState(0);
+
+  const TOTAL_ROWS = 35;
+  const dynamicRowHeight = containerHeight > 0
+    ? Math.max(6, Math.floor((containerHeight - 16 - (TOTAL_ROWS - 1) * 8) / TOTAL_ROWS))
+    : ROW_H;
 
   const measureRef = (el: HTMLDivElement | null) => {
     if (el) {
       const obs = new ResizeObserver(([entry]) => {
         setContainerWidth(entry.contentRect.width);
+        setContainerHeight(entry.contentRect.height);
       });
       obs.observe(el);
       setContainerWidth(el.clientWidth);
@@ -67,8 +74,8 @@ export function UnifiedCanvas({
     y: w.layout.y,
     w: w.layout.w,
     h: w.layout.h,
-    minW: 2,
-    minH: 1,
+    minW: 4,
+    minH: 8,
   }));
 
   return (
@@ -77,7 +84,7 @@ export function UnifiedCanvas({
       style={{
         flex: 1,
         height: '100%',
-        overflow: 'auto',
+        overflow: 'hidden',
         position: 'relative',
         background: isOver && editMode ? 'rgba(0,176,80,0.02)' : 'transparent',
         transition: 'background 0.15s',
@@ -122,14 +129,15 @@ export function UnifiedCanvas({
         className="layout"
         layout={layouts}
         cols={COL}
-        rowHeight={ROW_H}
+        rowHeight={dynamicRowHeight}
         width={containerWidth}
         isDraggable={editMode}
         isResizable={editMode}
         onLayoutChange={onLayoutChange}
         margin={[8, 8]}
         containerPadding={[8, 8]}
-        style={{ minHeight: '100%' }}
+        style={{ minHeight: '100%', height: '100%' }}
+        draggableHandle=".k-drag-handle"
       >
         {widgets.map((widget) => {
           const isSelected = selectedWidgetId === widget.id;
@@ -148,6 +156,8 @@ export function UnifiedCanvas({
                 cursor: editMode ? 'pointer' : 'default',
                 boxShadow: isSelected ? '0 0 14px rgba(0,176,80,0.25)' : 'none',
                 transition: 'border-color 0.15s, box-shadow 0.15s',
+                display: 'flex',
+                flexDirection: 'column',
               }}
             >
               {/* Top accent line */}
@@ -164,6 +174,21 @@ export function UnifiedCanvas({
                   zIndex: 2,
                 }}
               />
+
+              {/* Drag handle — only visible in edit mode, 6px strip at top */}
+              {editMode && (
+                <div
+                  className="k-drag-handle"
+                  title="Drag to move"
+                  style={{
+                    height: 6,
+                    width: '100%',
+                    cursor: 'grab',
+                    background: 'linear-gradient(90deg, transparent, var(--k-border-bright), transparent)',
+                    borderRadius: '2px 2px 0 0',
+                  }}
+                />
+              )}
 
               {/* Remove button */}
               {editMode && (
@@ -193,7 +218,7 @@ export function UnifiedCanvas({
               )}
 
               {/* Widget content */}
-              <div style={{ padding: '10px 10px', height: '100%', overflow: 'hidden' }}>
+              <div style={{ padding: '10px 10px', height: '100%', overflow: 'hidden', flex: 1 }}>
                 <RenderWidget widget={widget} editMode={editMode} />
               </div>
             </div>

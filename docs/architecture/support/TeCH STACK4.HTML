@@ -1,0 +1,264 @@
+<html>
+<!DOCTYPE html>
+<html>
+<head>
+<title>Industrial IoT + SCADA Architecture</title>
+
+<style>
+
+body{
+font-family:Arial;
+background:#0f172a;
+color:white;
+text-align:center;
+margin:0;
+padding:0;
+}
+
+h1{
+margin:20px;
+}
+
+.layer{
+display:flex;
+justify-content:center;
+gap:20px;
+flex-wrap:wrap;
+margin:20px;
+}
+
+.box{
+background:#1e293b;
+border:1px solid #334155;
+border-radius:10px;
+padding:15px 20px;
+min-width:170px;
+cursor:pointer;
+position:relative;
+transition:0.3s;
+}
+
+.box:hover{
+transform:scale(1.1);
+background:#334155;
+}
+
+.tooltip{
+visibility:hidden;
+opacity:0;
+position:absolute;
+bottom:110%;
+left:50%;
+transform:translateX(-50%);
+background:#111827;
+border:1px solid #374151;
+border-radius:6px;
+padding:10px;
+width:220px;
+font-size:12px;
+transition:0.3s;
+}
+
+.box:hover .tooltip{
+visibility:visible;
+opacity:1;
+}
+
+.arrow{
+font-size:30px;
+animation:flow 1.5s infinite;
+}
+
+@keyframes flow{
+0%{opacity:0.2}
+50%{opacity:1}
+100%{opacity:0.2}
+}
+
+.devices{background:#7c3aed;}
+.edge{background:#2563eb;}
+.stream{background:#ea580c;}
+.process{background:#9333ea;}
+.db{background:#dc2626;}
+.apps{background:#16a34a;}
+.infra{background:#0891b2;}
+
+</style>
+
+</head>
+
+<body>
+
+<h1>Industrial IoT + SCADA + AI Architecture</h1>
+
+<!-- FIELD LAYER -->
+
+<div class="layer">
+
+<div class="box devices">Sensors / PLC
+<div class="tooltip">
+Industrial devices generating telemetry data using Modbus, OPC-UA, BACnet etc.
+</div>
+</div>
+
+<div class="box devices">Device Local DB (SQLite)
+<div class="tooltip">
+Embedded lightweight database used for local buffering when network is unavailable.
+</div>
+</div>
+
+</div>
+
+<div class="arrow">⬇</div>
+
+<!-- EDGE LAYER -->
+
+<div class="layer">
+
+<div class="box edge">Edge Gateway (Node-RED)
+<div class="tooltip">
+Low-code industrial gateway supporting Modbus, OPC-UA, MQTT, HTTP.
+</div>
+</div>
+
+<div class="box edge">Edge DB (Apache IoTDB)
+<div class="tooltip">
+Time-series database optimized for IoT telemetry and edge analytics.
+</div>
+</div>
+
+<div class="box edge">Edge AI
+<div class="tooltip">
+Runs ML inference locally using ONNX or TensorFlow Lite.
+</div>
+</div>
+
+</div>
+
+<div class="arrow">⬇</div>
+
+<!-- STREAMING -->
+
+<div class="layer">
+
+<div class="box stream">MQTT Broker
+<div class="tooltip">
+IoT messaging protocol used by sensors and edge devices.
+</div>
+</div>
+
+<div class="box stream">Apache Kafka
+<div class="tooltip">
+High-throughput event streaming backbone for industrial data.
+</div>
+</div>
+
+</div>
+
+<div class="arrow">⬇</div>
+
+<!-- PROCESSING -->
+
+<div class="layer">
+
+<div class="box process">Apache Flink
+<div class="tooltip">
+Real-time stream processing engine for anomaly detection and live analytics.
+</div>
+</div>
+
+<div class="box process">Apache Spark
+<div class="tooltip">
+Batch analytics and machine learning processing of historical data.
+</div>
+</div>
+
+</div>
+
+<div class="arrow">⬇</div>
+
+<!-- STORAGE -->
+
+<div class="layer">
+
+<div class="box db">Apache IoTDB
+<div class="tooltip">
+Operational time-series database for sensor data storage.
+</div>
+</div>
+
+<div class="box db">ClickHouse
+<div class="tooltip">
+High-performance analytical database for large industrial datasets.
+</div>
+</div>
+
+<div class="box db">MinIO Data Lake
+<div class="tooltip">
+S3-compatible object storage for raw data, files, and ML datasets.
+</div>
+</div>
+
+</div>
+
+<div class="arrow">⬇</div>
+
+<!-- APPLICATION LAYER -->
+
+<div class="layer">
+
+<div class="box apps">FUXA SCADA
+<div class="tooltip">
+Open-source web SCADA with drag-drop HMI builder and industrial protocol support.
+</div>
+</div>
+
+<div class="box apps">Grafana Dashboards
+<div class="tooltip">
+Real-time monitoring dashboards for plant operations.
+</div>
+</div>
+
+<div class="box apps">Apache Superset
+<div class="tooltip">
+Advanced analytics dashboards for business intelligence.
+</div>
+</div>
+
+<div class="box apps">ERPNext
+<div class="tooltip">
+ERP system for maintenance, production, inventory, and asset management.
+</div>
+</div>
+
+</div>
+
+<div class="arrow">⬇</div>
+
+<!-- INFRA -->
+
+<div class="layer">
+
+<div class="box infra">Kubernetes
+<div class="tooltip">
+Container orchestration platform enabling scaling and high availability.
+</div>
+</div>
+
+<div class="box infra">Prometheus + Loki
+<div class="tooltip">
+Monitoring and logging stack for infrastructure observability.
+</div>
+</div>
+
+<div class="box infra">Keycloak
+<div class="tooltip">
+Identity and access management with SSO and RBAC.
+</div>
+</div>
+
+</div>
+
+</body>
+</html>
+

@@ -8,6 +8,7 @@ import { AlarmService } from '../services/alarm.service';
 import { NotFoundError, BadRequestError } from '../lib/errors';
 import { sendSuccess, sendCreated, sendPaginated } from '../lib/response';
 import { getRequestContext } from '../lib/request-context';
+import { natsClient } from '../lib/nats-client.js';
 import type {
   CreateDeviceStateDTO,
   BulkCreateDeviceStatesDTO,
@@ -92,6 +93,16 @@ export class DeviceStateController {
       { orgId: device.orgId, deviceId },
       { $set: { lastSeenAt: new Date() } }
     ).catch((err: any) => request.log.warn(err, 'Failed to stamp lastSeenAt'));
+
+    // Publish to NATS (fire-and-forget, ADR-043)
+    natsClient.publish(`sensor.raw.${deviceId}`, {
+      orgId,
+      deviceId,
+      data: validatedData.data as Record<string, unknown>,
+      timestamp: state.timestamp.toISOString(),
+      source: 'rest',
+      quality: state.quality,
+    }).catch(err => request.log.warn({ err }, 'NATS publish failed'));
 
     // Dispatch to trigger workflows (fire-and-forget)
     const triggerDispatcher = request.server.triggerDispatcher;

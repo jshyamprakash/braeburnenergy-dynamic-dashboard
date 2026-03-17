@@ -4,28 +4,154 @@ import { useState } from 'react';
 import { useAppDispatch } from '@/lib/store';
 import { updateKosmosWidgetConfig } from '@/lib/store/slices/dashboardSlice';
 import type { KosmosWidget } from './types';
+import { PALETTE_ENTRIES } from './types';
 
 interface WidgetConfigPanelProps {
   pageId: string;
   widget: KosmosWidget;
   onClose: () => void;
+  onConfigChange?: () => void;
 }
 
 /**
- * WidgetConfigPanel — 320px right-side panel for configuring a selected widget (ADR-044).
- * Opens when a widget is clicked in edit mode.
- * Dispatches updateKosmosWidgetConfig on every field change.
+ * WidgetConfigPanel — key-value config editor for widget configuration (ADR-044).
+ * Keys are read-only labels; only values are editable.
  */
-export function WidgetConfigPanel({ pageId, widget, onClose }: WidgetConfigPanelProps) {
+export function WidgetConfigPanel({ pageId, widget, onClose, onConfigChange }: WidgetConfigPanelProps) {
   const dispatch = useAppDispatch();
-  const { type, config } = widget;
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [localArrayState, setLocalArrayState] = useState<Record<string, string | boolean>>({});
+  const { type } = widget;
 
-  const set = (key: string, value: any) => {
-    dispatch(updateKosmosWidgetConfig({ pageId, widgetId: widget.id, config: { [key]: value } }));
+  // Merge palette defaults + stored config so new fields appear for existing widgets
+  const paletteEntry = PALETTE_ENTRIES.find(p => p.type === widget.type);
+  const displayConfig = { ...(paletteEntry?.defaultConfig ?? {}), ...widget.config };
+
+  const saveField = (key: string, newValue: unknown) => {
+    dispatch(updateKosmosWidgetConfig({
+      pageId,
+      widgetId: widget.id,
+      config: { ...widget.config, [key]: newValue },
+    }));
+    onConfigChange?.();
   };
+
+  const keyLabelStyle: React.CSSProperties = {
+    fontFamily: 'var(--k-font-tech)',
+    fontSize: 9,
+    color: 'var(--k-text-dim)',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
+    paddingTop: 4,
+    minWidth: 72,
+    userSelect: 'none',
+  };
+
+  const inputStyle: React.CSSProperties = {
+    flex: 1,
+    padding: '3px 6px',
+    background: 'var(--k-bg-card)',
+    border: 'none',
+    borderBottom: '1px solid var(--k-green)',
+    borderRadius: 0,
+    color: 'var(--k-soft)',
+    fontFamily: 'var(--k-font-tech)',
+    fontSize: 10,
+    outline: 'none',
+    minWidth: 0,
+  };
+
+  const hasConfig = Object.keys(displayConfig).length > 0;
+
+  // ── Array field specs ──────────────────────────────────────────────────────
+  interface SubFieldSpec { key: string; kind: 'text' | 'bool' | 'select'; options?: string[]; }
+  interface ArrayFieldSpec { subFields: SubFieldSpec[]; }
+
+  const ARRAY_FIELD_SPECS: Record<string, Record<string, ArrayFieldSpec>> = {
+    overviewBeSense: {
+      sensors: { subFields: [
+        { key: 'name',   kind: 'text' },
+        { key: 'value',  kind: 'text' },
+        { key: 'active', kind: 'bool' },
+        { key: 'status', kind: 'select', options: ['s-ok', 's-warn'] },
+      ]},
+    },
+    overviewBeAgentStatus: {
+      modules: { subFields: [
+        { key: 'name',   kind: 'text' },
+        { key: 'desc',   kind: 'text' },
+        { key: 'status', kind: 'select', options: ['RUN', 'IDLE'] },
+      ]},
+      alerts: { subFields: [
+        { key: 'time',  kind: 'text' },
+        { key: 'msg',   kind: 'text' },
+        { key: 'sub',   kind: 'text' },
+        { key: 'level', kind: 'select', options: ['ok', 'warning', 'info'] },
+      ]},
+    },
+    combustionDlHeader: {
+      tags: { subFields: [
+        { key: 'text',  kind: 'text' },
+        { key: 'color', kind: 'select', options: ['', 'green', 'amber', 'blue', 'red'] },
+      ]},
+    },
+    combustionDlFeatureMatrix: {
+      featureCells: { subFields: [
+        { key: 'label', kind: 'text' },
+        { key: 'value', kind: 'text' },
+      ]},
+    },
+    combustionDlFrameworkPipeline: {
+      pipelineLayers: { subFields: [
+        { key: 'label',      kind: 'text' },
+        { key: 'name',       kind: 'text' },
+        { key: 'value',      kind: 'text' },
+        { key: 'background', kind: 'text' },
+        { key: 'border',     kind: 'text' },
+        { key: 'color',      kind: 'text' },
+      ]},
+    },
+    combustionDlPhysicsMetrics: {
+      metrics: { subFields: [
+        { key: 'label', kind: 'text' },
+        { key: 'value', kind: 'text' },
+        { key: 'width', kind: 'text' },
+      ]},
+    },
+    combustionDlClassifierOutputs: {
+      outputs: { subFields: [
+        { key: 'label', kind: 'text' },
+        { key: 'value', kind: 'text' },
+        { key: 'width', kind: 'text' },
+      ]},
+    },
+    combustionDlTrainingPerformance: {
+      rows: { subFields: [
+        { key: 'label', kind: 'text' },
+        { key: 'value', kind: 'text' },
+      ]},
+    },
+  };
+
+  const saveArrayItem = (
+    fieldKey: string,
+    items: Record<string, any>[],
+    itemIndex: number,
+    subKey: string,
+    newValue: string | boolean
+  ) => {
+    const updated = items.map((item, i) =>
+      i === itemIndex ? { ...item, [subKey]: newValue } : item
+    );
+    saveField(fieldKey, updated);
+  };
+  // ──────────────────────────────────────────────────────────────────────────
 
   return (
     <div
+      key={widget.id}
       style={{
         width: 320,
         height: '100%',
@@ -88,183 +214,226 @@ export function WidgetConfigPanel({ pageId, widget, onClose }: WidgetConfigPanel
         </button>
       </div>
 
-      {/* Scrollable config fields */}
+      {/* Body */}
       <div
         style={{
           flex: 1,
-          overflowY: 'auto',
-          padding: '12px 14px',
           display: 'flex',
           flexDirection: 'column',
-          gap: 12,
+          padding: 12,
+          overflowY: 'auto',
+          gap: 10,
         }}
       >
-        {/* Common: title */}
-        {config.title !== undefined && (
-          <Field label="Title">
-            <CfgTextInput value={config.title || ''} onChange={(v) => set('title', v)} />
-          </Field>
-        )}
-
-        {/* KPI Card */}
-        {type === 'kpiCard' && (
-          <>
-            <Field label="Label">
-              <CfgTextInput value={config.label || ''} onChange={(v) => set('label', v)} />
-            </Field>
-            <Field label="Value">
-              <CfgTextInput value={String(config.value ?? '')} onChange={(v) => set('value', v)} />
-            </Field>
-            <Field label="Unit">
-              <CfgTextInput value={config.unit || ''} onChange={(v) => set('unit', v)} />
-            </Field>
-            <Field label="Trend">
-              <CfgSelect
-                value={config.trend || 'flat'}
-                options={[
-                  { label: 'Up ▲', value: 'up' },
-                  { label: 'Down ▼', value: 'down' },
-                  { label: 'Flat ◆', value: 'flat' },
-                ]}
-                onChange={(v) => set('trend', v)}
-              />
-            </Field>
-            <Field label="Trend Label">
-              <CfgTextInput value={config.trendLabel || ''} onChange={(v) => set('trendLabel', v)} />
-            </Field>
-          </>
-        )}
-
-        {/* Device ID (shared by several types) */}
-        {['sensorValueList', 'realTimeChart', 'healthRing', 'gauge', 'activeAlarms', 'statusText', 'frequencyChart'].includes(type) && (
-          <Field label="Device ID">
-            <CfgTextInput
-              value={config.deviceId || ''}
-              onChange={(v) => set('deviceId', v)}
-              placeholder="device_abc123"
-            />
-          </Field>
-        )}
-
-        {/* Field selector */}
-        {['realTimeChart', 'healthRing', 'gauge', 'statusText', 'frequencyChart'].includes(type) && (
-          <Field label="Field">
-            <CfgTextInput
-              value={config.field || ''}
-              onChange={(v) => set('field', v)}
-              placeholder="temperature"
-            />
-          </Field>
-        )}
-
-        {/* Real-Time Chart extras */}
-        {type === 'realTimeChart' && (
-          <>
-            <Field label="Chart Type">
-              <CfgSelect
-                value={config.chartType || 'line'}
-                options={[
-                  { label: 'Line', value: 'line' },
-                  { label: 'Area', value: 'area' },
-                ]}
-                onChange={(v) => set('chartType', v)}
-              />
-            </Field>
-            <Field label="Max Points">
-              <CfgNumber value={config.maxPoints ?? 100} onChange={(v) => set('maxPoints', v)} />
-            </Field>
-          </>
-        )}
-
-        {/* Gauge extras */}
-        {type === 'gauge' && (
-          <>
-            <Field label="Min">
-              <CfgNumber value={config.min ?? 0} onChange={(v) => set('min', v)} />
-            </Field>
-            <Field label="Max">
-              <CfgNumber value={config.max ?? 100} onChange={(v) => set('max', v)} />
-            </Field>
-            <Field label="Unit">
-              <CfgTextInput value={config.unit || ''} onChange={(v) => set('unit', v)} />
-            </Field>
-          </>
-        )}
-
-        {/* Health Ring extras */}
-        {type === 'healthRing' && (
-          <Field label="Max Value">
-            <CfgNumber value={config.max ?? 100} onChange={(v) => set('max', v)} />
-          </Field>
-        )}
-
-        {/* Alert List extras */}
-        {type === 'alertList' && (
-          <Field label="Max Items">
-            <CfgNumber value={config.maxItems ?? 5} onChange={(v) => set('maxItems', v)} />
-          </Field>
-        )}
-
-        {/* Arch Diagram */}
-        {type === 'archDiagram' && (
-          <Field label="Show Lightbox">
-            <CfgSelect
-              value={config.showLightbox ? 'true' : 'false'}
-              options={[
-                { label: 'Yes', value: 'true' },
-                { label: 'No', value: 'false' },
-              ]}
-              onChange={(v) => set('showLightbox', v === 'true')}
-            />
-          </Field>
-        )}
-
-        {/* JSON array fields */}
-        {(type === 'keyValueTable' || type === 'confidenceBars') && (
-          <Field label="Items (JSON array)">
-            <CfgJsonTextarea value={config.items} onChange={(v) => set('items', v)} />
-          </Field>
-        )}
-
-        {type === 'platformDiagram' && (
-          <Field label="Layers (JSON array)">
-            <CfgJsonTextarea value={config.layers} onChange={(v) => set('layers', v)} />
-          </Field>
-        )}
-
-        {type === 'moduleStatusList' && (
-          <Field label="Modules (JSON array)">
-            <CfgJsonTextarea value={config.modules} onChange={(v) => set('modules', v)} />
-          </Field>
-        )}
-
-        {type === 'agentChat' && (
+        {!hasConfig ? (
           <div
             style={{
               fontFamily: 'var(--k-font-tech)',
               fontSize: 10,
               color: 'var(--k-text-dim)',
-              letterSpacing: 1,
-              padding: '8px 0',
-              lineHeight: 1.7,
+              textAlign: 'center',
+              padding: '20px 0',
             }}
           >
-            Agent chat messages are static in POC mode. Live backend connection not implemented.
+            No configurable fields
           </div>
-        )}
+        ) : (
+          Object.entries(displayConfig).map(([key, value]) => {
+            // ── Structured array field branch ────────────────────────────────
+            const arraySpec = ARRAY_FIELD_SPECS[widget.type]?.[key];
+            if (arraySpec && Array.isArray(value)) {
+              const items = value as Record<string, any>[];
+              return (
+                <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {/* Field-level label */}
+                  <div style={keyLabelStyle}>{key}</div>
 
-        {type === 'featureMatrix' && (
-          <div
-            style={{
-              fontFamily: 'var(--k-font-tech)',
-              fontSize: 10,
-              color: 'var(--k-text-dim)',
-              letterSpacing: 1,
-              padding: '8px 0',
-            }}
-          >
-            Feature data is generated dynamically. No config required.
-          </div>
+                  {items.length === 0 ? (
+                    <div
+                      style={{
+                        fontFamily: 'var(--k-font-tech)',
+                        fontSize: 9,
+                        color: 'var(--k-text-dim)',
+                        paddingLeft: 8,
+                        fontStyle: 'italic',
+                      }}
+                    >
+                      (empty)
+                    </div>
+                  ) : (
+                    items.map((item, itemIndex) => {
+                      const itemLabel = (item.text ?? item.name ?? item.label ?? item.time ?? `ITEM ${itemIndex + 1}`) as string;
+                      return (
+                        <div key={itemIndex}>
+                          {/* Item divider */}
+                          <div
+                            style={{
+                              fontSize: 8,
+                              letterSpacing: 1.5,
+                              color: 'var(--k-text-dim)',
+                              fontFamily: 'var(--k-font-tech)',
+                              textTransform: 'uppercase',
+                              borderTop: '1px solid var(--k-border)',
+                              paddingTop: 5,
+                              marginTop: itemIndex > 0 ? 6 : 2,
+                            }}
+                          >
+                            {key.replace(/s$/, '')} · {itemLabel}
+                          </div>
+
+                          {/* Sub-fields */}
+                          {arraySpec.subFields.map((sf) => {
+                            const stateKey = `${key}.${itemIndex}.${sf.key}`;
+                            const rawVal = item[sf.key];
+
+                            if (sf.kind === 'bool') {
+                              const checked = stateKey in localArrayState
+                                ? (localArrayState[stateKey] as boolean)
+                                : Boolean(rawVal);
+                              return (
+                                <div
+                                  key={sf.key}
+                                  style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: 8, marginTop: 3 }}
+                                >
+                                  <div style={keyLabelStyle}>{sf.key}</div>
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={(e) => {
+                                      setLocalArrayState(prev => ({ ...prev, [stateKey]: e.target.checked }));
+                                      saveArrayItem(key, items, itemIndex, sf.key, e.target.checked);
+                                    }}
+                                    style={{ cursor: 'pointer', accentColor: 'var(--k-green)' }}
+                                  />
+                                </div>
+                              );
+                            }
+
+                            if (sf.kind === 'select') {
+                              const current = stateKey in localArrayState
+                                ? (localArrayState[stateKey] as string)
+                                : String(rawVal ?? '');
+                              return (
+                                <div
+                                  key={sf.key}
+                                  style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: 8, marginTop: 3 }}
+                                >
+                                  <div style={keyLabelStyle}>{sf.key}</div>
+                                  <select
+                                    value={current}
+                                    onChange={(e) => {
+                                      setLocalArrayState(prev => ({ ...prev, [stateKey]: e.target.value }));
+                                      saveArrayItem(key, items, itemIndex, sf.key, e.target.value);
+                                    }}
+                                    style={{ ...inputStyle, cursor: 'pointer' }}
+                                  >
+                                    {sf.options!.map(opt => (
+                                      <option key={opt} value={opt}>{opt}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                              );
+                            }
+
+                            // text
+                            const textVal = stateKey in localArrayState
+                              ? (localArrayState[stateKey] as string)
+                              : String(rawVal ?? '');
+                            return (
+                              <div
+                                key={sf.key}
+                                style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: 8, marginTop: 3 }}
+                              >
+                                <div style={keyLabelStyle}>{sf.key}</div>
+                                <input
+                                  type="text"
+                                  value={textVal}
+                                  onChange={(e) =>
+                                    setLocalArrayState(prev => ({ ...prev, [stateKey]: e.target.value }))
+                                  }
+                                  onBlur={(e) =>
+                                    saveArrayItem(key, items, itemIndex, sf.key, e.target.value)
+                                  }
+                                  style={inputStyle}
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              );
+            }
+            // ── End structured array branch ──────────────────────────────────
+
+            const isComplex = typeof value === 'object' && value !== null;
+            const isBool = typeof value === 'boolean';
+            const error = fieldErrors[key];
+
+            return (
+              <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                  <div style={keyLabelStyle}>{key}</div>
+                  {isBool ? (
+                    <input
+                      type="checkbox"
+                      defaultChecked={value as boolean}
+                      onChange={(e) => saveField(key, e.target.checked)}
+                      style={{ marginTop: 4, cursor: 'pointer', accentColor: 'var(--k-green)' }}
+                    />
+                  ) : isComplex ? (
+                    <textarea
+                      defaultValue={JSON.stringify(value, null, 2)}
+                      onBlur={(e) => {
+                        try {
+                          const parsed = JSON.parse(e.target.value);
+                          setFieldErrors(prev => { const n = { ...prev }; delete n[key]; return n; });
+                          saveField(key, parsed);
+                        } catch (err) {
+                          setFieldErrors(prev => ({ ...prev, [key]: (err as Error).message }));
+                        }
+                      }}
+                      style={{
+                        ...inputStyle,
+                        border: error ? '1px solid var(--k-red)' : '1px solid var(--k-border)',
+                        borderRadius: 2,
+                        height: 80,
+                        resize: 'vertical',
+                        lineHeight: '1.4',
+                        padding: 6,
+                      }}
+                    />
+                  ) : (
+                    <input
+                      type="text"
+                      defaultValue={String(value)}
+                      onBlur={(e) => saveField(key, e.target.value)}
+                      style={inputStyle}
+                    />
+                  )}
+                </div>
+                {error && (
+                  <div
+                    style={{
+                      fontFamily: 'var(--k-font-tech)',
+                      fontSize: 9,
+                      color: 'var(--k-red)',
+                      letterSpacing: 0.5,
+                      padding: '3px 6px',
+                      background: 'rgba(255,58,58,0.1)',
+                      borderRadius: 2,
+                      lineHeight: 1.3,
+                      wordBreak: 'break-word',
+                    }}
+                  >
+                    {error}
+                  </div>
+                )}
+              </div>
+            );
+          })
         )}
       </div>
 
@@ -282,96 +451,5 @@ export function WidgetConfigPanel({ pageId, widget, onClose }: WidgetConfigPanel
         CHANGES AUTO-SAVE · CLICK CANVAS TO DESELECT
       </div>
     </div>
-  );
-}
-
-/* ── Reusable field primitives ── */
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <div
-        style={{
-          fontFamily: 'var(--k-font-tech)',
-          fontSize: 9,
-          color: 'var(--k-text-dim)',
-          letterSpacing: 1.5,
-          textTransform: 'uppercase',
-          marginBottom: 4,
-        }}
-      >
-        {label}
-      </div>
-      {children}
-    </div>
-  );
-}
-
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  background: 'rgba(255,255,255,0.04)',
-  border: '1px solid var(--k-border)',
-  borderRadius: 2,
-  color: 'var(--k-pale)',
-  fontFamily: 'var(--k-font-tech)',
-  fontSize: 11,
-  padding: '5px 8px',
-  outline: 'none',
-  boxSizing: 'border-box',
-};
-
-function CfgTextInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
-  return <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} style={inputStyle} />;
-}
-
-function CfgNumber({ value, onChange }: { value: number; onChange: (v: number) => void }) {
-  return <input type="number" value={value} onChange={(e) => onChange(Number(e.target.value))} style={inputStyle} />;
-}
-
-function CfgSelect({
-  value,
-  options,
-  onChange,
-}: {
-  value: string;
-  options: Array<{ label: string; value: string }>;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <select value={value} onChange={(e) => onChange(e.target.value)} style={{ ...inputStyle, background: 'var(--k-bg-card)' }}>
-      {options.map((o) => (
-        <option key={o.value} value={o.value}>{o.label}</option>
-      ))}
-    </select>
-  );
-}
-
-function CfgJsonTextarea({ value, onChange }: { value: any; onChange: (v: any) => void }) {
-  const [raw, setRaw] = useState(JSON.stringify(value, null, 2));
-  const [hasError, setHasError] = useState(false);
-
-  const handleChange = (text: string) => {
-    setRaw(text);
-    try {
-      onChange(JSON.parse(text));
-      setHasError(false);
-    } catch {
-      setHasError(true);
-    }
-  };
-
-  return (
-    <textarea
-      value={raw}
-      onChange={(e) => handleChange(e.target.value)}
-      rows={6}
-      style={{
-        ...inputStyle,
-        fontFamily: 'Share Tech Mono, monospace',
-        fontSize: 10,
-        resize: 'vertical',
-        border: `1px solid ${hasError ? 'var(--k-red)' : 'var(--k-border)'}`,
-      }}
-    />
   );
 }

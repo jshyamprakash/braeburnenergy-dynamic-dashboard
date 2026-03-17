@@ -1,9 +1,11 @@
 'use client';
 
+import type { KosmosPage } from './types';
 import { PALETTE_ENTRIES } from './types';
 
 interface WidgetPaletteProps {
   onClose: () => void;
+  activeMandatoryType?: KosmosPage['mandatoryType'];
 }
 
 /**
@@ -11,11 +13,18 @@ interface WidgetPaletteProps {
  * All 17 widget types draggable to any position on the UnifiedCanvas.
  * Column badges removed — no column concept in the new unified layout.
  */
-export function WidgetPalette({ onClose }: WidgetPaletteProps) {
+export function WidgetPalette({ onClose, activeMandatoryType }: WidgetPaletteProps) {
   const handleDragStart = (e: React.DragEvent, widgetType: string) => {
     e.dataTransfer.effectAllowed = 'copy';
     e.dataTransfer.setData('application/kosmos-widget', widgetType);
   };
+
+  const visibleEntries = PALETTE_ENTRIES.filter((entry) => {
+    if (!entry.tabScope || entry.tabScope === 'any') return true;
+    if (activeMandatoryType === 'overview') return entry.tabScope === 'overview';
+    if (activeMandatoryType === 'combustionDl') return entry.tabScope === 'combustionDl';
+    return false;
+  });
 
   return (
     <div
@@ -89,7 +98,7 @@ export function WidgetPalette({ onClose }: WidgetPaletteProps) {
 
       {/* Widget list */}
       <div style={{ flex: 1, overflowY: 'auto' }}>
-        {PALETTE_ENTRIES.map((entry) => (
+        {visibleEntries.map((entry) => (
           <div
             key={entry.type}
             draggable
@@ -135,6 +144,19 @@ export function WidgetPalette({ onClose }: WidgetPaletteProps) {
             </div>
           </div>
         ))}
+        {visibleEntries.length === 0 && (
+          <div
+            style={{
+              padding: 12,
+              fontFamily: 'var(--k-font-tech)',
+              fontSize: 10,
+              color: 'var(--k-text-dim)',
+              lineHeight: 1.6,
+            }}
+          >
+            No widgets available for this tab.
+          </div>
+        )}
       </div>
     </div>
   );

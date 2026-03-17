@@ -6,37 +6,67 @@
  */
 
 export type KosmosWidgetType =
-  // Kosmos-native widgets (dark-themed, showcase-matched)
-  | 'kpiCard'
-  | 'sensorValueList'
-  | 'realTimeChart'
-  | 'featureMatrix'
-  | 'alertList'
-  | 'moduleStatusList'
-  | 'healthRing'
-  | 'archDiagram'
-  // Platform widgets (re-skinned to Kosmos theme)
-  | 'gauge'
-  | 'chart'
-  | 'activeAlarms'
-  | 'statusText'
-  // New showcase widgets (ADR-044)
-  | 'confidenceBars'
-  | 'keyValueTable'
-  | 'frequencyChart'
-  | 'platformDiagram'
-  | 'agentChat'
-  // Showcase-exact panel widgets (plan: Showcase-Exact Widget Components)
-  | 'beSensePanel'
-  | 'beAgentPanel'
-  | 'combustionHeader'
-  | 'dlFrameworkPipeline'
-  | 'precursorClassification'
-  | 'agentModules'
-  | 'platformStatus'
-  | 'vsOemPlatforms'
-  | 'deploymentModes'
-  | 'conferenceInfo';
+  // Mandatory tab widgets
+  | 'platformArchitecture'
+  | 'beAgentTabConfig'
+  // Overview widgets
+  | 'overviewBeSense'
+  | 'overviewAnomalyMetric'
+  | 'overviewLoadMetric'
+  | 'overviewEgtMetric'
+  | 'overviewRealtimeChart'
+  | 'overviewDataFlow'
+  | 'overviewBeAgentStatus'
+  // Combustion DL widgets
+  | 'combustionDlHeader'
+  | 'combustionDlPressureSignal'
+  | 'combustionDlFrequencySpectrum'
+  | 'combustionDlFeatureMatrix'
+  | 'combustionDlFrameworkPipeline'
+  | 'combustionDlAnomalyTrend'
+  | 'combustionDlPhysicsMetrics'
+  | 'combustionDlPrecursorClassification'
+  | 'combustionDlClassifierOutputs'
+  | 'combustionDlTrainingPerformance'
+  | 'combustionDlTurbineInfo';
+
+export interface BeAgentModule {
+  id: string;
+  name: string;
+  desc: string;
+  status: 'ACTIVE' | 'IDLE';
+  detailDesc: string;
+  metrics: { label: string; value: string; color: string }[];
+}
+
+export interface BeAgentStatusRow {
+  id: string;
+  label: string;
+  value: string;
+  tagType: 'green' | 'amber' | 'blue' | 'red';
+}
+
+export interface BeAgentFleetMetric {
+  id: string;
+  label: string;
+  value: string;
+  color: string;
+}
+
+export interface BeAgentAction {
+  id: string;
+  time: string;
+  msg: string;
+  level: 'ok' | 'info' | 'warn';
+}
+
+export interface BeAgentTabConfig {
+  modules: BeAgentModule[];
+  platformStatus: BeAgentStatusRow[];
+  fleetOverview: BeAgentFleetMetric[];
+  recentActions: BeAgentAction[];
+  cannedResponses: string[];
+}
 
 export interface KosmosWidget {
   id: string;
@@ -51,12 +81,41 @@ export interface KosmosWidget {
   };
 }
 
+/** Platform Architecture card — text label */
+export interface PlatCard {
+  id: string;
+  text: string;
+}
+
+/** Platform Architecture subsection layer (e.g., Physical Assets, BE SENSE™, etc.) */
+export interface PlatSubsection {
+  id: string;
+  title: string;
+  style: 'pb-deep' | 'pb-blue' | 'pb-green' | 'pb-teal';
+  borderColor: string;
+  labelColor?: string;
+  cards: PlatCard[];
+}
+
+/** Platform Architecture widget configuration */
+export interface PlatformArchitectureConfig {
+  subsections: PlatSubsection[];
+}
+
 export interface KosmosPage {
   id: string;
   name: string;
   order: number;
   /** Flat widget list — replaces columns{left,middle,right} (ADR-044) */
   widgets: KosmosWidget[];
+  /** Mark as mandatory page (e.g., Overview, Architecture) */
+  isMandatory?: boolean;
+  /** Type of mandatory page: overview, combustionDl, beAgent, kosmosArchitecture */
+  mandatoryType?: 'overview' | 'combustionDl' | 'beAgent' | 'kosmosArchitecture';
+  /** Layout format version — pages with layoutVersion >= 2 skip legacy migration */
+  layoutVersion?: number;
+  /** Schema version — pages without this field (or with older version) are re-seeded on load */
+  layoutSchemaVersion?: number;
 }
 
 /** Dashboard entity returned by API (ADR-045: user-based sharing) */
@@ -90,354 +149,285 @@ export interface PaletteEntry {
   description: string;
   defaultConfig: Record<string, any>;
   defaultLayout: { x: number; y: number; w: number; h: number };
+  tabScope?: 'overview' | 'combustionDl' | 'any';
 }
 
 export const PALETTE_ENTRIES: PaletteEntry[] = [
   {
-    type: 'kpiCard',
-    label: 'KPI Card',
-    icon: '◆',
-    description: 'Single value with label, unit and trend',
-    defaultConfig: { label: 'KPI', value: '—', unit: '', trend: 'flat', trendLabel: '' },
-    defaultLayout: { x: 0, y: 0, w: 3, h: 2 },
-  },
-  {
-    type: 'sensorValueList',
-    label: 'Sensor List',
-    icon: '≡',
-    description: 'Tag:value list with status indicators',
-    defaultConfig: { title: 'Sensors', deviceId: '', fields: [] },
-    defaultLayout: { x: 0, y: 0, w: 3, h: 4 },
-  },
-  {
-    type: 'realTimeChart',
-    label: 'Real-Time Chart',
-    icon: '〜',
-    description: 'Live waveform or time-series chart',
-    defaultConfig: { title: 'Real-Time', deviceId: '', field: '', chartType: 'line' },
-    defaultLayout: { x: 0, y: 0, w: 6, h: 4 },
-  },
-  {
-    type: 'featureMatrix',
-    label: 'Feature Matrix',
-    icon: '⬡',
-    description: '5×5 heatmap grid for multi-dimensional data',
-    defaultConfig: { title: 'Features', data: [] },
-    defaultLayout: { x: 0, y: 0, w: 4, h: 4 },
-  },
-  {
-    type: 'alertList',
-    label: 'Alert List',
-    icon: '⚠',
-    description: 'Alert feed with severity colour coding',
-    defaultConfig: { title: 'Alerts', deviceId: '', maxItems: 5 },
-    defaultLayout: { x: 0, y: 0, w: 3, h: 4 },
-  },
-  {
-    type: 'moduleStatusList',
-    label: 'Module Status',
-    icon: '●',
-    description: 'Module list with online/offline status dots',
-    defaultConfig: { title: 'Modules', modules: [] },
-    defaultLayout: { x: 0, y: 0, w: 3, h: 5 },
-  },
-  {
-    type: 'healthRing',
-    label: 'Health Ring',
-    icon: '◎',
-    description: 'Circular gauge showing a health index',
-    defaultConfig: { title: 'Health Index', deviceId: '', field: '', max: 100 },
-    defaultLayout: { x: 0, y: 0, w: 3, h: 3 },
-  },
-  {
-    type: 'archDiagram',
-    label: 'Architecture Diagram',
-    icon: '⬡',
-    description: 'Embeds the platform architecture image',
-    defaultConfig: { title: 'Architecture', showLightbox: true },
-    defaultLayout: { x: 0, y: 0, w: 6, h: 5 },
-  },
-  {
-    type: 'gauge',
-    label: 'Gauge',
-    icon: '◉',
-    description: 'Radial gauge for a sensor value',
-    defaultConfig: { title: 'Gauge', deviceId: '', field: '', min: 0, max: 100, unit: '' },
-    defaultLayout: { x: 0, y: 0, w: 3, h: 3 },
-  },
-  {
-    type: 'activeAlarms',
-    label: 'Active Alarms',
-    icon: '🔔',
-    description: 'ISA-18.2 active alarm feed',
-    defaultConfig: { title: 'Active Alarms', deviceId: '' },
-    defaultLayout: { x: 0, y: 0, w: 6, h: 4 },
-  },
-  {
-    type: 'statusText',
-    label: 'Status Text',
-    icon: '▣',
-    description: 'Device field value with status badge',
-    defaultConfig: { title: 'Status', deviceId: '', field: '', goodValues: [], warningValues: [] },
-    defaultLayout: { x: 0, y: 0, w: 4, h: 2 },
-  },
-  // New showcase widgets (ADR-044)
-  {
-    type: 'confidenceBars',
-    label: 'Confidence Bars',
-    icon: '▌',
-    description: 'Labeled progress bars showing confidence or percentage values',
-    defaultConfig: {
-      title: 'Classifier Outputs',
-      items: [
-        { label: 'Normal Operation', value: 86, color: 'green' },
-        { label: 'Lean Blowout Risk', value: 9, color: 'amber' },
-        { label: 'Flashback Risk', value: 3, color: 'blue' },
-        { label: 'Thermo-acoustic', value: 2, color: 'red' },
-      ],
-    },
-    defaultLayout: { x: 0, y: 0, w: 3, h: 4 },
-  },
-  {
-    type: 'keyValueTable',
-    label: 'Key-Value Table',
-    icon: '⊟',
-    description: 'Two-column key/value rows for status or fleet data',
-    defaultConfig: {
-      title: 'Fleet Overview',
-      items: [
-        { key: 'TOTAL UNITS', value: '12' },
-        { key: 'ONLINE', value: '10' },
-        { key: 'ALERTS ACTIVE', value: '2' },
-      ],
-    },
-    defaultLayout: { x: 0, y: 0, w: 3, h: 3 },
-  },
-  {
-    type: 'frequencyChart',
-    label: 'Frequency Chart',
-    icon: '≋',
-    description: 'Bar chart for frequency spectrum or histogram data',
-    defaultConfig: { title: 'Frequency Spectrum', deviceId: '', field: '' },
-    defaultLayout: { x: 0, y: 0, w: 5, h: 4 },
-  },
-  {
-    type: 'platformDiagram',
-    label: 'Platform Diagram',
-    icon: '⬡',
-    description: 'Vertical layered platform architecture diagram',
-    defaultConfig: {
-      title: 'Platform Architecture',
-      layers: [
-        { label: 'Physical Assets', color: 'base', items: ['Gas Turbine', 'Balance of Plant'] },
-        { label: 'BE SENSE™', color: 'soft', items: ['Sensor Fusion', 'CalorieSense™'] },
-        { label: 'BE AGENT™', color: 'green', items: ['CD Precursor', 'Thermo Perf.'] },
-        { label: 'KOSMOS™', color: 'teal', items: ['Edge Node', 'Fleet Dashboard'] },
-      ],
-    },
-    defaultLayout: { x: 0, y: 0, w: 6, h: 6 },
-  },
-  {
-    type: 'agentChat',
-    label: 'Agent Chat',
-    icon: '⟳',
-    description: 'BE Agent™ AI chat interface (display only)',
-    defaultConfig: {
-      title: 'BE AGENT™',
-      messages: [
-        { role: 'system', text: 'BE Agent™ online. Kosmos platform active. All modules nominal.' },
-        { role: 'agent', text: 'CD precursor score: 0.14 — Normal operation. No intervention required.' },
-      ],
-    },
-    defaultLayout: { x: 0, y: 0, w: 5, h: 6 },
-  },
-  // Showcase-exact panel widgets
-  {
-    type: 'beSensePanel',
-    label: 'BE SENSE™ Panel',
+    type: 'overviewBeSense',
+    label: 'BE Sense',
     icon: '◈',
-    description: 'Sensor fusion panel: sensor grid, acquisition settings, CalorieSense link',
+    description: 'Sensor fusion, acquisition and CalorieSense link.',
     defaultConfig: {
-      title: 'BE SENSE™',
+      sampleRate: '50 kHz',
+      channels: '16 Active',
+      latency: '< 8 ms',
+      cvValue: '38.2 MJ/m³',
       sensors: [
-        { name: 'CD-P01', value: '4.2 kPa', status: 'ok' },
-        { name: 'CD-P02', value: '4.1 kPa', status: 'ok' },
-        { name: 'T-EGT', value: '612°C', status: 'ok' },
-        { name: 'VIB-X', value: '2.1 mm/s', status: 'warn' },
-        { name: 'NOx', value: '18.4 ppm', status: 'ok' },
-        { name: 'CO', value: '12.1 ppm', status: 'ok' },
-        { name: 'CV', value: '38.2 MJ/m³', status: 'ok' },
-        { name: 'H₂%', value: '3.2%', status: 'ok' },
+        { name: 'CD-P01', value: '4.2 kPa', active: true, status: 's-ok' },
+        { name: 'CD-P02', value: '4.1 kPa', active: true, status: 's-ok' },
+        { name: 'T-EGT', value: '612°C', active: true, status: 's-ok' },
+        { name: 'VIB-X', value: '2.1 mm/s', active: false, status: 's-warn' },
+        { name: 'NOx', value: '18.4 ppm', active: true, status: 's-ok' },
+        { name: 'CO', value: '12.1 ppm', active: true, status: 's-ok' },
+        { name: 'CV', value: '38.2 MJ/m³', active: true, status: 's-ok' },
+        { name: 'H₂%', value: '3.2 %', active: true, status: 's-ok' },
       ],
-      acquisition: {
-        sampleRate: '50 kHz',
-        channels: '16 Active',
-        latency: '< 8 ms',
-        edgeNode: 'ACTIVE',
-      },
-      calorieSense: {
-        value: '38.2 MJ/m³',
-        sub: '1024.7 BTU/SCF',
-        tags: ['CV ✓', 'H2F ✓', 'CARI'],
-      },
     },
-    defaultLayout: { x: 0, y: 0, w: 3, h: 8 },
+    defaultLayout: { x: 16, y: 16, w: 300, h: 760 },
+    tabScope: 'overview',
   },
   {
-    type: 'beAgentPanel',
-    label: 'BE AGENT™ Panel',
+    type: 'overviewAnomalyMetric',
+    label: 'Anomaly Score',
+    icon: '◈',
+    description: 'Overview anomaly score metric card.',
+    defaultConfig: {},
+    defaultLayout: { x: 332, y: 16, w: 260, h: 150 },
+    tabScope: 'overview',
+  },
+  {
+    type: 'overviewLoadMetric',
+    label: 'Turbine Load',
+    icon: '◈',
+    description: 'Overview turbine load metric card.',
+    defaultConfig: { label: 'TURBINE LOAD', unit: '% MCR', value: '84.2', trend: '◆ STEADY' },
+    defaultLayout: { x: 608, y: 16, w: 260, h: 150 },
+    tabScope: 'overview',
+  },
+  {
+    type: 'overviewEgtMetric',
+    label: 'EGT Spread',
+    icon: '◈',
+    description: 'Overview EGT spread metric card.',
+    defaultConfig: { label: 'EGT SPREAD', unit: '°C Δ', value: '12.4', trend: '▲ MONITOR' },
+    defaultLayout: { x: 884, y: 16, w: 260, h: 150 },
+    tabScope: 'overview',
+  },
+  {
+    type: 'overviewRealtimeChart',
+    label: 'Realtime Chart',
+    icon: '〜',
+    description: 'Combustion dynamics realtime signal chart.',
+    defaultConfig: {},
+    defaultLayout: { x: 332, y: 182, w: 812, h: 248 },
+    tabScope: 'overview',
+  },
+  {
+    type: 'overviewDataFlow',
+    label: 'Data Flow',
+    icon: '⬡',
+    description: 'Kosmos platform data flow architecture.',
+    defaultConfig: {},
+    defaultLayout: { x: 332, y: 446, w: 812, h: 330 },
+    tabScope: 'overview',
+  },
+  {
+    type: 'overviewBeAgentStatus',
+    label: 'BE Agent',
     icon: '⟳',
-    description: 'Agent status panel: module list, alerts, and health ring score',
+    description: 'Agent status, alerts and health index.',
     defaultConfig: {
-      title: 'BE AGENT™',
+      healthScore: 86,
       modules: [
-        { name: 'CD Precursor', desc: 'RUN', status: 'active' },
-        { name: 'Thermo Perf.', desc: 'RUN', status: 'active' },
-        { name: 'Vibration', desc: 'IDLE', status: 'idle' },
-        { name: 'Emissions Opt.', desc: 'IDLE', status: 'idle' },
-        { name: 'Fuel Quality', desc: 'RUN', status: 'active' },
-        { name: 'Asset Life', desc: 'IDLE', status: 'idle' },
+        { name: 'CD Precursor', desc: 'Feature-driven DL anomaly detection', status: 'RUN' },
+        { name: 'Thermo Perf.', desc: 'Compressor / turbine efficiency', status: 'RUN' },
+        { name: 'Vibration', desc: 'Rotor dynamics & blade health', status: 'IDLE' },
+        { name: 'Emissions Opt.', desc: 'NOx/CO optimisation loop', status: 'IDLE' },
+        { name: 'Fuel Quality', desc: 'CalorieSense™ adaptive tuning', status: 'RUN' },
+        { name: 'Asset Life', desc: 'Creep / LCF remaining life', status: 'IDLE' },
       ],
       alerts: [
-        { time: '14:58:02', msg: 'Combustion stable', sub: 'CD anomaly score nominal', severity: 'ok' },
-        { time: '14:52:17', msg: 'VIB-X elevated', sub: '2.1 mm/s — monitor bearing', severity: 'warning' },
-        { time: '14:40:00', msg: 'CV shift detected', sub: 'H₂ fraction +0.4% — adapting', severity: 'info' },
+        { time: '14:58:02', msg: 'Combustion stable', sub: 'CD anomaly score nominal', level: 'ok' },
+        { time: '14:52:17', msg: 'VIB-X elevated', sub: '2.1 mm/s — monitor bearing', level: 'warning' },
+        { time: '14:40:00', msg: 'CV shift detected', sub: 'H₂ fraction +0.4% — adapting', level: 'info' },
       ],
-      healthScore: 86,
-      healthLabel: 'TURBINE HEALTH INDEX',
     },
-    defaultLayout: { x: 0, y: 0, w: 3, h: 7 },
+    defaultLayout: { x: 1160, y: 16, w: 320, h: 760 },
+    tabScope: 'overview',
   },
   {
-    type: 'combustionHeader',
-    label: 'Combustion Header',
+    type: 'combustionDlHeader',
+    label: 'DL Header',
     icon: '◈',
-    description: 'Full-width paper info card with description and tag cluster',
+    description: 'Paper demo heading and method summary.',
     defaultConfig: {
       title: 'FEATURE-DRIVEN DEEP LEARNING — GT2026 PAPER DEMO',
-      paperRef: 'GT2026-179161',
-      description:
-        'Agentic AI framework applying physics-informed feature extraction from high-speed combustion dynamics pressure signals. Autoencoder + LSTM network detects thermoacoustic precursors prior to visible lean blowout or flashback events.',
-      tags: ['GT2026-179161', 'LIVE INFERENCE', 'AUTOENCODER', 'LSTM', 'DFT FEATURES', 'THERMO-ACOUSTIC'],
+      description: `Agentic AI framework applying physics-informed feature extraction from high-speed combustion dynamics pressure signals.
+Autoencoder + LSTM network detects thermoacoustic precursors prior to visible lean blowout or flashback events.
+Features: DFT amplitude spectra, SPL, Hurst exponent, Shannon entropy, mutual information.`,
+      tags: [
+        { text: 'AUTOENCODER', color: 'green' },
+        { text: 'LSTM', color: '' },
+        { text: 'DFT FEATURES', color: '' },
+        { text: 'THERMO-ACOUSTIC', color: 'amber' },
+      ],
     },
-    defaultLayout: { x: 0, y: 0, w: 12, h: 3 },
+    defaultLayout: { x: 16, y: 16, w: 1168, h: 120 },
+    tabScope: 'combustionDl',
   },
   {
-    type: 'dlFrameworkPipeline',
-    label: 'DL Framework Pipeline',
-    icon: '▥',
-    description: 'Deep learning architecture pipeline with shimmer animation',
+    type: 'combustionDlPressureSignal',
+    label: 'CD Pressure',
+    icon: '◈',
+    description: 'Live CD pressure signal card.',
+    defaultConfig: { title: 'CD PRESSURE SIGNAL' },
+    defaultLayout: { x: 16, y: 152, w: 360, h: 220 },
+    tabScope: 'combustionDl',
+  },
+  {
+    type: 'combustionDlFrequencySpectrum',
+    label: 'FFT Spectrum',
+    icon: '◈',
+    description: 'Frequency spectrum DFT card.',
+    defaultConfig: { title: 'FREQUENCY SPECTRUM (DFT)' },
+    defaultLayout: { x: 16, y: 388, w: 360, h: 220 },
+    tabScope: 'combustionDl',
+  },
+  {
+    type: 'combustionDlFeatureMatrix',
+    label: 'Feature Matrix',
+    icon: '◈',
+    description: 'Extracted physics-informed feature grid.',
+    defaultConfig: {
+      title: 'EXTRACTED FEATURES',
+      featureCells: [
+        { label: 'DFT-50Hz', value: '0.42' },
+        { label: 'DFT-80Hz', value: '0.35' },
+        { label: 'DFT-120Hz', value: '0.68' },
+        { label: 'DFT-186Hz', value: '0.85' },
+        { label: 'DFT-240Hz', value: '0.52' },
+        { label: 'SPL-RMS', value: '0.61' },
+        { label: 'SPL-Peak', value: '0.73' },
+        { label: 'SPL-Var', value: '0.45' },
+        { label: 'SPL-dB', value: '0.58' },
+        { label: 'SPL-idx', value: '0.64' },
+        { label: 'Hurst-H', value: '0.48' },
+        { label: 'Hurst-R/S', value: '0.55' },
+        { label: 'Hurst-var', value: '0.72' },
+        { label: 'Hurst-lag', value: '0.39' },
+        { label: 'Hurst-fit', value: '0.67' },
+        { label: 'Entropy-S', value: '0.51' },
+        { label: 'Entropy-R', value: '0.58' },
+        { label: 'Entropy-P', value: '0.74' },
+        { label: 'Entropy-K', value: '0.43' },
+        { label: 'Entropy-J', value: '0.62' },
+        { label: 'MI-P/T', value: '0.47' },
+        { label: 'MI-T/N', value: '0.65' },
+        { label: 'MI-N/P', value: '0.53' },
+        { label: 'MI-cross', value: '0.76' },
+        { label: 'MI-auto', value: '0.44' },
+      ],
+    },
+    defaultLayout: { x: 16, y: 624, w: 360, h: 360 },
+    tabScope: 'combustionDl',
+  },
+  {
+    type: 'combustionDlFrameworkPipeline',
+    label: 'DL Pipeline',
+    icon: '⬡',
+    description: 'Autoencoder and LSTM framework pipeline.',
     defaultConfig: {
       title: 'DL FRAMEWORK PIPELINE',
-      layers: [
-        { label: 'INPUT', name: 'Raw CD Signal [N×1]', val: '50 kHz', color: 'rgba(13,60,122,0.5)', border: 'var(--k-mid)', text: 'var(--k-pale)' },
-        { label: 'FEATURE EXT.', name: 'Physics-Informed Features', val: 'DFT·SPL·H·S', color: 'rgba(21,96,189,0.25)', border: 'var(--k-soft)', text: 'var(--k-ultra-light)' },
-        { label: 'ENCODER', name: 'Conv1D Autoencoder', val: '128→32', color: 'rgba(0,176,80,0.12)', border: 'var(--k-green)', text: 'var(--k-green)' },
-        { label: 'TEMPORAL', name: 'Bi-LSTM Sequence', val: '32→64', color: 'rgba(0,176,80,0.12)', border: 'var(--k-green)', text: 'var(--k-green)' },
-        { label: 'DECODER', name: 'Reconstruction', val: '64→128', color: 'rgba(21,96,189,0.2)', border: 'var(--k-mid)', text: 'var(--k-soft)' },
-        { label: 'ANOMALY', name: 'Reconstruction Error → Score', val: '0.14', color: 'rgba(255,184,0,0.1)', border: 'var(--k-amber)', text: 'var(--k-amber)' },
+      pipelineLayers: [
+        { label: 'INPUT', name: 'Raw CD Signal [N×1]', value: '50 kHz', background: 'rgba(13,60,122,0.5)', border: 'var(--k-mid)', color: 'var(--k-pale)' },
+        { label: 'FEATURE EXT.', name: 'Physics-Informed Features', value: 'DFT·SPL·H·S', background: 'rgba(21,96,189,0.25)', border: 'var(--k-soft)', color: 'var(--k-ultra-light)' },
+        { label: 'ENCODER', name: 'Conv1D Autoencoder', value: '128→32', background: 'rgba(0,176,80,0.12)', border: 'var(--k-green)', color: 'var(--k-green)' },
+        { label: 'TEMPORAL', name: 'Bi-LSTM Sequence', value: '32→64', background: 'rgba(0,176,80,0.12)', border: 'var(--k-green)', color: 'var(--k-green)' },
+        { label: 'DECODER', name: 'Reconstruction', value: '64→128', background: 'rgba(21,96,189,0.2)', border: 'var(--k-mid)', color: 'var(--k-soft)' },
       ],
     },
-    defaultLayout: { x: 0, y: 0, w: 5, h: 5 },
+    defaultLayout: { x: 392, y: 152, w: 390, h: 330 },
+    tabScope: 'combustionDl',
   },
   {
-    type: 'precursorClassification',
-    label: 'Precursor Classification',
-    icon: '◎',
-    description: 'Score ring with classification label',
+    type: 'combustionDlAnomalyTrend',
+    label: 'Anomaly Trend',
+    icon: '◈',
+    description: 'Anomaly score trend chart.',
+    defaultConfig: { title: 'ANOMALY SCORE TREND' },
+    defaultLayout: { x: 392, y: 498, w: 390, h: 190 },
+    tabScope: 'combustionDl',
+  },
+  {
+    type: 'combustionDlPhysicsMetrics',
+    label: 'Physics Metrics',
+    icon: '◈',
+    description: 'SPL, Hurst, entropy and other physics metrics.',
     defaultConfig: {
-      confidence: 86,
-      classification: 'NORMAL OPERATION',
-      subLabel: 'No precursor signature detected',
-      color: 'var(--k-green)',
+      title: 'PHYSICS FEATURE METRICS',
+      metrics: [
+        { label: 'SPL (Overall)', value: '142.3 dB', width: 72 },
+        { label: 'Hurst Exponent', value: '0.63', width: 63 },
+        { label: 'Shannon Entropy', value: '4.21 nats', width: 55 },
+        { label: 'Mutual Info (P·T)', value: '0.38', width: 38 },
+        { label: 'DFT Dominant Freq.', value: '186 Hz', width: 45 },
+      ],
     },
-    defaultLayout: { x: 0, y: 0, w: 3, h: 4 },
+    defaultLayout: { x: 392, y: 704, w: 390, h: 200 },
+    tabScope: 'combustionDl',
   },
   {
-    type: 'agentModules',
-    label: 'Agent Modules',
+    type: 'combustionDlPrecursorClassification',
+    label: 'Classification',
     icon: '⟳',
-    description: '9 clickable modules with inline module detail panel',
+    description: 'Precursor classification score ring.',
     defaultConfig: {
-      title: 'BE AGENT™ MODULES',
-      modules: [
-        { name: 'CD Precursor Detection', desc: 'GT2026 — Autoencoder·LSTM·DFT features', status: 'active', detailDesc: 'Physics-informed DL framework for combustion instability precursor identification. Autoencoder-LSTM pipeline with 45-second advance warning on lean blowout and flashback events.', metrics: [{ label: 'ANOMALY SCORE', value: '0.14', color: 'var(--k-green)' }, { label: 'LEAD TIME', value: '~45s', color: 'var(--k-soft)' }, { label: 'F1 SCORE', value: '0.94', color: 'var(--k-amber)' }] },
-        { name: 'Thermodynamic Performance', desc: 'Compressor map · efficiency tracking', status: 'active', detailDesc: 'Monitors compressor efficiency, turbine inlet temperature, and heat rate trends to detect performance degradation and fouling.', metrics: [{ label: 'EFFICIENCY', value: '91.2%', color: 'var(--k-green)' }, { label: 'HEAT RATE', value: '9.82 MJ/kWh', color: 'var(--k-soft)' }, { label: 'DELTA T', value: '12.4°C', color: 'var(--k-amber)' }] },
-        { name: 'Fuel Quality Adaptation', desc: 'CalorieSense™ link · CV · H₂ adaptive', status: 'active', detailDesc: 'Real-time fuel calorific value monitoring with adaptive control. CalorieSense™ integration ensures safe combustion across variable H₂ blends.', metrics: [{ label: 'CV', value: '38.2 MJ/m³', color: 'var(--k-green)' }, { label: 'H₂%', value: '3.2%', color: 'var(--k-soft)' }, { label: 'ADAPT.', value: 'ACTIVE', color: 'var(--k-green)' }] },
-        { name: 'Vibration & Rotor Dynamics', desc: 'Blade pass · sub-sync · bearing', status: 'idle', detailDesc: 'Vibration spectral analysis for blade pass frequencies, sub-synchronous instabilities, and bearing health assessment.', metrics: [{ label: 'VIB-X', value: '2.1 mm/s', color: 'var(--k-amber)' }, { label: 'BLADE PASS', value: '186 Hz', color: 'var(--k-soft)' }, { label: 'BEARING', value: 'MONITOR', color: 'var(--k-amber)' }] },
-        { name: 'Emissions Optimisation', desc: 'NOx · CO · CEMS closed-loop', status: 'idle', detailDesc: 'Closed-loop emissions control targeting regulatory NOx and CO limits. CEMS integration with real-time trim adjustments.', metrics: [{ label: 'NOx', value: '18.4 ppm', color: 'var(--k-green)' }, { label: 'CO', value: '12.1 ppm', color: 'var(--k-green)' }, { label: 'LIMIT', value: '25 ppm', color: 'var(--k-soft)' }] },
-        { name: 'Asset Life Management', desc: 'Creep · LCF · RUL · hot section', status: 'idle', detailDesc: 'Remaining useful life prediction for hot section components using creep and low-cycle fatigue models.', metrics: [{ label: 'RUL', value: '4,200 h', color: 'var(--k-green)' }, { label: 'LCF', value: '78%', color: 'var(--k-soft)' }, { label: 'CREEP', value: 'LOW', color: 'var(--k-green)' }] },
-        { name: 'Inlet Conditioning', desc: 'Evap cooler · chiller · fogging', status: 'idle', detailDesc: 'Inlet air temperature and humidity management for power augmentation and stable combustion at varying ambient conditions.', metrics: [{ label: 'INLET T', value: '18.2°C', color: 'var(--k-soft)' }, { label: 'POWER AUG', value: '+2.1%', color: 'var(--k-green)' }, { label: 'STATUS', value: 'IDLE', color: 'var(--k-text-dim)' }] },
-        { name: 'Balance of Plant', desc: 'HRSG · FGC · electrical systems', status: 'idle', detailDesc: 'Balance of plant monitoring including HRSG performance, fuel gas conditioning, and auxiliary electrical systems.', metrics: [{ label: 'HRSG EFF.', value: '88.4%', color: 'var(--k-soft)' }, { label: 'FGC', value: 'NORMAL', color: 'var(--k-green)' }, { label: 'ELEC.', value: 'OK', color: 'var(--k-green)' }] },
-        { name: 'Multi-fleet Benchmarking', desc: 'OEM-agnostic KPI normalisation', status: 'idle', detailDesc: 'Cross-OEM fleet performance normalisation and benchmarking. Identifies best-in-fleet practices and outlier units.', metrics: [{ label: 'FLEET SIZE', value: '12 units', color: 'var(--k-soft)' }, { label: 'ONLINE', value: '10', color: 'var(--k-green)' }, { label: 'OEMs', value: '3', color: 'var(--k-pale)' }] },
-      ],
+      title: 'PRECURSOR CLASSIFICATION',
+      confidence: 86,
+      classLabel: 'NORMAL OPERATION',
+      subText: 'No precursor signature detected',
     },
-    defaultLayout: { x: 0, y: 0, w: 4, h: 9 },
+    defaultLayout: { x: 798, y: 152, w: 320, h: 220 },
+    tabScope: 'combustionDl',
   },
   {
-    type: 'platformStatus',
-    label: 'Platform Status',
-    icon: '▣',
-    description: 'Key-value rows with colored tag badges',
+    type: 'combustionDlClassifierOutputs',
+    label: 'Classifier Outputs',
+    icon: '◈',
+    description: 'Class probability output bars.',
     defaultConfig: {
-      title: 'PLATFORM STATUS',
+      title: 'CLASSIFIER OUTPUTS',
+      outputs: [
+        { label: 'Normal Operation', value: '86%', width: 86 },
+        { label: 'Lean Blowout Risk', value: '9%', width: 9 },
+        { label: 'Flashback Risk', value: '3%', width: 3 },
+        { label: 'Thermo-acoustic Instb.', value: '2%', width: 2 },
+      ],
+    },
+    defaultLayout: { x: 798, y: 388, w: 320, h: 180 },
+    tabScope: 'combustionDl',
+  },
+  {
+    type: 'combustionDlTrainingPerformance',
+    label: 'Training Perf',
+    icon: '◈',
+    description: 'Training and model quality metrics.',
+    defaultConfig: {
+      title: 'TRAINING PERFORMANCE',
       rows: [
-        { label: 'EDGE NODE', value: 'ONLINE', tagColor: 'green' },
-        { label: 'CLOUD SYNC', value: 'LIVE', tagColor: 'green' },
-        { label: 'BE SENSE™', value: 'FUSED', tagColor: 'green' },
-        { label: 'CALORIESENSE™', value: 'LINKED', tagColor: 'green' },
-        { label: 'CMMS BRIDGE', value: 'STANDBY', tagColor: 'amber' },
-        { label: 'DATA OWNER', value: 'OPERATOR', tagColor: 'blue' },
+        { label: 'DETECTION F1', value: '0.94' },
+        { label: 'PRECISION', value: '0.92' },
+        { label: 'RECALL', value: '0.96' },
+        { label: 'LEAD TIME', value: '~45 sec' },
+        { label: 'TRAIN DATA', value: '8,400 windows' },
       ],
     },
-    defaultLayout: { x: 0, y: 0, w: 3, h: 4 },
+    defaultLayout: { x: 798, y: 584, w: 320, h: 170 },
+    tabScope: 'combustionDl',
   },
   {
-    type: 'vsOemPlatforms',
-    label: 'VS OEM Platforms',
-    icon: '✓',
-    description: 'Kosmos™ advantage checkmark list (USP points)',
+    type: 'combustionDlTurbineInfo',
+    label: 'Turbine Info',
+    icon: '◈',
+    description: 'Unit/OEM/combustor/fuel summary card for Combustion DL.',
     defaultConfig: {
-      title: 'KOSMOS™ vs OEM PLATFORMS',
-      points: [
-        'OEM-agnostic — GE, Siemens, MHI, Solar',
-        'Full data ownership — operator retained',
-        'Transparent models — no black box',
-        'Rapid deployment — weeks not years',
-        'No LTSA conflict of interest',
-        '50 kHz high-speed combustion data',
-        'Cross-OEM fleet benchmarking',
-        'Edge + cloud / on-prem deployment',
-      ],
+      unit: 'GT-DLE Frame 6B',
+      oem: 'OEM-Agnostic',
+      combustor: 'DLE / Lean Pre-mix',
+      fuel: 'NG + H2 blend',
     },
-    defaultLayout: { x: 0, y: 0, w: 3, h: 6 },
-  },
-  {
-    type: 'deploymentModes',
-    label: 'Deployment Modes',
-    icon: '⬡',
-    description: '3-tier deployment options: Edge / Private Cloud / On-Premises',
-    defaultConfig: {
-      title: 'DEPLOYMENT MODES',
-      modes: [
-        { title: 'EDGE', description: 'Sub-8ms latency · on-site compute · no cloud dependency', color: 'var(--k-soft)' },
-        { title: 'PRIVATE CLOUD', description: 'Fleet-wide analytics · historian · dashboards', color: 'var(--k-mid)' },
-        { title: 'ON-PREMISES', description: 'Air-gapped · operator data sovereignty', color: 'var(--k-deep)' },
-      ],
-    },
-    defaultLayout: { x: 0, y: 0, w: 3, h: 5 },
-  },
-  {
-    type: 'conferenceInfo',
-    label: 'Conference Info',
-    icon: '◆',
-    description: 'Paper reference card with conference name and tags',
-    defaultConfig: {
-      conference: 'ASME TURBO EXPO 2026',
-      paperTitle: 'Paper GT2026-179161: Feature-Driven Deep Learning Framework for Combustion Dynamics Precursor Detection in Gas Turbines',
-      paperRef: 'GT2026-179161',
-      org: 'BRAEBURN ENERGY',
-    },
-    defaultLayout: { x: 0, y: 0, w: 3, h: 4 },
+    defaultLayout: { x: 16, y: 16, w: 420, h: 240 },
+    tabScope: 'combustionDl',
   },
 ];

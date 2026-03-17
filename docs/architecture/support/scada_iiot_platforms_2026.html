@@ -1,0 +1,244 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SCADA / IIoT Platforms Comparison (2026)</title>
+<style>
+body{
+    font-family: Arial, Helvetica, sans-serif;
+    margin:0;
+    padding:30px;
+    background: linear-gradient(120deg,#0f2027,#203a43,#2c5364);
+    color:white;
+}
+
+h1{
+    text-align:center;
+    margin-bottom:30px;
+    animation:fadeIn 1.5s ease-in-out;
+}
+
+.container{
+    overflow-x:auto;
+}
+
+table{
+    border-collapse:collapse;
+    width:100%;
+    background:rgba(255,255,255,0.06);
+    backdrop-filter:blur(6px);
+}
+
+th,td{
+    padding:12px;
+    border-bottom:1px solid rgba(255,255,255,0.15);
+    font-size:14px;
+    text-align:left;
+}
+
+th{
+    background:rgba(0,0,0,0.35);
+}
+
+tr{
+    animation:rowFade 0.7s ease forwards;
+}
+
+tr:hover{
+    background:rgba(255,255,255,0.1);
+    transform:scale(1.01);
+    transition:0.2s;
+}
+
+.badge{
+    padding:4px 8px;
+    border-radius:6px;
+    font-size:12px;
+}
+
+.high{background:#27ae60;}
+.medium{background:#f39c12;}
+.low{background:#c0392b;}
+
+@keyframes fadeIn{
+    from{opacity:0; transform:translateY(-20px);}
+    to{opacity:1; transform:translateY(0);}
+}
+
+@keyframes rowFade{
+    from{opacity:0; transform:translateY(10px);}
+    to{opacity:1; transform:translateY(0);}
+}
+</style>
+</head>
+
+<body>
+
+<h1>Industrial SCADA / IIoT Platforms Landscape (2026)</h1>
+
+<div class="container">
+
+<table>
+
+<tr>
+<th>Software</th>
+<th>License</th>
+<th>Community</th>
+<th>Key Features</th>
+<th>Industries Using</th>
+<th>Companies / Integrators</th>
+<th>Protocols</th>
+<th>HMI</th>
+<th>Edge / IoT</th>
+<th>Platforms</th>
+</tr>
+
+<tr>
+<td>FUXA</td>
+<td>MIT Open Source</td>
+<td><span class="badge high">High</span></td>
+<td>Drag‑drop SCADA editor, dashboards, alarms</td>
+<td>Industry 4.0, factories, smart buildings</td>
+<td>System integrators, IIoT startups</td>
+<td>Modbus, OPC UA, MQTT, Siemens S7</td>
+<td>HTML5 Web HMI</td>
+<td>Strong</td>
+<td>Node.js / Docker / Linux / Windows</td>
+</tr>
+
+<tr>
+<td>Rapid SCADA</td>
+<td>AGPLv3 (Free)</td>
+<td><span class="badge high">High</span></td>
+<td>Historian, alarms, plugins</td>
+<td>Manufacturing, HVAC, utilities</td>
+<td>Industrial automation integrators</td>
+<td>Modbus, OPC UA</td>
+<td>Web SCADA</td>
+<td>Moderate</td>
+<td>Windows / Linux</td>
+</tr>
+
+<tr>
+<td>Scada‑LTS</td>
+<td>GPL</td>
+<td><span class="badge medium">Moderate</span></td>
+<td>Trends, alarms, realtime monitoring</td>
+<td>Energy monitoring, labs</td>
+<td>Universities, energy analytics firms</td>
+<td>Modbus TCP, SNMP, DNP3</td>
+<td>Web HMI</td>
+<td>Moderate</td>
+<td>Java cross‑platform</td>
+</tr>
+
+<tr>
+<td>Node‑RED</td>
+<td>Apache 2.0</td>
+<td><span class="badge high">Very High</span></td>
+<td>Flow programming, integration gateway</td>
+<td>Industrial IoT, smart manufacturing</td>
+<td>IBM, Bosch ecosystem developers</td>
+<td>MQTT, HTTP, OPC UA, Modbus</td>
+<td>Dashboard UI</td>
+<td>Excellent</td>
+<td>Node.js / Docker / Embedded</td>
+</tr>
+
+<tr>
+<td>OpenPLC + HMI</td>
+<td>GPLv3</td>
+<td><span class="badge high">High</span></td>
+<td>IEC‑61131 PLC runtime</td>
+<td>Automation labs, edge control</td>
+<td>Automation startups, universities</td>
+<td>Modbus</td>
+<td>Node‑RED / Grafana</td>
+<td>Strong Edge</td>
+<td>Embedded / Linux / RPi</td>
+</tr>
+
+<tr>
+<td>PyScada</td>
+<td>GPLv3</td>
+<td><span class="badge medium">Moderate</span></td>
+<td>Python SCADA framework</td>
+<td>Research, industrial analytics</td>
+<td>Research institutes</td>
+<td>Modbus, BACnet, OPC UA</td>
+<td>Web</td>
+<td>Strong</td>
+<td>Python / Linux</td>
+</tr>
+
+<tr>
+<td>Ignition Edge</td>
+<td>Freemium</td>
+<td><span class="badge high">Very High</span></td>
+<td>MQTT Sparkplug, industrial edge gateway</td>
+<td>Manufacturing, oil & gas</td>
+<td>Adams Group, Smithfield Foods, integrators</td>
+<td>MQTT, OPC UA</td>
+<td>Web + Mobile</td>
+<td>Excellent</td>
+<td>Java cross‑platform</td>
+</tr>
+
+<tr>
+<td>OpenSCADA</td>
+<td>GPLv2</td>
+<td><span class="badge medium">Moderate</span></td>
+<td>Modular SCADA architecture</td>
+<td>Utilities, electrical grids</td>
+<td>Energy automation companies</td>
+<td>IEC 60870, OPC, Modbus</td>
+<td>Web capable</td>
+<td>Moderate</td>
+<td>Linux / Unix</td>
+</tr>
+
+<tr>
+<td>MySCADA</td>
+<td>Freemium</td>
+<td><span class="badge medium">Moderate</span></td>
+<td>SVG HMI editor, alarms</td>
+<td>IoT monitoring, buildings</td>
+<td>IoT solution providers</td>
+<td>Modbus, OPC UA</td>
+<td>Mobile + Web</td>
+<td>Strong</td>
+<td>Cross‑platform</td>
+</tr>
+
+<tr>
+<td>Fernhill SCADA</td>
+<td>Free runtime</td>
+<td><span class="badge medium">Moderate</span></td>
+<td>Historian, reporting</td>
+<td>Water treatment, utilities</td>
+<td>Industrial integrators</td>
+<td>MQTT, OPC UA</td>
+<td>Web dashboards</td>
+<td>Strong</td>
+<td>Win / Linux / macOS</td>
+</tr>
+
+<tr>
+<td>VTScada</td>
+<td>Free (50 IO)</td>
+<td><span class="badge medium">Moderate</span></td>
+<td>Alarms, historian, industrial control</td>
+<td>Water utilities, pipelines</td>
+<td>Utilities and energy companies</td>
+<td>OPC, PLC drivers</td>
+<td>Full HMI</td>
+<td>Moderate</td>
+<td>Windows</td>
+</tr>
+
+</table>
+</div>
+
+</body>
+</html>

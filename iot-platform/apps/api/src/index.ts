@@ -10,6 +10,7 @@ import { workflowSchedulerService } from './services/workflow-scheduler.service'
 import { heartbeatService } from './services/heartbeat.service';
 import { modbusGatewayManager } from './services/modbus-gateway-manager.service';
 import { opcuaGatewayManager } from './services/opcua-gateway-manager.service';
+import { natsClient } from './lib/nats-client.js';
 
 /**
  * Application Entry Point
@@ -27,6 +28,11 @@ async function main() {
     console.log('🗄️  Connecting to MongoDB...');
     await connectDB();
     await initializeTimeSeriesCollections();
+
+    // Connect to NATS JetStream
+    console.log('📡 Connecting to NATS...');
+    await natsClient.connect(config.nats.url);
+    console.log(`✅ NATS connected (${config.nats.url})`);
 
     // Create Fastify server (but don't start yet)
     console.log('🚀 Creating HTTP server...');
@@ -55,6 +61,10 @@ async function main() {
 
     // Register trigger dispatcher with OPC-UA gateway manager (for workflow dispatch on polling)
     opcuaGatewayManager.setTriggerDispatcher(triggerDispatcher, fastify.log as any);
+
+    // Inject NATS client into gateway managers (ADR-043: NATS publishing)
+    modbusGatewayManager.setNatsClient(natsClient);
+    opcuaGatewayManager.setNatsClient(natsClient);
 
     // Register trigger dispatcher with heartbeat service (ADR-041: device offline detection)
     heartbeatService.setTriggerDispatcher(triggerDispatcher, fastify.log as any);
@@ -87,6 +97,7 @@ async function main() {
         fastify.log.info(`Received ${signal}, closing server gracefully...`);
         workflowSchedulerService.stop();
         heartbeatService.stop();
+        await natsClient.drain();
         await fastify.close();
         await disconnectDB();
         process.exit(0);

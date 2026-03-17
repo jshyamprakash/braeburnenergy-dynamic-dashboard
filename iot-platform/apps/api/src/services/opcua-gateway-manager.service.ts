@@ -5,6 +5,7 @@ import { DataQualityService } from './data-quality.service';
 import { AlarmService } from './alarm.service';
 import { deviceStateService } from './device-state.service';
 import type { WorkflowTriggerDispatcher } from './workflow-trigger-dispatcher.service';
+import type { NatsClient } from '../lib/nats-client.js';
 import { DEFAULT_ORG_ID } from '../lib/request-context';
 
 const ORG_ID = DEFAULT_ORG_ID;
@@ -30,6 +31,7 @@ export class OpcuaGatewayManager {
   private alarmService: AlarmService;
   private triggerDispatcher?: WorkflowTriggerDispatcher;
   private logger?: Logger;
+  private natsClient?: NatsClient;
 
   constructor() {
     this.dataQualityService = new DataQualityService();
@@ -42,6 +44,13 @@ export class OpcuaGatewayManager {
   setTriggerDispatcher(dispatcher: WorkflowTriggerDispatcher, logger: Logger): void {
     this.triggerDispatcher = dispatcher;
     this.logger = logger;
+  }
+
+  /**
+   * Inject NATS client (call from index.ts after creating natsClient)
+   */
+  setNatsClient(client: NatsClient): void {
+    this.natsClient = client;
   }
 
   /**
@@ -188,6 +197,24 @@ export class OpcuaGatewayManager {
         data: (validationResult as any).data || data,
         timestamp: new Date(),
       } as any);
+
+      // Publish to NATS (fire-and-forget, ADR-043)
+      if (this.natsClient) {
+        this.natsClient
+          .publish(`sensor.raw.${gateway.deviceId}`, {
+            orgId: ORG_ID,
+            deviceId: gateway.deviceId,
+            data: (validationResult as any).data || data,
+            timestamp: new Date().toISOString(),
+            source: 'opcua',
+            quality: (validationResult as any).quality,
+          })
+          .catch((err: any) => {
+            if (this.logger) {
+              this.logger.warn(err, 'NATS publish failed for OPC-UA gateway');
+            }
+          });
+      }
 
       // Dispatch to workflow triggers (fire-and-forget, just like device-state controller)
       if (this.triggerDispatcher) {

@@ -15,6 +15,7 @@ import {
   addKosmosWidget,
   removeKosmosWidget,
   updateKosmosWidgetLayout,
+  updateKosmosWidgetConfig,
   setKosmosSharedWithUsers,
   initKosmosFromBackend,
   saveKosmosToBackend,
@@ -25,10 +26,21 @@ import { UnifiedCanvas } from './UnifiedCanvas';
 import { WidgetConfigPanel } from './WidgetConfigPanel';
 import { WidgetPalette } from './WidgetPalette';
 import ShareUsersModal from './ShareUsersModal';
+import { KosmosArchitectureTabPanel } from './tabs/KosmosArchitectureTabPanel';
+import { KosmosBeAgentTabPanel } from './tabs/KosmosBeAgentTabPanel';
+import { KosmosOverviewTabPanel } from './tabs/KosmosOverviewTabPanel';
+import { KosmosCombustionDlTabPanel } from './tabs/KosmosCombustionDlTabPanel';
 import { apiClient } from '@/lib/api-client';
 import { toast } from '@/lib/utils/toast';
 
 /* ─────────────────── helpers ─────────────────── */
+
+const TAB_ICON: Record<string, string> = {
+  overview: '◈',
+  combustionDl: '◑',
+  beAgent: '⟳',
+  kosmosArchitecture: '⬡',
+};
 
 function useKosmosTime() {
   const [t, setT] = useState('');
@@ -42,14 +54,33 @@ function useKosmosTime() {
   return t;
 }
 
-function buildNewWidget(type: string): KosmosWidget {
+function getNextRow(widgets: KosmosWidget[]): number {
+  if (!widgets.length) return 0;
+  return Math.max(...widgets.map((w) => w.layout.y + w.layout.h));
+}
+
+function buildNewWidget(
+  type: string,
+  widgets: KosmosWidget[],
+  mandatoryType?: 'overview' | 'combustionDl' | 'beAgent' | 'kosmosArchitecture'
+): KosmosWidget {
   const entry = PALETTE_ENTRIES.find((p) => p.type === type);
-  return {
+  const slot = widgets.length % 8;
+  const isPixelWidget =
+    (mandatoryType === 'combustionDl' && entry?.tabScope === 'combustionDl') ||
+    (mandatoryType === 'overview' && entry?.tabScope === 'overview');
+  const y = isPixelWidget && entry ? entry.defaultLayout.y + slot * 20 : getNextRow(widgets);
+  const widget = {
     id: `w_${Math.random().toString(36).slice(2, 10)}`,
     type: type as any,
     config: entry ? { ...entry.defaultConfig } : {},
-    layout: entry ? { ...entry.defaultLayout } : { x: 0, y: 0, w: 4, h: 3 },
+    layout: entry
+      ? isPixelWidget
+        ? { ...entry.defaultLayout, x: entry.defaultLayout.x + slot * 20, y }
+        : { ...entry.defaultLayout, x: 0, y }
+      : { x: 0, y, w: 16, h: 16 },
   };
+  return widget;
 }
 
 /* ─────────────────── component ─────────────────── */
@@ -100,6 +131,7 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
 
   /* ── Auto-save (debounced 2s) ── */
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const initSaveDone = useRef(false);
   const triggerSave = useCallback(() => {
     if (viewOnly) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -107,6 +139,33 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
       dispatch(saveKosmosToBackend({ dashboardId, applicationId }));
     }, 2000);
   }, [dispatch, dashboardId, applicationId, viewOnly]);
+
+  const flushSave = useCallback(() => {
+    if (viewOnly) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = null;
+    dispatch(saveKosmosToBackend({ dashboardId, applicationId }));
+  }, [dispatch, dashboardId, applicationId, viewOnly]);
+
+  /* ── Flush pending save on page unload ── */
+  useEffect(() => {
+    const handleUnload = () => {
+      if (saveTimer.current && !viewOnly) {
+        clearTimeout(saveTimer.current);
+        dispatch(saveKosmosToBackend({ dashboardId, applicationId }));
+      }
+    };
+    window.addEventListener('beforeunload', handleUnload);
+    return () => window.removeEventListener('beforeunload', handleUnload);
+  }, [dispatch, dashboardId, applicationId, viewOnly]);
+
+  /* ── Persist re-seeded pages after initial backend load ── */
+  useEffect(() => {
+    if (pages.length > 0 && !initSaveDone.current && !skipInit) {
+      initSaveDone.current = true;
+      triggerSave();
+    }
+  }, [pages.length, skipInit, triggerSave]);
 
   /* ── Tab management ── */
   const handleAddPage = () => {
@@ -141,7 +200,13 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
   const handleDrop = useCallback(
     (widgetType: string) => {
       if (!activePage) return;
-      const widget = buildNewWidget(widgetType);
+      const entry = PALETTE_ENTRIES.find((p) => p.type === widgetType);
+      if (!entry) return;
+
+      if (entry.tabScope === 'overview' && activePage.mandatoryType !== 'overview') return;
+      if (entry.tabScope === 'combustionDl' && activePage.mandatoryType !== 'combustionDl') return;
+
+      const widget = buildNewWidget(widgetType, activePage.widgets, activePage.mandatoryType);
       dispatch(addKosmosWidget({ pageId: activePage.id, widget }));
       triggerSave();
     },
@@ -247,7 +312,7 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
         </div>
 
         <div style={{ fontFamily: 'var(--k-font-display)', fontSize: 22, fontWeight: 700, letterSpacing: 4, color: 'var(--k-ultra-light)', textShadow: '0 0 20px rgba(111,170,230,0.5)' }}>
-          KOSMOS<span style={{ color: 'var(--k-green)' }}>™</span> PLATFORM
+          KOSMOS CORTEX<span style={{ color: 'var(--k-green)' }}>™</span> PLATFORM
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -267,10 +332,12 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
               <button
                 className={editMode ? 'k-btn k-btn-primary' : 'k-btn k-btn-ghost'}
                 onClick={() => {
+                  const wasEditing = editMode;
                   setEditMode(!editMode);
-                  if (editMode) {
+                  if (wasEditing) {
                     setPaletteOpen(false);
                     setSelectedWidgetId(null);
+                    flushSave();
                   }
                 }}
               >
@@ -306,10 +373,10 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
             key={page.id}
             className={`k-nav-tab ${page.id === activePageId ? 'active' : ''}`}
             onClick={() => dispatch(setKosmosActivePage(page.id))}
-            onDoubleClick={() => !readOnly && handleStartRename(page.id, page.name)}
+            onDoubleClick={() => editMode && !readOnly && !page.isMandatory && handleStartRename(page.id, page.name)}
             style={{ display: 'flex', alignItems: 'center', gap: 6, paddingRight: editMode && !readOnly ? 8 : 18 }}
           >
-            {renamingId === page.id && !readOnly ? (
+            {renamingId === page.id && !readOnly && !page.isMandatory ? (
               <input
                 ref={renameInputRef}
                 value={renameValue}
@@ -327,9 +394,9 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
                 onClick={(e) => e.stopPropagation()}
               />
             ) : (
-              <span>{page.name}</span>
+              <span>{page.mandatoryType ? `${TAB_ICON[page.mandatoryType] ?? ''} ${page.name}` : page.name}</span>
             )}
-            {editMode && !readOnly && pages.length > 1 && (
+            {editMode && !readOnly && pages.length > 1 && !page.isMandatory && (
               <span
                 onClick={(e) => { e.stopPropagation(); handleRemovePage(page.id); }}
                 style={{ color: 'var(--k-text-dim)', fontSize: 11, lineHeight: 1, cursor: 'pointer', marginLeft: 2 }}
@@ -340,7 +407,7 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
           </div>
         ))}
 
-        {!readOnly && (
+        {editMode && !readOnly && (
           <button
             onClick={handleAddPage}
             style={{
@@ -355,7 +422,7 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
         )}
       </div>
 
-      {/* ── Body: UnifiedCanvas + optional WidgetConfigPanel ── */}
+      {/* ── Body: Canvas + optional WidgetConfigPanel ── */}
       <div
         style={{
           flex: 1,
@@ -370,15 +437,82 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
       >
         {activePage ? (
           <>
-            <UnifiedCanvas
-              widgets={activePage.widgets}
-              editMode={editMode}
-              onDrop={handleDrop}
-              onRemove={handleRemoveWidget}
-              onLayoutChange={handleLayoutChange}
-              onSelect={handleSelect}
-              selectedWidgetId={selectedWidgetId}
-            />
+            {/* Render canvas based on page type */}
+            {activePage.mandatoryType === 'overview' ? (
+              <div style={{ flex: 1, overflow: 'hidden' }}>
+                <KosmosOverviewTabPanel
+                  page={activePage}
+                  editMode={editMode}
+                  onDrop={handleDrop}
+                  onLayoutChange={(pageId, layouts) => {
+                    layouts.forEach((layout) => {
+                      dispatch(
+                        updateKosmosWidgetLayout({
+                          pageId,
+                          widgetId: layout.i,
+                          layout: { x: layout.x, y: layout.y, w: layout.w, h: layout.h },
+                        })
+                      );
+                    });
+                    triggerSave();
+                  }}
+                  onRemoveWidget={handleRemoveWidget}
+                  onConfigChange={() => triggerSave()}
+                  onSelect={handleSelect}
+                  selectedWidgetId={selectedWidgetId}
+                />
+              </div>
+            ) : activePage.mandatoryType === 'combustionDl' ? (
+              <div style={{ flex: 1, overflow: 'hidden' }}>
+                <KosmosCombustionDlTabPanel
+                  page={activePage}
+                  editMode={editMode}
+                  onDrop={handleDrop}
+                  onLayoutChange={(pageId, layouts) => {
+                    layouts.forEach((layout) => {
+                      dispatch(
+                        updateKosmosWidgetLayout({
+                          pageId,
+                          widgetId: layout.i,
+                          layout: { x: layout.x, y: layout.y, w: layout.w, h: layout.h },
+                        })
+                      );
+                    });
+                    triggerSave();
+                  }}
+                  onRemoveWidget={handleRemoveWidget}
+                  onConfigChange={() => triggerSave()}
+                  onSelect={handleSelect}
+                  selectedWidgetId={selectedWidgetId}
+                />
+              </div>
+            ) : activePage.mandatoryType === 'kosmosArchitecture' ? (
+              <div style={{ flex: 1, overflow: 'hidden' }}>
+                <KosmosArchitectureTabPanel
+                  page={activePage}
+                  editMode={editMode}
+                  onConfigChange={() => {
+                    triggerSave();
+                  }}
+                />
+              </div>
+            ) : activePage.mandatoryType === 'beAgent' ? (
+              <div style={{ flex: 1, overflow: 'hidden' }}>
+                <KosmosBeAgentTabPanel page={activePage} editMode={editMode} onConfigChange={() => triggerSave()} />
+              </div>
+            ) : (
+              <div style={{ flex: 1, overflow: 'hidden' }}>
+                <UnifiedCanvas
+                  widgets={activePage.widgets}
+                  editMode={editMode}
+                  onDrop={handleDrop}
+                  onRemove={handleRemoveWidget}
+                  onLayoutChange={handleLayoutChange}
+                  onSelect={handleSelect}
+                  selectedWidgetId={selectedWidgetId}
+                />
+              </div>
+            )}
 
             {/* Config panel — only in edit mode when a widget is selected */}
             {editMode && selectedWidget && (
@@ -386,6 +520,7 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
                 pageId={activePage.id}
                 widget={selectedWidget}
                 onClose={() => setSelectedWidgetId(null)}
+                onConfigChange={() => triggerSave()}
               />
             )}
           </>
@@ -407,7 +542,7 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
       <footer className="k-footer">
         <span>
           <span style={{ color: 'var(--k-green)', fontWeight: 700, letterSpacing: 1 }}>
-            KOSMOS<span style={{ color: 'var(--k-base)' }}>™</span>
+            KOSMOS CORTEX<span style={{ color: 'var(--k-base)' }}>™</span>
           </span>
           {' '}— Braeburn Energy Platform
         </span>
@@ -419,7 +554,12 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
       </footer>
 
       {/* ── Widget palette overlay ── */}
-      {paletteOpen && !readOnly && <WidgetPalette onClose={() => setPaletteOpen(false)} />}
+      {paletteOpen && !readOnly && (
+        <WidgetPalette
+          onClose={() => setPaletteOpen(false)}
+          activeMandatoryType={activePage?.mandatoryType}
+        />
+      )}
 
       {/* ── Share Users Modal (ADR-045) ── */}
       {shareModalOpen && (

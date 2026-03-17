@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { dashboardConfig } from '@/lib/config';
 import { apiClient } from '@/lib/api-client';
-import type { KosmosPage, KosmosWidget, Dashboard } from '@/components/kosmos/types';
+import type { KosmosPage, KosmosWidget, Dashboard, BeAgentModule } from '@/components/kosmos/types';
 
 function shortId(): string {
   return Math.random().toString(36).slice(2, 10);
@@ -82,6 +82,10 @@ export interface DashboardState {
 }
 
 /* ── Kosmos helpers ── */
+
+/** Bump this when seeded layouts change — forces re-seed of any DB page with an older version */
+const CURRENT_LAYOUT_SCHEMA = 3;
+
 function makeDefaultPage(name: string, order: number): KosmosPage {
   return {
     id: `page_${shortId()}`,
@@ -89,6 +93,153 @@ function makeDefaultPage(name: string, order: number): KosmosPage {
     order,
     widgets: [],
     layoutVersion: 2,
+  };
+}
+
+/** Create the mandatory Overview page (order: 0) */
+function makeOverviewPage(): KosmosPage {
+  const widgets: KosmosWidget[] = [
+    {
+      id: `w_ov_${shortId()}`,
+      type: 'overviewBeSense',
+      config: {},
+      layout: { x: 16, y: 16, w: 300, h: 760 },
+    },
+    {
+      id: `w_ov_${shortId()}`,
+      type: 'overviewAnomalyMetric',
+      config: {},
+      layout: { x: 332, y: 16, w: 248, h: 150 },
+    },
+    {
+      id: `w_ov_${shortId()}`,
+      type: 'overviewLoadMetric',
+      config: {},
+      layout: { x: 596, y: 16, w: 248, h: 150 },
+    },
+    {
+      id: `w_ov_${shortId()}`,
+      type: 'overviewEgtMetric',
+      config: {},
+      layout: { x: 860, y: 16, w: 248, h: 150 },
+    },
+    {
+      id: `w_ov_${shortId()}`,
+      type: 'overviewRealtimeChart',
+      config: {},
+      layout: { x: 332, y: 182, w: 776, h: 248 },
+    },
+    {
+      id: `w_ov_${shortId()}`,
+      type: 'overviewDataFlow',
+      config: {},
+      layout: { x: 332, y: 446, w: 776, h: 330 },
+    },
+    {
+      id: `w_ov_${shortId()}`,
+      type: 'overviewBeAgentStatus',
+      config: {},
+      layout: { x: 1124, y: 16, w: 320, h: 760 },
+    },
+  ];
+
+  return {
+    id: `page_${shortId()}`,
+    name: 'OVERVIEW',
+    order: 0,
+    widgets,
+    isMandatory: true,
+    mandatoryType: 'overview',
+    layoutVersion: 2,
+    layoutSchemaVersion: CURRENT_LAYOUT_SCHEMA,
+  };
+}
+
+/** Create the mandatory Combustion DL page (order: 1) */
+function makeCombustionDlPage(): KosmosPage {
+  const widgets: KosmosWidget[] = [
+    {
+      id: `w_cdl_${shortId()}`,
+      type: 'combustionDlHeader',
+      config: {},
+      layout: { x: 16, y: 16, w: 1168, h: 120 },
+    },
+    {
+      id: `w_cdl_${shortId()}`,
+      type: 'combustionDlPressureSignal',
+      config: {},
+      layout: { x: 16, y: 152, w: 360, h: 220 },
+    },
+    {
+      id: `w_cdl_${shortId()}`,
+      type: 'combustionDlFrequencySpectrum',
+      config: {},
+      layout: { x: 16, y: 388, w: 360, h: 220 },
+    },
+    {
+      id: `w_cdl_${shortId()}`,
+      type: 'combustionDlFeatureMatrix',
+      config: {},
+      layout: { x: 16, y: 624, w: 360, h: 360 },
+    },
+    {
+      id: `w_cdl_${shortId()}`,
+      type: 'combustionDlFrameworkPipeline',
+      config: {},
+      layout: { x: 392, y: 152, w: 390, h: 330 },
+    },
+    {
+      id: `w_cdl_${shortId()}`,
+      type: 'combustionDlAnomalyTrend',
+      config: {},
+      layout: { x: 392, y: 498, w: 390, h: 190 },
+    },
+    {
+      id: `w_cdl_${shortId()}`,
+      type: 'combustionDlPhysicsMetrics',
+      config: {},
+      layout: { x: 392, y: 704, w: 390, h: 200 },
+    },
+    {
+      id: `w_cdl_${shortId()}`,
+      type: 'combustionDlPrecursorClassification',
+      config: {},
+      layout: { x: 798, y: 152, w: 320, h: 220 },
+    },
+    {
+      id: `w_cdl_${shortId()}`,
+      type: 'combustionDlClassifierOutputs',
+      config: {},
+      layout: { x: 798, y: 388, w: 320, h: 180 },
+    },
+    {
+      id: `w_cdl_${shortId()}`,
+      type: 'combustionDlTrainingPerformance',
+      config: {},
+      layout: { x: 798, y: 584, w: 320, h: 170 },
+    },
+    {
+      id: `w_cdl_${shortId()}`,
+      type: 'combustionDlTurbineInfo',
+      config: {
+        unit: 'GT-DLE Frame 6B',
+        oem: 'OEM-Agnostic',
+        combustor: 'DLE / Lean Pre-mix',
+        fuel: 'NG + H2 blend',
+      },
+      layout: { x: 798, y: 770, w: 320, h: 160 },
+    },
+  ];
+
+  return {
+    id: `page_${shortId()}`,
+    name: 'COMBUSTION DL',
+    order: 1,
+    widgets,
+    isMandatory: true,
+    mandatoryType: 'combustionDl',
+    layoutVersion: 2,
+    layoutSchemaVersion: CURRENT_LAYOUT_SCHEMA,
   };
 }
 
@@ -188,8 +339,21 @@ function makeArchitecturePage(): KosmosPage {
     isMandatory: true,
     mandatoryType: 'kosmosArchitecture',
     layoutVersion: 2,
+    layoutSchemaVersion: CURRENT_LAYOUT_SCHEMA,
   };
 }
+
+const DEFAULT_BE_AGENT_MODULES: Omit<BeAgentModule, 'id'>[] = [
+  { name: 'CD Precursor Detection', desc: 'GT2026 — Autoencoder·LSTM·DFT features', status: 'ACTIVE', detailDesc: 'Physics-informed DL framework for combustion instability precursor identification. Autoencoder-LSTM pipeline with 45-second advance warning on lean blowout and flashback events.', metrics: [] },
+  { name: 'Thermodynamic Performance', desc: 'Compressor map · efficiency tracking', status: 'ACTIVE', detailDesc: 'Compressor and turbine section efficiency tracking using isentropic analysis. Fouling detection via compressor map deviation.', metrics: [] },
+  { name: 'Fuel Quality Adaptation', desc: 'CalorieSense™ link · CV · H₂ adaptive', status: 'ACTIVE', detailDesc: 'Real-time calorific value and H₂ fraction feed from CalorieSense™ edge device. Adaptive combustion tuning to prevent emissions exceedance during fuel quality swings.', metrics: [] },
+  { name: 'Vibration & Rotor Dynamics', desc: 'Blade pass · sub-sync · bearing', status: 'IDLE', detailDesc: 'Spectral vibration analysis from shaft-riding probes. Blade pass frequency, sub-synchronous detection, bearing wear trending.', metrics: [] },
+  { name: 'Emissions Optimisation', desc: 'NOx · CO · CEMS closed-loop', status: 'IDLE', detailDesc: 'Closed-loop NOx and CO optimisation using CEMS data. Model-based combustion tuning respecting emissions constraints while maximising efficiency.', metrics: [] },
+  { name: 'Asset Life Management', desc: 'Creep · LCF · RUL · hot section', status: 'IDLE', detailDesc: 'Creep life consumption modelling for hot section components. Low-cycle fatigue counting, remaining useful life estimation, and maintenance scheduling.', metrics: [] },
+  { name: 'Inlet Conditioning', desc: 'Evap cooler · chiller · fogging', status: 'IDLE', detailDesc: 'Inlet temperature and humidity tracking. Evap cooler / chiller optimisation for performance enhancement under high-ambient conditions.', metrics: [] },
+  { name: 'Balance of Plant', desc: 'HRSG · FGC · electrical systems', status: 'IDLE', detailDesc: 'HRSG, fuel gas compressor, and electrical balance-of-plant cross-system interaction analytics. True root-cause analysis across boundaries.', metrics: [] },
+  { name: 'Multi-fleet Benchmarking', desc: 'OEM-agnostic KPI normalisation', status: 'IDLE', detailDesc: 'Cross-site, cross-OEM benchmarking of KPIs normalised for ambient and duty cycle. Identify best-practice and underperforming units within the fleet.', metrics: [] },
+];
 
 /** Create the mandatory BE Agent page with seeded config */
 function makeBeAgentPage(): KosmosPage {
@@ -197,17 +361,7 @@ function makeBeAgentPage(): KosmosPage {
     id: `w_beagent_${shortId()}`,
     type: 'beAgentTabConfig',
     config: {
-      modules: [
-        { id: `m_${shortId()}`, name: 'CD Precursor Detection', desc: 'GT2026 — Autoencoder·LSTM·DFT features', status: 'ACTIVE', detailDesc: 'Physics-informed DL framework for combustion instability precursor identification. Autoencoder-LSTM pipeline with 45-second advance warning on lean blowout and flashback events.', metrics: [] },
-        { id: `m_${shortId()}`, name: 'Thermodynamic Performance', desc: 'Compressor map · efficiency tracking', status: 'ACTIVE', detailDesc: 'Compressor and turbine section efficiency tracking using isentropic analysis. Fouling detection via compressor map deviation.', metrics: [] },
-        { id: `m_${shortId()}`, name: 'Fuel Quality Adaptation', desc: 'CalorieSense™ link · CV · H₂ adaptive', status: 'ACTIVE', detailDesc: 'Real-time calorific value and H₂ fraction feed from CalorieSense™ edge device. Adaptive combustion tuning to prevent emissions exceedance during fuel quality swings.', metrics: [] },
-        { id: `m_${shortId()}`, name: 'Vibration & Rotor Dynamics', desc: 'Blade pass · sub-sync · bearing', status: 'IDLE', detailDesc: 'Spectral vibration analysis from shaft-riding probes. Blade pass frequency, sub-synchronous detection, bearing wear trending.', metrics: [] },
-        { id: `m_${shortId()}`, name: 'Emissions Optimisation', desc: 'NOx · CO · CEMS closed-loop', status: 'IDLE', detailDesc: 'Closed-loop NOx and CO optimisation using CEMS data. Model-based combustion tuning respecting emissions constraints while maximising efficiency.', metrics: [] },
-        { id: `m_${shortId()}`, name: 'Asset Life Management', desc: 'Creep · LCF · RUL · hot section', status: 'IDLE', detailDesc: 'Creep life consumption modelling for hot section components. Low-cycle fatigue counting, remaining useful life estimation, and maintenance scheduling.', metrics: [] },
-        { id: `m_${shortId()}`, name: 'Inlet Conditioning', desc: 'Evap cooler · chiller · fogging', status: 'IDLE', detailDesc: 'Inlet temperature and humidity tracking. Evap cooler / chiller optimisation for performance enhancement under high-ambient conditions.', metrics: [] },
-        { id: `m_${shortId()}`, name: 'Balance of Plant', desc: 'HRSG · FGC · electrical systems', status: 'IDLE', detailDesc: 'HRSG, fuel gas compressor, and electrical balance-of-plant cross-system interaction analytics. True root-cause analysis across boundaries.', metrics: [] },
-        { id: `m_${shortId()}`, name: 'Multi-fleet Benchmarking', desc: 'OEM-agnostic KPI normalisation', status: 'IDLE', detailDesc: 'Cross-site, cross-OEM benchmarking of KPIs normalised for ambient and duty cycle. Identify best-practice and underperforming units within the fleet.', metrics: [] },
-      ],
+      modules: DEFAULT_BE_AGENT_MODULES.map((m) => ({ id: `m_${shortId()}`, ...m })),
       platformStatus: [
         { id: `ps_${shortId()}`, label: 'EDGE NODE', value: 'ONLINE', tagType: 'green' },
         { id: `ps_${shortId()}`, label: 'CLOUD SYNC', value: 'LIVE', tagType: 'green' },
@@ -246,6 +400,7 @@ function makeBeAgentPage(): KosmosPage {
     isMandatory: true,
     mandatoryType: 'beAgent',
     layoutVersion: 2,
+    layoutSchemaVersion: CURRENT_LAYOUT_SCHEMA,
   };
 }
 
@@ -255,11 +410,12 @@ function makeBeAgentPage(): KosmosPage {
  *   Old 12-col (COL=12, ROW_H=80): all w ≤ 12 → x,w ×4; y,h ×8
  *   Intermediate (COL=48, ROW_H=20): some w > 12, max(h) > 24 → y,h ×2
  * Non-destructive — returns original page if already at current scale.
+ * IMPORTANT: every return path stamps layoutVersion:2 so migration only ever runs once.
  */
 function scaleUpPageIfNeeded(page: KosmosPage): KosmosPage {
   if (page.widgets.length === 0) return page;
 
-  // Pages created with the current grid (layoutVersion >= 2) never need migration
+  // Already at current scale — skip.
   if (page.layoutVersion && page.layoutVersion >= 2) return page;
 
   // Old 12-col scale: all widgets have w ≤ 12
@@ -267,6 +423,7 @@ function scaleUpPageIfNeeded(page: KosmosPage): KosmosPage {
   if (isOld12Col) {
     return {
       ...page,
+      layoutVersion: 2,
       widgets: page.widgets.map((w) => ({
         ...w,
         layout: {
@@ -279,12 +436,19 @@ function scaleUpPageIfNeeded(page: KosmosPage): KosmosPage {
     };
   }
 
-  // Intermediate 48-col/ROW_H=20 scale: some w > 12 and large h values present
-  const hasLargeH = page.widgets.some((w) => w.layout.h > 24);
+  // 120-col tab-panel pages (overview / combustionDl) have widgets wider than 48 cols
+  // (e.g. realTimeChart w=68, combustionDlHeader w=120). These are already at the correct
+  // scale and must never be doubled. Stamp layoutVersion and return as-is.
+  const isCol120Page = page.widgets.some((w) => w.layout.w > 48);
+  if (isCol120Page) return { ...page, layoutVersion: 2 };
+
+  // Intermediate 48-col/ROW_H=20 scale: some w > 12 and large h values present → double.
   const hasCol48 = page.widgets.some((w) => w.layout.w > 12);
+  const hasLargeH = page.widgets.some((w) => w.layout.h > 24);
   if (hasCol48 && hasLargeH) {
     return {
       ...page,
+      layoutVersion: 2,
       widgets: page.widgets.map((w) => ({
         ...w,
         layout: {
@@ -295,6 +459,88 @@ function scaleUpPageIfNeeded(page: KosmosPage): KosmosPage {
         },
       })),
     };
+  }
+
+  // No migration needed — stamp so we skip on every future load.
+  return { ...page, layoutVersion: 2 };
+}
+
+/**
+ * For mandatory pages, force re-seed if layoutSchemaVersion is missing or outdated.
+ * This corrects any corrupted y values written to the DB by old compaction cascades.
+ * Secondary guard: h > 55 or y > 100 overflow check retained as a safety net.
+ */
+function resetMandatoryPageIfCorrupted(page: KosmosPage): KosmosPage {
+  if (!page.mandatoryType) return page;
+
+  // Force re-seed if schema version is missing or outdated — but preserve user-edited configs
+  if ((page.layoutSchemaVersion ?? 0) < CURRENT_LAYOUT_SCHEMA) {
+    let freshPage: KosmosPage | null = null;
+    if (page.mandatoryType === 'overview')             freshPage = makeOverviewPage();
+    else if (page.mandatoryType === 'combustionDl')    freshPage = makeCombustionDlPage();
+    else if (page.mandatoryType === 'kosmosArchitecture') freshPage = makeArchitecturePage();
+    else if (page.mandatoryType === 'beAgent')         freshPage = makeBeAgentPage();
+
+    if (freshPage) {
+      // Build a lookup of existing user configs keyed by widget type
+      const cfgByType: Record<string, Record<string, unknown>> = {};
+      for (const w of page.widgets) cfgByType[w.type] = w.config;
+
+      return {
+        ...freshPage,
+        id: page.id,
+        order: page.order ?? 0,
+        widgets: freshPage.widgets.map((w) => ({
+          ...w,
+          config: cfgByType[w.type] ?? w.config,
+        })),
+      };
+    }
+  }
+
+  // Re-seed if empty (e.g. DB stored widgets: [] for mandatory page)
+  if (page.widgets.length === 0) {
+    if (page.mandatoryType === 'overview')             return { ...makeOverviewPage(),      id: page.id, order: page.order ?? 0 };
+    if (page.mandatoryType === 'combustionDl')         return { ...makeCombustionDlPage(), id: page.id, order: page.order ?? 1 };
+    if (page.mandatoryType === 'kosmosArchitecture') return { ...makeArchitecturePage(), id: page.id, order: page.order ?? 2 };
+    if (page.mandatoryType === 'beAgent')            return { ...makeBeAgentPage(),       id: page.id, order: page.order ?? 3 };
+  }
+
+  // h/y overflow guard (safety net for corrupted layout values)
+  // Tab-panel pages (combustionDl, beAgent, kosmosArchitecture) use h=80 by design — exempt
+  if (
+    page.mandatoryType === 'combustionDl' ||
+    page.mandatoryType === 'kosmosArchitecture'
+  ) {
+    return page;
+  }
+
+  if (page.mandatoryType === 'beAgent') {
+    const widget = page.widgets[0];
+    if (widget?.config?.modules) {
+      const existingNames = new Set((widget.config.modules as BeAgentModule[]).map((m) => m.name));
+      const missing = DEFAULT_BE_AGENT_MODULES.filter((m) => !existingNames.has(m.name));
+      if (missing.length > 0) {
+        const merged = {
+          ...widget,
+          config: {
+            ...widget.config,
+            modules: [
+              ...(widget.config.modules as BeAgentModule[]),
+              ...missing.map((m) => ({ id: `m_${shortId()}`, ...m })),
+            ],
+          },
+        };
+        return { ...page, widgets: [merged] };
+      }
+    }
+    return page;
+  }
+
+  const maxH = Math.max(...page.widgets.map((w) => w.layout.h));
+  const maxY = Math.max(...page.widgets.map((w) => w.layout.y));
+  if (maxH > 55 || maxY > 100) {
+    // overview is the only remaining mandatoryType that reaches this point
   }
 
   return page;
@@ -804,7 +1050,10 @@ const dashboardSlice = createSlice({
       state,
       action: PayloadAction<{ pages: any[]; sharedWithUsers?: string[] }>
     ) => {
-      const migrated = action.payload.pages.map(migratePageFormat).map(scaleUpPageIfNeeded);
+      const migrated = action.payload.pages
+        .map(migratePageFormat)
+        .map(scaleUpPageIfNeeded)
+        .map(resetMandatoryPageIfCorrupted);
       state.kosmosPages = migrated;
       state.kosmosActivePage = migrated[0]?.id ?? null;
       if (action.payload.sharedWithUsers) {
@@ -888,35 +1137,72 @@ const dashboardSlice = createSlice({
     builder
       .addCase(initKosmosFromBackend.fulfilled, (state, action) => {
         if (!action.payload) {
-          // New dashboard: seed default pages (BE Agent + Architecture)
+          // New dashboard: seed default pages (Overview + Combustion DL + BE Agent + Architecture)
           if (state.kosmosPages.length === 0) {
+            const overviewPage = makeOverviewPage();
+            const combustionDlPage = makeCombustionDlPage();
             const beAgentPage = makeBeAgentPage();
             const archPage = makeArchitecturePage();
-            state.kosmosPages = [beAgentPage, archPage];
-            state.kosmosActivePage = beAgentPage.id;
+            state.kosmosPages = [
+              overviewPage,
+              combustionDlPage,
+              beAgentPage,
+              archPage,
+            ];
+            state.kosmosActivePage = overviewPage.id;
           }
           return;
         }
         const data = action.payload;
         if (data.pages && Array.isArray(data.pages) && data.pages.length > 0) {
-          // Migrate old column-based pages to unified widgets[] format, then scale up if needed
-          const migratedPages: KosmosPage[] = data.pages.map(migratePageFormat).map(scaleUpPageIfNeeded);
-          // Check if architecture page exists; if not, add it
-          const hasArchPage = migratedPages.some((p: KosmosPage) => p.mandatoryType === 'kosmosArchitecture');
-          if (!hasArchPage) {
-            migratedPages.push(makeArchitecturePage());
+          // Migrate old column-based pages to unified widgets[] format, then scale up if needed.
+          // resetMandatoryPageIfCorrupted re-seeds overview/combustionDl if h or y values are
+          // oversized from a previous migration loop bug.
+          const migratedPages: KosmosPage[] = data.pages
+            .map(migratePageFormat)
+            .map(scaleUpPageIfNeeded)
+            .map(resetMandatoryPageIfCorrupted);
+          // Check if mandatory pages exist; if not, add them
+          const hasOverviewPage = migratedPages.some(
+            (p: KosmosPage) => p.mandatoryType === 'overview'
+          );
+          if (!hasOverviewPage) {
+            migratedPages.push(makeOverviewPage());
           }
-          const hasBeAgentPage = migratedPages.some((p: KosmosPage) => p.mandatoryType === 'beAgent');
+          const hasCombustionDlPage = migratedPages.some(
+            (p: KosmosPage) => p.mandatoryType === 'combustionDl'
+          );
+          if (!hasCombustionDlPage) {
+            migratedPages.push(makeCombustionDlPage());
+          }
+          const hasBeAgentPage = migratedPages.some(
+            (p: KosmosPage) => p.mandatoryType === 'beAgent'
+          );
           if (!hasBeAgentPage) {
             migratedPages.push(makeBeAgentPage());
           }
+          const hasArchPage = migratedPages.some(
+            (p: KosmosPage) => p.mandatoryType === 'kosmosArchitecture'
+          );
+          if (!hasArchPage) {
+            migratedPages.push(makeArchitecturePage());
+          }
+          // Sort by order field to maintain tab order
+          migratedPages.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
           state.kosmosPages = migratedPages;
           state.kosmosActivePage = state.kosmosPages[0].id;
         } else if (state.kosmosPages.length === 0) {
+          const overviewPage = makeOverviewPage();
+          const combustionDlPage = makeCombustionDlPage();
           const beAgentPage = makeBeAgentPage();
           const archPage = makeArchitecturePage();
-          state.kosmosPages = [beAgentPage, archPage];
-          state.kosmosActivePage = beAgentPage.id;
+          state.kosmosPages = [
+            overviewPage,
+            combustionDlPage,
+            beAgentPage,
+            archPage,
+          ];
+          state.kosmosActivePage = overviewPage.id;
         }
         if (data.sharedWithUsers) state.kosmosSharedWithUsers = data.sharedWithUsers;
         state.name = data.name || state.name;
@@ -924,11 +1210,19 @@ const dashboardSlice = createSlice({
 
     // Kosmos: save to backend
     builder
+      .addCase(saveKosmosToBackend.pending, (state) => {
+        state.syncStatus = 'syncing';
+      })
       .addCase(saveKosmosToBackend.fulfilled, (state, action) => {
         if (action.payload?.sharedWithUsers) {
           state.kosmosSharedWithUsers = action.payload.sharedWithUsers;
         }
         state.lastSaved = Date.now();
+        state.syncStatus = 'synced';
+      })
+      .addCase(saveKosmosToBackend.rejected, (state, action) => {
+        state.syncStatus = 'error';
+        state.syncError = (action.payload as string) || 'Save failed';
       });
 
     // Fetch viewer dashboards

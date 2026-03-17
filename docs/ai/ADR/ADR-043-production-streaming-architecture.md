@@ -7,8 +7,6 @@ At 10K sensors / 25Hz = 250,000 msg/sec this fails on three axes:
 2. **WebSocket fan-out**: Socket.io broadcast inside API process unbounded at scale
 3. **Write amplification**: one `insertMany` per device per gateway poll; no cross-gateway batching
 
-Note: Modbus register word order (previously ADR-043) is absorbed into §2d of new_architecture.md.
-
 ## Decision
 Adopt a four-component production streaming layer:
 
@@ -31,3 +29,10 @@ StorageWorker subscribes directly to `sensor.raw`; writes raw, unfiltered readin
 - **ModbusGatewayManager** publishes raw readings to `sensor.raw` stream instead of direct DB write
 - **MongoDb pool**: `maxPoolSize: 50` required (was 10); Storage Worker handles sustained write load
 - Horizontal scaling: WebSocket Gateway and Storage Worker can run as separate deployable units
+
+## Clustering (HA)
+| Component | Config |
+|---|---|
+| NATS JetStream | 3-node cluster; R=3 stream replication; consumer groups load-balance across Processing Engine + WorkflowDispatcher replicas |
+| Redis | Cluster mode: 6 nodes (3P+3R); `ioredis` Cluster client; hash-slot distributed keys (`sensor:latest:{sensorId}`, `workflow:active:{orgId}`) |
+| WebSocket Gateway | N stateless instances; sticky LB (IP-hash/cookie); each instance subscribes Redis pub/sub for fan-out |

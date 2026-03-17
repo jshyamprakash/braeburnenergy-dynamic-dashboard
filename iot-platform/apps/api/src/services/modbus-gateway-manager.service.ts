@@ -6,6 +6,7 @@ import { deviceService } from './device.service';
 import { deviceStateService } from './device-state.service';
 import type { WorkflowTriggerDispatcher } from './workflow-trigger-dispatcher.service';
 import { Device } from '../models/device.model';
+import type { NatsClient } from '../lib/nats-client.js';
 
 /**
  * ModbusGatewayManager Service
@@ -27,6 +28,7 @@ class ModbusGatewayManagerService {
   private readonly MAX_RETRY_ATTEMPTS = 5;
   private triggerDispatcher?: WorkflowTriggerDispatcher;
   private logger?: Logger;
+  private natsClient?: NatsClient;
 
   /**
    * Register trigger dispatcher (call from index.ts after creating dispatcher)
@@ -34,6 +36,13 @@ class ModbusGatewayManagerService {
   setTriggerDispatcher(dispatcher: WorkflowTriggerDispatcher, logger: Logger): void {
     this.triggerDispatcher = dispatcher;
     this.logger = logger;
+  }
+
+  /**
+   * Inject NATS client (call from index.ts after creating natsClient)
+   */
+  setNatsClient(client: NatsClient): void {
+    this.natsClient = client;
   }
 
   /**
@@ -206,6 +215,26 @@ class ModbusGatewayManagerService {
           data,
           timestamp: new Date(),
         });
+
+        // Publish to NATS (fire-and-forget, ADR-043)
+        if (this.natsClient) {
+          const triggerData = Object.fromEntries(
+            Object.entries(data).filter(([k]) => !k.endsWith('_unit'))
+          );
+          this.natsClient
+            .publish(`sensor.raw.${deviceId}`, {
+              orgId: gateway.orgId.toString(),
+              deviceId,
+              data: triggerData,
+              timestamp: new Date().toISOString(),
+              source: 'modbus',
+            })
+            .catch((err: any) => {
+              if (this.logger) {
+                this.logger.warn(err, 'NATS publish failed for Modbus gateway');
+              }
+            });
+        }
 
         // Dispatch to workflow triggers (fire-and-forget, just like device-state controller)
         if (this.triggerDispatcher) {

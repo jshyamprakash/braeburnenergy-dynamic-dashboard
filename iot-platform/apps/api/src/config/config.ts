@@ -62,6 +62,11 @@ export const config = {
     origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
     credentials: process.env.CORS_CREDENTIALS === 'true',
   },
+
+  // NATS Configuration
+  nats: {
+    url: process.env.NATS_URL || 'nats://localhost:4222',
+  },
 } as const;
 
 // Validate required configuration
@@ -87,4 +92,4 @@ export function validateConfig() {
 
 // Export individual configs for convenience
 export const { env, isDevelopment, isProduction, isTest } = config;
-export const { server, database, websocket, logging, security, api } = config;
+export const { server, database, websocket, logging, security, api, nats } = config;

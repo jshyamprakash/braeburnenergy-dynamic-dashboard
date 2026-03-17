@@ -33,6 +33,14 @@ const dashboardSchema = {
       },
     },
     layouts: { type: 'object', additionalProperties: true },
+    pages: {
+      type: 'array',
+      items: { type: 'object', additionalProperties: true },
+    },
+    sharedWithUsers: {
+      type: 'array',
+      items: { type: 'string' },
+    },
     createdAt: { type: 'string', format: 'date-time' },
     updatedAt: { type: 'string', format: 'date-time' },
   },
@@ -127,6 +135,11 @@ export async function dashboardRoutes(fastify: FastifyInstance) {
             type: 'object',
             description: 'Responsive layouts (lg, md, sm)',
             additionalProperties: true,
+          },
+          pages: {
+            type: 'array',
+            description: 'Kosmos page layout with widgets and per-widget JSON config',
+            items: { type: 'object', additionalProperties: true },
           },
         },
         required: ['dashboardId', 'applicationId', 'blocks', 'layouts'],

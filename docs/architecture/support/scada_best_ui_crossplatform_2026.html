@@ -1,0 +1,213 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SCADA / IIoT Platforms UI & Cross‑Platform Comparison (2026)</title>
+
+<style>
+body{
+    font-family: Arial, Helvetica, sans-serif;
+    margin:0;
+    padding:30px;
+    background: linear-gradient(120deg,#0f2027,#203a43,#2c5364);
+    color:white;
+}
+
+h1{
+    text-align:center;
+    margin-bottom:25px;
+    animation:fadeIn 1.2s ease-in-out;
+}
+
+.note{
+    text-align:center;
+    margin-bottom:20px;
+    font-size:14px;
+    opacity:0.9;
+}
+
+.container{
+    overflow-x:auto;
+}
+
+table{
+    border-collapse:collapse;
+    width:100%;
+    background:rgba(255,255,255,0.06);
+    backdrop-filter:blur(6px);
+}
+
+th,td{
+    padding:12px;
+    border-bottom:1px solid rgba(255,255,255,0.15);
+    font-size:14px;
+    text-align:left;
+}
+
+th{
+    background:rgba(0,0,0,0.35);
+}
+
+tr{
+    animation:rowFade 0.7s ease forwards;
+}
+
+tr:hover{
+    background:rgba(255,255,255,0.12);
+    transform:scale(1.01);
+    transition:0.2s;
+}
+
+.badge{
+    padding:4px 8px;
+    border-radius:6px;
+    font-size:12px;
+}
+
+.high{background:#27ae60;}
+.medium{background:#f39c12;}
+.low{background:#c0392b;}
+.best{background:#3498db;}
+.cross{background:#8e44ad;}
+
+@keyframes fadeIn{
+    from{opacity:0; transform:translateY(-20px);}
+    to{opacity:1; transform:translateY(0);}
+}
+
+@keyframes rowFade{
+    from{opacity:0; transform:translateY(10px);}
+    to{opacity:1; transform:translateY(0);}
+}
+</style>
+</head>
+
+<body>
+
+<h1>SCADA / IIoT Platforms – Best UI & Cross‑Platform Support (2026)</h1>
+
+<div class="note">
+Blue badge = Best modern UI • Purple badge = Strong cross‑platform support
+</div>
+
+<div class="container">
+
+<table>
+
+<tr>
+<th>Software</th>
+<th>User Interface Quality</th>
+<th>Cross‑Platform Support</th>
+<th>License</th>
+<th>Key Features</th>
+<th>Protocols</th>
+<th>Typical Industries</th>
+</tr>
+
+<tr>
+<td>FUXA</td>
+<td><span class="badge best">Excellent Modern Web UI</span></td>
+<td><span class="badge cross">Linux / Windows / Docker / Cloud</span></td>
+<td>MIT Open Source</td>
+<td>Drag‑drop dashboards, realtime SCADA tags</td>
+<td>Modbus, OPC UA, MQTT</td>
+<td>Industry 4.0, factories</td>
+</tr>
+
+<tr>
+<td>Ignition Edge</td>
+<td><span class="badge best">Enterprise‑grade UI</span></td>
+<td><span class="badge cross">Windows / Linux / macOS</span></td>
+<td>Freemium</td>
+<td>MQTT Sparkplug, industrial gateway</td>
+<td>MQTT, OPC UA</td>
+<td>Manufacturing, Oil & Gas</td>
+</tr>
+
+<tr>
+<td>Rapid SCADA</td>
+<td><span class="badge medium">Good Web UI</span></td>
+<td><span class="badge cross">Windows / Linux</span></td>
+<td>AGPLv3</td>
+<td>Full SCADA suite, historian</td>
+<td>Modbus, OPC UA</td>
+<td>Factories, HVAC</td>
+</tr>
+
+<tr>
+<td>Scada‑LTS</td>
+<td><span class="badge medium">Classic Web UI</span></td>
+<td><span class="badge cross">Java Cross‑Platform</span></td>
+<td>GPL</td>
+<td>Trends, alarms</td>
+<td>Modbus TCP, SNMP</td>
+<td>Energy monitoring</td>
+</tr>
+
+<tr>
+<td>Node‑RED</td>
+<td><span class="badge best">Modern Flow UI</span></td>
+<td><span class="badge cross">Linux / Windows / Docker / Edge</span></td>
+<td>Apache 2.0</td>
+<td>IoT integration flows</td>
+<td>MQTT, HTTP, OPC UA</td>
+<td>Industrial IoT gateways</td>
+</tr>
+
+<tr>
+<td>PyScada</td>
+<td><span class="badge medium">Developer UI</span></td>
+<td><span class="badge cross">Linux / Python</span></td>
+<td>GPLv3</td>
+<td>Python SCADA framework</td>
+<td>Modbus, BACnet</td>
+<td>Research labs</td>
+</tr>
+
+<tr>
+<td>MySCADA</td>
+<td><span class="badge best">Mobile‑Friendly UI</span></td>
+<td><span class="badge cross">Linux / Windows / Raspberry Pi</span></td>
+<td>Freemium</td>
+<td>SVG HMI editor</td>
+<td>Modbus, OPC UA</td>
+<td>IoT monitoring</td>
+</tr>
+
+<tr>
+<td>OpenSCADA</td>
+<td><span class="badge low">Complex UI</span></td>
+<td><span class="badge cross">Linux / Unix</span></td>
+<td>GPLv2</td>
+<td>Highly modular architecture</td>
+<td>IEC 60870, OPC</td>
+<td>Utilities</td>
+</tr>
+
+<tr>
+<td>Fernhill SCADA</td>
+<td><span class="badge medium">Clean UI</span></td>
+<td><span class="badge cross">Win / Linux / macOS</span></td>
+<td>Free Runtime</td>
+<td>Historian, reporting</td>
+<td>MQTT, OPC UA</td>
+<td>Water treatment</td>
+</tr>
+
+<tr>
+<td>OpenPLC + HMI</td>
+<td><span class="badge medium">Basic UI</span></td>
+<td><span class="badge cross">Embedded / Linux</span></td>
+<td>GPLv3</td>
+<td>Open PLC runtime</td>
+<td>Modbus</td>
+<td>Automation labs</td>
+</tr>
+
+</table>
+
+</div>
+
+</body>
+</html>

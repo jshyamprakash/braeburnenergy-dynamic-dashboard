@@ -48,7 +48,7 @@ export default function ViewerPage() {
     return (
       <div className="flex h-screen items-center justify-center bg-black text-gray-400">
         <div className="text-center">
-          <div className="mb-4 text-2xl font-mono tracking-widest text-cyan-400">KOSMOS™</div>
+          <div className="mb-4 text-2xl font-mono tracking-widest text-cyan-400">KOSMOS CORTEX™</div>
           <div className="text-sm">Loading dashboards...</div>
         </div>
       </div>
@@ -59,7 +59,7 @@ export default function ViewerPage() {
     return (
       <div className="flex h-screen items-center justify-center bg-black text-gray-400">
         <div className="text-center">
-          <div className="mb-4 text-2xl font-mono tracking-widest text-cyan-400">KOSMOS™</div>
+          <div className="mb-4 text-2xl font-mono tracking-widest text-cyan-400">KOSMOS CORTEX™</div>
           <div className="text-sm">No dashboards have been shared with you yet.</div>
           <div className="mt-2 text-xs text-gray-600">Contact your administrator.</div>
         </div>
@@ -90,13 +90,15 @@ export default function ViewerPage() {
 
       {/* Dashboard canvas */}
       <div className="flex-1 overflow-hidden">
-        <KosmosShell
-          key={activeDashboard.dashboardId}
-          dashboardId={activeDashboard.dashboardId}
-          applicationId={activeDashboard.applicationId}
-          readOnly
-          skipInit
-        />
+        {activeDashboard && (
+          <KosmosShell
+            key={activeDashboard.dashboardId}
+            dashboardId={activeDashboard.dashboardId}
+            applicationId={activeDashboard.applicationId}
+            readOnly
+            skipInit
+          />
+        )}
       </div>
     </div>
   );

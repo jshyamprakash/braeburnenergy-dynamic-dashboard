@@ -1,8 +1,8 @@
 # Kosmos™ Platform — Production Architecture
 
 **Project:** Industrial IoT Platform (Generic, multi-sector)
-**Version:** 2.0 — Production Architecture
-**Date:** 2026-03-06
+**Version:** 2.1 — Production Architecture + Clustering & HA
+**Date:** 2026-03-16
 **Status:** Architecture Proposed — Implementation Roadmap
 
 ---
@@ -42,16 +42,16 @@ models, compliance certifications, and the visual workflow editor are carried fo
 └──────────┬───────────────────────────┬─────────────┘                 │ insertMany
            │                           │                    ┌──────────▼──────────────┐
     ┌──────▼──────┐    ┌───────────────▼───────────┐        │  MongoDB 8 Time Series  │
-    │  Redis 7    │    │  Workflow Trigger         │        │  device_states          │
-    │  Cache      │    │  Dispatcher               │        │  (5-year TTL)           │
+    │Redis Cluster│    │  Workflow Trigger         │        │  device_states          │
+    │  (6-node)   │    │  Dispatcher               │        │  (5-year TTL)           │
     │ sensor:     │    │  (NATS consumer)          │        └─────────────────────────┘
     │ latest:{id} │    │  Workflow ID cache        │
     │ pub/sub     │    │  in Redis                 │
     └──────┬──────┘    └───────────────┬───────────┘
            │ Redis pub/sub             │ emit sensor.alerts
     ┌──────▼──────┐    ┌───────────────▼────────────┐
-    │  WebSocket  │    │  WorkflowEngine            │
-    │  Gateway    │    │  + Alarm Service           │
+    │WebSocket GW │    │  WorkflowEngine            │
+    │  (N nodes)  │    │  + Alarm Service           │
     │  (rooms by  │    │                            │
     │   sensorId) │    └────────────────────────────┘
     └──────┬──────┘
@@ -107,6 +107,26 @@ models, compliance certifications, and the visual workflow editor are carried fo
 - All existing REST endpoints unchanged.
 - Handles: auth (JWT + RBAC), device CRUD, workflow CRUD, alarm management, compliance.
 - Serves historical queries: `GET /devices/:id/states?from=&to=` for chart history.
+
+---
+
+## Clustering & High Availability
+
+### NATS JetStream Cluster
+- 3-node cluster minimum; all streams configured with replication factor **R=3**.
+- Stream failover: automatic leader election; no data loss on single-node failure.
+- Consumer groups: Processing Engine replicas and WorkflowDispatcher replicas each form a durable consumer group — NATS distributes messages across all healthy members.
+
+### Redis Shared Cache Cluster
+- 6-node cluster: 3 primary shards + 3 replicas (one replica per primary shard).
+- `ioredis` Cluster client handles hash-slot routing and automatic failover transparently.
+- Key design: `sensor:latest:{sensorId}` and `workflow:active:{orgId}` are hash-slot distributed across primary shards.
+- Pub/sub: Redis Cluster pub/sub broadcasts to all nodes; each WebSocket Gateway instance subscribes to its relevant channels.
+
+### WebSocket Gateway Cluster
+- N stateless instances deployed behind a load balancer with **sticky sessions** (IP-hash or cookie-based).
+- Each instance independently subscribes to Redis pub/sub for fan-out; no inter-instance coordination required.
+- Horizontal scale-out: add instances to increase connection capacity without service interruption.
 
 ---
 
@@ -191,8 +211,9 @@ RBAC + JWT, Visual Workflow Editor, Kosmos left/right static columns.
 ## Production Readiness Checklist
 
 ### Infrastructure
-- [ ] NATS JetStream server deployed (v2.10+), streams configured
-- [ ] Redis 7 cluster deployed, pub/sub enabled
+- [ ] NATS JetStream 3-node cluster deployed (v2.10+); streams configured with R=3 replication
+- [ ] Redis Cluster (6-node: 3P+3R) deployed; `ioredis` Cluster client configured
+- [ ] WebSocket Gateway deployed as N instances behind sticky-session load balancer (IP-hash/cookie)
 - [ ] MongoDB 8 replica set (3 nodes minimum for HA)
 - [ ] `maxPoolSize: 50` set in MongoDB connection string
 
