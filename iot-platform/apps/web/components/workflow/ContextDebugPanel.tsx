@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import type { WorkflowExecutionStepEvent, WorkflowDebugMessageEvent } from '@repo/types';
+import { apiClient } from '@/lib/api-client';
 
 interface ContextDebugPanelProps {
   isOpen: boolean;
@@ -11,6 +12,8 @@ interface ContextDebugPanelProps {
   executionStatus: 'idle' | 'running' | 'completed' | 'failed';
   nodes: any[];
   debugMessages?: WorkflowDebugMessageEvent[];
+  workflowId?: string | null;
+  executionId?: string | null;
 }
 
 /**
@@ -25,25 +28,115 @@ export default function ContextDebugPanel({
   executionStatus,
   nodes,
   debugMessages = [],
+  workflowId,
+  executionId,
 }: ContextDebugPanelProps) {
   const [activeTab, setActiveTab] = useState<'debug' | 'variables' | 'steps' | 'tester'>('debug');
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
+  const [testerInput, setTesterInput] = useState('{{trigger}}');
+  const [testerResult, setTesterResult] = useState<any>(null);
+  const [testerError, setTesterError] = useState<string | null>(null);
+  const [testerLoading, setTesterLoading] = useState(false);
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
-  // Extract variables from execution log (look for action:updateVariable nodes)
-  const getVariables = () => {
-    const vars: Record<string, any> = {};
-    executionLog.forEach(step => {
-      // Find variable assignments from step outputs
-      if (step.output && typeof step.output === 'object') {
-        // In real implementation, we'd parse context.variables from output
-        Object.entries(step.output).forEach(([key, value]) => {
-          if (key !== 'data' && key !== 'result') {
-            vars[key] = value;
-          }
-        });
+  // Extract variables from execution context snapshot
+  const getContextVariables = () => {
+    if (executionLog.length === 0) {
+      return { variables: {}, workspace: {}, trigger: {} };
+    }
+
+    // Use the last step's context snapshot (post-execution state)
+    const lastStep = executionLog[executionLog.length - 1];
+    if (lastStep.contextSnapshot) {
+      return {
+        variables: lastStep.contextSnapshot.variables || {},
+        workspace: lastStep.contextSnapshot.workspace || {},
+        trigger: lastStep.contextSnapshot.trigger || {},
+      };
+    }
+
+    return { variables: {}, workspace: {}, trigger: {} };
+  };
+
+  // Evaluate expression against last execution context
+  const evaluateExpression = useCallback(
+    async (expression: string) => {
+      if (!expression || !workflowId || executionLog.length === 0) {
+        setTesterResult(null);
+        setTesterError(null);
+        return;
       }
-    });
-    return vars;
+
+      setTesterLoading(true);
+      setTesterError(null);
+      setTesterResult(null);
+
+      try {
+        const response = await apiClient.post<any>(`/workflows/${workflowId}/evaluate-expression`, {
+          expression,
+        });
+
+        if (response.data && (response.data as any).data?.result !== undefined) {
+          setTesterResult((response.data as any).data.result);
+        } else {
+          setTesterError('No result returned');
+        }
+      } catch (err: any) {
+        setTesterError(err.message || 'Error evaluating expression');
+      } finally {
+        setTesterLoading(false);
+      }
+    },
+    [workflowId, executionLog.length]
+  );
+
+  // Debounced expression evaluation
+  const handleTesterInputChange = useCallback(
+    (value: string) => {
+      setTesterInput(value);
+
+      // Clear existing timer
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+
+      // Set new debounced call (500ms delay)
+      debounceTimer.current = setTimeout(() => {
+        evaluateExpression(value);
+      }, 500);
+    },
+    [evaluateExpression]
+  );
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+    };
+  }, []);
+
+  // Export execution log as JSON
+  const handleExportLog = () => {
+    const logData = {
+      workflowId: workflowId || 'unknown',
+      executionId: executionId || 'unknown',
+      executionLog,
+      debugMessages,
+      exportedAt: new Date().toISOString(),
+    };
+
+    const jsonString = JSON.stringify(logData, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `execution-log-${executionId || 'latest'}-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   if (!isOpen) return null;
@@ -53,14 +146,28 @@ export default function ContextDebugPanel({
       {/* Header */}
       <div className="flex items-center justify-between h-12 px-4 border-b border-gray-200 dark:border-gray-700">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Execution Context</h3>
-        <button
-          onClick={onClose}
-          className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+        <div className="flex items-center gap-2">
+          {executionLog.length > 0 && (
+            <button
+              onClick={handleExportLog}
+              className="flex items-center gap-1 px-2 py-1 text-xs text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+              title="Download execution log as JSON"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Export Log
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -149,25 +256,68 @@ export default function ContextDebugPanel({
             )}
           </div>
         ) : activeTab === 'variables' ? (
-          <div className="p-4">
-            <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">Variables set during execution:</p>
-            {Object.entries(getVariables()).length > 0 ? (
-              <div className="space-y-2">
-                {Object.entries(getVariables()).map(([key, value]) => (
-                  <div key={key} className="flex items-start gap-2 p-2 bg-gray-100 dark:bg-gray-700 rounded">
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs font-mono font-semibold text-gray-900 dark:text-gray-100 truncate">
-                        {key}
-                      </div>
-                      <div className="text-xs text-gray-600 dark:text-gray-400 truncate">
-                        {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+          <div className="p-4 space-y-4 max-h-[280px] overflow-y-auto">
+            {executionLog.length === 0 ? (
+              <div className="text-xs text-gray-500 dark:text-gray-400">Run a workflow to see execution context</div>
             ) : (
-              <div className="text-xs text-gray-500 dark:text-gray-400">No variables set</div>
+              <>
+                {/* User Variables */}
+                <div>
+                  <h4 className="text-xs font-semibold text-gray-900 dark:text-gray-100 mb-2">Variables</h4>
+                  {Object.entries(getContextVariables().variables).length > 0 ? (
+                    <div className="space-y-1">
+                      {Object.entries(getContextVariables().variables).map(([key, value]) => (
+                        <div key={key} className="flex items-start gap-2 p-1.5 bg-blue-50 dark:bg-blue-900/20 rounded text-xs">
+                          <div className="font-mono font-semibold text-blue-700 dark:text-blue-300 flex-shrink-0">{key}</div>
+                          <div className="text-blue-600 dark:text-blue-400 truncate flex-1">
+                            {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-gray-500 dark:text-gray-400">No variables</div>
+                  )}
+                </div>
+
+                {/* Trigger Data */}
+                <div>
+                  <h4 className="text-xs font-semibold text-gray-900 dark:text-gray-100 mb-2">Trigger</h4>
+                  {Object.entries(getContextVariables().trigger).length > 0 ? (
+                    <div className="space-y-1">
+                      {Object.entries(getContextVariables().trigger).map(([key, value]) => (
+                        <div key={key} className="flex items-start gap-2 p-1.5 bg-green-50 dark:bg-green-900/20 rounded text-xs">
+                          <div className="font-mono font-semibold text-green-700 dark:text-green-300 flex-shrink-0">{key}</div>
+                          <div className="text-green-600 dark:text-green-400 truncate flex-1">
+                            {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-gray-500 dark:text-gray-400">No trigger data</div>
+                  )}
+                </div>
+
+                {/* Workspace */}
+                <div>
+                  <h4 className="text-xs font-semibold text-gray-900 dark:text-gray-100 mb-2">Workspace</h4>
+                  {Object.entries(getContextVariables().workspace).length > 0 ? (
+                    <div className="space-y-1">
+                      {Object.entries(getContextVariables().workspace).map(([key, value]) => (
+                        <div key={key} className="flex items-start gap-2 p-1.5 bg-amber-50 dark:bg-amber-900/20 rounded text-xs">
+                          <div className="font-mono font-semibold text-amber-700 dark:text-amber-300 flex-shrink-0">{key}</div>
+                          <div className="text-amber-600 dark:text-amber-400 truncate flex-1">
+                            {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-gray-500 dark:text-gray-400">No workspace data</div>
+                  )}
+                </div>
+              </>
             )}
           </div>
         ) : activeTab === 'steps' ? (
@@ -241,16 +391,48 @@ export default function ContextDebugPanel({
             })}
           </div>
         ) : (
-          <div className="p-4">
-            <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">Test expression against context:</p>
-            <input
-              type="text"
-              placeholder="e.g., {{trigger.temperature}}"
-              className="w-full px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-purple-500"
-            />
-            <div className="mt-2 p-2 bg-gray-100 dark:bg-gray-700 rounded text-xs text-gray-600 dark:text-gray-400">
-              Expression tester will resolve here
+          <div className="p-4 space-y-3">
+            <div>
+              <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">Expression:</p>
+              <input
+                type="text"
+                value={testerInput}
+                onChange={(e) => handleTesterInputChange(e.target.value)}
+                placeholder="e.g., {{trigger.temperature}}"
+                className="w-full px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                disabled={executionLog.length === 0}
+              />
             </div>
+
+            {/* Result or Error */}
+            {testerLoading && (
+              <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-xs text-blue-600 dark:text-blue-400">
+                <div className="animate-spin h-3 w-3 border-2 border-blue-500 border-t-transparent rounded-full" />
+                Evaluating...
+              </div>
+            )}
+
+            {testerError && !testerLoading && (
+              <div className="p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded">
+                <p className="text-xs font-semibold text-red-700 dark:text-red-300 mb-1">Error</p>
+                <p className="text-xs text-red-600 dark:text-red-400 font-mono break-all">{testerError}</p>
+              </div>
+            )}
+
+            {testerResult !== null && !testerLoading && !testerError && (
+              <div className="p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded">
+                <p className="text-xs font-semibold text-green-700 dark:text-green-300 mb-1">Result</p>
+                <p className="text-xs text-green-600 dark:text-green-400 font-mono break-all">
+                  {typeof testerResult === 'object' ? JSON.stringify(testerResult, null, 2) : String(testerResult)}
+                </p>
+              </div>
+            )}
+
+            {executionLog.length === 0 && (
+              <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded text-xs text-gray-600 dark:text-gray-400">
+                Run a workflow to use the expression tester
+              </div>
+            )}
           </div>
         )}
       </div>

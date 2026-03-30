@@ -1,0 +1,18 @@
+ADR-050 RS256 License Production Upgrade
+=context
+HS256 MVP uses a shared secret (LICENSE_SECRET) present in both the vendor CLI and the customer
+Docker image. If a customer decompiles the image, they can forge license keys. RS256 asymmetric
+JWT eliminates this: the private key stays with the vendor; only the public key lives in the image.
+=decision
+Switch default algorithm to RS256 for production license tokens.
+- license-cli: new `generate-keypair` subcommand (Node.js built-in crypto, RSA-2048)
+- license-cli: `--algorithm rs256|hs256` on `generate`; default rs256
+- license-cli: `verify` auto-detects alg from JWT header
+- license.service.ts: if LICENSE_PUBLIC_KEY set → RS256 verify; else HS256 with LICENSE_SECRET
+- Dockerfile: ARG LICENSE_PUBLIC_KEY → ENV bake; customers cannot change without image rebuild
+- Backward compat: existing HS256 deployments continue without changes (no LICENSE_PUBLIC_KEY set)
+=consequences
++ Private key never leaves vendor; public key forgery = impossible
++ Upgrade path: set LICENSE_PUBLIC_KEY build arg; ship new image; customer restarts container
+- Customer must rebuild image to rotate public key (acceptable: same as any env-baked secret)
+- Dev mode unchanged: NODE_ENV=development + no key → all modules enabled

@@ -47,6 +47,12 @@ RUN pnpm build
 # =============================================================================
 # Stage 3: Production
 # =============================================================================
+# ADR-050: Bake the RS256 public key into the image at build time.
+# The customer receives an image with the public key embedded — they cannot
+# forge license tokens without the private key (held by vendor only).
+# Usage: docker build --build-arg LICENSE_PUBLIC_KEY="$(cat public.pem)" .
+ARG LICENSE_PUBLIC_KEY=""
+
 FROM node:20-alpine AS runner
 
 WORKDIR /app
@@ -59,6 +65,10 @@ RUN adduser --system --uid 1001 fastify
 COPY --from=builder --chown=fastify:nodejs /app/apps/api/dist ./dist
 COPY --from=builder --chown=fastify:nodejs /app/apps/api/node_modules ./node_modules
 COPY --from=builder --chown=fastify:nodejs /app/apps/api/package.json ./package.json
+
+# Bake LICENSE_PUBLIC_KEY into the runtime environment (ADR-050).
+# Customers cannot override this without rebuilding the image.
+ENV LICENSE_PUBLIC_KEY=$LICENSE_PUBLIC_KEY
 
 # Switch to non-root user
 USER fastify

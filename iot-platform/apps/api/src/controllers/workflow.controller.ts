@@ -2,6 +2,7 @@ import type { FastifyRequest, FastifyReply } from 'fastify';
 import type { Server as SocketIOServer } from 'socket.io';
 import { WorkflowService } from '../services/workflow.service';
 import { WorkflowEngineService } from '../services/workflow-engine.service';
+import { resolveExpression } from '../services/workflow-node-handlers.service';
 import { NotFoundError } from '../lib/errors';
 import { sendSuccess, sendCreated, sendAccepted, sendPaginated } from '../lib/response';
 import { getRequestContext } from '../lib/request-context';
@@ -13,6 +14,7 @@ import type {
   ExecuteWorkflowDTO,
   WorkflowIdParam,
   ExecutionIdParam,
+  EvaluateExpressionDTO,
 } from '../schemas/workflow.schema';
 
 /**
@@ -216,5 +218,60 @@ export class WorkflowController {
     }
 
     return sendSuccess(reply, execution);
+  }
+
+  /**
+   * POST /workflows/:workflowId/evaluate-expression
+   * Evaluates a {{expression}} against the context of the last execution
+   */
+  async evaluateExpression(
+    request: FastifyRequest<{ Params: WorkflowIdParam; Body: EvaluateExpressionDTO }>,
+    reply: FastifyReply
+  ) {
+    const { workflowId } = request.params;
+    const { expression, executionId } = request.body;
+
+    // Get execution (use provided ID or find latest)
+    let execution;
+    if (executionId) {
+      execution = await this.engineService.getExecution(executionId);
+    } else {
+      // Get the latest execution for this workflow
+      const result = await this.engineService.listExecutions(workflowId, {
+        limit: 1,
+        offset: 0,
+        sortBy: 'createdAt',
+        sortOrder: 'desc',
+      });
+      execution = result.executions[0] || null;
+    }
+
+    if (!execution) {
+      throw new NotFoundError('Execution');
+    }
+
+    // Build context from the last execution log entry
+    let context: any = {
+      variables: execution.variables || {},
+      trigger: execution.trigger?.data || {},
+      workspace: {},
+    };
+
+    // If execution log has entries, use the last one's context snapshot
+    if (execution.executionLog && execution.executionLog.length > 0) {
+      const lastStep = execution.executionLog[execution.executionLog.length - 1];
+      if (lastStep.contextSnapshot) {
+        context = lastStep.contextSnapshot;
+      }
+    }
+
+    // Resolve the expression using the context
+    const result = resolveExpression(expression, context);
+
+    return sendSuccess(reply, {
+      expression,
+      result,
+      context,
+    });
   }
 }

@@ -1,0 +1,49 @@
+// LLAMP-SPEC v1 | ADR-047
+=adr: 047
+=title: Per-Document expiresAt Retention Pattern
+=date: 2026-03-28
+=status: accepted
+
+#ctx:
+  RetentionPolicy model + CRUD UI exists but NOT enforced on MongoDB TTL indexes.
+  TTL indexes hardcoded: device_states=5yr (timestamp-based), derived_history=90d (timestamp-based).
+  collMod rejected: retroactively triggers delete surge when TTL is reduced on large collections.
+  User requirement 2026-03-28: policy changes must affect ONLY new inserts, not existing data.
+  DataCategory enum missing 'derived_state_history' — that collection is unmanaged.
+
+#opts:
+  A: collMod on policy save → affects all documents, delete surge risk on large collections
+  B: Per-document expiresAt field set at insert time from active policy
+  C: Background cleanup cron reading policy → operational overhead, no index benefit
+
+#decision:
+  Option B.
+  Add expiresAt: Date field to device_states + device_derived_state_history schemas.
+  At insert: expiresAt = Date.now() + activePolicy.totalRetentionDuration (ms)
+  TTL index: { expiresAt: 1 }, expireAfterSeconds: 0  (replace timestamp-based TTL)
+  Add RetentionPolicyService.getInsertExpiry(category): Promise<number> (returns ms)
+  Fallback when no active policy: device_states=157680000000ms(5yr), derived=7776000000ms(90d)
+  Add 'derived_state_history' to DataCategory enum in retention-policy.model.ts.
+
+#consequences:
+  +Policy changes affect only future inserts; existing documents completely untouched
+  +No collMod, no retroactive delete surge, no write storm
+  +derived_state_history brought under RetentionPolicy management
+  -device_states schema: add expiresAt Date field, replace TTL index
+  -device_derived_state_history schema: same
+  -DeviceStateService.save(): call getInsertExpiry('device_states') at every insert
+  -DeviceDerivedStateService.upsert(): call getInsertExpiry('derived_state_history')
+  -getInsertExpiry() adds one MongoDB read per insert (RetentionPolicy.findOne)
+   Mitigation: cache active policy in-memory, refresh on policy update event (future)
+  ~Existing documents expire on original hardcoded schedule, undisturbed
+
+#scope:
+  arch_summary_update: yes
+  files: [
+    iot-platform/apps/api/src/models/device-state.model.ts (or equivalent),
+    iot-platform/apps/api/src/models/device-derived-state-history.model.ts,
+    iot-platform/apps/api/src/models/retention-policy.model.ts,
+    iot-platform/apps/api/src/services/retention-policy.service.ts,
+    iot-platform/apps/api/src/services/device-state.service.ts,
+    iot-platform/apps/api/src/services/device-derived-state.service.ts
+  ]

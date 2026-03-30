@@ -15,14 +15,17 @@
 }
 
 =database: {
-  device_states: time_series TTL=5yr append-only raw_telemetry (ADR-031),
+  device_states: append-only raw_telemetry, expiresAt per-doc TTL (ADR-047),
   device_derived_states: regular_collection unique_on_deviceId workflow_outputs_only (ADR-031),
+  device_derived_state_history: append-only derived snapshots, expiresAt per-doc TTL (ADR-047),
   replica_set: required for compliance + transactions + oplog,
   audit_logs: 10yr no_TTL (21_CFR_Part_11),
   workflow_executions: 90d TTL,
   lean_queries: .lean() for read-only (cast: as IModel|null),
   ids: ObjectId 24hex (internal) | ULID 26ch (user-facing: deviceId, workflowId),
-  indexes: compound (orgId, deviceId, timestamp) for device state queries
+  indexes: compound (orgId, deviceId, timestamp) for device state queries,
+  retention: expiresAt=Date set at insert from RetentionPolicy.getInsertExpiry(category) (ADR-047),
+  device_datasource: device.dataSource enum gateway|workflow|http (ADR-046)
 }
 
 =security: {
@@ -43,9 +46,20 @@
   !post_requires_body: use {} if no body
 }
 
+=modules: {
+  system: HS256 JWT (ADR-048/049); LicenseService.init() on startup; GET /api/v1/license (public); dev_override: all_modules_enabled when NODE_ENV=development+no_key,
+  combustion_dl: CD Precursor DL analytics tab + combustion_ml_engine MQTT device,
+  asset_life: Fleet Analytics + Asset Life Management + IBM Maximo integration (ADR-049),
+  be_agent: Agentic AI Framework tab + be_sense_edge MQTT device,
+  ibm_maximo_core: action:ibmMaximoSync is CORE node — always in NodePalette (no gate),
+  frontend_authority: licenseSlice reads /api/v1/license — NEVER self-decides,
+  license_aware_widgets: [overviewDataFlow, platformArchitecture] render only licensed layers,
+  node_palette_gating: NodeTypeConfig.module? field; useLicense() filters at render (ADR-049)
+}
+
 =frontend: {
   state: Redux Toolkit primary (NOT Zustand),
-  slices: [authSlice, uiSlice, dashboardSlice, websocketSlice, workflowSlice, alarmSlice],
+  slices: [authSlice, uiSlice, dashboardSlice, websocketSlice, workflowSlice, alarmSlice, licenseSlice],
   react_query: device/deviceState queries + useDeviceRealtime cache,
   protected_routes: ProtectedRoute wrapper with returnUrl,
   api_client: generic type params REQUIRED → apiClient.get<T>(),

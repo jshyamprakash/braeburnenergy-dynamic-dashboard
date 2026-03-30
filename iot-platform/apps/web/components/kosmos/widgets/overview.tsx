@@ -5,6 +5,10 @@ import { updateKosmosWidgetConfig } from '@/lib/store/slices/dashboardSlice';
 import type { KosmosWidget } from '../types';
 import { useCombustionSimulator } from './combustion-simulator';
 import { ChartPanel } from './shared';
+import { EChartsLine } from './EChartsLine';
+import { useDeviceTimeSeries } from '@/lib/hooks/useDeviceTimeSeries';
+import { useDeviceSnapshot } from '@/lib/hooks/useDeviceSnapshot';
+import { useLicense } from '@/lib/hooks/useLicense';
 
 // Note: dispatch and updateKosmosWidgetConfig are used in OverviewMetricCard, OverviewRealtimeChartWidget, and OverviewDataFlowWidget
 // BeSense and BeAgentStatus widgets no longer edit inline
@@ -277,8 +281,16 @@ export function OverviewRealtimeChartWidget({
   onConfigChange?: () => void;
 } = {}) {
   const dispatch = useAppDispatch();
-  const { cdBuf } = useCombustionSimulator();
   const title = widget?.config?.title ?? 'COMBUSTION DYNAMICS — REAL-TIME';
+  const deviceId = widget?.config?.deviceId as string | undefined;
+  const fieldName = (widget?.config?.fieldName as string) ?? 'cd_pressure';
+
+  // Fetch time-series data based on deviceId + fieldName
+  const { points, isLoading } = useDeviceTimeSeries(deviceId || '', {
+    field: fieldName,
+    maxPoints: 200,
+    seedCount: 50,
+  });
 
   const handleTitleChange = (newTitle: string) => {
     if (widget && pageId) {
@@ -303,13 +315,39 @@ export function OverviewRealtimeChartWidget({
           )}
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span className="tag tag-green">DFT ACTIVE</span>
+          <span className={`tag ${isLoading ? 'tag-blue' : 'tag-green'}`}>
+            {isLoading ? 'LOADING' : 'LIVE'}
+          </span>
           <span className="tag tag-blue">50 kHz</span>
         </div>
       </div>
       <div className="card-body" style={{ padding: 8, flex: 1, minHeight: 0 }}>
         <div className="chart-container" style={{ height: 160 }}>
-          <ChartPanel values={cdBuf} color="#1560BD" fill="rgba(21,96,189,0.05)" min={-3} max={3} framed={false} />
+          {!deviceId ? (
+            <div
+              style={{
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--k-text-dim)',
+                fontSize: 12,
+                fontFamily: 'var(--k-font-tech)',
+              }}
+            >
+              Configure deviceId in settings
+            </div>
+          ) : (
+            <EChartsLine
+              points={points}
+              color="#1560BD"
+              fill={true}
+              label={fieldName}
+              height={160}
+              min={-3}
+              max={3}
+            />
+          )}
         </div>
       </div>
     </div>
@@ -327,23 +365,35 @@ export function OverviewDataFlowWidget({
   pageId?: string;
   onConfigChange?: () => void;
 } = {}) {
-  type DataFlowLayer = { label: string; blockClass: string; blocks: string[] };
+  type DataFlowLayer = { id: string; label: string; blockClass: string; blocks: string[]; module?: string; always?: boolean };
 
   const dispatch = useAppDispatch();
+  const { isModuleEnabled } = useLicense();
   const title = widget?.config?.title ?? 'DATA FLOW — KOSMOS PLATFORM';
 
-  const DEFAULT_LAYERS: DataFlowLayer[] = [
-    { label: 'Physical Layer', blockClass: 'sensor', blocks: ['Gas Turbine\nGE / Siemens / MHI', 'Balance of Plant'] },
-    { label: 'BE Sense™', blockClass: 'fusion', blocks: ['Multimodal\nSensor Fusion', 'CalorieSense™\nEdge'] },
-    { label: 'BE Agent™', blockClass: 'agent', blocks: ['Agentic AI\nFramework', 'CD Precursor\nDetection'] },
-    { label: 'Cloud / On-Prem', blockClass: 'cloud', blocks: ['Fleet\nAnalytics', 'Asset Life\nManagement'] },
-    { label: 'Outputs', blockClass: 'output', blocks: ['CMMS\nIntegration', 'Operator\nDashboard'] },
+  const ALL_LAYERS: DataFlowLayer[] = [
+    { id: 'physical', label: 'Physical Layer', blockClass: 'sensor', blocks: ['Gas Turbine\nGE / Siemens / MHI', 'Balance of Plant'], always: true },
+    { id: 'be_sense', label: 'BE Sense™', blockClass: 'fusion', blocks: ['Multimodal\nSensor Fusion', 'CalorieSense™\nEdge'], always: true },
+    { id: 'be_agent', label: 'BE Agent™', blockClass: 'agent', blocks: ['Agentic AI\nFramework', 'CD Precursor\nDetection'], module: 'be_agent' },
+    { id: 'combustion_dl', label: 'CD Precursor DL', blockClass: 'cloud', blocks: ['DL Model\nServer', 'Anomaly\nDetection', 'CD Precursor\nClassifier'], module: 'combustion_dl' },
+    { id: 'asset_life', label: 'Asset Life Mgmt', blockClass: 'cloud', blocks: ['Fleet\nAnalytics', 'Asset Life\nManagement'], module: 'asset_life' },
+    { id: 'outputs', label: 'Outputs', blockClass: 'output', blocks: ['CMMS\nIntegration', 'Operator\nDashboard'], always: true },
   ];
 
-  const LAYER_ARROWS = ['bidirectional', 'forward', 'bidirectional', 'forward'];
-
   const cfg = widget?.config ?? {};
-  const layers = (cfg.layers as DataFlowLayer[]) ?? DEFAULT_LAYERS;
+  const storedLayers = (cfg.layers as DataFlowLayer[]) ?? [];
+
+  // Filter layers based on license and always flag
+  const DEFAULT_LAYERS = ALL_LAYERS.filter(
+    (l) => l.always || (l.module ? isModuleEnabled(l.module) : true)
+  );
+
+  const layers = storedLayers.length > 0 ? storedLayers : DEFAULT_LAYERS;
+
+  // Compute arrow configuration based on filtered layers (one less than layer count)
+  const LAYER_ARROWS = Array(Math.max(0, layers.length - 1)).fill(null).map((_, i) =>
+    i % 2 === 0 ? 'bidirectional' : 'forward'
+  );
 
   const persist = (partial: Record<string, unknown>) => {
     if (widget && pageId) {
@@ -454,9 +504,18 @@ export function OverviewBeAgentStatusWidget({
   ];
 
   const cfg = widget?.config ?? {};
+  const liveDeviceId = (cfg.deviceId as string) || '';
+
+  // If a BE Sense edge device is configured, read live health_score from it
+  const { snapshot } = useDeviceSnapshot(liveDeviceId);
+  const liveHealthScore =
+    liveDeviceId && snapshot?.fields?.health_score != null
+      ? Number(snapshot.fields.health_score)
+      : null;
+
   const modules = (cfg.modules as ModuleItem[]) ?? DEFAULT_MODULES;
   const alerts = (cfg.alerts as AlertItem[]) ?? DEFAULT_ALERTS;
-  const healthScore = (cfg.healthScore as number) ?? 86;
+  const healthScore = liveHealthScore ?? (cfg.healthScore as number) ?? 86;
   const dashOffset = Math.round(251 - (healthScore / 100) * 216);
 
   return (

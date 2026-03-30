@@ -8,6 +8,9 @@
 // Core Types
 // ===========================
 
+/** Declares where this device's data originates (ADR-046). One device = one source. */
+export type DeviceDataSource = 'gateway' | 'workflow' | 'http';
+
 /**
  * Device - IoT device entity
  */
@@ -19,9 +22,12 @@ export interface Device {
   tags: Record<string, string>;
   /** Device data schema: field name → data type (ADR-021) */
   attributes: Record<string, string> | null;
+  /** Declares data origin: gateway (Modbus/OPC-UA/MQTT), workflow (derived), http (REST) — ADR-046 */
+  dataSource: DeviceDataSource;
   /** Last time a state was received from this device (ADR-041) */
   lastSeenAt?: string | Date;
   orgId?: string;
+  applicationId?: string;
   createdAt: string | Date;
   updatedAt: string | Date;
 }
@@ -204,7 +210,11 @@ export type NodeType =
   | 'transform:aggregation' | 'transform:dataMapping'
   | 'data:modbusRead' | 'data:modbusWrite' | 'data:queryDeviceStates'
   | 'data:storageGet' | 'data:storageSet' | 'data:opcuaRead' | 'data:opcuaWrite'
-  | 'logic:function' | 'logic:switch' | 'logic:loop' | 'logic:delay' | 'logic:mutate';
+  | 'logic:function' | 'logic:switch' | 'logic:loop' | 'logic:delay' | 'logic:mutate'
+  | 'action:writeDeviceState'
+  // Asset Life Management — module: asset_life (ADR-049)
+  | 'action:ibmMaximoSync' | 'action:ibmMaximoCreateWorkOrder'
+  | 'data:fleetQuery' | 'data:assetLifeCalc';
 
 /**
  * Workflow type (deployment target/use case)
@@ -292,6 +302,7 @@ export interface WorkflowExecutionStepEvent {
   duration?: number;
   timestamp?: Date | string;
   notes?: string;
+  contextSnapshot?: Record<string, any>;  // Snapshot of variables, workspace, trigger at this step
 }
 
 /**
@@ -572,6 +583,81 @@ export const OpcuaNodeClass = {
   DataType: 64,
   View: 128,
 } as const;
+
+// ===========================
+// MQTT Gateway Types
+// ===========================
+
+export type MqttQoS = 0 | 1 | 2;
+export type MqttPayloadFormat = 'json' | 'raw';
+export type MqttGatewayStatus = 'connected' | 'disconnected' | 'error';
+
+export interface MqttTopicMapping {
+  topic: string;
+  field: string;
+  deviceId: string;
+  payloadFormat: MqttPayloadFormat;
+  jsonPath?: string;
+  scale?: number;
+  offset?: number;
+  unit?: string;
+  qos: MqttQoS;
+  processingOverrides?: {
+    noiseThreshold?: number;
+    deltaPercent?: number;
+  };
+}
+
+export interface MqttGateway {
+  id: string;
+  name: string;
+  description?: string;
+  applicationId?: string;
+  brokerUrl: string;
+  clientId: string;
+  keepalive: number;
+  connectTimeout: number;
+  reconnectPeriod: number;
+  auth?: { username?: string; password?: string };
+  tls?: { enabled: boolean; rejectUnauthorized?: boolean; caCert?: string; clientCert?: string; clientKey?: string };
+  topicMappings: MqttTopicMapping[];
+  status: MqttGatewayStatus;
+  isActive: boolean;
+  lastConnected?: string | Date;
+  lastError?: string;
+  lastMessageAt?: string | Date;
+  totalMessagesReceived: number;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+}
+
+export interface CreateMqttGatewayInput {
+  name: string;
+  description?: string;
+  applicationId?: string;
+  brokerUrl: string;
+  clientId?: string;
+  keepalive?: number;
+  connectTimeout?: number;
+  reconnectPeriod?: number;
+  auth?: { username?: string; password?: string };
+  tls?: { enabled: boolean; rejectUnauthorized?: boolean; caCert?: string; clientCert?: string; clientKey?: string };
+  topicMappings?: MqttTopicMapping[];
+}
+
+export interface UpdateMqttGatewayInput {
+  name?: string;
+  description?: string;
+  brokerUrl?: string;
+  clientId?: string;
+  keepalive?: number;
+  connectTimeout?: number;
+  reconnectPeriod?: number;
+  auth?: { username?: string; password?: string };
+  tls?: { enabled: boolean; rejectUnauthorized?: boolean };
+  topicMappings?: MqttTopicMapping[];
+  isActive?: boolean;
+}
 
 /**
  * WorkflowStorageEntry - Persistent key-value storage for workflows (ADR-042)

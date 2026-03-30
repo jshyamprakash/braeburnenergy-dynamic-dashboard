@@ -10,8 +10,12 @@ import { workflowSchedulerService } from './services/workflow-scheduler.service'
 import { heartbeatService } from './services/heartbeat.service';
 import { modbusGatewayManager } from './services/modbus-gateway-manager.service';
 import { opcuaGatewayManager } from './services/opcua-gateway-manager.service';
+import { mqttGatewayManager } from './services/mqtt-gateway-manager.service';
 import { natsClient } from './lib/nats-client.js';
+import { licenseService } from './services/license.service';
 import { startStorageWorker, stopStorageWorker } from './workers/storage-worker.js';
+import { startProcessingEngine, stopProcessingEngine, setProcessingEngineDispatcher } from './workers/processing-engine.js';
+import { startWebSocketBridge, stopWebSocketBridge, setWebSocketBridgeIO } from './workers/websocket-bridge.js';
 
 /**
  * Application Entry Point
@@ -24,6 +28,17 @@ async function main() {
     console.log('🔍 Validating configuration...');
     validateConfig();
     console.log('✅ Configuration validated');
+
+    // Initialise license (ADR-048) — must run before any request is served
+    licenseService.init();
+    const licenseState = licenseService.getState();
+    if (licenseState.valid) {
+      const moduleList = licenseState.modules.length ? licenseState.modules.join(', ') : 'core only';
+      const expiry = licenseState.expiresAt ? ` (expires: ${licenseState.expiresAt})` : '';
+      console.log(`🔑 License: [${moduleList}] — ${licenseState.customer}${expiry}`);
+    } else {
+      console.log('⚠️  License: not set or invalid — optional modules disabled');
+    }
 
     // Connect to MongoDB
     console.log('🗄️  Connecting to MongoDB...');
@@ -61,6 +76,20 @@ async function main() {
     );
     fastify.decorate('triggerDispatcher', triggerDispatcher);
 
+    // Inject dispatcher into Processing Engine (ADR-043 Phase 3)
+    setProcessingEngineDispatcher(triggerDispatcher, fastify.log as any);
+
+    // Inject Socket.io into WebSocket Bridge (ADR-043 Phase 4)
+    setWebSocketBridgeIO(io);
+
+    // Start Processing Engine (ADR-043 Phase 3: noise filter + delta detection + Redis cache + workflow dispatch)
+    console.log('⚙️  Starting Processing Engine...');
+    await startProcessingEngine();
+
+    // Start WebSocket Bridge (ADR-043 Phase 4: sensor.processed → Socket.io device:state)
+    console.log('🔌 Starting WebSocket Bridge...');
+    await startWebSocketBridge();
+
     // Register trigger dispatcher with Modbus gateway manager (for workflow dispatch on polling)
     modbusGatewayManager.setTriggerDispatcher(triggerDispatcher, fastify.log as any);
 
@@ -70,6 +99,10 @@ async function main() {
     // Inject NATS client into gateway managers (ADR-043: NATS publishing)
     modbusGatewayManager.setNatsClient(natsClient);
     opcuaGatewayManager.setNatsClient(natsClient);
+    mqttGatewayManager.setNatsClient(natsClient);
+
+    // Register trigger dispatcher with MQTT gateway manager (deprecated: handled by Processing Engine)
+    mqttGatewayManager.setTriggerDispatcher(triggerDispatcher, fastify.log as any);
 
     // Register trigger dispatcher with heartbeat service (ADR-041: device offline detection)
     heartbeatService.setTriggerDispatcher(triggerDispatcher, fastify.log as any);
@@ -102,6 +135,8 @@ async function main() {
         fastify.log.info(`Received ${signal}, closing server gracefully...`);
         workflowSchedulerService.stop();
         heartbeatService.stop();
+        await stopWebSocketBridge();
+        await stopProcessingEngine();
         await stopStorageWorker();
         await natsClient.drain();
         await fastify.close();

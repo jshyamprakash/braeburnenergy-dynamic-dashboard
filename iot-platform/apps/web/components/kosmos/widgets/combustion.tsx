@@ -5,6 +5,10 @@ import { useState } from 'react';
 import type { KosmosWidget } from '../types';
 import { useCombustionSimulator } from './combustion-simulator';
 import { ChartPanel, MetricBar, Tag, WidgetCard } from './shared';
+import { EChartsLine } from './EChartsLine';
+import { EChartsBar } from './EChartsBar';
+import { useDeviceTimeSeries } from '@/lib/hooks/useDeviceTimeSeries';
+import { useDeviceSnapshot } from '@/lib/hooks/useDeviceSnapshot';
 
 export function CombustionDlHeaderWidget({
   widget,
@@ -70,13 +74,34 @@ export function CombustionDlPressureSignalWidget({
   pageId?: string;
   onConfigChange?: () => void;
 } = {}) {
-  const { cdBuf2 } = useCombustionSimulator();
   const title = widget?.config?.title ?? 'CD PRESSURE SIGNAL';
+  const deviceId = widget?.config?.deviceId as string | undefined;
+  const fieldName = (widget?.config?.fieldName as string) ?? 'cd_pressure';
+
+  const { points } = useDeviceTimeSeries(deviceId || '', {
+    field: fieldName,
+    maxPoints: 200,
+    seedCount: 50,
+  });
 
   return (
     <WidgetCard title={title} right={<Tag>50 kHz</Tag>}>
       <div style={{ height: '100%', padding: 4 }}>
-        <ChartPanel values={cdBuf2} color="#00B050" fill="rgba(0,176,80,0.04)" min={-3} max={3} />
+        {!deviceId ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--k-text-dim)', fontSize: 11, fontFamily: 'var(--k-font-tech)' }}>
+            Configure deviceId
+          </div>
+        ) : (
+          <EChartsLine
+            points={points}
+            color="#00B050"
+            fill={true}
+            label={fieldName}
+            height={200}
+            min={-3}
+            max={3}
+          />
+        )}
       </div>
     </WidgetCard>
   );
@@ -93,26 +118,32 @@ export function CombustionDlFrequencySpectrumWidget({
   pageId?: string;
   onConfigChange?: () => void;
 } = {}) {
-  const { fftFreqs, fftAmps } = useCombustionSimulator();
   const title = widget?.config?.title ?? 'FREQUENCY SPECTRUM (DFT)';
+  const deviceId = widget?.config?.deviceId as string | undefined;
+  const fftFreqsField = (widget?.config?.fieldName as string) ?? 'fft_freqs';
+  const fftAmpsField = 'fft_amplitudes'; // Assumed companion field for amplitudes
+
+  // For FFT, fetch snapshot data (not time-series)
+  const { snapshot } = useDeviceSnapshot(deviceId || '');
+  const fftFreqs = (snapshot?.fields?.[fftFreqsField] as string[]) ?? [];
+  const fftAmps = (snapshot?.fields?.[fftAmpsField] as number[]) ?? [];
 
   return (
     <WidgetCard title={title} right={<Tag color="green">FFT LIVE</Tag>}>
-      <div style={{ height: '100%', padding: '6px 2px 0', display: 'flex', alignItems: 'end', gap: 8 }}>
-        {fftAmps.map((value, index) => (
-          <div key={fftFreqs[index]} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-            <div
-              style={{
-                width: '100%',
-                height: `${Math.max(10, value * 110)}px`,
-                borderRadius: '3px 3px 0 0',
-                background: index === 3 ? 'rgba(0,176,80,0.6)' : 'rgba(21,96,189,0.5)',
-                border: `1px solid ${index === 3 ? '#00B050' : '#1560BD'}`,
-              }}
-            />
-            <span style={{ fontFamily: 'var(--k-font-tech)', fontSize: 9, color: 'var(--k-text-dim)' }}>{fftFreqs[index]}</span>
+      <div style={{ height: '100%', padding: 8 }}>
+        {!deviceId ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--k-text-dim)', fontSize: 11, fontFamily: 'var(--k-font-tech)' }}>
+            Configure deviceId
           </div>
-        ))}
+        ) : (
+          <EChartsBar
+            categories={fftFreqs}
+            values={fftAmps}
+            color="#1560BD"
+            label="FFT Amplitude"
+            height={200}
+          />
+        )}
       </div>
     </WidgetCard>
   );
@@ -129,15 +160,30 @@ export function CombustionDlFeatureMatrixWidget({
   pageId?: string;
   onConfigChange?: () => void;
 } = {}) {
+  const deviceId = widget?.config?.deviceId as string | undefined;
+  const fieldName = (widget?.config?.fieldName as string) ?? 'feature_cells';
+
+  // Try live device snapshot when deviceId is configured
+  const { snapshot } = useDeviceSnapshot(deviceId ?? '');
+  const { featureCells: simCells } = useCombustionSimulator();
+
+  // Parse live feature_cells from snapshot; fall back to simulator
+  type LiveCell = { label: string; value: number; hue: number; alpha: number };
+  const liveCells: LiveCell[] | null = (() => {
+    if (!deviceId || !snapshot) return null;
+    const raw = snapshot.fields?.[fieldName];
+    if (!raw) return null;
+    // Handle both parsed array and JSON string
+    const parsed = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return null; } })() : raw;
+    if (!Array.isArray(parsed) || parsed.length === 0) return null;
+    return parsed as LiveCell[];
+  })();
+
   type ConfigCell = { label: string; value: string };
-
-  const { featureCells } = useCombustionSimulator();
-  const [hovered, setHovered] = useState<{ label: string; x: number; y: number } | null>(null);
-  const title = widget?.config?.title ?? 'EXTRACTED FEATURES';
-
-  // Merge config overrides with simulator values
   const configCells = widget?.config?.featureCells as ConfigCell[] | undefined;
-  const cells = featureCells.map((cell, i) => {
+
+  const cells = (liveCells ?? simCells).map((cell, i) => {
+    // Config overrides apply on top of live/sim data
     const over = configCells?.[i];
     const value = over ? (parseFloat(over.value) || cell.value) : cell.value;
     const label = over?.label ?? cell.label;
@@ -145,6 +191,9 @@ export function CombustionDlFeatureMatrixWidget({
     const alpha = 0.2 + value * 0.5;
     return { label, value, hue, alpha };
   });
+
+  const [hovered, setHovered] = useState<{ label: string; x: number; y: number } | null>(null);
+  const title = widget?.config?.title ?? 'EXTRACTED FEATURES';
 
   return (
     <WidgetCard title={title}>
@@ -322,13 +371,35 @@ export function CombustionDlAnomalyTrendWidget({
   pageId?: string;
   onConfigChange?: () => void;
 } = {}) {
-  const { anomBuf, anomalyDisplay } = useCombustionSimulator();
   const title = widget?.config?.title ?? 'ANOMALY SCORE TREND';
+  const deviceId = widget?.config?.deviceId as string | undefined;
+  const fieldName = (widget?.config?.fieldName as string) ?? 'anomaly_score';
+
+  const { points } = useDeviceTimeSeries(deviceId || '', {
+    field: fieldName,
+    maxPoints: 200,
+    seedCount: 50,
+  });
 
   return (
-    <WidgetCard title={title} right={<Tag color="green">{`LIVE ${anomalyDisplay}`}</Tag>}>
+    <WidgetCard title={title} right={<Tag color="green">{points.length > 0 ? 'LIVE' : 'IDLE'}</Tag>}>
       <div style={{ height: '100%', padding: 4 }}>
-        <ChartPanel values={anomBuf} color="#FFB800" fill="rgba(255,184,0,0.05)" min={0} max={0.8} threshold={0.5} />
+        {!deviceId ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--k-text-dim)', fontSize: 11, fontFamily: 'var(--k-font-tech)' }}>
+            Configure deviceId
+          </div>
+        ) : (
+          <EChartsLine
+            points={points}
+            color="#FFB800"
+            fill={true}
+            label={fieldName}
+            height={200}
+            min={0}
+            max={0.8}
+            threshold={0.5}
+          />
+        )}
       </div>
     </WidgetCard>
   );

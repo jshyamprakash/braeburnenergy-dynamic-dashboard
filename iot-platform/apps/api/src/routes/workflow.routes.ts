@@ -9,6 +9,7 @@ import {
   executeWorkflowSchema,
   workflowIdParamSchema,
   executionIdParamSchema,
+  evaluateExpressionSchema,
 } from '../schemas/workflow.schema';
 import { zodToSwagger, successResponse, paginatedResponse, errorResponse } from '../utils/swagger';
 import { requireAuth } from '../middleware/auth.middleware';
@@ -396,4 +397,31 @@ export async function workflowRoutes(fastify: FastifyInstance) {
     },
     preHandler: [requireAuth, requirePermission('workflow:read')],
   }, (req: any, reply: any) => workflowController.getExecution(req, reply));
+
+  // Evaluate expression against execution context
+  fastify.post('/workflows/:workflowId/evaluate-expression', {
+    schema: {
+      tags: ['Workflows'],
+      summary: 'Evaluate expression against execution context',
+      description: 'Resolves a {{expression}} using variables and workspace from the last (or specified) workflow execution',
+      security: [{ bearerAuth: [] }],
+      params: zodToSwagger(workflowIdParamSchema),
+      body: zodToSwagger(evaluateExpressionSchema),
+      response: {
+        200: successResponse(
+          {
+            type: 'object',
+            properties: {
+              expression: { type: 'string', example: '{{trigger.temperature}}' },
+              result: { type: 'number', example: 25.5 },
+              context: { type: 'object', additionalProperties: true },
+            },
+          },
+          'Expression evaluated successfully'
+        ),
+        404: errorResponse('Execution not found'),
+      },
+    },
+    preHandler: [requireAuth, requirePermission('workflow:read'), zodBodyValidator(evaluateExpressionSchema)],
+  }, (req: any, reply: any) => workflowController.evaluateExpression(req, reply));
 }

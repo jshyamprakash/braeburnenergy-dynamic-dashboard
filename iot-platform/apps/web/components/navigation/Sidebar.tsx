@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
   Menu, X, Bell, Settings, ClipboardList, BookOpen,
   Archive, Users, Wifi, LayoutGrid, ChevronRight, Cpu,
-  GitBranch, LayoutDashboard, Radio, Network, User,
+  GitBranch, LayoutDashboard, Radio, Network, User, Zap,
 } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/lib/store';
 import { toggleSidebar, selectSidebarOpen } from '@/lib/store/slices/uiSlice';
@@ -29,6 +29,7 @@ const entityItems = [
   { key: 'dashboards', label: 'Dashboards',     icon: LayoutDashboard },
   { key: 'modbus',     label: 'Modbus Gateway', icon: Radio },
   { key: 'opcua',      label: 'OPC-UA Gateway', icon: Network },
+  { key: 'mqtt',       label: 'MQTT Gateway',   icon: Zap },
 ];
 
 interface AppItem {

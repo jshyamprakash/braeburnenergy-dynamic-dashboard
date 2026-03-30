@@ -376,6 +376,22 @@ export const queryExecutionsSchema = z.object({
 
 export type QueryExecutionsDTO = z.infer<typeof queryExecutionsSchema>;
 
+/**
+ * Schema for evaluating an expression against execution context
+ */
+export const evaluateExpressionSchema = z.object({
+  expression: z
+    .string()
+    .min(1)
+    .describe('Expression to evaluate (e.g., "{{trigger.temperature}}")'),
+  executionId: z
+    .string()
+    .optional()
+    .describe('Execution ID for context (defaults to last execution)'),
+});
+
+export type EvaluateExpressionDTO = z.infer<typeof evaluateExpressionSchema>;
+
 // ============================================================================
 // Path Parameters
 // ============================================================================

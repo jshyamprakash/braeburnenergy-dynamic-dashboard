@@ -34,6 +34,7 @@ export interface ExecutionLogEntry {
   error?: string;
   duration?: number;               // Execution time in milliseconds
   notes?: string;                  // Human-readable info (e.g. log message text)
+  contextSnapshot?: Record<string, any>;  // Snapshot of variables, workspace, trigger at this step
 }
 
 export interface ExecutionError {
@@ -123,6 +124,7 @@ const executionLogEntrySchema = new Schema<ExecutionLogEntry>({
   error: String,
   duration: Number,
   notes: String,
+  contextSnapshot: Schema.Types.Mixed,  // Snapshot of variables, workspace, trigger
 }, { _id: false });
 
 const executionErrorSchema = new Schema<ExecutionError>({

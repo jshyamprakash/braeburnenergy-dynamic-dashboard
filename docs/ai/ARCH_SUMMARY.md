@@ -6,7 +6,7 @@
 - Fastify 4.25.2 (92 TS files: 14 controllers, 22 services, 18 models)
 - Next.js 16.1.6 + React 19.2.4 + App Router
 - Tailwind CSS 4.1.18 (`@import "tailwindcss"` syntax, `darkMode: 'class'`)
-- Redux Toolkit 2.11.2 (6 slices: auth, ui, dashboard, websocket, workflow, alarm)
+- Redux Toolkit 2.11.2 (7 slices: auth, ui, dashboard, websocket, workflow, alarm, **license**)
 - React Query 5.90.20 (device queries + realtime state; NOT being phased out)
 - React Flow 11.11.4 (visual workflow editor)
 - Socket.io 4.6.0 (WebSocket; to be replaced by dedicated WS Gateway at scale — ADR-043)
@@ -15,11 +15,15 @@
 - **Dashboard model (ADR-044):** Kosmos unified free-canvas — KosmosPage.widgets[] flat array (replaces columns{left,middle,right}); all 17 widget types on one react-grid-layout; WidgetConfigPanel (320px right panel); 5 new widgets: confidenceBars, keyValueTable, frequencyChart, platformDiagram, agentChat; public route GET /share/:token/devices/:deviceId/derived-state
 
 ## Database
-- Time series collection: `device_states` (TTL 5yr, append-only raw telemetry, history/charts ONLY) — ADR-031
-- Regular collection: `device_derived_states` (unique on deviceId, workflow outputs only, stale+staledAt fields; canonical live snapshot for dashboard) — ADR-031/034/039
+- `device_states` — append-only raw telemetry; per-document `expiresAt` TTL (ADR-047); history/charts ONLY
+- `device_derived_states` — regular collection, unique on deviceId, latest workflow outputs only (ADR-031/034/039)
+- `device_derived_state_history` — append-only derived snapshots; per-document `expiresAt` TTL (ADR-047)
 - Replica set REQUIRED for compliance (transaction support, oplog)
 - 10-year retention for audit logs (no TTL) - 21 CFR Part 11
-- 90-day TTL on workflow executions
+- 90-day TTL on workflow executions (hardcoded, not under RetentionPolicy)
+- Per-document `expiresAt`: set at insert from `RetentionPolicyService.getInsertExpiry(category)`; fallback 5yr/90d (ADR-047)
+- Changing RetentionPolicy affects NEW inserts only — existing documents untouched (no collMod, no delete surge)
+- `device.dataSource: 'gateway' | 'workflow' | 'http'` — declares data origin; one device = one source (ADR-046)
 - Use `.lean()` for read-only queries (cast types: `as IModel | null`)
 - ObjectId format (24 hex chars), NOT UUID
 - Manual FK validation (MongoDB has no constraints)
@@ -43,6 +47,15 @@
 - Pagination: `{ success, data, pagination }` structure
 - Error format: `{ success: false, error, details }`
 
+## Module System (ADR-048 / ADR-049)
+- License: HS256 JWT; `LICENSE_SECRET` baked in Docker image; `GET /api/v1/license` (public, no auth)
+- Modules: `combustion_dl` (CD Precursor DL tab + `combustion_ml_engine` MQTT device), `asset_life` (Fleet Analytics + IBM Maximo), `be_agent` (BE Agent tab + `be_sense_edge` MQTT device)
+- Dev override: `NODE_ENV=development` + no `LICENSE_KEY` → all modules enabled
+- `overviewDataFlow`: Physical + BE Sense + Outputs always; BE Agent, CD Precursor DL, Asset Life Mgmt layers each gated per module
+- `platformArchitecture`: right-column cards gated per module; IBM Maximo sync node is CORE (no gate)
+- Frontend authority: `licenseSlice` reads `/api/v1/license` — never self-decides module availability
+- WorkflowNodePalette: `NodeTypeConfig.module?` field; `action:ibmMaximoSync` = CORE; `asset_life` nodes gated
+
 ## Frontend Architecture
 - Redux Toolkit as primary state management (NOT Zustand)
   - authSlice: user, tokens, loading
@@ -50,7 +63,8 @@
   - dashboardSlice: layouts with hybrid storage (localStorage + MongoDB)
   - websocketSlice: connection state, subscriptions, updates
   - workflowSlice: nodes, edges, execution state
-  - alarmSlice: alarm instances, rules, statistics, filters (NEW!)
+  - alarmSlice: alarm instances, rules, statistics, filters
+  - licenseSlice: enabled modules from `/api/v1/license`; authority for all module gating (ADR-048)
 - React Query: device/deviceState queries + realtime cache (useDeviceRealtime)
 - Protected routes: ProtectedRoute wrapper with returnUrl
 - API client: Generic type parameters REQUIRED: `apiClient.get<T>()`

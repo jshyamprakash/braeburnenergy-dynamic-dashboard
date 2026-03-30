@@ -10,6 +10,7 @@ import workflowReducer from './slices/workflowSlice';
 import alarmReducer from './slices/alarmSlice';
 import userReducer from './slices/userSlice';
 import policyReducer from './slices/policySlice';
+import licenseReducer from './slices/licenseSlice';
 
 /**
  * Configure Redux store
@@ -24,6 +25,7 @@ export const store = configureStore({
     alarm: alarmReducer,
     user: userReducer,
     policy: policyReducer,
+    license: licenseReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

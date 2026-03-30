@@ -1,5 +1,8 @@
 import mongoose, { Schema, type Document, type Types } from 'mongoose';
 
+/** Declares where this device's data originates (ADR-046). One device = one source. */
+export type DeviceDataSource = 'gateway' | 'workflow' | 'http';
+
 export interface IDevice extends Document {
   orgId: Types.ObjectId;
   applicationId?: string; // Optional FK to Application — stores ULID (ADR-023)
@@ -7,8 +10,10 @@ export interface IDevice extends Document {
   name: string;
   /** Static metadata key-value pairs, e.g. { model: "X1", mfg: "Acme" } */
   tags: Record<string, string>;
-  /** Device data schema: field name → data type ("number"|"string"|"boolean"|"timestamp") */
+  /** Device data schema: field name → data type ("number"|"string"|"boolean"|"timestamp"|"json") */
   attributes: Record<string, string> | null;
+  /** Declares data origin: gateway (Modbus/OPC-UA/MQTT), workflow (derived), http (REST) — ADR-046 */
+  dataSource: DeviceDataSource;
   /** Last time a state was received from this device (ADR-041) */
   lastSeenAt?: Date;
   createdAt: Date;
@@ -23,6 +28,7 @@ const deviceSchema = new Schema<IDevice>(
     name: { type: String, required: true },
     tags: { type: Map, of: String, default: {} },
     attributes: { type: Map, of: String, default: null },
+    dataSource: { type: String, enum: ['gateway', 'workflow', 'http'], default: 'gateway' }, // ADR-046
     lastSeenAt: { type: Date, index: true },
   },
   {

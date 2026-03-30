@@ -180,6 +180,16 @@ export class WorkflowNodeHandlers {
       case 'action:writeDeviceState':
         return this.executeActionWriteDeviceState(config, context);
 
+      // Asset Life Management — stub handlers (ADR-049, module: asset_life)
+      case 'action:ibmMaximoSync':
+        return this.executeActionIbmMaximoSync(config, context);
+      case 'action:ibmMaximoCreateWorkOrder':
+        return this.executeActionIbmMaximoCreateWorkOrder(config, context);
+      case 'data:fleetQuery':
+        return this.executeDataFleetQuery(config, context);
+      case 'data:assetLifeCalc':
+        return this.executeDataAssetLifeCalc(config, context);
+
       default:
         throw new Error(`Unknown node type: ${node.type}`);
     }
@@ -1317,5 +1327,106 @@ export class WorkflowNodeHandlers {
       const value = this.getNestedValue(data, path);
       return value !== undefined ? String(value) : '';
     });
+  }
+
+  // ==========================================================================
+  // Asset Life Management — Stub Handlers (ADR-049, module: asset_life)
+  // These are stub implementations. Full integration requires IBM Maximo API
+  // credentials and the asset_life engine connection (deferred — GAP-D2 scope).
+  // ==========================================================================
+
+  private async executeActionIbmMaximoSync(
+    config: Record<string, any>,
+    context: any
+  ): Promise<NodeExecutionResult> {
+    const assetId = resolveExpression(config.assetId ?? '', context) ?? '';
+    const workOrderType = config.workOrderType ?? 'PM';
+    console.log(`[ibmMaximoSync] STUB — assetId=${assetId}, workOrderType=${workOrderType}`);
+    return {
+      output: {
+        ...context.currentData,
+        ibmMaximoSyncResult: {
+          queued: true,
+          assetId,
+          workOrderType,
+          message: 'IBM Maximo sync queued (stub — integration pending)',
+        },
+      },
+      notes: `ℹ️ ibmMaximoSync stub executed for assetId=${assetId}`,
+    };
+  }
+
+  private async executeActionIbmMaximoCreateWorkOrder(
+    config: Record<string, any>,
+    context: any
+  ): Promise<NodeExecutionResult> {
+    const assetId = resolveExpression(config.assetId ?? '', context) ?? '';
+    const description = resolveExpression(config.description ?? '', context) ?? '';
+    const priority = Number(config.priority ?? 2);
+    const workOrderType = config.workOrderType ?? 'CM';
+    const stubWoNum = `WO-STUB-${Date.now()}`;
+    console.log(`[ibmMaximoCreateWorkOrder] STUB — assetId=${assetId}, wo=${stubWoNum}`);
+    return {
+      output: {
+        ...context.currentData,
+        ibmMaximoWorkOrder: {
+          created: true,
+          workOrderNumber: stubWoNum,
+          assetId,
+          description,
+          priority,
+          workOrderType,
+          note: 'Stub work order — IBM Maximo API integration pending',
+        },
+      },
+      notes: `ℹ️ ibmMaximoCreateWorkOrder stub executed, wo=${stubWoNum}`,
+    };
+  }
+
+  private async executeDataFleetQuery(
+    config: Record<string, any>,
+    context: any
+  ): Promise<NodeExecutionResult> {
+    const outputField = config.outputField ?? 'fleetData';
+    const assetType = config.assetType ?? '';
+    const metric = config.metric ?? '';
+    console.log(`[fleetQuery] STUB — assetType=${assetType}, metric=${metric}`);
+    return {
+      output: {
+        ...context.currentData,
+        [outputField]: {
+          assetType,
+          metric,
+          value: 0,
+          unit: 'stub',
+          timestamp: new Date().toISOString(),
+          note: 'Stub data — fleet analytics engine integration pending',
+        },
+      },
+      notes: `ℹ️ fleetQuery stub executed for assetType=${assetType}, metric=${metric}`,
+    };
+  }
+
+  private async executeDataAssetLifeCalc(
+    config: Record<string, any>,
+    context: any
+  ): Promise<NodeExecutionResult> {
+    const outputField = config.outputField ?? 'rul';
+    const assetId = resolveExpression(config.assetId ?? '', context) ?? '';
+    const model = config.model ?? 'degradation';
+    console.log(`[assetLifeCalc] STUB — assetId=${assetId}, model=${model}`);
+    return {
+      output: {
+        ...context.currentData,
+        [outputField]: {
+          assetId,
+          remainingLifeHours: 8760,
+          confidence: 0.0,
+          model,
+          note: 'Stub RUL — asset life engine integration pending',
+        },
+      },
+      notes: `ℹ️ assetLifeCalc stub executed for assetId=${assetId}`,
+    };
   }
 }

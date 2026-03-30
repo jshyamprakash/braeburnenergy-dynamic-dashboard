@@ -8,7 +8,7 @@ import { Schema, model, Document } from 'mongoose';
  */
 
 export type RetentionTier = 'hot' | 'warm' | 'cold' | 'archive';
-export type DataCategory = 'device_states' | 'audit_logs' | 'alarms' | 'calibration_records';
+export type DataCategory = 'device_states' | 'audit_logs' | 'alarms' | 'calibration_records' | 'derived_state_history';
 
 export interface IRetentionPolicy extends Document {
   name: string;
@@ -56,7 +56,7 @@ const retentionPolicySchema = new Schema<IRetentionPolicy>({
   category: {
     type: String,
     required: true,
-    enum: ['device_states', 'audit_logs', 'alarms', 'calibration_records'],
+    enum: ['device_states', 'audit_logs', 'alarms', 'calibration_records', 'derived_state_history'],
     index: true,
   },
   hotStorageDuration: {

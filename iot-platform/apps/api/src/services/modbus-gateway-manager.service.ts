@@ -3,7 +3,6 @@ import type { Logger } from 'pino';
 import { ModbusGateway, IModbusGateway } from '../models/modbus-gateway.model';
 import { ModbusClientService } from './modbus-client.service';
 import { deviceService } from './device.service';
-import type { WorkflowTriggerDispatcher } from './workflow-trigger-dispatcher.service';
 import { Device } from '../models/device.model';
 import type { NatsClient } from '../lib/nats-client.js';
 
@@ -12,7 +11,6 @@ import type { NatsClient } from '../lib/nats-client.js';
  *
  * Manages Modbus gateway connections, polling, and data mapping.
  * Handles automatic device registration and state updates.
- * Dispatches to workflow triggers when device states are created.
  */
 
 interface GatewayConnection {
@@ -25,16 +23,14 @@ interface GatewayConnection {
 class ModbusGatewayManagerService {
   private connections: Map<string, GatewayConnection> = new Map();
   private readonly MAX_RETRY_ATTEMPTS = 5;
-  private triggerDispatcher?: WorkflowTriggerDispatcher;
-  private logger?: Logger;
   private natsClient?: NatsClient;
 
   /**
-   * Register trigger dispatcher (call from index.ts after creating dispatcher)
+   * Register trigger dispatcher (deprecated: workflow dispatch moved to Processing Engine in ADR-043 Phase 3)
    */
-  setTriggerDispatcher(dispatcher: WorkflowTriggerDispatcher, logger: Logger): void {
-    this.triggerDispatcher = dispatcher;
-    this.logger = logger;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  setTriggerDispatcher(_dispatcher: any, _logger: Logger): void {
+    // Workflow dispatch is now handled by Processing Engine
   }
 
   /**
@@ -224,31 +220,13 @@ class ModbusGatewayManagerService {
               data: triggerData,
               timestamp: now.toISOString(),
               source: 'modbus',
+              ...(gateway.processingOverrides && { processingOverrides: gateway.processingOverrides }),
             })
             .catch((err: any) => {
-              if (this.logger) {
-                this.logger.warn(err, 'NATS publish failed for Modbus gateway');
-              }
+              console.warn('NATS publish failed for Modbus gateway:', err);
             });
         }
 
-        // Dispatch to workflow triggers (synthetic state — no DB write here)
-        if (this.triggerDispatcher) {
-          const syntheticState = {
-            _id: new mongoose.Types.ObjectId(),
-            deviceId,
-            orgId: gateway.orgId.toString(),
-            data: triggerData,
-            timestamp: now,
-          };
-          this.triggerDispatcher
-            .dispatchDeviceStateBatch(gateway.orgId.toString(), deviceId, triggerData, syntheticState as any)
-            .catch((err: any) => {
-              if (this.logger) {
-                this.logger.error(err, 'Workflow device state batch dispatch failed for Modbus gateway');
-              }
-            });
-        }
       } catch (error) {
         console.error(`❌ Failed to process state for device ${deviceId}:`, (error as Error).message);
       }
@@ -287,6 +265,7 @@ class ModbusGatewayManagerService {
       const newDevice = await deviceService.create(orgId, {
         name: deviceName,
         applicationId: gateway.applicationId,
+        dataSource: 'gateway',
         tags: {
           protocol: gateway.protocol,
           source: 'modbus',

@@ -70,6 +70,9 @@ export interface IOpcuaGateway extends Document {
   // Node mappings
   nodeMappings: IOpcuaNodeMapping[];
 
+  // Per-gateway filter overrides (optional — falls back to global config when absent)
+  processingOverrides?: { deltaPercent?: number; noiseThreshold?: number };
+
   // Status
   isActive: boolean;
   isConnected: boolean;
@@ -227,9 +230,9 @@ const opcuaGatewaySchema = new Schema<IOpcuaGateway>({
     type: {
       publishingInterval: {
         type: Number,
-        min: 100,
+        min: 10,
         max: 60000,
-        default: 1000,
+        default: 10,
       },
       maxNotificationsPerPublish: {
         type: Number,
@@ -247,7 +250,7 @@ const opcuaGatewaySchema = new Schema<IOpcuaGateway>({
         type: Number,
         min: 0,
         max: 60000,
-        default: 100,
+        default: 10,
       },
       queueSize: {
         type: Number,
@@ -257,10 +260,10 @@ const opcuaGatewaySchema = new Schema<IOpcuaGateway>({
       },
     },
     default: () => ({
-      publishingInterval: 1000,
+      publishingInterval: 10,
       maxNotificationsPerPublish: 0,
       priority: 10,
-      samplingInterval: 100,
+      samplingInterval: 10,
       queueSize: 10,
     }),
   },
@@ -274,6 +277,16 @@ const opcuaGatewaySchema = new Schema<IOpcuaGateway>({
       message: 'At least one node mapping is required',
     },
   },
+  processingOverrides: {
+    type: {
+      deltaPercent: { type: Number, min: 0, max: 1 },
+      noiseThreshold: { type: Number, min: 0 },
+    },
+    required: false,
+    default: undefined,
+    _id: false,
+  },
+
   isActive: {
     type: Boolean,
     required: true,

@@ -68,6 +68,8 @@ export interface IModbusGateway extends Document {
   registers: IModbusRegister[];           // Register mappings
   deviceMapping: IModbusDeviceMapping;    // Device mapping configuration
 
+  processingOverrides?: { deltaPercent?: number; noiseThreshold?: number }; // Per-gateway filter overrides
+
   status: 'connected' | 'disconnected' | 'error'; // Connection status
   lastConnected?: Date;                   // Last successful connection
   lastError?: string;                     // Last error message
@@ -99,7 +101,7 @@ const ModbusConnectionSchema = new Schema<IModbusConnection>({
 
 const ModbusPollingSchema = new Schema<IModbusPolling>({
   enabled: { type: Boolean, required: true, default: true },
-  interval: { type: Number, required: true, default: 5000, min: 1000 }, // Minimum 1 second
+  interval: { type: Number, required: true, default: 5000, min: 10 }, // Minimum 10ms (100 Hz capable)
   onError: { type: String, required: true, default: 'continue', enum: ['continue', 'stop'] },
 }, { _id: false });
 
@@ -145,6 +147,16 @@ const ModbusGatewaySchema = new Schema<IModbusGateway>(
     polling: { type: ModbusPollingSchema, required: true },
     registers: [ModbusRegisterSchema],
     deviceMapping: { type: ModbusDeviceMappingSchema, required: true },
+
+    processingOverrides: {
+      type: {
+        deltaPercent: { type: Number, min: 0, max: 1 },
+        noiseThreshold: { type: Number, min: 0 },
+      },
+      required: false,
+      default: undefined,
+      _id: false,
+    },
 
     status: {
       type: String,

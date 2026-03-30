@@ -1,34 +1,27 @@
 // LLAMP-SPEC v1 | CURRENT_DECISIONS
-// task: ADR-045 User-Based Dashboard Sharing | date: 2026-03-10
+// task: Workflow Execution Context Debugger Completion | date: 2026-03-27
 
 #what_changed
-=apps/api/src/models/dashboard.model.ts: removed shareToken/shareEnabled/generateShareToken; added sharedWithUsers:ObjectId[] with {sharedWithUsers:1} index
-=apps/api/src/services/dashboard.service.ts: removed shareDashboard/revokeDashboardShare/getSharedDashboard/getSharedDeviceDerivedState; added shareWithUsers(orgId,dashboardId,userIds) with org-membership validation; added getDashboardsForViewer(orgId,userId); getDashboard now accepts {role,userId} options and gates Viewer access on sharedWithUsers; imports User model + ForbiddenError
-=apps/api/src/controllers/dashboard.controller.ts: removed shareDashboard/revokeDashboardShare/getSharedDashboard/getSharedDeviceDerivedState handlers; added shareWithUsers handler (body:{userIds[]}); added getViewerDashboards handler; getDashboard passes {role,userId} from getRequestContext
-=apps/api/src/routes/dashboard.routes.ts: removed 4 old share routes; added POST /dashboards/:id/share [requirePermission('dashboard:share')]; added GET /dashboards/my [requireAuth]; imports requirePermission from rbac.middleware
-=apps/api/src/middleware/rbac.middleware.ts: added dashboard:read/write/share/delete to PERMISSIONS map (28 total)
-=packages/types/src/index.ts: Dashboard interface updated (shareToken/shareEnabled removed, sharedWithUsers:string[] added)
-=apps/web/lib/store/slices/dashboardSlice.ts: removed kosmosShareToken/kosmosShareEnabled/setKosmosShareInfo; added kosmosSharedWithUsers:string[], viewerDashboards:Dashboard[], fetchViewerDashboards thunk, setKosmosSharedWithUsers action
-=apps/web/lib/hooks/useViewerDashboards.ts: NEW — React Query GET /dashboards/my
-=apps/web/components/kosmos/ShareUsersModal.tsx: NEW — Viewer filter + multi-select + POST /share
-=apps/web/components/kosmos/KosmosShell.tsx: readOnly prop added; share button → opens ShareUsersModal; edit controls hidden when readOnly
-=apps/web/components/navigation/LayoutShell.tsx: NEW — client component hides Sidebar/TopBar for /viewer/* paths
-=apps/web/app/layout.tsx: replaced inline TopBar+Sidebar with LayoutShell wrapper
-=apps/web/app/viewer/layout.tsx: NEW — fullscreen kiosk layout
-=apps/web/app/viewer/page.tsx: NEW — viewer kiosk (tab strip, KosmosShell readOnly)
-=apps/web/app/login/page.tsx: Viewer role → redirect to /viewer after login
-=DELETED: apps/web/app/view/[shareToken]/page.tsx, apps/web/lib/hooks/useSharedDeviceState.ts
+=workflow-engine.service.ts: contextSnapshot captured AFTER all context mutations (variables, workspace, trigger); emitted in workflow:execution:step WebSocket event
+=workflow-execution.model.ts: ExecutionLogEntry.contextSnapshot?: Record<string,any> added to interface + Mongoose schema (Schema.Types.Mixed)
+=packages/types/src/index.ts: WorkflowExecutionStepEvent.contextSnapshot?: Record<string,any>
+=workflow.schema.ts: evaluateExpressionSchema (expression:string, executionId?:string); EvaluateExpressionDTO exported
+=workflow.routes.ts: POST /workflows/:workflowId/evaluate-expression registered with zodBodyValidator + Swagger docs
+=workflow.controller.ts: evaluateExpression() handler — fetches latest execution if no executionId; builds context from last step's contextSnapshot; calls resolveExpression()
+=ContextDebugPanel.tsx: getContextVariables() reads from executionLog.last.contextSnapshot; Variables tab renders 3 color-coded sections (blue=variables, green=trigger, amber=workspace); Tester tab with 500ms debounce via useRef timer; cleanup on unmount; executionId prop added; handleExportLog() downloads JSON blob
+=WorkflowToolbar.tsx: debugMessagesCount prop; Debug button wrapped in relative div; red badge shown when count > 0 AND !isDebugPanelOpen
+=workflowSlice.ts: autoOpenDebugOnExecute reducer (sets isDebugPanelOpen=true); exported
+=page.tsx (builder): debugMessagesCount={debugMessages.length}; executionId={currentExecutionId} to ContextDebugPanel; dispatch(autoOpenDebugOnExecute()) after executeWorkflow.unwrap() success
 
 #tech_implications
-~All existing /view/:shareToken URLs return 404 (page deleted)
-~Viewer users cannot browse /dashboards, /devices, /workflows — LayoutShell hides nav for /viewer route
-~GET /dashboards/my returns empty array if no dashboards shared (viewer sees empty state)
-~shareWithUsers replaces full list — calling with [] removes all access
-~getDashboard returns ForbiddenError(403) if Viewer attempts to access unshared dashboard
-~Old MongoDB documents retain shareToken/shareEnabled fields (schema has no strict: true) — harmless orphan fields; run db.dashboards.updateMany({},{$unset:{shareToken:'',shareEnabled:''}}) to clean up if needed
+~contextSnapshot adds ~1 Record<string,any> per log entry to WorkflowExecution MongoDB document — acceptable for 90-day TTL collection
+~Expression evaluator is stateless — uses last execution context from DB, not live in-memory state
+~autoOpenDebugOnExecute is one-way (panel opens, never auto-closes) — user closes manually
+~Export Log: browser Blob API; URL.revokeObjectURL() called after download to prevent memory leak
+~contextSnapshot NOT captured in error path — failed nodes lack context in export
 
 #constraints
-~Viewer role must exist in same org as dashboard (validated in shareWithUsers service)
-~GET /dashboards/my uses orgId+userId from JWT — Viewer must be fully authenticated
-~KosmosShell readOnly=true removes all edit/share/palette controls — no escape hatch
-~LayoutShell uses pathname.startsWith('/viewer') — any sub-routes of /viewer also get kiosk layout
+~Tester tab requires: workflowId saved + executionLog.length > 0 (at least one completed execution)
+~Export Log button only rendered when executionLog.length > 0
+~evaluate-expression endpoint throws NotFoundError if no execution exists for workflow
+~Badge count does not reset when panel opens — only hidden; cleared by clearDebugMessages() action

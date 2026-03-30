@@ -17,6 +17,8 @@ import type {
 } from '../schemas/device-state.schema';
 import type { DeviceIdParam } from '../schemas/device.schema';
 import { broadcastDeviceState } from '../websocket/server';
+import { getRedisClient } from '../lib/redis-client.js';
+import { config } from '../config/config.js';
 
 /**
  * DeviceStateController
@@ -283,6 +285,31 @@ export class DeviceStateController {
     );
 
     return sendSuccess(reply, { count });
+  }
+
+  /**
+   * GET /devices/:deviceId/live
+   * Returns the latest raw telemetry snapshot from Redis cache (sensor:latest:{deviceId}).
+   * Written by the Processing Engine on every non-REST ingest (ADR-043 Phase 3).
+   * 404 if device has never published or TTL expired; 503 if Redis is unavailable.
+   */
+  async getLiveSnapshot(
+    request: FastifyRequest<{ Params: DeviceIdParam }>,
+    reply: FastifyReply
+  ) {
+    const { deviceId } = request.params;
+    try {
+      const redis = getRedisClient();
+      const cacheKey = `${config.processing.cacheKeyPrefix}${deviceId}`;
+      const raw = await redis.get(cacheKey);
+      if (!raw) {
+        throw new NotFoundError('Live snapshot');
+      }
+      return sendSuccess(reply, JSON.parse(raw));
+    } catch (err) {
+      if (err instanceof NotFoundError) throw err;
+      return reply.status(503).send({ success: false, error: 'Redis unavailable' });
+    }
   }
 
   /**

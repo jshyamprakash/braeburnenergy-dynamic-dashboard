@@ -114,6 +114,15 @@ export default function DeviceDetailPage() {
                       Offline
                     </span>
                   )}
+                  {device.dataSource && (
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                      device.dataSource === 'gateway' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+                      device.dataSource === 'workflow' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' :
+                      'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
+                    }`}>
+                      {device.dataSource}
+                    </span>
+                  )}
                   <p className="text-xs text-gray-500 dark:text-gray-400">Last seen: {formatLastSeen(device)}</p>
                 </>
               )}

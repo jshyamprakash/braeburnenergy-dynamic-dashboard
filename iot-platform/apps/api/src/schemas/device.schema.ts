@@ -58,6 +58,13 @@ export const createDeviceSchema = z.object({
 
   attributes: deviceAttributesSchema,
 
+  /** ADR-046: Declares data origin. One device = one source. Defaults to 'gateway'. */
+  dataSource: z
+    .enum(['gateway', 'workflow', 'http'])
+    .optional()
+    .default('gateway')
+    .describe('Data origin: gateway (Modbus/OPC-UA/MQTT), workflow (derived), http (REST)'),
+
   applicationId: z
     .string()
     .optional()
@@ -84,6 +91,11 @@ export const updateDeviceSchema = z.object({
   tags: deviceTagsSchema,
 
   attributes: deviceAttributesSchema,
+
+  dataSource: z
+    .enum(['gateway', 'workflow', 'http'])
+    .optional()
+    .describe('Data origin: gateway | workflow | http (ADR-046)'),
 
   applicationId: z
     .string()

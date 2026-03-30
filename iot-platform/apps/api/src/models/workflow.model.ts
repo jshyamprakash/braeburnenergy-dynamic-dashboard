@@ -52,7 +52,12 @@ export type NodeType =
   | 'logic:delay'
   | 'logic:mutate'
   // Action: write structured data back to DeviceState (ADR-022)
-  | 'action:writeDeviceState';
+  | 'action:writeDeviceState'
+  // Asset Life Management — module: asset_life (ADR-049)
+  | 'action:ibmMaximoSync'
+  | 'action:ibmMaximoCreateWorkOrder'
+  | 'data:fleetQuery'
+  | 'data:assetLifeCalc';
 
 export interface WorkflowNode {
   id: string;                      // ULID

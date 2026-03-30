@@ -4,7 +4,6 @@ import { OpcuaClientService } from './opcua-client.service';
 import mongoose from 'mongoose';
 import { DataQualityService } from './data-quality.service';
 import { AlarmService } from './alarm.service';
-import type { WorkflowTriggerDispatcher } from './workflow-trigger-dispatcher.service';
 import type { NatsClient } from '../lib/nats-client.js';
 import { DEFAULT_ORG_ID } from '../lib/request-context';
 
@@ -29,8 +28,6 @@ export class OpcuaGatewayManager {
   private instances: Map<string, GatewayInstance> = new Map();
   private dataQualityService: DataQualityService;
   private alarmService: AlarmService;
-  private triggerDispatcher?: WorkflowTriggerDispatcher;
-  private logger?: Logger;
   private natsClient?: NatsClient;
 
   constructor() {
@@ -39,11 +36,11 @@ export class OpcuaGatewayManager {
   }
 
   /**
-   * Register trigger dispatcher (call from index.ts after creating dispatcher)
+   * Register trigger dispatcher (deprecated: workflow dispatch moved to Processing Engine in ADR-043 Phase 3)
    */
-  setTriggerDispatcher(dispatcher: WorkflowTriggerDispatcher, logger: Logger): void {
-    this.triggerDispatcher = dispatcher;
-    this.logger = logger;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  setTriggerDispatcher(_dispatcher: any, _logger: Logger): void {
+    // Workflow dispatch is now handled by Processing Engine
   }
 
   /**
@@ -206,31 +203,13 @@ export class OpcuaGatewayManager {
             timestamp: now.toISOString(),
             source: 'opcua',
             quality: (validationResult as any).quality,
+            ...(gateway.processingOverrides && { processingOverrides: gateway.processingOverrides }),
           })
           .catch((err: any) => {
-            if (this.logger) {
-              this.logger.warn(err, 'NATS publish failed for OPC-UA gateway');
-            }
+            console.warn('NATS publish failed for OPC-UA gateway:', err);
           });
       }
 
-      // Dispatch to workflow triggers (synthetic state — no DB write here)
-      if (this.triggerDispatcher) {
-        const syntheticState = {
-          _id: syntheticId,
-          deviceId: gateway.deviceId,
-          orgId: ORG_ID,
-          data: resolvedData,
-          timestamp: now,
-        };
-        this.triggerDispatcher
-          .dispatchDeviceStateBatch(ORG_ID, gateway.deviceId, resolvedData, syntheticState as any)
-          .catch((err: any) => {
-            if (this.logger) {
-              this.logger.error(err, 'Workflow device state batch dispatch failed for OPC-UA gateway');
-            }
-          });
-      }
 
       // Evaluate alarm conditions
       const device = { tags: [] }; // TODO: Fetch device tags

@@ -22,6 +22,7 @@ import {
 } from '@/lib/store/slices/dashboardSlice';
 import type { KosmosWidget } from './types';
 import { PALETTE_ENTRIES } from './types';
+import { useLicense } from '@/lib/hooks/useLicense';
 import { UnifiedCanvas } from './UnifiedCanvas';
 import { WidgetConfigPanel } from './WidgetConfigPanel';
 import { WidgetPalette } from './WidgetPalette';
@@ -107,6 +108,7 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
   const pages = useAppSelector(selectKosmosPages);
   const activePageId = useAppSelector(selectKosmosActivePage);
   const sharedWithUsers = useAppSelector(selectKosmosSharedWithUsers);
+  const { isModuleEnabled } = useLicense();
 
   const [editMode, setEditMode] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -119,7 +121,15 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
   const time = useKosmosTime();
   const renameInputRef = useRef<HTMLInputElement>(null);
 
-  const activePage = pages.find((p) => p.id === activePageId) ?? pages[0] ?? null;
+  // Filter pages by license modules
+  const allowedPages = pages.filter((page) => {
+    if (!page.mandatoryType) return true;
+    if (page.mandatoryType === 'combustionDl') return isModuleEnabled('combustion_dl');
+    if (page.mandatoryType === 'beAgent') return isModuleEnabled('be_agent');
+    return true; // overview, kosmosArchitecture always shown
+  });
+
+  const activePage = allowedPages.find((p) => p.id === activePageId) ?? allowedPages[0] ?? null;
   const selectedWidget = activePage?.widgets.find((w) => w.id === selectedWidgetId) ?? null;
 
   /* ── Load on mount ── */
@@ -128,6 +138,18 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
     if (!dashboardId || !applicationId) return;
     dispatch(initKosmosFromBackend({ dashboardId, applicationId }));
   }, [dashboardId, applicationId, dispatch, skipInit]);
+
+  /* ── Auto-switch to allowed page if current is hidden by license ── */
+  useEffect(() => {
+    if (allowedPages.length === 0) return;
+    if (!activePageId || !activePage) {
+      if (allowedPages.length > 0) {
+        dispatch(setKosmosActivePage(allowedPages[0].id));
+      }
+    } else if (!allowedPages.find((p) => p.id === activePageId)) {
+      dispatch(setKosmosActivePage(allowedPages[0].id));
+    }
+  }, [allowedPages, activePageId, activePage, dispatch]);
 
   /* ── Auto-save (debounced 2s) ── */
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -368,7 +390,7 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
 
       {/* ── Tab strip ── */}
       <div className="k-nav-tabs">
-        {pages.map((page) => (
+        {allowedPages.map((page) => (
           <div
             key={page.id}
             className={`k-nav-tab ${page.id === activePageId ? 'active' : ''}`}
@@ -406,6 +428,12 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
             )}
           </div>
         ))}
+
+        {editMode && !readOnly && pages.length > allowedPages.length && (
+          <div style={{ marginLeft: 8, fontFamily: 'var(--k-font-tech)', fontSize: 9, color: 'var(--k-text-dim)', display: 'flex', alignItems: 'center' }}>
+            {pages.length - allowedPages.length} hidden by license
+          </div>
+        )}
 
         {editMode && !readOnly && (
           <button
@@ -519,6 +547,7 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
               <WidgetConfigPanel
                 pageId={activePage.id}
                 widget={selectedWidget}
+                applicationId={applicationId}
                 onClose={() => setSelectedWidgetId(null)}
                 onConfigChange={() => triggerSave()}
               />
@@ -549,7 +578,7 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
         <span style={{ display: 'flex', gap: 16 }}>
           {editMode && <span style={{ color: 'var(--k-amber)' }}>● EDIT MODE</span>}
           {sharedWithUsers.length > 0 && <span style={{ color: 'var(--k-green)' }}>👥 SHARED ({sharedWithUsers.length})</span>}
-          <span>{pages.length} PAGE{pages.length !== 1 ? 'S' : ''}</span>
+          <span>{allowedPages.length} PAGE{allowedPages.length !== 1 ? 'S' : ''}{pages.length > allowedPages.length ? ` (${pages.length - allowedPages.length} hidden)` : ''}</span>
         </span>
       </footer>
 

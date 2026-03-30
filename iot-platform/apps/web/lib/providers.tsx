@@ -5,6 +5,7 @@ import { Provider as ReduxProvider } from 'react-redux';
 import { useState, type ReactNode } from 'react';
 import { store } from './store';
 import { WebSocketProvider } from './providers/WebSocketProvider';
+import { RootInitializer } from '@/components/RootInitializer';
 
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -24,6 +25,7 @@ export function Providers({ children }: { children: ReactNode }) {
     <ReduxProvider store={store}>
       <QueryClientProvider client={queryClient}>
         <WebSocketProvider>
+          <RootInitializer />
           {children}
         </WebSocketProvider>
       </QueryClientProvider>

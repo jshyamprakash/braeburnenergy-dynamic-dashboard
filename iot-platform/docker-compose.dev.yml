@@ -40,6 +40,29 @@ services:
       - iot-network-dev
     restart: "no"
 
+  # NATS JetStream — core streaming bus (ADR-043)
+  nats:
+    image: nats:2.10-alpine
+    container_name: iot-platform-nats-dev
+    command: ["--jetstream", "--store_dir=/data"]
+    ports:
+      - "4222:4222"
+    volumes:
+      - nats_dev_data:/data
+    networks:
+      - iot-network-dev
+
+  # Redis — real-time cache + BullMQ broker (ADR-043)
+  redis:
+    image: redis:7-alpine
+    container_name: iot-platform-redis-dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_dev_data:/data
+    networks:
+      - iot-network-dev
+
   # Backend API (Development with hot-reload)
   api:
     build:
@@ -52,6 +75,10 @@ services:
       MONGODB_URI: mongodb://mongodb:27017/iot_platform?replicaSet=rs0
       PORT: 3001
       HOST: 0.0.0.0
+      NATS_URL: nats://nats:4222
+      REDIS_URL: redis://redis:6379
+      LICENSE_KEY: ${LICENSE_KEY:-}
+      LICENSE_SECRET: ${LICENSE_SECRET:-license-secret-change-in-production}
     ports:
       - "3001:3001"
     volumes:
@@ -63,6 +90,10 @@ services:
         condition: service_healthy
       mongodb-init:
         condition: service_completed_successfully
+      nats:
+        condition: service_started
+      redis:
+        condition: service_started
     networks:
       - iot-network-dev
     command: >
@@ -105,4 +136,8 @@ networks:
 
 volumes:
   mongodb_dev_data:
+    driver: local
+  nats_dev_data:
+    driver: local
+  redis_dev_data:
     driver: local

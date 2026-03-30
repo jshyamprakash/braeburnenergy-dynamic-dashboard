@@ -1,0 +1,425 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="IoT Platform — Overall Architecture">
+    <mxGraphModel dx="1800" dy="1400" grid="1" gridSize="10" guides="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="2339" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- ══════════════════════════════════════════ -->
+        <!-- ROW 1: FIELD / EDGE DEVICES               -->
+        <!-- ══════════════════════════════════════════ -->
+
+        <mxCell id="modbus_sensors" value="Modbus Sensors&#10;(IEC 61158 TCP/RTU)"
+          style="rounded=1;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;fontStyle=1;"
+          vertex="1" parent="1">
+          <mxGeometry x="80" y="40" width="200" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="opcua_devices" value="OPC-UA Devices&#10;(Subscription-based)"
+          style="rounded=1;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;fontStyle=1;"
+          vertex="1" parent="1">
+          <mxGeometry x="360" y="40" width="200" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rest_clients" value="REST Clients&#10;(HTTP + API Keys)"
+          style="rounded=1;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;fontStyle=1;"
+          vertex="1" parent="1">
+          <mxGeometry x="640" y="40" width="200" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="ext_systems" value="External Systems&#10;(Webhooks / Schedulers)"
+          style="rounded=1;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;fontStyle=1;"
+          vertex="1" parent="1">
+          <mxGeometry x="920" y="40" width="200" height="70" as="geometry"/>
+        </mxCell>
+
+        <!-- ══════════════════════════════════════════ -->
+        <!-- ROW 2: PROTOCOL GATEWAYS                  -->
+        <!-- ══════════════════════════════════════════ -->
+
+        <mxCell id="modbus_gw" value="ModbusGatewayManager&#10;Register polling · Scale/offset&#10;TCP/RTU · Retry backoff"
+          style="rounded=1;whiteSpace=wrap;fillColor=#ffe6cc;strokeColor=#d6b656;fontSize=11;"
+          vertex="1" parent="1">
+          <mxGeometry x="80" y="210" width="240" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="opcua_gw" value="OpcuaGatewayManager&#10;Node subscription monitoring&#10;Read / Write node support"
+          style="rounded=1;whiteSpace=wrap;fillColor=#ffe6cc;strokeColor=#d6b656;fontSize=11;"
+          vertex="1" parent="1">
+          <mxGeometry x="360" y="210" width="240" height="70" as="geometry"/>
+        </mxCell>
+
+        <!-- ══════════════════════════════════════════ -->
+        <!-- ROW 3: NATS JETSTREAM                     -->
+        <!-- ══════════════════════════════════════════ -->
+
+        <mxCell id="nats" value="NATS JetStream — Streaming Bus&#10;sensor.raw   ·   sensor.processed   ·   sensor.alerts"
+          style="rounded=1;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;fontStyle=1;"
+          vertex="1" parent="1">
+          <mxGeometry x="80" y="390" width="720" height="70" as="geometry"/>
+        </mxCell>
+
+        <!-- ══════════════════════════════════════════ -->
+        <!-- ROW 4: WORKERS                            -->
+        <!-- ══════════════════════════════════════════ -->
+
+        <mxCell id="storage_worker" value="Storage Worker&#10;(BullMQ + Node.js)&#10;Batch write · 1000 docs / 200ms"
+          style="rounded=1;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;"
+          vertex="1" parent="1">
+          <mxGeometry x="80" y="570" width="210" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="proc_engine" value="Processing Engine&#10;Noise filter · Delta detection&#10;Updates Redis live cache"
+          style="rounded=1;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;"
+          vertex="1" parent="1">
+          <mxGeometry x="330" y="570" width="210" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="ws_bridge" value="WebSocket Bridge&#10;Redis pub/sub consumer&#10;Socket.io fan-out (stateless)"
+          style="rounded=1;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;"
+          vertex="1" parent="1">
+          <mxGeometry x="580" y="570" width="210" height="70" as="geometry"/>
+        </mxCell>
+
+        <!-- ══════════════════════════════════════════ -->
+        <!-- ROW 5: APPLICATION + CACHE                -->
+        <!-- ══════════════════════════════════════════ -->
+
+        <mxCell id="fastify" value="Fastify API Server&#10;REST endpoints · JWT auth · RBAC (4 roles, 28 permissions)&#10;API Keys · Account lockout · Swagger /docs · Socket.io server"
+          style="rounded=1;whiteSpace=wrap;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontStyle=1;"
+          vertex="1" parent="1">
+          <mxGeometry x="80" y="760" width="480" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="redis" value="Redis 7&#10;sensor:latest:{id} cache&#10;pub/sub · workflow active set"
+          style="rounded=1;whiteSpace=wrap;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;fontStyle=1;"
+          vertex="1" parent="1">
+          <mxGeometry x="600" y="760" width="200" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="heartbeat" value="HeartbeatService&#10;60s offline poll&#10;Raises alarm · fires offline trigger"
+          style="rounded=1;whiteSpace=wrap;fillColor=#ffe6cc;strokeColor=#d6b656;fontSize=11;"
+          vertex="1" parent="1">
+          <mxGeometry x="840" y="760" width="200" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- ══════════════════════════════════════════ -->
+        <!-- ROW 6: WORKFLOW ENGINE                    -->
+        <!-- ══════════════════════════════════════════ -->
+
+        <mxCell id="wf_triggers" value="Workflow Triggers&#10;① Sensor state change (auto)&#10;② Cron schedule (auto)&#10;③ Device offline (auto)&#10;④ Manual (via API)"
+          style="rounded=1;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;"
+          vertex="1" parent="1">
+          <mxGeometry x="80" y="960" width="250" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="wf_engine" value="Workflow Engine&#10;20 node types · Depth-first execution&#10;logic · data · transform · output&#10;Custom JS sandbox (3s timeout)"
+          style="rounded=1;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1;"
+          vertex="1" parent="1">
+          <mxGeometry x="380" y="960" width="300" height="100" as="geometry"/>
+        </mxCell>
+
+        <!-- ══════════════════════════════════════════ -->
+        <!-- EXTERNAL (right side, same row as Workflow) -->
+        <!-- ══════════════════════════════════════════ -->
+
+        <mxCell id="maximo" value="IBM Maximo&#10;(Suggested)&#10;Asset lifecycle · Work orders&#10;via HTTP request node"
+          style="rounded=1;whiteSpace=wrap;fillColor=#f0f0f0;strokeColor=#999999;fontSize=11;dashed=1;fontStyle=2;"
+          vertex="1" parent="1">
+          <mxGeometry x="1060" y="970" width="200" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- ══════════════════════════════════════════ -->
+        <!-- ROW 7: MONGODB COLLECTIONS                -->
+        <!-- ══════════════════════════════════════════ -->
+
+        <mxCell id="db_device_states" value="device_states&#10;[Time Series · 5yr TTL]&#10;Raw telemetry · History only&#10;Append-only · Immutable"
+          style="rounded=1;whiteSpace=wrap;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;"
+          vertex="1" parent="1">
+          <mxGeometry x="40" y="1180" width="175" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="db_derived" value="device_derived_states&#10;[Regular · Mutable]&#10;Workflow outputs only&#10;Dashboard source of truth"
+          style="rounded=1;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;fontStyle=1;"
+          vertex="1" parent="1">
+          <mxGeometry x="230" y="1180" width="175" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="db_audit" value="audit_logs&#10;[Immutable · 10yr]&#10;All CRUD captured&#10;EPA 21 CFR Part 11"
+          style="rounded=1;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;"
+          vertex="1" parent="1">
+          <mxGeometry x="420" y="1180" width="165" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="db_alarms" value="alarm_instances / alarm_rules&#10;[ISA-18.2 State Machine]&#10;ACTIVE_UNACKED → ACKED&#10;→ CLEARED"
+          style="rounded=1;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;fontStyle=1;"
+          vertex="1" parent="1">
+          <mxGeometry x="600" y="1180" width="185" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="db_wf_exec" value="workflow_executions&#10;[90-day TTL]&#10;Step-by-step logs&#10;Status + errors"
+          style="rounded=1;whiteSpace=wrap;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;"
+          vertex="1" parent="1">
+          <mxGeometry x="800" y="1180" width="155" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="db_other" value="Other Collections&#10;organizations · devices&#10;users · token_sessions&#10;gateways · dashboards"
+          style="rounded=1;whiteSpace=wrap;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;"
+          vertex="1" parent="1">
+          <mxGeometry x="970" y="1180" width="200" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- ══════════════════════════════════════════ -->
+        <!-- ROW 8: FRONTEND                           -->
+        <!-- ══════════════════════════════════════════ -->
+
+        <mxCell id="frontend" value="Frontend — Next.js 16 + React 19&#10;Redux Toolkit (6 slices)  ·  React Query  ·  React Flow (visual workflow editor)  ·  Kosmos Dashboard  ·  Socket.io client  ·  Tailwind CSS v4"
+          style="rounded=1;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;fontStyle=1;"
+          vertex="1" parent="1">
+          <mxGeometry x="80" y="1390" width="860" height="70" as="geometry"/>
+        </mxCell>
+
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <!-- ARROWS                                                     -->
+        <!-- ══════════════════════════════════════════════════════════ -->
+
+        <!-- Field → Gateways -->
+        <mxCell id="e1" edge="1" parent="1" source="modbus_sensors" target="modbus_gw"
+          style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#6c8ebf;"
+          value="poll registers">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e2" edge="1" parent="1" source="opcua_devices" target="opcua_gw"
+          style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#6c8ebf;"
+          value="subscribe nodes">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Gateways → NATS -->
+        <mxCell id="e3" edge="1" parent="1" source="modbus_gw" target="nats"
+          style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#b85450;"
+          value="publish sensor.raw">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e4" edge="1" parent="1" source="opcua_gw" target="nats"
+          style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#b85450;"
+          value="publish sensor.raw">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- REST + External → Fastify (bypass gateways) -->
+        <mxCell id="e5" edge="1" parent="1" source="rest_clients" target="fastify"
+          style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#9673a6;exitX=0.5;exitY=1;exitDx=0;exitDy=0;"
+          value="HTTP POST (direct path)">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="740" y="160"/>
+              <mxPoint x="740" y="690"/>
+              <mxPoint x="320" y="690"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="e6" edge="1" parent="1" source="ext_systems" target="fastify"
+          style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#9673a6;exitX=0.5;exitY=1;exitDx=0;exitDy=0;"
+          value="webhook / schedule">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1020" y="160"/>
+              <mxPoint x="1020" y="700"/>
+              <mxPoint x="560" y="700"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- NATS → Workers -->
+        <mxCell id="e7" edge="1" parent="1" source="nats" target="storage_worker"
+          style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#82b366;"
+          value="sensor.raw">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e8" edge="1" parent="1" source="nats" target="proc_engine"
+          style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#82b366;"
+          value="sensor.raw">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e9" edge="1" parent="1" source="nats" target="ws_bridge"
+          style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#82b366;"
+          value="sensor.processed">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Processing Engine → NATS (emit processed) -->
+        <mxCell id="e10" edge="1" parent="1" source="proc_engine" target="nats"
+          style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#b85450;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;"
+          value="emit sensor.processed">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="435" y="540"/>
+              <mxPoint x="440" y="460"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Storage Worker → device_states -->
+        <mxCell id="e11" edge="1" parent="1" source="storage_worker" target="db_device_states"
+          style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#d6b656;"
+          value="batch insertMany">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Processing Engine → Redis -->
+        <mxCell id="e12" edge="1" parent="1" source="proc_engine" target="redis"
+          style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#d6b656;"
+          value="update live cache">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Processing Engine → Workflow Triggers -->
+        <mxCell id="e13" edge="1" parent="1" source="proc_engine" target="wf_triggers"
+          style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#82b366;"
+          value="sensor state change">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- WebSocket Bridge → Redis -->
+        <mxCell id="e14" edge="1" parent="1" source="ws_bridge" target="redis"
+          style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#d6b656;"
+          value="pub/sub fan-out">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Fastify ↔ Redis -->
+        <mxCell id="e15" edge="1" parent="1" source="fastify" target="redis"
+          style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;startArrow=block;startFill=1;strokeWidth=2;strokeColor=#d6b656;"
+          value="latest state reads">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Fastify → MongoDB direct write (REST path) -->
+        <mxCell id="e16" edge="1" parent="1" source="fastify" target="db_device_states"
+          style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#d6b656;"
+          value="REST direct write">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Fastify → audit_logs -->
+        <mxCell id="e17" edge="1" parent="1" source="fastify" target="db_audit"
+          style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#b85450;"
+          value="write immutable log">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Fastify → Other Collections (CRUD) -->
+        <mxCell id="e18" edge="1" parent="1" source="fastify" target="db_other"
+          style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#666666;"
+          value="CRUD management">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Workflow Triggers → Workflow Engine -->
+        <mxCell id="e19" edge="1" parent="1" source="wf_triggers" target="wf_engine"
+          style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#82b366;"
+          value="fire workflow">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- HeartbeatService → Workflow Triggers (device offline event) -->
+        <mxCell id="e22" edge="1" parent="1" source="heartbeat" target="wf_triggers"
+          style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#d6b656;"
+          value="device offline event">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- HeartbeatService → Fastify (raise alarm) -->
+        <mxCell id="e21" edge="1" parent="1" source="heartbeat" target="fastify"
+          style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#b85450;"
+          value="raise alarm">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- WorkflowEngine → device_derived_states -->
+        <mxCell id="e23" edge="1" parent="1" source="wf_engine" target="db_derived"
+          style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#82b366;"
+          value="write enriched snapshot">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- WorkflowEngine → workflow_executions -->
+        <mxCell id="e24" edge="1" parent="1" source="wf_engine" target="db_wf_exec"
+          style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#666666;"
+          value="log steps">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- WorkflowEngine → IBM Maximo (dashed / suggested) -->
+        <mxCell id="e25" edge="1" parent="1" source="wf_engine" target="maximo"
+          style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#999999;dashed=1;"
+          value="HTTP call (suggested)">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Redis → Frontend (WebSocket — device state real-time) -->
+        <mxCell id="e26" edge="1" parent="1" source="redis" target="frontend"
+          style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#6c8ebf;"
+          value="device state updates (WebSocket)">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Fastify ↔ Frontend (REST — management, history, alarm ACK/CLEAR) -->
+        <mxCell id="e27" edge="1" parent="1" source="fastify" target="frontend"
+          style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;startArrow=block;startFill=1;strokeWidth=2;strokeColor=#9673a6;"
+          value="REST API (management · history · alarm ACK/CLEAR)">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- NATS sensor.alerts → Fastify (alarm evaluation) -->
+        <mxCell id="e30" edge="1" parent="1" source="nats" target="fastify"
+          style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#b85450;"
+          value="sensor.alerts (alarm evaluation)">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- WorkflowEngine → Fastify (action:sendAlarm node) -->
+        <mxCell id="e31" edge="1" parent="1" source="wf_engine" target="fastify"
+          style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#d6b656;"
+          value="raise alarm (sendAlarm node)">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Fastify → alarm_instances (ISA-18.2 state write) -->
+        <mxCell id="e32" edge="1" parent="1" source="fastify" target="db_alarms"
+          style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#b85450;"
+          value="ISA-18.2 state write">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- WorkflowEngine → device_states (optional: query sensor history) -->
+        <mxCell id="e33" edge="1" parent="1" source="wf_engine" target="db_device_states"
+          style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#666666;dashed=1;"
+          value="query sensor history (optional)">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Fastify → Frontend alarm push (WebSocket) -->
+        <mxCell id="e34" edge="1" parent="1" source="fastify" target="frontend"
+          style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#b85450;"
+          value="alarm events (WebSocket)">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Fastify → device_derived_states (server-side read for REST response) -->
+        <mxCell id="e36" edge="1" parent="1" source="fastify" target="db_derived"
+          style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#82b366;"
+          value="serve live snapshot (REST)">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

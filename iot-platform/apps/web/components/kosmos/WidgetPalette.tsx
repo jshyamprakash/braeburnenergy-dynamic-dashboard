@@ -2,6 +2,7 @@
 
 import type { KosmosPage } from './types';
 import { PALETTE_ENTRIES } from './types';
+import { useLicense } from '@/lib/hooks/useLicense';
 
 interface WidgetPaletteProps {
   onClose: () => void;
@@ -10,20 +11,27 @@ interface WidgetPaletteProps {
 
 /**
  * WidgetPalette — left-edge drawer listing all draggable widget types (ADR-044).
- * All 17 widget types draggable to any position on the UnifiedCanvas.
- * Column badges removed — no column concept in the new unified layout.
+ * Filters by tabScope, module license availability, and activeMandatoryType.
  */
 export function WidgetPalette({ onClose, activeMandatoryType }: WidgetPaletteProps) {
+  const { isModuleEnabled } = useLicense();
+
   const handleDragStart = (e: React.DragEvent, widgetType: string) => {
     e.dataTransfer.effectAllowed = 'copy';
     e.dataTransfer.setData('application/kosmos-widget', widgetType);
   };
 
   const visibleEntries = PALETTE_ENTRIES.filter((entry) => {
-    if (!entry.tabScope || entry.tabScope === 'any') return true;
-    if (activeMandatoryType === 'overview') return entry.tabScope === 'overview';
-    if (activeMandatoryType === 'combustionDl') return entry.tabScope === 'combustionDl';
-    return false;
+    // Filter by tab scope
+    if (entry.tabScope && entry.tabScope !== 'any') {
+      if (activeMandatoryType === 'overview' && entry.tabScope !== 'overview') return false;
+      if (activeMandatoryType === 'combustionDl' && entry.tabScope !== 'combustionDl') return false;
+    }
+
+    // Filter by license module
+    if (entry.module && !isModuleEnabled(entry.module)) return false;
+
+    return true;
   });
 
   return (

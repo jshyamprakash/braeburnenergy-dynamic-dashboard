@@ -78,6 +78,23 @@ export const config = {
     batchSize: parseInt(process.env.WORKER_BATCH_SIZE || '1000', 10),
     flushIntervalMs: parseInt(process.env.WORKER_FLUSH_INTERVAL_MS || '200', 10),
   },
+
+  // Processing Engine Configuration (ADR-043 Phase 3)
+  processing: {
+    noiseThreshold: parseFloat(process.env.PROCESSING_NOISE_THRESHOLD || '0.5'),
+    deltaPercent: parseFloat(process.env.PROCESSING_DELTA_PERCENT || '0.01'),
+    cacheTTLSeconds: parseInt(process.env.PROCESSING_CACHE_TTL_SECONDS || '300', 10),
+    cacheKeyPrefix: process.env.PROCESSING_CACHE_KEY_PREFIX || 'sensor:latest:',
+  },
+
+  // License Configuration (ADR-048 / ADR-050)
+  // RS256 (production): set LICENSE_PUBLIC_KEY — LicenseService uses RS256 verify path.
+  // HS256 (dev/staging fallback): set LICENSE_SECRET only — LicenseService uses HS256 verify path.
+  license: {
+    key: process.env.LICENSE_KEY || '',
+    secret: process.env.LICENSE_SECRET || 'license-secret-change-in-production',
+    publicKey: process.env.LICENSE_PUBLIC_KEY || '',
+  },
 } as const;
 
 // Validate required configuration
@@ -103,4 +120,4 @@ export function validateConfig() {
 
 // Export individual configs for convenience
 export const { env, isDevelopment, isProduction, isTest } = config;
-export const { server, database, websocket, logging, security, api, nats, redis, worker } = config;
+export const { server, database, websocket, logging, security, api, nats, redis, worker, processing, license } = config;

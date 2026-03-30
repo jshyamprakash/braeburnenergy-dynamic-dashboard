@@ -1,0 +1,43 @@
+// LLAMP-SPEC v1 | ADR-048
+=adr: 048
+=title: License-Based Module Activation
+=date: 2026-03-30
+=status: accepted
+
+#ctx
+Client pricing model: customers pay for optional modules.
+Two modules: combustion_dl (Cloud/On-Prem DL analytics) | be_agent (Agentic AI Framework).
+Single Docker image shipped to all customers; module control must not require image rebuild.
+Client generates keys; customers cannot forge keys.
+Layer model: physical+be_sense+outputs always | be_agent+cloud_on_prem conditional.
+overviewDataFlow + platformArchitecture widgets render only licensed layers.
+
+#opts
+opt1: env var flags — customer can self-enable; no tamper resistance
+opt2: HS256 JWT (symmetric) — LICENSE_SECRET shared generator↔platform; pragmatic for MVP
+opt3: RS256 JWT (asymmetric) — private key at client only, public key baked in image; production-grade
+
+#decision
+MVP: HS256 JWT. LICENSE_SECRET baked into Docker image at build (ARG LICENSE_SECRET in Dockerfile).
+Customer receives: Docker image + LICENSE_KEY string in .env. Cannot forge without LICENSE_SECRET.
+Backend: LicenseService singleton — init() verifies JWT on startup, stores {valid,customer,modules[],expiresAt}.
+Route: GET /api/v1/license (public, no auth) → returns license state. Frontend is never the authority.
+Dev override: NODE_ENV=development + LICENSE_KEY absent → all modules enabled, customer='development'.
+Upgrade path: replace HS256 with RS256; swap LICENSE_SECRET for LICENSE_PUBLIC_KEY in config.
+
+#consequences
++ Single image for all customers; upgrade = new LICENSE_KEY string + container restart only
++ Client generates keys independently using generator CLI (private repo, not shipped to customers)
++ exp claim supports subscription/annual licensing with renewal warnings in UI
+- HS256: LICENSE_SECRET must remain secret; if leaked, keys can be forged (RS256 upgrade resolves)
+- Module UI code still bundled in image (gating is render-time, not build-time tree-shaking)
+- New constraint: frontend MUST NOT self-decide module availability; always reads /api/v1/license
+
+#scope
+~arch_summary_update: yes
+~new_backend: LicenseService, LicenseController, license.routes
+~new_frontend: licenseSlice, useLicense hook
+~affected: KosmosShell, WidgetPalette, overviewDataFlow, KosmosArchitectureTabPanel
+~new_devices: combustion_ml_engine (combustion_dl module), be_sense_edge (be_agent module)
+~docker: add NATS + Redis to docker-compose.yml + docker-compose.dev.yml (previously missing)
+~gap: GAP-L1 = license generator CLI in separate private repo (not platform repo)

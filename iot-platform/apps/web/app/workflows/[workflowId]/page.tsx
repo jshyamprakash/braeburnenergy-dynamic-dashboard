@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/lib/store';
-import { loadWorkflow, saveWorkflow, resetWorkflow, executeWorkflow, removeNode, addExecutionLogEntry, completeExecutionStream, clearExecutionLog, setNodes, setEdges, updateMetadata, addNode, selectNode, toggleDebugPanel, addDebugMessage, cancelExecution, clearDebugMessages, openExecutionModal, closeExecutionModal } from '@/lib/store/slices/workflowSlice';
+import { loadWorkflow, saveWorkflow, resetWorkflow, executeWorkflow, removeNode, addExecutionLogEntry, completeExecutionStream, clearExecutionLog, setNodes, setEdges, updateMetadata, addNode, selectNode, toggleDebugPanel, addDebugMessage, cancelExecution, clearDebugMessages, openExecutionModal, closeExecutionModal, autoOpenDebugOnExecute } from '@/lib/store/slices/workflowSlice';
 import { useWorkflowExecutionUpdates } from '@/lib/hooks/useWebSocket';
 import WorkflowCanvas from '@/components/workflow/WorkflowCanvas';
 import NodePalette from '@/components/workflow/NodePalette';
@@ -223,6 +223,7 @@ function WorkflowBuilderPage() {
         description: 'Execution ID copied to clipboard',
       });
       dispatch(closeExecutionModal());
+      dispatch(autoOpenDebugOnExecute());
 
       // Auto-clear execution status after 5 seconds
       setTimeout(() => {
@@ -321,6 +322,7 @@ function WorkflowBuilderPage() {
         isExecuting={executionStatus === 'running'}
         executionId={currentExecutionId}
         isDebugPanelOpen={isDebugPanelOpen}
+        debugMessagesCount={debugMessages.length}
         workflowId={workflowId}
         onSave={handleSave}
         onBack={handleBack}
@@ -455,6 +457,8 @@ function WorkflowBuilderPage() {
         executionStatus={executionStatus}
         nodes={nodes}
         debugMessages={debugMessages}
+        workflowId={workflowId}
+        executionId={currentExecutionId}
       />
     </div>
     </ReactFlowProvider>

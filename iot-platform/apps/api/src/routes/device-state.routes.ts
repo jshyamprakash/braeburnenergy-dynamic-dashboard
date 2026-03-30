@@ -75,6 +75,37 @@ export async function deviceStateRoutes(fastify: FastifyInstance) {
     preHandler: [requireAuth, requirePermission('device-state:read')],
   }, deviceStateController.getDerivedStateHistory.bind(deviceStateController) as any);
 
+  // Get live snapshot from Redis cache (ADR-043 Phase 3)
+  fastify.get('/devices/:deviceId/live', {
+    schema: {
+      tags: ['Device States'],
+      summary: 'Get live snapshot (Redis cache)',
+      description: 'Returns the latest raw telemetry snapshot from Redis (sensor:latest:{deviceId}), written by the Processing Engine on every non-REST ingest. 404 if device has never published via Modbus/OPC-UA or TTL expired (default 5 min). 503 if Redis is unavailable.',
+      security: [{ bearerAuth: [] }],
+      params: zodToSwagger(deviceIdParamSchema),
+      response: {
+        200: successResponse(
+          {
+            type: 'object',
+            additionalProperties: true,
+            properties: {
+              deviceId: { type: 'string' },
+              orgId: { type: 'string' },
+              data: { type: 'object', additionalProperties: true },
+              timestamp: { type: 'string', format: 'date-time' },
+              source: { type: 'string' },
+              quality: { type: 'number' },
+            },
+          },
+          'Live telemetry snapshot from Redis'
+        ),
+        404: errorResponse('No snapshot found — device has not published recently'),
+        503: errorResponse('Redis unavailable'),
+      },
+    },
+    preHandler: [requireAuth, requirePermission('device-state:read')],
+  }, deviceStateController.getLiveSnapshot.bind(deviceStateController) as any);
+
   // Get derived state — canonical live snapshot (ADR-039)
   // dashboard MUST use this; /states/latest is for history only
   fastify.get('/devices/:deviceId/derived-state', {

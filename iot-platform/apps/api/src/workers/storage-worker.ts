@@ -29,6 +29,7 @@ let storageWorkerInstance: Worker | null = null;
 let consumerMessages: { stop(): void } | null = null;
 let flushTimer: NodeJS.Timeout | null = null;
 let messageBatch: SensorRawEvent[] = [];
+let pendingAcks: Array<{ ack(): void; nak(): void }> = [];
 
 function getQueue(): Queue {
   if (!storageQueue) {
@@ -40,10 +41,17 @@ function getQueue(): Queue {
 async function flushBatch(): Promise<void> {
   if (messageBatch.length === 0) return;
   const toFlush = messageBatch.splice(0);
-  await getQueue().add('batch', toFlush, {
-    attempts: 3,
-    backoff: { type: 'exponential', delay: 1000 },
-  });
+  const toAck = pendingAcks.splice(0);
+  try {
+    await getQueue().add('batch', toFlush, {
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 1000 },
+    });
+    toAck.forEach(m => m.ack());
+  } catch (err) {
+    toAck.forEach(m => m.nak());
+    throw err;
+  }
 }
 
 function scheduleFlush(): void {
@@ -73,6 +81,7 @@ export async function startStorageWorker(): Promise<void> {
       deliver_policy: DeliverPolicy.New,
       filter_subject: 'sensor.raw.>',
       replay_policy: ReplayPolicy.Instant,
+      max_ack_pending: config.worker.batchSize,
     });
     console.log(`✅ NATS consumer "${CONSUMER_NAME}" created`);
   }
@@ -88,12 +97,11 @@ export async function startStorageWorker(): Promise<void> {
       try {
         const event: SensorRawEvent = JSON.parse(sc.decode(msg.data));
         messageBatch.push(event);
+        pendingAcks.push(msg);
 
         if (messageBatch.length >= config.worker.batchSize) {
           await flushBatch();
         }
-
-        msg.ack();
       } catch (err) {
         console.error('StorageWorker: message processing error:', err);
         msg.nak();
@@ -149,7 +157,13 @@ export async function stopStorageWorker(): Promise<void> {
     clearTimeout(flushTimer);
     flushTimer = null;
   }
-  await flushBatch().catch(console.error);
+  try {
+    await flushBatch();
+  } catch (err) {
+    // nak already called inside flushBatch on failure; drain remaining
+    pendingAcks.splice(0).forEach(m => m.nak());
+    console.error('StorageWorker: final flush error:', err);
+  }
 
   // Stop NATS consumer message iteration
   if (consumerMessages) {

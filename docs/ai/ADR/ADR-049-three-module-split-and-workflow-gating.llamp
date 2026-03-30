@@ -1,0 +1,27 @@
+// LLAMP-SPEC v1 | ADR-049: Three-Module Split and Workflow NodePalette Gating
+// Updated: 2026-03-30
+
+=title: ADR-049 Three-Module Split and Workflow NodePalette Gating
+
+=context: {
+  trigger: user confirmed asset_life is distinct from combustion_dl; fleet analytics + IBM Maximo = separate module,
+  ibm_maximo: always-available CMMS integration (core output, no license gate),
+  prior: ADR-048 established combustion_dl + be_agent; NodePalette was ungated
+}
+
+=decision: {
+  modules: [combustion_dl (CD Precursor DL analytics), asset_life (Asset Life + Fleet Analytics), be_agent (Edge AI)],
+  ibm_maximo_sync: CORE — action:ibmMaximoSync always visible in NodePalette (no module tag),
+  asset_life_nodes: [data:fleetQuery, data:assetLifeCalc, action:ibmMaximoCreateWorkOrder] gated by asset_life,
+  node_palette_gating: NodeTypeConfig gains module? field; useLicense() filters at NodePalette render time,
+  dataflow_split: single Cloud/On-Prem layer → two layers: CD Precursor DL (combustion_dl) + Asset Life Mgmt (asset_life),
+  arch_cards: add asset_life card to KosmosArchitectureTabPanel right-column stack
+}
+
+=consequences: {
+  license_service: LicenseModule type + ALL_MODULES must include 'asset_life',
+  key_format: license JWTs for this release MUST include 'asset_life' in modules[] when purchasing that module,
+  backward_compat: keys without 'asset_life' show only combustion_dl/be_agent as before,
+  stored_workflows: existing workflow nodes unaffected; gating hides palette buttons only,
+  frontend_bundle: all node code bundled in image; gating is render-time only (same as ADR-048)
+}

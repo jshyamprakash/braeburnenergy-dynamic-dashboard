@@ -1,0 +1,44 @@
+// LLAMP-SPEC v1 | ADR-046
+=adr: 046
+=title: Device dataSource Type Field
+=date: 2026-03-28
+=status: accepted
+
+#ctx:
+  Device model has no indicator of where data originates.
+  Platform serves: MQTT/Modbus/OPC-UA gateways, workflow derived state, HTTP REST.
+  Confusion: field mapping, history-seeding, WidgetConfigPanel field selector vary by source.
+  Onboarding rule established 2026-03-28: one device = one data source.
+  useDeviceTimeSeries hook (pending GAP-C2) needs dataSource to select history endpoint.
+  ML model outputs onboarded as a separate Device (dataSource:'gateway' via MQTT) — Device B pattern.
+
+#opts:
+  A: Infer source at runtime from gateway/workflow associations — fragile, fails for HTTP
+  B: Add dataSource enum to Device model — explicit, zero runtime ambiguity
+
+#decision:
+  Option B.
+  device.dataSource: 'gateway' | 'workflow' | 'http'
+  Default for migration: 'gateway'
+
+#consequences:
+  +DeviceForm: new required dropdown (gateway | workflow | http)
+  +useDeviceTimeSeries: dataSource determines history seeding endpoint
+    gateway|http → GET /devices/:id/states          (device_states raw telemetry)
+    workflow     → GET /devices/:id/derived-state/history (device_derived_state_history)
+  +WidgetConfigPanel field selector:
+    gateway|http → device.attributes keys (raw sensor fields)
+    workflow     → device_derived_states.derived keys (computed fields)
+  +Device detail page: dataSource badge (visual clarity for operators)
+  -Migration: bulk update existing devices → dataSource='gateway'
+  ~No pipeline behavior change — metadata only, no route/service logic affected
+
+#scope:
+  arch_summary_update: yes
+  files: [
+    iot-platform/apps/api/src/models/device.model.ts,
+    iot-platform/apps/api/src/services/device.service.ts,
+    iot-platform/packages/types/src/index.ts,
+    iot-platform/apps/web/components/DeviceForm.tsx (or equivalent),
+    iot-platform/apps/web/hooks/useDeviceData.ts (useDeviceTimeSeries — new)
+  ]

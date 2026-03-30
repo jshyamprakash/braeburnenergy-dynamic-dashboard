@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Modal } from '../Modal';
 import { useCreateDevice, useUpdateDevice } from '@/lib/hooks/useDevices';
-import type { Device } from '@repo/types';
+import type { Device, DeviceDataSource } from '@repo/types';
 
 interface DeviceFormProps {
   isOpen: boolean;
@@ -14,9 +14,14 @@ interface DeviceFormProps {
 }
 
 type KVRow = { key: string; value: string };
-type AttrRow = { key: string; type: 'number' | 'string' | 'boolean' | 'timestamp' };
+type AttrRow = { key: string; type: 'number' | 'string' | 'boolean' | 'timestamp' | 'json' };
 
-const DATA_TYPES = ['number', 'string', 'boolean', 'timestamp'] as const;
+const DATA_TYPES = ['number', 'string', 'boolean', 'timestamp', 'json'] as const;
+const DATA_SOURCES: { value: DeviceDataSource; label: string; description: string }[] = [
+  { value: 'gateway', label: 'Gateway', description: 'Modbus / OPC-UA / MQTT gateway' },
+  { value: 'workflow', label: 'Workflow', description: 'Derived by workflow (computed values)' },
+  { value: 'http', label: 'HTTP', description: 'REST API / HTTP push' },
+];
 
 function kvRowsFromRecord(record: Record<string, string> | string[] | null | undefined): KVRow[] {
   if (!record) return [];
@@ -37,6 +42,7 @@ export function DeviceForm({ isOpen, onClose, device, onSuccess, applicationId }
   const isEditMode = !!device;
 
   const [name, setName] = useState('');
+  const [dataSource, setDataSource] = useState<DeviceDataSource>('gateway');
   const [tagRows, setTagRows] = useState<KVRow[]>([]);
   const [attrRows, setAttrRows] = useState<AttrRow[]>([]);
 
@@ -46,10 +52,12 @@ export function DeviceForm({ isOpen, onClose, device, onSuccess, applicationId }
   useEffect(() => {
     if (device) {
       setName(device.name);
+      setDataSource(device.dataSource ?? 'gateway');
       setTagRows(kvRowsFromRecord(device.tags as any));
       setAttrRows(attrRowsFromRecord(device.attributes as any));
     } else {
       setName('');
+      setDataSource('gateway');
       setTagRows([]);
       setAttrRows([]);
     }
@@ -89,6 +97,7 @@ export function DeviceForm({ isOpen, onClose, device, onSuccess, applicationId }
     try {
       const deviceData = {
         name: name.trim(),
+        dataSource,
         tags: tagsRecord,
         attributes: Object.keys(attrsRecord).length > 0 ? attrsRecord : undefined,
         ...(applicationId && { applicationId }), // ADR-024: Application context from props
@@ -131,6 +140,26 @@ export function DeviceForm({ isOpen, onClose, device, onSuccess, applicationId }
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
             required
           />
+        </div>
+
+        {/* Data Source — ADR-046 */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Data Source <span className="text-red-500">*</span>
+          </label>
+          <select
+            value={dataSource}
+            onChange={(e) => setDataSource(e.target.value as DeviceDataSource)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+            required
+          >
+            {DATA_SOURCES.map(({ value, label, description }) => (
+              <option key={value} value={value}>{label} — {description}</option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-gray-400">
+            Determines how data arrives for this device. Cannot be changed after creation without data implications.
+          </p>
         </div>
 
         {/* Tags — key-value static metadata */}

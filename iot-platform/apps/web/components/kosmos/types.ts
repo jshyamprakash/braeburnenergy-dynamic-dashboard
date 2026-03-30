@@ -150,6 +150,7 @@ export interface PaletteEntry {
   defaultConfig: Record<string, any>;
   defaultLayout: { x: number; y: number; w: number; h: number };
   tabScope?: 'overview' | 'combustionDl' | 'any';
+  module?: 'combustion_dl' | 'asset_life' | 'be_agent';
 }
 
 export const PALETTE_ENTRIES: PaletteEntry[] = [
@@ -209,7 +210,7 @@ export const PALETTE_ENTRIES: PaletteEntry[] = [
     label: 'Realtime Chart',
     icon: '〜',
     description: 'Combustion dynamics realtime signal chart.',
-    defaultConfig: {},
+    defaultConfig: { deviceId: '', fieldName: 'temperature' },
     defaultLayout: { x: 332, y: 182, w: 812, h: 248 },
     tabScope: 'overview',
   },
@@ -228,6 +229,7 @@ export const PALETTE_ENTRIES: PaletteEntry[] = [
     icon: '⟳',
     description: 'Agent status, alerts and health index.',
     defaultConfig: {
+      deviceId: '',
       healthScore: 86,
       modules: [
         { name: 'CD Precursor', desc: 'Feature-driven DL anomaly detection', status: 'RUN' },
@@ -245,6 +247,7 @@ export const PALETTE_ENTRIES: PaletteEntry[] = [
     },
     defaultLayout: { x: 1160, y: 16, w: 320, h: 760 },
     tabScope: 'overview',
+    module: 'be_agent',
   },
   {
     type: 'combustionDlHeader',
@@ -265,24 +268,27 @@ Features: DFT amplitude spectra, SPL, Hurst exponent, Shannon entropy, mutual in
     },
     defaultLayout: { x: 16, y: 16, w: 1168, h: 120 },
     tabScope: 'combustionDl',
+    module: 'combustion_dl',
   },
   {
     type: 'combustionDlPressureSignal',
     label: 'CD Pressure',
     icon: '◈',
     description: 'Live CD pressure signal card.',
-    defaultConfig: { title: 'CD PRESSURE SIGNAL' },
+    defaultConfig: { title: 'CD PRESSURE SIGNAL', deviceId: '', fieldName: 'cd_pressure' },
     defaultLayout: { x: 16, y: 152, w: 360, h: 220 },
     tabScope: 'combustionDl',
+    module: 'combustion_dl',
   },
   {
     type: 'combustionDlFrequencySpectrum',
     label: 'FFT Spectrum',
     icon: '◈',
     description: 'Frequency spectrum DFT card.',
-    defaultConfig: { title: 'FREQUENCY SPECTRUM (DFT)' },
+    defaultConfig: { title: 'FREQUENCY SPECTRUM (DFT)', deviceId: '', fieldName: 'dft_energy' },
     defaultLayout: { x: 16, y: 388, w: 360, h: 220 },
     tabScope: 'combustionDl',
+    module: 'combustion_dl',
   },
   {
     type: 'combustionDlFeatureMatrix',
@@ -290,6 +296,8 @@ Features: DFT amplitude spectra, SPL, Hurst exponent, Shannon entropy, mutual in
     icon: '◈',
     description: 'Extracted physics-informed feature grid.',
     defaultConfig: {
+      deviceId: '',
+      fieldName: 'feature_cells',
       title: 'EXTRACTED FEATURES',
       featureCells: [
         { label: 'DFT-50Hz', value: '0.42' },
@@ -321,6 +329,7 @@ Features: DFT amplitude spectra, SPL, Hurst exponent, Shannon entropy, mutual in
     },
     defaultLayout: { x: 16, y: 624, w: 360, h: 360 },
     tabScope: 'combustionDl',
+    module: 'combustion_dl',
   },
   {
     type: 'combustionDlFrameworkPipeline',
@@ -339,15 +348,17 @@ Features: DFT amplitude spectra, SPL, Hurst exponent, Shannon entropy, mutual in
     },
     defaultLayout: { x: 392, y: 152, w: 390, h: 330 },
     tabScope: 'combustionDl',
+    module: 'combustion_dl',
   },
   {
     type: 'combustionDlAnomalyTrend',
     label: 'Anomaly Trend',
     icon: '◈',
     description: 'Anomaly score trend chart.',
-    defaultConfig: { title: 'ANOMALY SCORE TREND' },
+    defaultConfig: { title: 'ANOMALY SCORE TREND', deviceId: '', fieldName: 'anomaly_score' },
     defaultLayout: { x: 392, y: 498, w: 390, h: 190 },
     tabScope: 'combustionDl',
+    module: 'combustion_dl',
   },
   {
     type: 'combustionDlPhysicsMetrics',
@@ -366,6 +377,7 @@ Features: DFT amplitude spectra, SPL, Hurst exponent, Shannon entropy, mutual in
     },
     defaultLayout: { x: 392, y: 704, w: 390, h: 200 },
     tabScope: 'combustionDl',
+    module: 'combustion_dl',
   },
   {
     type: 'combustionDlPrecursorClassification',
@@ -380,6 +392,7 @@ Features: DFT amplitude spectra, SPL, Hurst exponent, Shannon entropy, mutual in
     },
     defaultLayout: { x: 798, y: 152, w: 320, h: 220 },
     tabScope: 'combustionDl',
+    module: 'combustion_dl',
   },
   {
     type: 'combustionDlClassifierOutputs',
@@ -397,6 +410,7 @@ Features: DFT amplitude spectra, SPL, Hurst exponent, Shannon entropy, mutual in
     },
     defaultLayout: { x: 798, y: 388, w: 320, h: 180 },
     tabScope: 'combustionDl',
+    module: 'combustion_dl',
   },
   {
     type: 'combustionDlTrainingPerformance',
@@ -415,6 +429,7 @@ Features: DFT amplitude spectra, SPL, Hurst exponent, Shannon entropy, mutual in
     },
     defaultLayout: { x: 798, y: 584, w: 320, h: 170 },
     tabScope: 'combustionDl',
+    module: 'combustion_dl',
   },
   {
     type: 'combustionDlTurbineInfo',
@@ -429,5 +444,6 @@ Features: DFT amplitude spectra, SPL, Hurst exponent, Shannon entropy, mutual in
     },
     defaultLayout: { x: 16, y: 16, w: 420, h: 240 },
     tabScope: 'combustionDl',
+    module: 'combustion_dl',
   },
 ];

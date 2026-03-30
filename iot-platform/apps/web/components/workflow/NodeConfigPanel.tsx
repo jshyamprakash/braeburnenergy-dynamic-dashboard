@@ -294,6 +294,60 @@ const NODE_CONFIG_SCHEMAS: Record<string, FieldConfig[]> = {
     { key: 'deviceId', label: 'Source Device', type: 'device-select', required: false },
     { key: 'operations', label: 'Operations (JSON)', type: 'textarea', placeholder: '[{"op":"set","field":"status","value":"active"}]', required: true },
   ],
+  'action:ibmMaximoSync': [
+    { key: 'label', label: 'Node Label', type: 'text', placeholder: 'e.g., Sync to Maximo', required: true },
+    { key: 'description', label: 'Description', type: 'textarea' },
+    { key: 'assetId', label: 'Asset ID', type: 'text', placeholder: 'e.g., {{workspace.assetId}}', note: 'Supports {{variables}}' },
+    {
+      key: 'workOrderType',
+      label: 'Work Order Type',
+      type: 'select',
+      options: [
+        { value: 'PM', label: 'Preventive Maintenance (PM)' },
+        { value: 'CM', label: 'Corrective Maintenance (CM)' },
+        { value: 'OP', label: 'Operations (OP)' },
+      ],
+    },
+  ],
+  'action:ibmMaximoCreateWorkOrder': [
+    { key: 'label', label: 'Node Label', type: 'text', placeholder: 'e.g., Create Work Order', required: true },
+    { key: 'description', label: 'Description', type: 'textarea' },
+    { key: 'assetId', label: 'Asset ID', type: 'text', placeholder: 'e.g., {{workspace.assetId}}', required: true, note: 'Supports {{variables}}' },
+    { key: 'description', label: 'WO Description', type: 'text', placeholder: 'e.g., Anomaly detected on turbine', note: 'Supports {{variables}}' },
+    { key: 'priority', label: 'Priority (1=High, 5=Low)', type: 'number', placeholder: '2' },
+    {
+      key: 'workOrderType',
+      label: 'Work Order Type',
+      type: 'select',
+      options: [
+        { value: 'CM', label: 'Corrective Maintenance (CM)' },
+        { value: 'PM', label: 'Preventive Maintenance (PM)' },
+      ],
+    },
+  ],
+  'data:fleetQuery': [
+    { key: 'label', label: 'Node Label', type: 'text', placeholder: 'e.g., Fleet Query', required: true },
+    { key: 'description', label: 'Description', type: 'textarea' },
+    { key: 'assetType', label: 'Asset Type', type: 'text', placeholder: 'e.g., gas-turbine' },
+    { key: 'metric', label: 'Metric', type: 'text', placeholder: 'e.g., availability, heat_rate' },
+    { key: 'outputField', label: 'Output Field', type: 'text', placeholder: 'fleetData' },
+  ],
+  'data:assetLifeCalc': [
+    { key: 'label', label: 'Node Label', type: 'text', placeholder: 'e.g., Calc RUL', required: true },
+    { key: 'description', label: 'Description', type: 'textarea' },
+    { key: 'assetId', label: 'Asset ID', type: 'text', placeholder: 'e.g., {{workspace.assetId}}', note: 'Supports {{variables}}' },
+    {
+      key: 'model',
+      label: 'Degradation Model',
+      type: 'select',
+      options: [
+        { value: 'degradation', label: 'Linear Degradation' },
+        { value: 'regression', label: 'Regression (Historical)' },
+        { value: 'weibull', label: 'Weibull Failure Distribution' },
+      ],
+    },
+    { key: 'outputField', label: 'Output Field', type: 'text', placeholder: 'rul' },
+  ],
 };
 
 export default function NodeConfigPanel() {

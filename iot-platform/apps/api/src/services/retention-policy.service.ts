@@ -37,6 +37,26 @@ export class RetentionPolicyService {
   }
 
   /**
+   * Get insert expiry duration for a data category (ADR-047).
+   * Returns milliseconds to add to Date.now() for the expiresAt field.
+   * Falls back to hardcoded safe defaults when no active policy exists.
+   */
+  async getInsertExpiry(category: DataCategory): Promise<number> {
+    const FALLBACK_MS: Record<DataCategory, number> = {
+      device_states: 157_680_000 * 1000,       // 5 years
+      derived_state_history: 7_776_000 * 1000,  // 90 days
+      audit_logs: 315_360_000 * 1000,           // 10 years
+      alarms: 7_776_000 * 1000,                 // 90 days
+      calibration_records: 157_680_000 * 1000,  // 5 years
+    };
+
+    const policy = await this.getActivePolicy(category);
+    return policy
+      ? policy.totalRetentionDuration * 1000
+      : FALLBACK_MS[category];
+  }
+
+  /**
    * List all retention policies
    */
   async listPolicies(filter?: { category?: DataCategory; isActive?: boolean }): Promise<IRetentionPolicy[]> {
@@ -172,6 +192,20 @@ export class RetentionPolicyService {
         minimumRetentionDays: 3650, // 10 years
         isActive: true,
       },
+      {
+        name: 'Derived State History - 90 Day',
+        description: '90-day retention for workflow/ML derived state history (ADR-047)',
+        category: 'derived_state_history' as DataCategory,
+        hotStorageDuration: 7776000,  // 90 days
+        warmStorageDuration: 7776000, // 90 days
+        coldStorageDuration: 7776000, // 90 days
+        totalRetentionDuration: 7776000, // 90 days
+        archiveEnabled: false,
+        compressionEnabled: false,
+        compressionThreshold: 90,
+        minimumRetentionDays: 0,
+        isActive: true,
+      },
     ];
 
     for (const defaultPolicy of defaults) {
@@ -184,3 +218,5 @@ export class RetentionPolicyService {
     }
   }
 }
+
+export const retentionPolicyService = new RetentionPolicyService();

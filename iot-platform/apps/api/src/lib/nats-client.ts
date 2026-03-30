@@ -8,8 +8,9 @@ export interface SensorRawEvent {
   deviceId: string;
   data: Record<string, unknown>;
   timestamp: string; // ISO string
-  source: 'modbus' | 'opcua' | 'rest';
+  source: 'modbus' | 'opcua' | 'rest' | 'mqtt';
   quality?: IQualityMetadata;
+  processingOverrides?: { deltaPercent?: number; noiseThreshold?: number };
 }
 
 export class NatsClient {

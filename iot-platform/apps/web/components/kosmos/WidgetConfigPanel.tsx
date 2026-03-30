@@ -5,23 +5,51 @@ import { useAppDispatch } from '@/lib/store';
 import { updateKosmosWidgetConfig } from '@/lib/store/slices/dashboardSlice';
 import type { KosmosWidget } from './types';
 import { PALETTE_ENTRIES } from './types';
+import { useDevices, useDevice } from '@/lib/hooks/useDevices';
 
 interface WidgetConfigPanelProps {
   pageId: string;
   widget: KosmosWidget;
+  applicationId?: string;
   onClose: () => void;
   onConfigChange?: () => void;
 }
+
+const CHART_WIDGET_TYPES = new Set([
+  'overviewRealtimeChart',
+  'combustionDlPressureSignal',
+  'combustionDlAnomalyTrend',
+  'combustionDlFrequencySpectrum',
+  'combustionDlFeatureMatrix',
+]);
+
+// Widget types that need a device selector for deviceId but NOT a fieldName selector
+const BE_AGENT_DEVICE_WIDGETS = new Set([
+  'overviewBeAgentStatus',
+]);
 
 /**
  * WidgetConfigPanel — key-value config editor for widget configuration (ADR-044).
  * Keys are read-only labels; only values are editable.
  */
-export function WidgetConfigPanel({ pageId, widget, onClose, onConfigChange }: WidgetConfigPanelProps) {
+export function WidgetConfigPanel({ pageId, widget, applicationId, onClose, onConfigChange }: WidgetConfigPanelProps) {
   const dispatch = useAppDispatch();
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [localArrayState, setLocalArrayState] = useState<Record<string, string | boolean>>({});
   const { type } = widget;
+
+  // Fetch devices for this application (for device selector on chart widgets)
+  const { data: devicesData } = useDevices(
+    applicationId ? { applicationId, limit: 100 } : undefined
+  );
+  const devices = devicesData?.devices ?? [];
+
+  // Fetch selected device to get its attributes for field selector
+  const selectedDeviceId = (widget.config?.deviceId as string) || '';
+  const { data: selectedDevice } = useDevice(
+    selectedDeviceId && (CHART_WIDGET_TYPES.has(type) || BE_AGENT_DEVICE_WIDGETS.has(type)) ? selectedDeviceId : ''
+  );
+  const deviceAttributes = selectedDevice?.attributes ? Object.keys(selectedDevice.attributes) : [];
 
   // Merge palette defaults + stored config so new fields appear for existing widgets
   const paletteEntry = PALETTE_ENTRIES.find(p => p.type === widget.type);
@@ -405,6 +433,46 @@ export function WidgetConfigPanel({ pageId, widget, onClose, onConfigChange }: W
                         padding: 6,
                       }}
                     />
+                  ) : key === 'deviceId' && (CHART_WIDGET_TYPES.has(type) || BE_AGENT_DEVICE_WIDGETS.has(type)) ? (
+                    <select
+                      value={String(value)}
+                      onChange={(e) => saveField(key, e.target.value)}
+                      style={inputStyle as React.CSSProperties}
+                    >
+                      <option value="">-- Select Device --</option>
+                      {devices.map((device) => (
+                        <option key={device.id} value={device.id}>
+                          {device.name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : key === 'fieldName' && CHART_WIDGET_TYPES.has(type) ? (
+                    deviceAttributes.length > 0 ? (
+                      <select
+                        value={String(value)}
+                        onChange={(e) => saveField(key, e.target.value)}
+                        style={inputStyle as React.CSSProperties}
+                      >
+                        <option value="">-- Select Field --</option>
+                        {deviceAttributes.map((attr) => (
+                          <option key={attr} value={attr}>
+                            {attr}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        placeholder="Select device first"
+                        value={String(value)}
+                        onChange={(e) =>
+                          setLocalArrayState(prev => ({ ...prev, [key]: e.target.value }))
+                        }
+                        onBlur={(e) => saveField(key, e.target.value)}
+                        style={inputStyle}
+                        disabled={!selectedDeviceId}
+                      />
+                    )
                   ) : (
                     <input
                       type="text"

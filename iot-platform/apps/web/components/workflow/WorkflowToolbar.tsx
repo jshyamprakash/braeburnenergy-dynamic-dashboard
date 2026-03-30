@@ -11,6 +11,7 @@ export interface WorkflowToolbarProps {
   isExecuting?: boolean;
   executionId?: string | null;
   isDebugPanelOpen?: boolean;
+  debugMessagesCount?: number;
   workflowId?: string | null;
   onSave: () => void;
   onBack: () => void;
@@ -33,6 +34,7 @@ export default function WorkflowToolbar({
   isExecuting,
   executionId,
   isDebugPanelOpen,
+  debugMessagesCount,
   workflowId,
   onSave,
   onBack,
@@ -232,23 +234,31 @@ export default function WorkflowToolbar({
         )}
 
         {/* Debug button */}
-        <button
-          onClick={onDebugToggle}
-          className={`
-            px-3 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2
-            ${
-              isDebugPanelOpen
-                ? 'bg-purple-600 hover:bg-purple-700 text-white shadow-lg'
-                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-            }
-          `}
-          title="Toggle debug panel (show execution context)"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span className="text-sm">Debug</span>
-        </button>
+        <div className="relative">
+          <button
+            onClick={onDebugToggle}
+            className={`
+              px-3 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2
+              ${
+                isDebugPanelOpen
+                  ? 'bg-purple-600 hover:bg-purple-700 text-white shadow-lg'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+              }
+            `}
+            title="Toggle debug panel (show execution context)"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="text-sm">Debug</span>
+          </button>
+          {/* Unread badge — show when messages exist and panel closed */}
+          {(debugMessagesCount ?? 0) > 0 && !isDebugPanelOpen && (
+            <span className="absolute -top-1 -right-1 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-red-600 rounded-full">
+              {debugMessagesCount}
+            </span>
+          )}
+        </div>
 
         {/* Menu button (⋮) */}
         <div className="relative">

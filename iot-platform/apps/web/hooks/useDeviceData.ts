@@ -246,6 +246,37 @@ export function useDeviceDerivedHistory(deviceId?: string, limit = 50) {
   });
 }
 
+export interface LiveSnapshotData {
+  deviceId: string;
+  orgId: string;
+  data: Record<string, unknown>;
+  timestamp: string;
+  source: string;
+  quality: number;
+}
+
+/**
+ * Poll the Redis live snapshot for a device (ADR-043 Phase 3).
+ * Returns raw telemetry written by the Processing Engine on every non-REST ingest.
+ * Useful as a WebSocket fallback or to display raw sensor values alongside derived state.
+ *
+ * Returns null if the device has never published via Modbus/OPC-UA, or if TTL expired (5 min).
+ */
+export function useDeviceLiveSnapshot(deviceId?: string, refetchInterval = 5000) {
+  return useQuery<LiveSnapshotData | null>({
+    queryKey: ['device-live-snapshot', deviceId],
+    queryFn: async () => {
+      if (!deviceId) return null;
+      const response = await apiClient.get<LiveSnapshotData>(`/devices/${deviceId}/live`);
+      return response.data;
+    },
+    enabled: !!deviceId,
+    staleTime: 0,
+    refetchInterval,
+    retry: false,
+  });
+}
+
 export interface DeviceFieldEntry {
   key: string;
   source: 'schema' | 'state' | 'derived';

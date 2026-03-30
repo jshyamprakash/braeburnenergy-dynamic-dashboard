@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { DeviceDerivedState } from '../models/device-derived-state.model';
 import { DeviceDerivedStateHistory } from '../models/device-derived-state-history.model';
+import { retentionPolicyService } from './retention-policy.service';
 
 /**
  * DeviceDerivedStateService (ADR-031)
@@ -39,10 +40,13 @@ export class DeviceDerivedStateService {
     );
 
     // Append to history collection for N-point dashboard seeding
+    // ADR-047: expiresAt set from active RetentionPolicy (falls back to 90-day default)
+    const expiryMs = await retentionPolicyService.getInsertExpiry('derived_state_history');
     await DeviceDerivedStateHistory.create({
       deviceId,
       derived: patch,
       timestamp: new Date(),
+      expiresAt: new Date(Date.now() + expiryMs),
       sourceEventId:
         sourceEventId && mongoose.Types.ObjectId.isValid(sourceEventId)
           ? new mongoose.Types.ObjectId(sourceEventId)

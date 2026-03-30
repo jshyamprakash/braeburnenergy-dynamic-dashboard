@@ -34,6 +34,7 @@ export class DeviceService {
       name: data.name,
       tags: data.tags || [],
       attributes: data.attributes || null,
+      dataSource: data.dataSource ?? 'gateway', // ADR-046
       applicationId: data.applicationId,
     });
 
@@ -98,6 +99,7 @@ export class DeviceService {
     if (data.name !== undefined) updateData.name = data.name;
     if (data.tags !== undefined) updateData.tags = data.tags;
     if (data.attributes !== undefined) updateData.attributes = data.attributes;
+    if (data.dataSource !== undefined) updateData.dataSource = data.dataSource; // ADR-046
 
     const device = await Device.findOneAndUpdate(
       {

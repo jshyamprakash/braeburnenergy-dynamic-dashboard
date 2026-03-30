@@ -243,21 +243,6 @@ export class WorkflowEngineService {
       const nodeEndTime = Date.now();
       const nodeDuration = nodeEndTime - nodeStartTime;
 
-      // Log execution
-      const logEntry: ExecutionLogEntry = {
-        timestamp: new Date(),
-        nodeId: node.id,
-        nodeType: node.type,
-        status: 'completed',
-        input: context.currentData,
-        output: result.output,
-        duration: nodeDuration,
-        notes: result.notes,
-      };
-
-      execution.executionLog.push(logEntry);
-      await execution.save();
-
       // Update context: store node output under nodeId key for variable binding
       if (result.output !== undefined) {
         context.currentData = result.output;
@@ -276,6 +261,29 @@ export class WorkflowEngineService {
         context.variables = { ...context.variables, ...result.variables };
       }
 
+      // Snapshot taken AFTER context mutations so it reflects post-execution state
+      const contextSnapshot = {
+        variables: context.variables,
+        workspace: context.workspace,
+        trigger: context.trigger,
+      };
+
+      // Log execution
+      const logEntry: ExecutionLogEntry = {
+        timestamp: new Date(),
+        nodeId: node.id,
+        nodeType: node.type,
+        status: 'completed',
+        input: context.currentData,
+        output: result.output,
+        duration: nodeDuration,
+        notes: result.notes,
+        contextSnapshot,
+      };
+
+      execution.executionLog.push(logEntry);
+      await execution.save();
+
       // Emit WebSocket: workflow:execution:step (completed)
       this.emitExecutionEvent('workflow:execution:step', {
         executionId: execution.executionId,
@@ -287,6 +295,7 @@ export class WorkflowEngineService {
         output: result.output,
         duration: nodeDuration,
         notes: result.notes,
+        contextSnapshot,
       });
 
       // Emit real-time debug message if node produced one (action:debug)

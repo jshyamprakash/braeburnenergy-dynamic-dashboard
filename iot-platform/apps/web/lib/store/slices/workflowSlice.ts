@@ -486,6 +486,11 @@ export const workflowSlice = createSlice({
       state.isDebugPanelOpen = !state.isDebugPanelOpen;
     },
 
+    // Auto-open debug panel on execution
+    autoOpenDebugOnExecute: state => {
+      state.isDebugPanelOpen = true;
+    },
+
     // Execution modal
     openExecutionModal: (state, action: PayloadAction<string | undefined>) => {
       state.isExecutionModalOpen = true;
@@ -642,6 +647,7 @@ export const {
   clearDebugMessages,
   markAsSaved,
   toggleDebugPanel,
+  autoOpenDebugOnExecute,
   openExecutionModal,
   closeExecutionModal,
 } = workflowSlice.actions;

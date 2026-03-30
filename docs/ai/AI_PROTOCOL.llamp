@@ -58,6 +58,7 @@ cmd: read seq=[
   docs/ai/FRONTEND_PATTERNS.llamp ?if:task.type==frontend|ui|hook,   // frontend tasks only
   docs/ai/ADR/           !filenames_only !format:*.llamp,
   docs/ai/AI_PROTOCOL.llamp ?if:exists,
+  docs/ai/OPEN_GAPS.md ?if:exists,                                   // persistent gap registry
   docs/ai/TASK_HISTORY.md ?if:exists,
   docs/ai/CURRENT_TASK.llamp ?if:exists,
   docs/ai/CURRENT_DECISIONS.llamp ?if:exists

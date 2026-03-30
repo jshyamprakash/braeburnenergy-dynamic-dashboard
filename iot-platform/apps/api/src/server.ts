@@ -20,10 +20,12 @@ import { validationRuleRoutes } from './routes/validation-rule.routes';
 import { alarmRoutes } from './routes/alarm.routes';
 import { modbusGatewayRoutes } from './routes/modbus-gateway.routes';
 import { opcuaGatewayRoutes } from './routes/opcua-gateway.routes';
+import { mqttGatewayRoutes } from './routes/mqtt-gateway.routes';
 import { waterQualityRoutes } from './routes/water-quality.routes';
 import { workflowRoutes } from './routes/workflow.routes';
 import { notificationRoutes } from './routes/notification.routes';
 import { webhookRoutes } from './routes/webhook.routes';
+import { licenseRoutes } from './routes/license.routes';
 import { registerAuditMiddleware } from './middleware/audit.middleware';
 
 /**
@@ -90,6 +92,7 @@ export async function createServer() {
         },
       ],
       tags: [
+        { name: 'License', description: 'License state — enabled modules per deployment (ADR-048)' },
         { name: 'Health', description: 'Health check and monitoring endpoints' },
         { name: 'Authentication', description: 'User authentication and authorization (EPA-compliant RBAC)' },
         { name: 'API Keys', description: 'API key management for machine-to-machine authentication' },
@@ -216,6 +219,7 @@ export async function createServer() {
   });
 
   // Register routes
+  await fastify.register(licenseRoutes, { prefix: config.api.fullPrefix });
   await fastify.register(healthRoutes);
   await fastify.register(authRoutes);
   await fastify.register(apiKeyRoutes);
@@ -225,6 +229,7 @@ export async function createServer() {
   await fastify.register(alarmRoutes);
   await fastify.register(modbusGatewayRoutes);
   await fastify.register(opcuaGatewayRoutes);
+  await fastify.register(mqttGatewayRoutes);
   await fastify.register(waterQualityRoutes);
   await fastify.register(workflowRoutes);
   await fastify.register(organizationRoutes);
@@ -255,6 +260,7 @@ export async function createServer() {
         alarmStatistics: '/alarms/statistics',
         modbusGateways: '/modbus-gateways',
         opcuaGateways: '/opcua-gateways',
+        mqttGateways: '/mqtt-gateways',
         waterQualityParameters: '/water-quality/parameters',
         waterQualityValidation: '/water-quality/validate',
         waterQualityCompliance: '/water-quality/compliance/:deviceId',
@@ -305,6 +311,12 @@ export async function startServer() {
     const { modbusGatewayManager } = await import('./services/modbus-gateway-manager.service');
     modbusGatewayManager.restoreRunningGateways().catch((err) => {
       fastify.log.error('Failed to restore Modbus gateways:', err);
+    });
+
+    // Restore MQTT gateways that were running before this server restart
+    const { mqttGatewayManager } = await import('./services/mqtt-gateway-manager.service');
+    mqttGatewayManager.restoreRunningGateways().catch((err) => {
+      fastify.log.error('Failed to restore MQTT gateways:', err);
     });
 
     // Graceful shutdown

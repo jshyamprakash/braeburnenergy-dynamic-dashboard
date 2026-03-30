@@ -5,6 +5,7 @@ import { ulid } from 'ulid';
 import { useReactFlow } from 'reactflow';
 import { useAppDispatch } from '@/lib/store';
 import { addNode } from '@/lib/store/slices/workflowSlice';
+import { useLicense } from '@/lib/hooks/useLicense';
 
 /**
  * Node Palette Component
@@ -22,6 +23,8 @@ interface NodeTypeConfig {
   description: string;
   icon: string;
   defaultConfig: Record<string, any>;
+  /** If set, node is only shown when the named module is licensed */
+  module?: 'combustion_dl' | 'asset_life' | 'be_agent';
 }
 
 const NODE_TYPES: NodeTypeConfig[] = [
@@ -166,6 +169,49 @@ const NODE_TYPES: NodeTypeConfig[] = [
     description: 'Write structured data back to the triggering DeviceState',
     icon: '💾',
     defaultConfig: { mappings: [] },
+  },
+
+  // IBM Maximo — CORE (no module tag)
+  {
+    type: 'action:ibmMaximoSync',
+    category: 'action',
+    visualType: 'action',
+    label: 'IBM Maximo Sync',
+    description: 'Sync asset data to IBM Maximo CMMS',
+    icon: '🏭',
+    defaultConfig: { workOrderType: 'PM', assetId: '' },
+  },
+
+  // Asset Life Management — module: asset_life
+  {
+    type: 'data:fleetQuery',
+    category: 'data',
+    visualType: 'action',
+    label: 'Fleet Query',
+    description: 'Query fleet asset telemetry and health data',
+    icon: '🚂',
+    defaultConfig: { assetType: '', metric: '', outputField: 'fleetData' },
+    module: 'asset_life' as const,
+  },
+  {
+    type: 'data:assetLifeCalc',
+    category: 'data',
+    visualType: 'action',
+    label: 'Asset Life Calc',
+    description: 'Calculate remaining useful life (RUL) for asset',
+    icon: '📉',
+    defaultConfig: { assetId: '', model: 'degradation', outputField: 'rul' },
+    module: 'asset_life' as const,
+  },
+  {
+    type: 'action:ibmMaximoCreateWorkOrder',
+    category: 'action',
+    visualType: 'action',
+    label: 'Maximo Work Order',
+    description: 'Create a maintenance work order in IBM Maximo',
+    icon: '🔩',
+    defaultConfig: { assetId: '', description: '', priority: 2, workOrderType: 'CM' },
+    module: 'asset_life' as const,
   },
 
   // Transformations
@@ -313,6 +359,7 @@ const NODE_TYPES: NodeTypeConfig[] = [
 export default function NodePalette() {
   const dispatch = useAppDispatch();
   const { getViewport } = useReactFlow();
+  const { isModuleEnabled } = useLicense();
 
   const handleAddNode = useCallback(
     (nodeType: NodeTypeConfig) => {
@@ -347,7 +394,7 @@ export default function NodePalette() {
   );
 
   const renderCategory = (category: string, nodes: NodeTypeConfig[]) => {
-    const categoryNodes = nodes.filter(n => n.category === category);
+    const categoryNodes = nodes.filter(n => n.category === category && (!n.module || isModuleEnabled(n.module)));
     if (categoryNodes.length === 0) return null;
 
     const categoryColors: Record<string, string> = {
