@@ -1,0 +1,41 @@
+// LLAMP-SPEC v1 | ADR-051
+=adr: 051
+=title: SuperAdmin Module Toggle System
+=date: 2026-04-01
+=status: accepted
+
+#ctx
+ADR-048 gated modules via JWT license keys (HS256/RS256) per subscription.
+New model: client (superadmin) controls module access directly via DB toggle.
+No per-subscription keys; superadmin is the sole authority across all orgs.
+Modules (ADR-049): combustion_dl | asset_life | be_agent
+SuperAdmin role: create orgs, create org admins, enable/disable modules. Nothing else.
+
+#opts
+opt1: Keep JWT gating — requires key regeneration per change; client cannot self-serve
+opt2: DB-backed toggle, SuperAdmin UI — instant enable/disable, no key management
+
+#decision
+Singleton ModuleConfig document in MongoDB stores enabled[] array of module identifiers.
+SuperAdmin role: PATCH /api/v1/modules → updates enabled[] → persisted to MongoDB.
+GET /api/v1/modules (no auth required) → frontend reads current state.
+Frontend: useModules() hook replaces useLicense(); reads /api/v1/modules.
+KosmosShell, WidgetPalette, NodePalette gate render on module membership in enabled[].
+Default on fresh deployment: all modules disabled; superadmin explicitly enables each.
+SuperAdmin auth: role='superadmin' on User model; JWT auth middleware enforces PATCH.
+One superadmin account seeded at first deployment (credentials set via env or setup wizard).
+
+#consequences
++ Instant enable/disable without image rebuild or key regeneration
++ SuperAdmin self-serves via UI; no CLI, no key files for module control
++ ADR-049 module list and node/widget gating logic unchanged — only the data source changes
+- Module state lives in DB; backup/restore must include ModuleConfig document
+- If DB wiped, all modules reset to disabled (superadmin re-enables; acceptable)
+- ADR-048 JWT license flow deprecated for module gating; ADR-050 RS256 no longer needed
+
+#scope
+~supersedes: ADR-048 (module gating), ADR-050 (RS256 for module keys) — both deprecated
+~new_backend: ModuleConfig model, ModuleController, module.routes
+~new_frontend: useModules hook (replaces useLicense/licenseSlice), SuperAdmin modules page
+~affected: KosmosShell, WidgetPalette, NodePalette, licenseSlice → moduleSlice
+~user_model: add role field ('superadmin' | 'admin' | 'operator'), seed superadmin on deploy

@@ -1,0 +1,36 @@
+# ADR-053: SuperAdmin File-Based Login + Runtime Public Key Rotation
+
+## Title
+SuperAdmin Private Key File Login + MongoDB-backed Public Key Rotation
+
+## Context
+SuperAdmin previously authenticated by typing a passphrase into the client's browser,
+which derived the RSA-2048 keypair in-browser via PBKDF2. This exposes the passphrase
+to the client system. Two improvements were requested:
+1. SuperAdmin carries a pre-exported private key file; client browser never sees the passphrase.
+2. SA can rotate the stored public key at runtime from the admin-management UI without rebuilding Docker.
+
+## Decision
+- Remove passphrase input from /superadmin-login; accept only a PKCS#8 private key PEM file upload.
+- Add `export-private-key` command to license-cli: derives keypair, writes private.pem (mode 0o600), prints matching public key.
+- Add SystemConfig MongoDB model (key-value, _id='superadmin_public_key') for runtime key override.
+- `verifySuperAdminChallenge` reads public key from DB first, falls back to env var.
+- New authenticated endpoint: PUT /auth/superadmin/rotate-public-key (SuperAdmin JWT required).
+- Key Rotation UI section added to /admin-management page.
+
+## Consequences
+- SuperAdmin must generate private key file before first use of new login.
+- Passphrase-based login no longer possible (file-only).
+- Public key rotation takes effect immediately; current sessions remain valid.
+- If SystemConfig DB entry exists, it overrides SUPERADMIN_PUBLIC_KEY env var permanently.
+- DB failure on key lookup falls back to env var (login not broken by DB issues).
+
+## Files
+- NEW: apps/api/src/models/system-config.model.ts
+- MOD: apps/api/src/services/auth.service.ts
+- MOD: apps/api/src/controllers/auth.controller.ts
+- MOD: apps/api/src/routes/auth.routes.ts
+- MOD: apps/web/app/superadmin-login/page.tsx
+- MOD: apps/web/app/admin-management/page.tsx
+- MOD: apps/web/lib/hooks/useAdminManagement.ts
+- MOD: packages/license-cli/src/index.ts

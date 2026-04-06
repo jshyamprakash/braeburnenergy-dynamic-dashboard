@@ -3,8 +3,17 @@ import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import { User, type IUser, type UserRole } from '../models';
 import { TokenSession } from '../models/token-session.model';
+import { SystemConfig } from '../models/system-config.model';
 import { config } from '../config/config';
-import { BadRequestError } from '../lib/errors';
+import { BadRequestError, ConflictError, NotFoundError } from '../lib/errors';
+import mongoose from 'mongoose';
+
+const DEFAULT_ORG_ID = new mongoose.Types.ObjectId('aaaaaaaaaaaaaaaaaaaaaaaa');
+
+interface ChallengeEntry {
+  challenge: string;
+  expiresAt: Date;
+}
 
 /**
  * Authentication Service
@@ -18,7 +27,7 @@ interface TokenPayload {
   username: string;
   email: string;
   role: UserRole;
-  organizationId: string;
+  organizationId?: string;
   type?: 'access' | 'refresh';
   jti?: string;
 }
@@ -30,7 +39,8 @@ interface LoginResult {
     username: string;
     email: string;
     role: UserRole;
-    organizationId: string;
+    organizationId?: string;
+    mustChangePassword: boolean;
   };
   accessToken?: string;
   refreshToken?: string;
@@ -41,6 +51,8 @@ export class AuthService {
   private readonly JWT_SECRET: string;
   private readonly JWT_ACCESS_EXPIRY: string;
   private readonly JWT_REFRESH_EXPIRY: string;
+  /** In-memory challenge store. TTL: 15 min. Replace with Redis at scale. */
+  private readonly challengeStore = new Map<string, ChallengeEntry>();
 
   constructor() {
     // Load JWT secret from config
@@ -65,6 +77,14 @@ export class AuthService {
         return {
           success: false,
           message: 'Invalid username or password',
+        };
+      }
+
+      // SuperAdmin uses passphrase-derived keypair login (ADR-052)
+      if (user.role === 'SuperAdmin') {
+        return {
+          success: false,
+          message: 'SuperAdmin must use passphrase-based login: POST /api/v1/auth/superadmin/login',
         };
       }
 
@@ -111,13 +131,14 @@ export class AuthService {
       const refreshJti = crypto.randomBytes(16).toString('hex');
 
       // Generate access token and refresh token
+      const orgId = user.organizationId ? user.organizationId.toString() : undefined;
       const accessToken = this.generateAccessToken(
         {
           userId: user._id.toString(),
           username: user.username,
           email: user.email,
           role: user.role,
-          organizationId: user.organizationId.toString(),
+          organizationId: orgId,
         },
         accessJti
       );
@@ -128,7 +149,7 @@ export class AuthService {
           username: user.username,
           email: user.email,
           role: user.role,
-          organizationId: user.organizationId.toString(),
+          organizationId: orgId,
         },
         refreshJti
       );
@@ -169,7 +190,8 @@ export class AuthService {
           username: user.username,
           email: user.email,
           role: user.role,
-          organizationId: user.organizationId.toString(),
+          organizationId: orgId,
+          mustChangePassword: user.mustChangePassword ?? false,
         },
         accessToken,
         refreshToken,
@@ -263,6 +285,8 @@ export class AuthService {
     const newAccessJti = crypto.randomBytes(16).toString('hex');
     const newRefreshJti = crypto.randomBytes(16).toString('hex');
 
+    const orgId = user.organizationId ? user.organizationId.toString() : undefined;
+
     // Generate new access token
     const newAccessToken = this.generateAccessToken(
       {
@@ -270,7 +294,7 @@ export class AuthService {
         username: user.username,
         email: user.email,
         role: user.role,
-        organizationId: user.organizationId.toString(),
+        organizationId: orgId,
       },
       newAccessJti
     );
@@ -282,7 +306,7 @@ export class AuthService {
         username: user.username,
         email: user.email,
         role: user.role,
-        organizationId: user.organizationId.toString(),
+        organizationId: orgId,
       },
       newRefreshJti
     );
@@ -577,5 +601,317 @@ export class AuthService {
     await this.logout(targetUserId);
 
     await User.findByIdAndDelete(targetUserId);
+  }
+
+  // ── ADR-052: Passphrase-Derived Keypair Auth ──────────────────────────────
+
+  /**
+   * Generate a one-time challenge (random 32-byte hex, TTL 15 min).
+   * Used for both SuperAdmin login and Admin self-recovery.
+   */
+  generateChallenge(): { challengeId: string; challenge: string; expiresAt: Date } {
+    this.cleanupExpiredChallenges();
+    const challengeId = crypto.randomBytes(16).toString('hex');
+    const challenge = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    this.challengeStore.set(challengeId, { challenge, expiresAt });
+    return { challengeId, challenge, expiresAt };
+  }
+
+  /**
+   * Resolve the active SuperAdmin public key.
+   * Checks MongoDB SystemConfig first (runtime rotation override, ADR-053),
+   * falls back to SUPERADMIN_PUBLIC_KEY env var if no DB entry exists.
+   * On DB error, logs and falls back to env var so login is never broken.
+   */
+  private async getPublicKey(): Promise<string> {
+    try {
+      const doc = await SystemConfig.findById('superadmin_public_key');
+      if (doc?.value) return doc.value;
+    } catch (err) {
+      console.error('[AuthService] SystemConfig lookup failed, using env fallback:', err);
+    }
+    return config.superadmin.publicKey;
+  }
+
+  /**
+   * Verify SuperAdmin challenge signature against stored public key (ADR-053).
+   * DB override checked first; falls back to SUPERADMIN_PUBLIC_KEY env var.
+   * Consumes the challenge on success (one-time use).
+   */
+  async verifySuperAdminChallenge(challengeId: string, signatureBase64: string): Promise<boolean> {
+    const entry = this.challengeStore.get(challengeId);
+    if (!entry || entry.expiresAt < new Date()) {
+      this.challengeStore.delete(challengeId);
+      return false;
+    }
+
+    const publicKeyPem = await this.getPublicKey();
+    if (!publicKeyPem) {
+      throw new Error('SUPERADMIN_PUBLIC_KEY not configured');
+    }
+
+    try {
+      const verify = crypto.createVerify('SHA256');
+      verify.update(Buffer.from(entry.challenge));
+      const valid = verify.verify(
+        {
+          key: crypto.createPublicKey(publicKeyPem),
+          padding: crypto.constants.RSA_PKCS1_PSS_PADDING,
+          saltLength: 32,
+        },
+        Buffer.from(signatureBase64, 'base64')
+      );
+      if (valid) this.challengeStore.delete(challengeId);
+      return valid;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Rotate the SuperAdmin public key in MongoDB (ADR-053).
+   * After this call, getPublicKey() returns the new value on every subsequent login.
+   * Current JWT sessions remain valid — only future logins are affected.
+   */
+  async rotateSuperAdminPublicKey(newPublicKeyPem: string): Promise<{ success: boolean }> {
+    try {
+      crypto.createPublicKey(newPublicKeyPem);
+    } catch {
+      throw new BadRequestError('Invalid public key PEM — must be a valid RSA public key');
+    }
+    await SystemConfig.findByIdAndUpdate(
+      'superadmin_public_key',
+      { value: newPublicKeyPem, updatedAt: new Date() },
+      { upsert: true, new: true }
+    );
+    return { success: true };
+  }
+
+  /**
+   * Verify Admin recovery challenge signature against user.recoveryPublicKey in DB.
+   * Consumes the challenge on success.
+   */
+  async verifyAdminRecovery(
+    userId: string,
+    challengeId: string,
+    signatureBase64: string
+  ): Promise<boolean> {
+    const entry = this.challengeStore.get(challengeId);
+    if (!entry || entry.expiresAt < new Date()) {
+      this.challengeStore.delete(challengeId);
+      return false;
+    }
+
+    const user = await User.findById(userId).select('+recoveryPublicKey');
+    if (!user || !user.recoveryPublicKey) return false;
+
+    try {
+      const verify = crypto.createVerify('SHA256');
+      verify.update(Buffer.from(entry.challenge));
+      const valid = verify.verify(
+        {
+          key: crypto.createPublicKey(user.recoveryPublicKey),
+          padding: crypto.constants.RSA_PKCS1_PSS_PADDING,
+          saltLength: 32,
+        },
+        Buffer.from(signatureBase64, 'base64')
+      );
+      if (valid) this.challengeStore.delete(challengeId);
+      return valid;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Issue a JWT session for SuperAdmin after challenge verification.
+   */
+  async loginSuperAdmin(
+    ipAddress?: string,
+    userAgent?: string
+  ): Promise<{ accessToken: string; refreshToken: string; user: object }> {
+    const user = await User.findOne({ role: 'SuperAdmin' });
+    if (!user) throw new Error('SuperAdmin account not found');
+
+    user.lastLogin = new Date();
+
+    const accessJti = crypto.randomBytes(16).toString('hex');
+    const refreshJti = crypto.randomBytes(16).toString('hex');
+
+    const accessToken = this.generateAccessToken(
+      { userId: user._id.toString(), username: user.username, email: user.email, role: user.role },
+      accessJti
+    );
+    const refreshToken = this.generateRefreshToken(
+      { userId: user._id.toString(), username: user.username, email: user.email, role: user.role },
+      refreshJti
+    );
+
+    user.refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+    await user.save();
+
+    const accessExpiry = new Date(Date.now() + this.parseExpiry(this.JWT_ACCESS_EXPIRY));
+    const refreshExpiry = new Date(Date.now() + this.parseExpiry(this.JWT_REFRESH_EXPIRY));
+    await TokenSession.create([
+      { jti: accessJti, userId: user._id.toString(), type: 'access', isRevoked: false, expiresAt: accessExpiry, ipAddress, userAgent },
+      { jti: refreshJti, userId: user._id.toString(), type: 'refresh', isRevoked: false, expiresAt: refreshExpiry, ipAddress, userAgent },
+    ]);
+
+    return {
+      accessToken,
+      refreshToken,
+      user: { id: user._id.toString(), username: user.username, email: user.email, role: user.role },
+    };
+  }
+
+  /**
+   * Store Admin recoveryPublicKey (PEM). Requires the user to be authenticated.
+   */
+  async setRecoveryPublicKey(userId: string, publicKeyPem: string): Promise<void> {
+    // Basic PEM validation
+    if (!publicKeyPem.includes('BEGIN PUBLIC KEY') && !publicKeyPem.includes('BEGIN RSA PUBLIC KEY')) {
+      throw new BadRequestError('Invalid PEM public key format');
+    }
+    await User.findByIdAndUpdate(userId, { recoveryPublicKey: publicKeyPem });
+  }
+
+  /**
+   * Redeem Admin recovery: verify signature then reset password.
+   */
+  async redeemRecovery(userId: string, newPassword: string): Promise<void> {
+    this.validatePasswordStrength(newPassword);
+    const user = await User.findById(userId);
+    if (!user) throw new Error('User not found');
+    user.password = newPassword;
+    user.lastPasswordChange = new Date();
+    user.mustChangePassword = false;
+    await user.save();
+  }
+
+  /**
+   * Compute a short 8-char base32 recovery token from the challenge (ADR-054).
+   * Used as a verbal confirmation code so SA and Admin verify they share the same challenge.
+   * Token = base32(SHA-256(challenge).slice(0,5))
+   */
+  private recoveryToken(challenge: string): string {
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    const hash = crypto.createHash('sha256').update(challenge).digest();
+    const bits: number[] = [];
+    for (let i = 0; i < 5; i++) {
+      for (let j = 7; j >= 0; j--) bits.push((hash[i] >> j) & 1);
+    }
+    let result = '';
+    for (let i = 0; i < 8; i++) {
+      const idx = bits.slice(i * 5, i * 5 + 5).reduce((a, b) => (a << 1) | b, 0);
+      result += alphabet[idx];
+    }
+    return result;
+  }
+
+  /**
+   * Issue a challenge for SA-authorized Admin recovery (ADR-054).
+   * Returns challengeId, challenge hex, and a short 8-char recovery token.
+   */
+  async getSARecoveryChallenge(
+    username: string
+  ): Promise<{ userId: string; challengeId: string; challenge: string; recoveryToken: string }> {
+    const user = await User.findOne({ username });
+    if (!user) throw new NotFoundError('No account found with that username');
+
+    const { challengeId, challenge } = this.generateChallenge();
+    const token = this.recoveryToken(challenge);
+    return { userId: user._id.toString(), challengeId, challenge, recoveryToken: token };
+  }
+
+  /**
+   * Redeem SA-authorized recovery (ADR-054).
+   * Verifies RSA-PSS signature (SA's private key) against stored SA public key,
+   * then resets the user's password and forces mustChangePassword = true.
+   */
+  async redeemSARecovery(
+    userId: string,
+    challengeId: string,
+    signatureBase64: string,
+    newPassword: string
+  ): Promise<void> {
+    this.validatePasswordStrength(newPassword);
+
+    // Verify signature against SA's public key (DB override → env fallback)
+    const valid = await this.verifySuperAdminChallenge(challengeId, signatureBase64);
+    if (!valid) throw new BadRequestError('Invalid or expired recovery signature');
+
+    const user = await User.findById(userId);
+    if (!user) throw new NotFoundError('User not found');
+
+    user.password = newPassword;
+    user.lastPasswordChange = new Date();
+    user.mustChangePassword = true; // Force password change on next login
+    await user.save();
+  }
+
+  /** Generate a secure random temporary password. */
+  private generateTempPassword(): string {
+    const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#$%';
+    return Array.from(crypto.randomBytes(12)).map(b => chars[b % chars.length]).join('');
+  }
+
+  /**
+   * Create the single primary Admin account (SuperAdmin-initiated).
+   * Only one Admin (role=Admin) may exist per deployment.
+   * Returns the plaintext temporary password — shown once, never stored.
+   */
+  async createPrimaryAdmin(username: string, email: string): Promise<{ tempPassword: string }> {
+    const existing = await User.findOne({ role: 'Admin' });
+    if (existing) {
+      throw new ConflictError('Admin account already exists. Use reset password to generate new credentials.');
+    }
+
+    const tempPassword = this.generateTempPassword();
+    const passwordHash = await bcrypt.hash(tempPassword, 10);
+
+    await User.create({
+      username,
+      email,
+      passwordHash,
+      role: 'Admin',
+      organizationId: DEFAULT_ORG_ID,
+      isActive: true,
+      mustChangePassword: true,
+      failedLoginAttempts: 0,
+      lastPasswordChange: new Date(),
+    });
+
+    return { tempPassword };
+  }
+
+  /**
+   * Reset the primary Admin account's password (SuperAdmin-initiated).
+   * Sets mustChangePassword=true so Admin must change on next login.
+   * Returns the new plaintext temporary password — shown once, never stored.
+   */
+  async resetAdminPassword(): Promise<{ tempPassword: string; username: string; email: string }> {
+    const admin = await User.findOne({ role: 'Admin' }).select('+passwordHash');
+    if (!admin) {
+      throw new NotFoundError('No Admin account found. Create one first.');
+    }
+
+    const tempPassword = this.generateTempPassword();
+    admin.password = tempPassword;
+    admin.mustChangePassword = true;
+    admin.lastPasswordChange = new Date();
+    admin.failedLoginAttempts = 0;
+    admin.lockedUntil = undefined as any;
+    await admin.save();
+
+    return { tempPassword, username: admin.username, email: admin.email };
+  }
+
+  /** Remove expired challenges from in-memory store. */
+  private cleanupExpiredChallenges(): void {
+    const now = new Date();
+    for (const [id, entry] of this.challengeStore) {
+      if (entry.expiresAt < now) this.challengeStore.delete(id);
+    }
   }
 }

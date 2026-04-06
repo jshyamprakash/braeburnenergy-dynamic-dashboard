@@ -35,6 +35,11 @@ export class OpcuaGatewayManager {
     this.alarmService = new AlarmService();
   }
 
+  /** Returns number of gateways currently running (ADR-057) */
+  getConnectedCount(): number {
+    return Array.from(this.instances.values()).filter((i) => i.isRunning).length;
+  }
+
   /**
    * Register trigger dispatcher (deprecated: workflow dispatch moved to Processing Engine in ADR-043 Phase 3)
    */

@@ -69,6 +69,9 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
       target: deps  # Use deps stage for development
+      args:
+        LICENSE_PUBLIC_KEY: ${LICENSE_PUBLIC_KEY:-}
+        SUPERADMIN_PUBLIC_KEY: ${SUPERADMIN_PUBLIC_KEY:-}
     container_name: iot-platform-api-dev
     environment:
       NODE_ENV: development
@@ -77,6 +80,12 @@ services:
       HOST: 0.0.0.0
       NATS_URL: nats://nats:4222
       REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-not-for-production}
+      JWT_ACCESS_EXPIRY: ${JWT_ACCESS_EXPIRY:-15m}
+      JWT_REFRESH_EXPIRY: ${JWT_REFRESH_EXPIRY:-7d}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      SUPERADMIN_USERNAME: ${SUPERADMIN_USERNAME:-superadmin}
+      SUPERADMIN_EMAIL: ${SUPERADMIN_EMAIL:-superadmin@local.dev}
       LICENSE_KEY: ${LICENSE_KEY:-}
       LICENSE_SECRET: ${LICENSE_SECRET:-license-secret-change-in-production}
     ports:

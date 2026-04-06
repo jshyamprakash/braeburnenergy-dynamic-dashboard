@@ -2,7 +2,8 @@
 
 import { useAppDispatch } from '@/lib/store';
 import { updateKosmosWidgetConfig } from '@/lib/store/slices/dashboardSlice';
-import type { KosmosWidget } from '../types';
+import type { KosmosWidget, DataFlowLayerConfig, DataFlowBlockConfig } from '../types';
+import { DATAFLOW_DEFAULT_CONFIG } from '../types';
 import { useCombustionSimulator } from './combustion-simulator';
 import { ChartPanel } from './shared';
 import { EChartsLine } from './EChartsLine';
@@ -354,77 +355,41 @@ export function OverviewRealtimeChartWidget({
   );
 }
 
-export function OverviewDataFlowWidget({
-  widget,
-  editMode,
-  pageId,
-  onConfigChange
-}: {
-  widget?: KosmosWidget;
-  editMode?: boolean;
-  pageId?: string;
-  onConfigChange?: () => void;
-} = {}) {
-  type DataFlowLayer = { id: string; label: string; blockClass: string; blocks: string[]; module?: string; always?: boolean };
-
-  const dispatch = useAppDispatch();
-  const { isModuleEnabled } = useLicense();
-  const title = widget?.config?.title ?? 'DATA FLOW — KOSMOS PLATFORM';
-
-  const ALL_LAYERS: DataFlowLayer[] = [
-    { id: 'physical', label: 'Physical Layer', blockClass: 'sensor', blocks: ['Gas Turbine\nGE / Siemens / MHI', 'Balance of Plant'], always: true },
-    { id: 'be_sense', label: 'BE Sense™', blockClass: 'fusion', blocks: ['Multimodal\nSensor Fusion', 'CalorieSense™\nEdge'], always: true },
-    { id: 'be_agent', label: 'BE Agent™', blockClass: 'agent', blocks: ['Agentic AI\nFramework', 'CD Precursor\nDetection'], module: 'be_agent' },
-    { id: 'combustion_dl', label: 'CD Precursor DL', blockClass: 'cloud', blocks: ['DL Model\nServer', 'Anomaly\nDetection', 'CD Precursor\nClassifier'], module: 'combustion_dl' },
-    { id: 'asset_life', label: 'Asset Life Mgmt', blockClass: 'cloud', blocks: ['Fleet\nAnalytics', 'Asset Life\nManagement'], module: 'asset_life' },
-    { id: 'outputs', label: 'Outputs', blockClass: 'output', blocks: ['CMMS\nIntegration', 'Operator\nDashboard'], always: true },
-  ];
-
-  const cfg = widget?.config ?? {};
-  const storedLayers = (cfg.layers as DataFlowLayer[]) ?? [];
-
-  // Filter layers based on license and always flag
-  const DEFAULT_LAYERS = ALL_LAYERS.filter(
-    (l) => l.always || (l.module ? isModuleEnabled(l.module) : true)
-  );
-
-  const layers = storedLayers.length > 0 ? storedLayers : DEFAULT_LAYERS;
-
-  // Compute arrow configuration based on filtered layers (one less than layer count)
-  const LAYER_ARROWS = Array(Math.max(0, layers.length - 1)).fill(null).map((_, i) =>
-    i % 2 === 0 ? 'bidirectional' : 'forward'
-  );
-
-  const persist = (partial: Record<string, unknown>) => {
-    if (widget && pageId) {
-      dispatch(updateKosmosWidgetConfig({ pageId, widgetId: widget.id, config: { ...cfg, ...partial } }));
-      onConfigChange?.();
+/** Backward compatibility helper: convert old format (blocks: string[], blockClass) to new format */
+function normalizeLayers(rawLayers: any[]): DataFlowLayerConfig[] {
+  return rawLayers.map((layer, idx) => {
+    // If already new format, pass through
+    if (layer.blocks && Array.isArray(layer.blocks) && layer.blocks[0]?.color !== undefined) {
+      return layer as DataFlowLayerConfig;
     }
-  };
+    // Convert old format: blocks as strings, color from blockClass
+    return {
+      id: layer.id,
+      label: layer.label,
+      arrowAfter: idx % 2 === 0 ? 'bidirectional' : 'forward',
+      blocks: (layer.blocks ?? []).map((b: string | DataFlowBlockConfig, bi: number) =>
+        typeof b === 'string'
+          ? { id: `old_${layer.id}_${bi}`, label: b, color: (layer.blockClass ?? 'sensor') as DataFlowBlockConfig['color'] }
+          : b
+      ),
+    };
+  });
+}
 
-  const updateLayerLabel = (li: number, val: string) =>
-    persist({ layers: layers.map((l, idx) => idx === li ? { ...l, label: val } : l) });
-  const addBlock = (li: number) =>
-    persist({ layers: layers.map((l, idx) => idx === li ? { ...l, blocks: [...l.blocks, 'New Block'] } : l) });
-  const removeBlock = (li: number, bi: number) =>
-    persist({ layers: layers.map((l, idx) => idx === li ? { ...l, blocks: l.blocks.filter((_, bIdx) => bIdx !== bi) } : l) });
-  const updateBlock = (li: number, bi: number, val: string) =>
-    persist({ layers: layers.map((l, idx) => idx === li ? { ...l, blocks: l.blocks.map((b, bIdx) => bIdx === bi ? val : b) } : l) });
+export function OverviewDataFlowWidget({ widget }: { widget?: KosmosWidget } = {}) {
+  const cfg = (widget?.config ?? {}) as any;
+  const title = cfg.title ?? 'DATA FLOW — KOSMOS PLATFORM';
+
+  // Use config.layers if present, fallback to DATAFLOW_DEFAULT_CONFIG for backward compat
+  const rawLayers = (cfg.layers ?? DATAFLOW_DEFAULT_CONFIG.layers) as any[];
+  const layers: DataFlowLayerConfig[] = normalizeLayers(rawLayers);
 
   return (
     <div className="card arch-diagram" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <div className="card-header">
         <div className="card-title">
           <span className="icon">⬡</span>
-          {editMode ? (
-            <input
-              defaultValue={title}
-              onBlur={(e) => persist({ title: e.target.value })}
-              style={{ background: 'transparent', border: 'none', borderBottom: '1px solid var(--k-green)', color: 'inherit', fontFamily: 'inherit', fontSize: 'inherit', outline: 'none', maxWidth: 400 }}
-            />
-          ) : (
-            title
-          )}
+          {title}
         </div>
         <div className="card-badge">OEM-AGNOSTIC</div>
       </div>
@@ -434,37 +399,20 @@ export function OverviewDataFlowWidget({
             const nodes = [];
             nodes.push(
               <div key={`l-${li}`} className="arch-layer">
-                <div className="layer-label">
-                  {editMode ? (
-                    <input defaultValue={layer.label} onBlur={e => updateLayerLabel(li, e.target.value)}
-                      style={{ background: 'transparent', border: 'none', borderBottom: '1px solid var(--k-green)',
-                               color: 'inherit', fontFamily: 'inherit', fontSize: 'inherit', outline: 'none', width: '100%' }} />
-                  ) : layer.label}
-                </div>
-                {layer.blocks.map((blockText, bi) => (
-                  <div key={bi} className={`arch-block ${layer.blockClass}`} style={{ marginTop: bi > 0 ? 4 : 0, position: 'relative' }}>
-                    {editMode ? (
-                      <input defaultValue={blockText.replace(/\n/g, ' ')} onBlur={e => updateBlock(li, bi, e.target.value)}
-                        style={{ background: 'transparent', border: 'none', borderBottom: '1px solid var(--k-green)',
-                                 color: 'inherit', fontFamily: 'inherit', fontSize: 'inherit', outline: 'none', width: '100%' }} />
-                    ) : (
-                      <>
-                        {blockText.split('\n').map((line, lineIdx) => lineIdx === 0 ? <span key={lineIdx}>{line}</span> : <span key={lineIdx}><br /><small style={{ fontSize: 10, opacity: 0.7 }}>{line}</small></span>)}
-                      </>
-                    )}
-                    {editMode && (
-                      <button onClick={() => removeBlock(li, bi)}
-                        style={{ position: 'absolute', top: -6, right: -6, color: 'var(--k-red)', border: 'none', background: 'none', cursor: 'pointer', fontSize: 10 }}>✕</button>
+                <div className="layer-label">{layer.label}</div>
+                {layer.blocks.map((block) => (
+                  <div key={block.id} className={`arch-block ${block.color}`} style={{ marginTop: block !== layer.blocks[0] ? 4 : 0 }}>
+                    {block.label.split('\n').map((line, lineIdx) =>
+                      lineIdx === 0
+                        ? <span key={lineIdx}>{line}</span>
+                        : <span key={lineIdx}><br /><small style={{ fontSize: 10, opacity: 0.7 }}>{line}</small></span>
                     )}
                   </div>
                 ))}
-                {editMode && (
-                  <button onClick={() => addBlock(li)} className="k-btn k-btn-ghost" style={{ marginTop: 4, fontSize: 9, width: '100%' }}>+ block</button>
-                )}
               </div>
             );
-            if (li < layers.length - 1) {
-              nodes.push(<div key={`a-${li}`} className={`arch-arrow ${LAYER_ARROWS[li] ?? 'forward'}`} />);
+            if (li < layers.length - 1 && layers[li + 1].arrowAfter !== 'none') {
+              nodes.push(<div key={`a-${li}`} className={`arch-arrow ${layers[li + 1].arrowAfter}`} />);
             }
             return nodes;
           })}

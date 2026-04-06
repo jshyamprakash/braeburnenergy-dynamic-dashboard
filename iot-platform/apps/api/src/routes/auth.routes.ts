@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import * as authController from '../controllers/auth.controller';
 import { requireAuth } from '../middleware/auth.middleware';
-import { requirePermission } from '../middleware/rbac.middleware';
+import { requirePermission, requireSuperAdmin } from '../middleware/rbac.middleware';
 
 /**
  * Authentication Routes
@@ -481,6 +481,362 @@ export async function authRoutes(fastify: FastifyInstance) {
       preHandler: [requireAuth, requirePermission('user:update')],
     },
     authController.updateUser
+  );
+
+  // ── ADR-052: Passphrase-Derived Keypair Auth ──────────────────────────────
+
+  /**
+   * GET /auth/superadmin/challenge
+   * Issue a one-time challenge for SuperAdmin login (public).
+   */
+  fastify.get(
+    '/auth/superadmin/challenge',
+    {
+      schema: {
+        tags: ['Authentication'],
+        summary: 'SuperAdmin: get login challenge (ADR-052)',
+        description: 'Returns a one-time challenge. Browser derives RSA keypair from passphrase and signs the challenge.',
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              success: { type: 'boolean' },
+              data: {
+                type: 'object',
+                properties: {
+                  challengeId: { type: 'string' },
+                  challenge: { type: 'string' },
+                  expiresAt: { type: 'string', format: 'date-time' },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    authController.superAdminChallenge
+  );
+
+  /**
+   * POST /auth/superadmin/login
+   * Verify RSA-PSS signature → issue JWT (public).
+   */
+  fastify.post(
+    '/auth/superadmin/login',
+    {
+      schema: {
+        tags: ['Authentication'],
+        summary: 'SuperAdmin: passphrase-derived login (ADR-052)',
+        body: {
+          type: 'object',
+          required: ['challengeId', 'signature'],
+          properties: {
+            challengeId: { type: 'string' },
+            signature: { type: 'string', description: 'Base64 RSA-PSS SHA-256 signature of challenge bytes' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              success: { type: 'boolean' },
+              data: {
+                type: 'object',
+                properties: {
+                  accessToken: { type: 'string' },
+                  refreshToken: { type: 'string' },
+                  user: { type: 'object', additionalProperties: true },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    authController.superAdminLogin
+  );
+
+  /**
+   * POST /auth/recovery/setup
+   * Authenticated Admin stores recoveryPublicKey for future self-recovery.
+   */
+  fastify.post(
+    '/auth/recovery/setup',
+    {
+      schema: {
+        tags: ['Authentication'],
+        summary: 'Admin: store recovery public key (ADR-052)',
+        security: [{ bearerAuth: [] }],
+        body: {
+          type: 'object',
+          required: ['publicKey'],
+          properties: {
+            publicKey: { type: 'string', description: 'PEM public key derived from recovery passphrase' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              success: { type: 'boolean' },
+              data: { type: 'object', properties: { message: { type: 'string' } } },
+            },
+          },
+        },
+      },
+      preHandler: [requireAuth],
+    },
+    authController.recoverySetup
+  );
+
+  /**
+   * GET /auth/recovery/challenge
+   * Issue challenge for Admin self-recovery (public — user is locked out).
+   */
+  fastify.get(
+    '/auth/recovery/challenge',
+    {
+      schema: {
+        tags: ['Authentication'],
+        summary: 'Admin: get recovery challenge (ADR-052)',
+        querystring: {
+          type: 'object',
+          required: ['userId'],
+          properties: {
+            userId: { type: 'string', description: 'MongoDB ObjectId of the Admin to recover' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              success: { type: 'boolean' },
+              data: {
+                type: 'object',
+                properties: {
+                  challengeId: { type: 'string' },
+                  challenge: { type: 'string' },
+                  expiresAt: { type: 'string', format: 'date-time' },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    authController.recoveryChallenge
+  );
+
+  /**
+   * POST /auth/recovery/redeem
+   * Verify recovery signature → reset Admin password (public).
+   */
+  fastify.post(
+    '/auth/recovery/redeem',
+    {
+      schema: {
+        tags: ['Authentication'],
+        summary: 'Admin: redeem recovery — reset password (ADR-052)',
+        body: {
+          type: 'object',
+          required: ['userId', 'challengeId', 'signature', 'newPassword'],
+          properties: {
+            userId: { type: 'string' },
+            challengeId: { type: 'string' },
+            signature: { type: 'string', description: 'Base64 RSA-PSS SHA-256 signature of challenge bytes' },
+            newPassword: { type: 'string', minLength: 8 },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              success: { type: 'boolean' },
+              data: { type: 'object', properties: { message: { type: 'string' } } },
+            },
+          },
+        },
+      },
+    },
+    authController.recoveryRedeem
+  );
+
+  // ── ADR-054: SA-Authorized Admin Recovery ────────────────────────────────
+
+  /**
+   * GET /auth/recovery/sa-challenge?username=...
+   * Public — Admin is locked out, cannot authenticate.
+   * Returns userId, challengeId, challenge hex, and short 8-char recovery token.
+   */
+  fastify.get(
+    '/auth/recovery/sa-challenge',
+    {
+      schema: {
+        tags: ['Authentication'],
+        summary: 'Admin: get SA-authorized recovery challenge (ADR-054)',
+        querystring: {
+          type: 'object',
+          required: ['username'],
+          properties: { username: { type: 'string' } },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              success: { type: 'boolean' },
+              data: {
+                type: 'object',
+                properties: {
+                  userId:        { type: 'string' },
+                  challengeId:   { type: 'string' },
+                  challenge:     { type: 'string' },
+                  recoveryToken: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    authController.saRecoveryChallenge
+  );
+
+  /**
+   * POST /auth/recovery/sa-redeem
+   * Public — verify SA RSA-PSS signature over challenge → reset Admin password.
+   */
+  fastify.post(
+    '/auth/recovery/sa-redeem',
+    {
+      schema: {
+        tags: ['Authentication'],
+        summary: 'Admin: redeem SA-authorized recovery (ADR-054)',
+        body: {
+          type: 'object',
+          required: ['userId', 'challengeId', 'signature', 'newPassword'],
+          properties: {
+            userId:      { type: 'string' },
+            challengeId: { type: 'string' },
+            signature:   { type: 'string' },
+            newPassword: { type: 'string', minLength: 8 },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              success: { type: 'boolean' },
+              data: { type: 'object', properties: { message: { type: 'string' } } },
+            },
+          },
+        },
+      },
+    },
+    authController.saRecoveryRedeem
+  );
+
+  /**
+   * POST /auth/admin/create
+   * Create single primary Admin account with temp password (SuperAdmin only).
+   */
+  fastify.post(
+    '/auth/admin/create',
+    {
+      schema: {
+        tags: ['Authentication'],
+        summary: 'Create primary Admin account (SuperAdmin only)',
+        security: [{ bearerAuth: [] }],
+        body: {
+          type: 'object',
+          required: ['username', 'email'],
+          properties: {
+            username: { type: 'string', minLength: 3 },
+            email: { type: 'string', format: 'email' },
+          },
+        },
+        response: {
+          201: {
+            type: 'object',
+            properties: {
+              success: { type: 'boolean' },
+              data: {
+                type: 'object',
+                properties: { tempPassword: { type: 'string' } },
+              },
+            },
+          },
+        },
+      },
+      preHandler: [requireAuth, requireSuperAdmin],
+    },
+    authController.createPrimaryAdmin
+  );
+
+  /**
+   * POST /auth/admin/reset-password
+   * Reset primary Admin password → new temp password (SuperAdmin only).
+   */
+  fastify.post(
+    '/auth/admin/reset-password',
+    {
+      schema: {
+        tags: ['Authentication'],
+        summary: 'Reset primary Admin password (SuperAdmin only)',
+        security: [{ bearerAuth: [] }],
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              success: { type: 'boolean' },
+              data: {
+                type: 'object',
+                properties: {
+                  tempPassword: { type: 'string' },
+                  username: { type: 'string' },
+                  email: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+      },
+      preHandler: [requireAuth, requireSuperAdmin],
+    },
+    authController.resetAdminPassword
+  );
+
+  /**
+   * PUT /auth/superadmin/rotate-public-key (ADR-053)
+   * Store a new SuperAdmin public key in MongoDB, overriding the Docker-baked env var.
+   * Takes effect immediately on next login attempt. Current sessions remain valid.
+   */
+  fastify.put(
+    '/auth/superadmin/rotate-public-key',
+    {
+      schema: {
+        tags: ['Authentication'],
+        summary: 'Rotate SuperAdmin public key (ADR-053)',
+        security: [{ bearerAuth: [] }],
+        body: {
+          type: 'object',
+          required: ['publicKeyPem'],
+          properties: {
+            publicKeyPem: { type: 'string', description: 'PEM-encoded RSA public key' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              success: { type: 'boolean' },
+              data: { type: 'object', properties: { success: { type: 'boolean' } } },
+            },
+          },
+        },
+      },
+      preHandler: [requireAuth, requireSuperAdmin],
+    },
+    authController.rotateSuperAdminPublicKey
   );
 
   /**

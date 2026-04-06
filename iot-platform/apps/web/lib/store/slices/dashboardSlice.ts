@@ -2,6 +2,7 @@ import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { dashboardConfig } from '@/lib/config';
 import { apiClient } from '@/lib/api-client';
 import type { KosmosPage, KosmosWidget, Dashboard, BeAgentModule } from '@/components/kosmos/types';
+import { DATAFLOW_DEFAULT_CONFIG } from '@/components/kosmos/types';
 
 function shortId(): string {
   return Math.random().toString(36).slice(2, 10);
@@ -132,7 +133,7 @@ function makeOverviewPage(): KosmosPage {
     {
       id: `w_ov_${shortId()}`,
       type: 'overviewDataFlow',
-      config: {},
+      config: DATAFLOW_DEFAULT_CONFIG,
       layout: { x: 332, y: 446, w: 776, h: 330 },
     },
     {
@@ -1060,6 +1061,30 @@ const dashboardSlice = createSlice({
         state.kosmosSharedWithUsers = action.payload.sharedWithUsers;
       }
     },
+
+    /** Reset active mandatory page to factory defaults */
+    resetActiveMandatoryPage: (state) => {
+      const page = state.kosmosPages.find((p) => p.id === state.kosmosActivePage);
+      if (!page?.isMandatory) return;
+
+      let fresh: KosmosPage | null = null;
+      if (page.mandatoryType === 'overview') {
+        fresh = makeOverviewPage();
+      } else if (page.mandatoryType === 'combustionDl') {
+        fresh = makeCombustionDlPage();
+      } else if (page.mandatoryType === 'beAgent') {
+        fresh = makeBeAgentPage();
+      } else if (page.mandatoryType === 'kosmosArchitecture') {
+        fresh = makeArchitecturePage();
+      }
+
+      if (!fresh) return;
+
+      // Replace widgets only, keep page id/name/order
+      page.widgets = fresh.widgets;
+      page.layoutVersion = fresh.layoutVersion;
+      page.layoutSchemaVersion = fresh.layoutSchemaVersion;
+    },
   },
   extraReducers: (builder) => {
     // Load dashboard from backend
@@ -1262,6 +1287,7 @@ export const {
   updateKosmosWidgetConfig,
   setKosmosSharedWithUsers,
   setKosmosFromDashboard,
+  resetActiveMandatoryPage,
 } = dashboardSlice.actions;
 
 /**

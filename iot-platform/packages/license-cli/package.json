@@ -1,21 +1,24 @@
 {
   "name": "@repo/license-cli",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "License key generator and verifier for the CaloriSense / Gas Turbine Platform",
   "private": true,
   "scripts": {
-    "start":             "ts-node src/index.ts",
-    "generate-keypair":  "ts-node src/index.ts generate-keypair",
-    "generate":          "ts-node src/index.ts generate",
-    "verify":            "ts-node src/index.ts verify"
+    "start":               "ts-node src/index.ts",
+    "generate-keypair":    "ts-node src/index.ts generate-keypair",
+    "generate":            "ts-node src/index.ts generate",
+    "verify":              "ts-node src/index.ts verify",
+    "superadmin-derive":   "ts-node src/index.ts superadmin-derive"
   },
   "dependencies": {
     "commander":    "^11.1.0",
-    "jsonwebtoken": "^9.0.3"
+    "jsonwebtoken": "^9.0.3",
+    "node-forge":   "^1.3.1"
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.0",
     "@types/node":         "^20.0.0",
+    "@types/node-forge":   "^1.3.11",
     "ts-node":             "^10.9.2",
     "typescript":          "^5.3.3"
   }

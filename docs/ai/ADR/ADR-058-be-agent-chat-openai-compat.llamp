@@ -1,0 +1,35 @@
+// LLAMP-SPEC v1 | ADR-058
+=adr: 058
+=title: BE Agent Chat — OpenAI-Compatible Adapter
+=date: 2026-04-06
+=status: accepted
+
+#ctx
+~agentChat Kosmos widget exists but has no backend wiring (GAP-D2 partial)
+~client owns and operates their own LLM endpoint; platform must not hardcode any vendor
+~streaming token delivery required for good UX
+~be_agent module gate already in licenseSlice
+
+#opts
+~a: hardcode @anthropic-ai/sdk (vendor lock-in; violates client-owned model requirement)
+~b: openai npm package with configurable baseURL (de-facto standard for self-hosted + cloud LLMs)
+~c: generic HTTP webhook (simpler, no streaming support)
+
+#decision
+~b: POST /api/v1/be-agent/chat gated behind be_agent module license
+~openai npm package (apps/api only); baseURL=AI_CHAT_ENDPOINT; apiKey=AI_CHAT_API_KEY; model=AI_CHAT_MODEL
+~stub mode: AI_CHAT_ENDPOINT unset → simulated streaming response (no crash, no external call)
+~streaming: openai SSE stream → relay chunks via Socket.io be-agent:token events → agentChat widget
+~system prompt context: deviceId + latest derived state + 3 recent alarms (injected per request)
+~no chat history Phase 1 (stateless); history model deferred to Phase 2
+~config: AI_CHAT_ENDPOINT/KEY/MODEL env vars; admin can override via SystemConfig record
+
+#consequences
+~+openai npm dep in apps/api (not web)
+~+3 env vars: AI_CHAT_ENDPOINT, AI_CHAT_API_KEY, AI_CHAT_MODEL
+~compatible with: Ollama, vLLM, LM Studio, Azure OpenAI, Groq, OpenRouter, any OpenAI-compat endpoint
+~BeAgentService added as 23rd service; /be-agent route file added to server.ts
+~no DB schema changes Phase 1
+
+#scope
+~arch_summary_update: yes

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useAppDispatch } from '@/lib/store';
 import { updateKosmosWidgetConfig } from '@/lib/store/slices/dashboardSlice';
-import type { KosmosWidget } from './types';
+import type { KosmosWidget, DataFlowLayerConfig, DataFlowBlockConfig } from './types';
 import { PALETTE_ENTRIES } from './types';
 import { useDevices, useDevice } from '@/lib/hooks/useDevices';
 
@@ -27,6 +27,271 @@ const CHART_WIDGET_TYPES = new Set([
 const BE_AGENT_DEVICE_WIDGETS = new Set([
   'overviewBeAgentStatus',
 ]);
+
+/** Data Flow widget nested layers/blocks editor */
+function DataFlowConfigEditor({
+  initialLayers,
+  onSave,
+  inputStyle,
+  keyLabelStyle,
+}: {
+  initialLayers: DataFlowLayerConfig[];
+  onSave: (layers: DataFlowLayerConfig[]) => void;
+  inputStyle: React.CSSProperties;
+  keyLabelStyle: React.CSSProperties;
+}) {
+  const [layers, setLayers] = useState<DataFlowLayerConfig[]>(initialLayers);
+
+  const updateState = (newLayers: DataFlowLayerConfig[]) => {
+    setLayers(newLayers);
+    onSave(newLayers);
+  };
+
+  const rand = () => Math.random().toString(36).slice(2, 10);
+
+  const addLayer = () => {
+    updateState([
+      ...layers,
+      { id: `layer_${rand()}`, label: 'New Layer', blocks: [], arrowAfter: 'forward' },
+    ]);
+  };
+
+  const removeLayer = (li: number) => {
+    updateState(layers.filter((_, i) => i !== li));
+  };
+
+  const moveLayer = (li: number, direction: -1 | 1) => {
+    const newLayers = [...layers];
+    const targetIdx = li + direction;
+    if (targetIdx >= 0 && targetIdx < newLayers.length) {
+      [newLayers[li], newLayers[targetIdx]] = [newLayers[targetIdx], newLayers[li]];
+      updateState(newLayers);
+    }
+  };
+
+  const updateLayerField = (li: number, field: 'label' | 'arrowAfter', value: string) => {
+    updateState(
+      layers.map((l, i) =>
+        i === li ? { ...l, [field]: value } : l
+      )
+    );
+  };
+
+  const addBlock = (li: number) => {
+    updateState(
+      layers.map((l, i) =>
+        i === li
+          ? {
+              ...l,
+              blocks: [...l.blocks, { id: `block_${rand()}`, label: 'New Block', color: 'sensor' as const }],
+            }
+          : l
+      )
+    );
+  };
+
+  const removeBlock = (li: number, bi: number) => {
+    updateState(
+      layers.map((l, i) =>
+        i === li ? { ...l, blocks: l.blocks.filter((_, j) => j !== bi) } : l
+      )
+    );
+  };
+
+  const moveBlock = (li: number, bi: number, direction: -1 | 1) => {
+    updateState(
+      layers.map((l, i) => {
+        if (i !== li) return l;
+        const blocks = [...l.blocks];
+        const targetIdx = bi + direction;
+        if (targetIdx >= 0 && targetIdx < blocks.length) {
+          [blocks[bi], blocks[targetIdx]] = [blocks[targetIdx], blocks[bi]];
+        }
+        return { ...l, blocks };
+      })
+    );
+  };
+
+  const updateBlockField = (li: number, bi: number, field: 'label' | 'color', value: string) => {
+    updateState(
+      layers.map((l, i) =>
+        i === li
+          ? {
+              ...l,
+              blocks: l.blocks.map((b, j) =>
+                j === bi ? { ...b, [field]: value } : b
+              ),
+            }
+          : l
+      )
+    );
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {layers.map((layer, li) => (
+        <div key={layer.id} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {/* Layer row */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button
+              onClick={() => moveLayer(li, -1)}
+              disabled={li === 0}
+              style={{
+                padding: '2px 6px',
+                background: 'none',
+                border: 'none',
+                color: li === 0 ? 'var(--k-text-dim)' : 'var(--k-green)',
+                cursor: li === 0 ? 'default' : 'pointer',
+                fontSize: 12,
+              }}
+            >
+              ↑
+            </button>
+            <button
+              onClick={() => moveLayer(li, 1)}
+              disabled={li === layers.length - 1}
+              style={{
+                padding: '2px 6px',
+                background: 'none',
+                border: 'none',
+                color: li === layers.length - 1 ? 'var(--k-text-dim)' : 'var(--k-green)',
+                cursor: li === layers.length - 1 ? 'default' : 'pointer',
+                fontSize: 12,
+              }}
+            >
+              ↓
+            </button>
+            <input
+              type="text"
+              value={layer.label}
+              onChange={(e) => updateLayerField(li, 'label', e.target.value)}
+              placeholder="Layer label"
+              style={{ ...inputStyle, flex: 1 }}
+            />
+            <select
+              value={layer.arrowAfter}
+              onChange={(e) => updateLayerField(li, 'arrowAfter', e.target.value)}
+              style={{ ...inputStyle, flex: 0.5 }}
+            >
+              <option value="forward">→</option>
+              <option value="backward">←</option>
+              <option value="bidirectional">⇄</option>
+              <option value="none">none</option>
+            </select>
+            <button
+              onClick={() => removeLayer(li)}
+              style={{
+                padding: '2px 6px',
+                background: 'none',
+                border: 'none',
+                color: 'var(--k-red)',
+                cursor: 'pointer',
+                fontSize: 12,
+              }}
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Blocks for this layer */}
+          <div style={{ paddingLeft: 12, display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {layer.blocks.map((block, bi) => (
+              <div key={block.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <button
+                  onClick={() => moveBlock(li, bi, -1)}
+                  disabled={bi === 0}
+                  style={{
+                    padding: '2px 4px',
+                    background: 'none',
+                    border: 'none',
+                    color: bi === 0 ? 'var(--k-text-dim)' : 'var(--k-green)',
+                    cursor: bi === 0 ? 'default' : 'pointer',
+                    fontSize: 11,
+                  }}
+                >
+                  ↑
+                </button>
+                <button
+                  onClick={() => moveBlock(li, bi, 1)}
+                  disabled={bi === layer.blocks.length - 1}
+                  style={{
+                    padding: '2px 4px',
+                    background: 'none',
+                    border: 'none',
+                    color: bi === layer.blocks.length - 1 ? 'var(--k-text-dim)' : 'var(--k-green)',
+                    cursor: bi === layer.blocks.length - 1 ? 'default' : 'pointer',
+                    fontSize: 11,
+                  }}
+                >
+                  ↓
+                </button>
+                <input
+                  type="text"
+                  value={block.label}
+                  onChange={(e) => updateBlockField(li, bi, 'label', e.target.value)}
+                  placeholder="Block label"
+                  style={{ ...inputStyle, flex: 1 }}
+                />
+                <select
+                  value={block.color}
+                  onChange={(e) => updateBlockField(li, bi, 'color', e.target.value)}
+                  style={{ ...inputStyle, flex: 0.6 }}
+                >
+                  <option value="sensor">sensor</option>
+                  <option value="fusion">fusion</option>
+                  <option value="agent">agent</option>
+                  <option value="cloud">cloud</option>
+                  <option value="output">output</option>
+                </select>
+                <button
+                  onClick={() => removeBlock(li, bi)}
+                  style={{
+                    padding: '2px 4px',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--k-red)',
+                    cursor: 'pointer',
+                    fontSize: 11,
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+            <button
+              onClick={() => addBlock(li)}
+              style={{
+                padding: '3px 8px',
+                background: 'none',
+                border: '1px solid var(--k-green)',
+                color: 'var(--k-green)',
+                cursor: 'pointer',
+                fontSize: 9,
+                marginTop: 2,
+              }}
+            >
+              + block
+            </button>
+          </div>
+        </div>
+      ))}
+      <button
+        onClick={addLayer}
+        style={{
+          padding: '4px 10px',
+          background: 'none',
+          border: '1px solid var(--k-soft)',
+          color: 'var(--k-soft)',
+          cursor: 'pointer',
+          fontSize: 10,
+          marginTop: 4,
+        }}
+      >
+        + layer
+      </button>
+    </div>
+  );
+}
 
 /**
  * WidgetConfigPanel — key-value config editor for widget configuration (ADR-044).
@@ -253,7 +518,27 @@ export function WidgetConfigPanel({ pageId, widget, applicationId, onClose, onCo
           gap: 10,
         }}
       >
-        {!hasConfig ? (
+        {widget.type === 'overviewDataFlow' ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {/* Title */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={keyLabelStyle}>title</div>
+              <input
+                type="text"
+                value={(displayConfig.title as string) ?? 'DATA FLOW — KOSMOS PLATFORM'}
+                onChange={(e) => saveField('title', e.target.value)}
+                style={inputStyle}
+              />
+            </div>
+            {/* Layers editor */}
+            <DataFlowConfigEditor
+              initialLayers={(displayConfig.layers ?? []) as DataFlowLayerConfig[]}
+              onSave={(layers) => saveField('layers', layers)}
+              inputStyle={inputStyle}
+              keyLabelStyle={keyLabelStyle}
+            />
+          </div>
+        ) : !hasConfig ? (
           <div
             style={{
               fontFamily: 'var(--k-font-tech)',

@@ -74,7 +74,7 @@ export class AuthController {
       username: user.username,
       email: user.email,
       role: user.role,
-      organizationId: user.organizationId.toString(),
+      organizationId: user.organizationId ? user.organizationId.toString() : undefined,
       createdAt: user.createdAt,
     });
   }
@@ -95,7 +95,7 @@ export class AuthController {
       username: userProfile.username,
       email: userProfile.email,
       role: userProfile.role,
-      organizationId: userProfile.organizationId.toString(),
+      organizationId: userProfile.organizationId ? userProfile.organizationId.toString() : undefined,
       isActive: userProfile.isActive,
       mustChangePassword: userProfile.mustChangePassword,
       lastLogin: userProfile.lastLogin,
@@ -246,11 +246,159 @@ export class AuthController {
       username: u.username,
       email: u.email,
       role: u.role,
-      organizationId: u.organizationId.toString(),
+      organizationId: u.organizationId ? u.organizationId.toString() : undefined,
       isActive: u.isActive,
       lastLogin: u.lastLogin,
       createdAt: u.createdAt,
     })));
+  }
+
+  // ── Primary Admin Management (SuperAdmin only) ───────────────────────────
+
+  /**
+   * POST /auth/admin/create
+   * Create the single primary Admin account with a temporary password.
+   */
+  async createPrimaryAdmin(request: FastifyRequest, reply: FastifyReply) {
+    const { username, email } = request.body as { username: string; email: string };
+    if (!username || !email) {
+      throw new BadRequestError('username and email are required');
+    }
+    const result = await authService.createPrimaryAdmin(username, email);
+    return sendCreated(reply, result);
+  }
+
+  /**
+   * POST /auth/admin/reset-password
+   * Reset the primary Admin password and return a new temporary password.
+   */
+  async resetAdminPassword(_request: FastifyRequest, reply: FastifyReply) {
+    const result = await authService.resetAdminPassword();
+    return sendSuccess(reply, result);
+  }
+
+  // ── ADR-052: Passphrase-Derived Keypair Auth ──────────────────────────────
+
+  /**
+   * GET /auth/superadmin/challenge
+   * Issues a one-time challenge for SuperAdmin passphrase-derived login.
+   */
+  async superAdminChallenge(_request: FastifyRequest, reply: FastifyReply) {
+    const result = authService.generateChallenge();
+    return sendSuccess(reply, result);
+  }
+
+  /**
+   * POST /auth/superadmin/login
+   * Verify RSA-PSS signature against ENV.SUPERADMIN_PUBLIC_KEY → issue JWT session.
+   */
+  async superAdminLogin(request: FastifyRequest, reply: FastifyReply) {
+    const { challengeId, signature } = request.body as { challengeId: string; signature: string };
+    if (!challengeId || !signature) {
+      throw new BadRequestError('challengeId and signature are required');
+    }
+
+    let valid: boolean;
+    try {
+      valid = await authService.verifySuperAdminChallenge(challengeId, signature);
+    } catch (err: any) {
+      throw new UnauthorizedError(err.message || 'Verification failed');
+    }
+
+    if (!valid) {
+      throw new UnauthorizedError('Invalid or expired challenge signature');
+    }
+
+    const session = await authService.loginSuperAdmin(request.ip, request.headers['user-agent']);
+    return sendSuccess(reply, session);
+  }
+
+  /**
+   * PUT /auth/superadmin/rotate-public-key (ADR-053)
+   * Store a new SuperAdmin public key in MongoDB, overriding the Docker-baked env var.
+   */
+  async rotateSuperAdminPublicKey(request: FastifyRequest, reply: FastifyReply) {
+    const { publicKeyPem } = request.body as { publicKeyPem: string };
+    if (!publicKeyPem) throw new BadRequestError('publicKeyPem is required');
+    const result = await authService.rotateSuperAdminPublicKey(publicKeyPem);
+    return sendSuccess(reply, result);
+  }
+
+  /**
+   * POST /auth/recovery/setup
+   * Authenticated Admin stores their recoveryPublicKey for future self-recovery.
+   */
+  async recoverySetup(request: FastifyRequest, reply: FastifyReply) {
+    const { userId } = getRequestContext(request);
+    const { publicKey } = request.body as { publicKey: string };
+    if (!publicKey) throw new BadRequestError('publicKey (PEM) is required');
+    await authService.setRecoveryPublicKey(userId, publicKey);
+    return sendSuccess(reply, { message: 'Recovery key saved' });
+  }
+
+  /**
+   * GET /auth/recovery/challenge
+   * Issues a challenge for Admin self-recovery (no auth required — user is locked out).
+   */
+  async recoveryChallenge(request: FastifyRequest, reply: FastifyReply) {
+    const { userId } = request.query as { userId: string };
+    if (!userId) throw new BadRequestError('userId query param is required');
+    const result = authService.generateChallenge();
+    return sendSuccess(reply, result);
+  }
+
+  /**
+   * POST /auth/recovery/redeem
+   * Verify recovery signature → reset password.
+   */
+  async recoveryRedeem(request: FastifyRequest, reply: FastifyReply) {
+    const { userId, challengeId, signature, newPassword } = request.body as {
+      userId: string;
+      challengeId: string;
+      signature: string;
+      newPassword: string;
+    };
+    if (!userId || !challengeId || !signature || !newPassword) {
+      throw new BadRequestError('userId, challengeId, signature, and newPassword are required');
+    }
+
+    const valid = await authService.verifyAdminRecovery(userId, challengeId, signature);
+    if (!valid) throw new UnauthorizedError('Invalid or expired recovery signature');
+
+    await authService.redeemRecovery(userId, newPassword);
+    return sendSuccess(reply, { message: 'Password reset successfully. Please log in with your new password.' });
+  }
+
+  // ── ADR-054: SA-Authorized Admin Recovery ────────────────────────────────
+
+  /**
+   * GET /auth/recovery/sa-challenge?username=...
+   * Issues a challenge for SA-authorized Admin recovery (public — user is locked out).
+   * Returns userId, challengeId, challenge hex, and a short recovery token.
+   */
+  async saRecoveryChallenge(request: FastifyRequest, reply: FastifyReply) {
+    const { username } = request.query as { username: string };
+    if (!username) throw new BadRequestError('username query param is required');
+    const result = await authService.getSARecoveryChallenge(username.trim());
+    return sendSuccess(reply, result);
+  }
+
+  /**
+   * POST /auth/recovery/sa-redeem
+   * Verify SA signature over challenge → reset Admin password (ADR-054).
+   */
+  async saRecoveryRedeem(request: FastifyRequest, reply: FastifyReply) {
+    const { userId, challengeId, signature, newPassword } = request.body as {
+      userId: string;
+      challengeId: string;
+      signature: string;
+      newPassword: string;
+    };
+    if (!userId || !challengeId || !signature || !newPassword) {
+      throw new BadRequestError('userId, challengeId, signature, and newPassword are required');
+    }
+    await authService.redeemSARecovery(userId, challengeId, signature, newPassword);
+    return sendSuccess(reply, { message: 'Password reset successfully. You will be required to set a new password on login.' });
   }
 }
 
@@ -268,3 +416,13 @@ export const logoutAll = (req: FastifyRequest, reply: FastifyReply) => authContr
 export const listUsers = (req: FastifyRequest, reply: FastifyReply) => authController.listUsers(req, reply);
 export const updateUser = (req: FastifyRequest, reply: FastifyReply) => authController.updateUser(req, reply);
 export const deleteUser = (req: FastifyRequest, reply: FastifyReply) => authController.deleteUser(req, reply);
+export const superAdminChallenge = (req: FastifyRequest, reply: FastifyReply) => authController.superAdminChallenge(req, reply);
+export const superAdminLogin = (req: FastifyRequest, reply: FastifyReply) => authController.superAdminLogin(req, reply);
+export const rotateSuperAdminPublicKey = (req: FastifyRequest, reply: FastifyReply) => authController.rotateSuperAdminPublicKey(req, reply);
+export const recoverySetup = (req: FastifyRequest, reply: FastifyReply) => authController.recoverySetup(req, reply);
+export const recoveryChallenge = (req: FastifyRequest, reply: FastifyReply) => authController.recoveryChallenge(req, reply);
+export const recoveryRedeem = (req: FastifyRequest, reply: FastifyReply) => authController.recoveryRedeem(req, reply);
+export const saRecoveryChallenge = (req: FastifyRequest, reply: FastifyReply) => authController.saRecoveryChallenge(req, reply);
+export const saRecoveryRedeem = (req: FastifyRequest, reply: FastifyReply) => authController.saRecoveryRedeem(req, reply);
+export const createPrimaryAdmin = (req: FastifyRequest, reply: FastifyReply) => authController.createPrimaryAdmin(req, reply);
+export const resetAdminPassword = (req: FastifyRequest, reply: FastifyReply) => authController.resetAdminPassword(req, reply);

@@ -13,9 +13,11 @@ export type UserRole = 'SuperAdmin' | 'Admin' | 'Operator' | 'Viewer';
 export interface IUser extends Document {
   username: string;
   email: string;
-  passwordHash: string;
+  passwordHash?: string;
+  /** PEM public key for Admin self-recovery (ADR-052). Absent for non-Admin roles. */
+  recoveryPublicKey?: string;
   role: UserRole;
-  organizationId: Schema.Types.ObjectId;
+  organizationId?: Schema.Types.ObjectId;
   isActive: boolean;
   mustChangePassword: boolean;
   failedLoginAttempts: number;
@@ -57,8 +59,13 @@ const userSchema = new Schema<IUser>({
   },
   passwordHash: {
     type: String,
-    required: true,
-    select: false, // Don't include in queries by default
+    required: false, // Optional: SuperAdmin uses keypair auth (ADR-052), no password stored
+    select: false,
+  },
+  recoveryPublicKey: {
+    type: String,
+    required: false, // PEM public key set by Admin for self-recovery (ADR-052)
+    select: false,
   },
   role: {
     type: String,
@@ -69,7 +76,7 @@ const userSchema = new Schema<IUser>({
   },
   organizationId: {
     type: Schema.Types.ObjectId,
-    required: true,
+    required: false, // Optional: SuperAdmin has no org (ADR-051)
     ref: 'Organization',
     index: true,
   },
@@ -116,6 +123,7 @@ userSchema.virtual('password').set(function(this: IUser, password: string) {
 
 // Method: Compare password
 userSchema.methods.comparePassword = async function(this: IUser, candidatePassword: string): Promise<boolean> {
+  if (!this.passwordHash) return false; // SuperAdmin has no password (ADR-052)
   return bcrypt.compare(candidatePassword, this.passwordHash);
 };
 
@@ -151,3 +159,31 @@ userSchema.index({ organizationId: 1, role: 1 });
 userSchema.index({ isActive: 1, organizationId: 1 });
 
 export const User = model<IUser>('User', userSchema);
+
+/**
+ * Seed the SuperAdmin account on first deployment (ADR-051 / ADR-052).
+ * SuperAdmin has no password — authentication uses passphrase-derived keypair (ADR-052).
+ * Env vars: SUPERADMIN_USERNAME, SUPERADMIN_EMAIL
+ * Idempotent — safe to call on every startup.
+ */
+export async function seedSuperAdmin(): Promise<void> {
+  const username = process.env.SUPERADMIN_USERNAME || 'superadmin';
+  const email = process.env.SUPERADMIN_EMAIL || 'superadmin@local.dev';
+
+  const existing = await User.findOne({ role: 'SuperAdmin' }).lean();
+  if (existing) {
+    return;
+  }
+
+  await User.create({
+    username,
+    email,
+    role: 'SuperAdmin',
+    isActive: true,
+    mustChangePassword: false,
+    failedLoginAttempts: 0,
+    lastPasswordChange: new Date(),
+    // No passwordHash — SuperAdmin authenticates via passphrase-derived keypair (ADR-052)
+  });
+  console.log(`✅ SuperAdmin account seeded (username: ${username})`);
+}

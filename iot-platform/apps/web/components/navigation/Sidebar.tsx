@@ -6,10 +6,11 @@ import { usePathname } from 'next/navigation';
 import {
   Menu, X, Bell, Settings, ClipboardList, BookOpen,
   Archive, Users, Wifi, LayoutGrid, ChevronRight, Cpu,
-  GitBranch, LayoutDashboard, Radio, Network, User, Zap,
+  GitBranch, LayoutDashboard, Radio, Network, User, Zap, Shield, ShieldCheck, Activity,
 } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/lib/store';
 import { toggleSidebar, selectSidebarOpen } from '@/lib/store/slices/uiSlice';
+import type { RootState } from '@/lib/store';
 import { apiClient } from '@/lib/api-client';
 
 const mainNavItems = [
@@ -24,12 +25,14 @@ const mainNavItems = [
 ];
 
 const entityItems = [
-  { key: 'devices',    label: 'Devices',       icon: Cpu },
-  { key: 'workflows',  label: 'Workflows',      icon: GitBranch },
-  { key: 'dashboards', label: 'Dashboards',     icon: LayoutDashboard },
-  { key: 'modbus',     label: 'Modbus Gateway', icon: Radio },
-  { key: 'opcua',      label: 'OPC-UA Gateway', icon: Network },
-  { key: 'mqtt',       label: 'MQTT Gateway',   icon: Zap },
+  { key: 'devices',    label: 'Devices',          icon: Cpu },
+  { key: 'workflows',  label: 'Workflows',         icon: GitBranch },
+  { key: 'dashboards', label: 'Dashboards',        icon: LayoutDashboard },
+  { key: 'modbus',     label: 'Modbus Gateway',    icon: Radio },
+  { key: 'opcua',      label: 'OPC-UA Gateway',    icon: Network },
+  { key: 'mqtt',       label: 'MQTT Gateway',      icon: Zap },
+  { key: 'bacnet',     label: 'BACnet Gateway',    icon: LayoutGrid },
+  { key: 'enip',       label: 'EtherNet/IP GW',    icon: Shield },
 ];
 
 interface AppItem {
@@ -42,6 +45,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const dispatch = useAppDispatch();
   const isExpanded = useAppSelector(selectSidebarOpen);
+  const user = useAppSelector((state: RootState) => state.auth.user);
   const [isMounted, setIsMounted] = useState(false);
 
   // Applications accordion in main column
@@ -77,6 +81,38 @@ export function Sidebar() {
   }, [appsOpen, apps.length]);
 
   if (!isMounted) return null;
+
+  // SuperAdmin: simplified sidebar — admin management + modules + system health
+  if (user?.role === 'SuperAdmin') {
+    const saItems = [
+      { href: '/admin-management', label: 'Admin Mgmt', icon: ShieldCheck },
+      { href: '/modules', label: 'Modules', icon: Shield },
+      { href: '/system-health', label: 'System Health', icon: Activity },
+    ];
+    return (
+      <div className="flex flex-row h-full flex-shrink-0">
+        <div className={`${isExpanded ? 'w-64' : 'w-20'} bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col transition-all duration-300 flex-shrink-0`}>
+          <div className="p-4 flex items-center justify-between border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+            {isExpanded && <h2 className="text-lg font-bold text-gray-900 dark:text-white">SuperAdmin</h2>}
+            <button onClick={() => dispatch(toggleSidebar())} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors" aria-label={isExpanded ? 'Collapse' : 'Expand'}>
+              {isExpanded ? <X className="w-5 h-5 text-gray-600 dark:text-gray-400" /> : <Menu className="w-5 h-5 text-gray-600 dark:text-gray-400" />}
+            </button>
+          </div>
+          <nav className="flex-1 px-2 py-4 space-y-0.5">
+            {saItems.map(({ href, label, icon: Icon }) => {
+              const active = pathname.startsWith(href);
+              return (
+                <Link key={href} href={href} className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors border-l-2 ${active ? 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300 border-l-red-500' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 border-l-transparent'}`} title={!isExpanded ? label : undefined}>
+                  <Icon className="w-5 h-5 flex-shrink-0" />
+                  {isExpanded && <span className="text-sm font-medium">{label}</span>}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+      </div>
+    );
+  }
 
   // Detect active entity from URL for highlight
   const entityMatch = pathname.match(/^\/applications\/[^/]+\/([^/]+)/);
@@ -201,6 +237,7 @@ export function Sidebar() {
               </Link>
             );
           })}
+
         </nav>
 
         {/* Footer */}

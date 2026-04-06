@@ -1,5 +1,8 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import mongoose from 'mongoose';
+import { requireAuth } from '../middleware/auth.middleware.js';
+import { requireRole } from '../middleware/rbac.middleware.js';
+import { getSystemHealth } from '../services/system-health.service.js';
 
 /**
  * Health Check Routes
@@ -89,6 +92,46 @@ export async function healthRoutes(fastify: FastifyInstance) {
         timestamp: new Date().toISOString(),
         database: 'disconnected',
         error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  /**
+   * GET /health/system
+   * Infrastructure health — NATS, Redis, BullMQ, MongoDB, gateway counts (ADR-057)
+   * Requires Admin or SuperAdmin JWT.
+   */
+  fastify.get('/health/system', {
+    preHandler: [requireAuth, requireRole('Admin')],
+    schema: {
+      tags: ['Health'],
+      summary: 'Infrastructure health (Admin+)',
+      description:
+        'Returns live status for NATS, Redis, BullMQ, MongoDB replica set, and gateway connection counts. ' +
+        'Requires Admin or SuperAdmin JWT.',
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: {
+          description: 'System health aggregated',
+          type: 'object',
+          additionalProperties: true,
+          properties: {
+            overall: { type: 'string', enum: ['green', 'amber', 'red'] },
+            timestamp: { type: 'string', format: 'date-time' },
+          },
+        },
+      },
+    },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const health = await getSystemHealth();
+      return reply.code(200).send(health);
+    } catch (err) {
+      request.log.error(err, 'System health check error');
+      return reply.code(500).send({
+        overall: 'red',
+        error: 'Health check failed',
+        timestamp: new Date().toISOString(),
       });
     }
   });

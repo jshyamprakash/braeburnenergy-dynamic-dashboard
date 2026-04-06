@@ -11,8 +11,12 @@ import { heartbeatService } from './services/heartbeat.service';
 import { modbusGatewayManager } from './services/modbus-gateway-manager.service';
 import { opcuaGatewayManager } from './services/opcua-gateway-manager.service';
 import { mqttGatewayManager } from './services/mqtt-gateway-manager.service';
+import { bacnetGatewayManager } from './services/bacnet-gateway-manager.service';
+import { enipGatewayManager } from './services/enip-gateway-manager.service';
 import { natsClient } from './lib/nats-client.js';
 import { licenseService } from './services/license.service';
+import { moduleService } from './services/module.service';
+import { seedSuperAdmin } from './models/user.model';
 import { startStorageWorker, stopStorageWorker } from './workers/storage-worker.js';
 import { startProcessingEngine, stopProcessingEngine, setProcessingEngineDispatcher } from './workers/processing-engine.js';
 import { startWebSocketBridge, stopWebSocketBridge, setWebSocketBridgeIO } from './workers/websocket-bridge.js';
@@ -44,6 +48,10 @@ async function main() {
     console.log('🗄️  Connecting to MongoDB...');
     await connectDB();
     await initializeTimeSeriesCollections();
+
+    // Seed SuperAdmin account + ModuleConfig defaults (ADR-051)
+    await seedSuperAdmin();
+    await moduleService.seedDefault();
 
     // Connect to NATS JetStream
     console.log('📡 Connecting to NATS...');
@@ -104,6 +112,14 @@ async function main() {
     // Register trigger dispatcher with MQTT gateway manager (deprecated: handled by Processing Engine)
     mqttGatewayManager.setTriggerDispatcher(triggerDispatcher, fastify.log as any);
 
+    // Inject NATS + dispatcher into BACnet gateway manager (ADR-055)
+    bacnetGatewayManager.setNatsClient(natsClient);
+    bacnetGatewayManager.setTriggerDispatcher(triggerDispatcher, fastify.log as any);
+
+    // Inject NATS + dispatcher into EtherNet/IP gateway manager (ADR-056)
+    enipGatewayManager.setNatsClient(natsClient);
+    enipGatewayManager.setTriggerDispatcher(triggerDispatcher, fastify.log as any);
+
     // Register trigger dispatcher with heartbeat service (ADR-041: device offline detection)
     heartbeatService.setTriggerDispatcher(triggerDispatcher, fastify.log as any);
 
@@ -120,6 +136,10 @@ async function main() {
       port: config.server.port,
       host: config.server.host,
     });
+
+    // Restore previously-connected gateways (ADR-055/056)
+    bacnetGatewayManager.restoreRunningGateways().catch((e) => console.warn('BACnet restore failed:', e));
+    enipGatewayManager.restoreRunningGateways().catch((e) => console.warn('EtherNet/IP restore failed:', e));
 
     console.log('\n✨ IoT Platform API is ready!\n');
     console.log('📡 Services running:');

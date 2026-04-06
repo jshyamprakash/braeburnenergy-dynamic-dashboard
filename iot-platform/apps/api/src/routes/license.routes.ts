@@ -5,10 +5,10 @@ export async function licenseRoutes(fastify: FastifyInstance) {
   fastify.get('/license', {
     schema: {
       tags: ['License'],
-      summary: 'Get license state',
+      summary: '[DEPRECATED] Get license state',
       description:
-        'Returns current license validity and enabled module list. No authentication required. ' +
-        'Frontend reads this on init to gate module-specific UI (ADR-048).',
+        'DEPRECATED (ADR-051): Use GET /api/v1/modules instead. ' +
+        'Returns current license validity and enabled module list. No authentication required.',
       response: {
         200: {
           type: 'object',

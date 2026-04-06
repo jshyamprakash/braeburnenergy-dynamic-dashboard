@@ -1,27 +1,40 @@
 // LLAMP-SPEC v1 | CURRENT_DECISIONS
-// task: Workflow Execution Context Debugger Completion | date: 2026-03-27
+// task: ADR-057 System Health API + ADR-058 BE Agent Chat Service | date: 2026-04-06
 
 #what_changed
-=workflow-engine.service.ts: contextSnapshot captured AFTER all context mutations (variables, workspace, trigger); emitted in workflow:execution:step WebSocket event
-=workflow-execution.model.ts: ExecutionLogEntry.contextSnapshot?: Record<string,any> added to interface + Mongoose schema (Schema.Types.Mixed)
-=packages/types/src/index.ts: WorkflowExecutionStepEvent.contextSnapshot?: Record<string,any>
-=workflow.schema.ts: evaluateExpressionSchema (expression:string, executionId?:string); EvaluateExpressionDTO exported
-=workflow.routes.ts: POST /workflows/:workflowId/evaluate-expression registered with zodBodyValidator + Swagger docs
-=workflow.controller.ts: evaluateExpression() handler — fetches latest execution if no executionId; builds context from last step's contextSnapshot; calls resolveExpression()
-=ContextDebugPanel.tsx: getContextVariables() reads from executionLog.last.contextSnapshot; Variables tab renders 3 color-coded sections (blue=variables, green=trigger, amber=workspace); Tester tab with 500ms debounce via useRef timer; cleanup on unmount; executionId prop added; handleExportLog() downloads JSON blob
-=WorkflowToolbar.tsx: debugMessagesCount prop; Debug button wrapped in relative div; red badge shown when count > 0 AND !isDebugPanelOpen
-=workflowSlice.ts: autoOpenDebugOnExecute reducer (sets isDebugPanelOpen=true); exported
-=page.tsx (builder): debugMessagesCount={debugMessages.length}; executionId={currentExecutionId} to ContextDebugPanel; dispatch(autoOpenDebugOnExecute()) after executeWorkflow.unwrap() success
+=Backend (Sonnet T01–T13):
+  SystemHealthService: aggregates NATS (stream/consumer stats), Redis (ping/memory), BullMQ (queue counts), MongoDB (isMaster + replicaSet), gateway counts per type (5 managers now export getConnectedCount())
+  GET /health/system: 200 response with {nats,redis,bullmq,mongodb,gateways,overall,timestamp}; Admin+SuperAdmin RBAC gate
+  BeAgentService: OpenAI-compatible adapter (openai npm); configurable endpoint/apiKey/model from AI_CHAT_ENDPOINT env or SystemConfig DB; stub mode when endpoint empty (simulated tokens, no crash)
+  POST /be-agent/chat: 202 fire-and-forget; Socket.io room subscribe/unsubscribe for requestId; be_agent module gate via requireModule() middleware
+  WebSocket: added subscribe:be-agent / unsubscribe:be-agent handlers; broadcast be-agent:token with {requestId,token,done,error?}
+  config.ts: new ai block (endpoint, apiKey, model) exported in destructure
+  .env.example: added AI_CHAT_* stubs with endpoint/key/model descriptions + Ollama/vLLM/Azure examples
+
+=Frontend (Haiku T14–T15):
+  useSystemHealth hook: 30s refetch, 5s staleTime; queryKey factory; error-safe
+  /system-health page: 5 status cards (NATS/Redis/BullMQ/MongoDB/Gateways); green/amber/red badge per subsystem; overall status banner; Admin+ gate (redirects non-Admin to /dashboard)
+  Sidebar: new "System Health" nav link (SuperAdmin only)
+  useBeAgentChat hook: generateRequestId, sendMessage(message, deviceId?), streaming token listener, clearChat cleanup; non-blocking Socket.io room joins
+  /admin-management: new "BE Agent AI Configuration" section (endpoint/apiKey/model inputs, current config display, Save + loading state, success toast); useBeAgentConfig() + useUpdateBeAgentConfig() mutations
 
 #tech_implications
-~contextSnapshot adds ~1 Record<string,any> per log entry to WorkflowExecution MongoDB document — acceptable for 90-day TTL collection
-~Expression evaluator is stateless — uses last execution context from DB, not live in-memory state
-~autoOpenDebugOnExecute is one-way (panel opens, never auto-closes) — user closes manually
-~Export Log: browser Blob API; URL.revokeObjectURL() called after download to prevent memory leak
-~contextSnapshot NOT captured in error path — failed nodes lack context in export
+~SystemHealthService is read-only aggregation: no DB writes, no side effects; each check isolated (failure in one doesn't crash others)
+~openai npm supports all OpenAI-compatible endpoints (Ollama, vLLM, Azure, Groq, OpenRouter, etc.) via baseURL override — no vendor lock-in
+~Stub mode: AI_CHAT_ENDPOINT="" → simulated streaming (no external calls, testing-friendly); graceful fallback when endpoint unset
+~Socket.io be-agent:token events: requestId-based room isolation (multiple concurrent chats); fire-and-forget POST contract (202) eliminates blocking; frontend manages stream collection lifecycle
+~requireModule('be_agent') checks ModuleConfig singleton at route gate; dev override (NODE_ENV=development) → all modules enabled (mirrors ADR-051 frontend behaviour)
+~optionalDependencies: node-bacnet/node-ethernet-ip moved (dynamic import pattern — server boots even if packages not installed); reduces node_modules bloat
+~Both gateways (BACnet, EtherNet/IP) now expose getConnectedCount() for system-health aggregation (parity with Modbus/OPC-UA/MQTT)
 
 #constraints
-~Tester tab requires: workflowId saved + executionLog.length > 0 (at least one completed execution)
-~Export Log button only rendered when executionLog.length > 0
-~evaluate-expression endpoint throws NotFoundError if no execution exists for workflow
-~Badge count does not reset when panel opens — only hidden; cleared by clearDebugMessages() action
+~System health endpoint 30s poll interval — choose 30s as balance (not too frequent to stress infra, not too stale for ops visibility); can be tuned via useSystemHealth(pollInterval) param
+~BE Agent config stored in SystemConfig (MongoDB) — runtime-mutable (no Docker rebuild); but no versioning/audit of config changes (acceptable for Phase 1; Phase 2 can add ConfigHistory)
+~Streaming via Socket.io be-agent:token — requires Socket.io connection; fallback: HTTP long-poll if needed (future enhancement)
+~be_agent module gate: platform-level, not per-user; all licensed users get same module set (multi-tenant model deferred)
+~Stub mode replies are fixed English text; Phase 2 can add locale/i18n if needed
+~System health cards show latest snapshot only (no historical trends); metrics stored in Redis (short TTL) — no time-series history of health status
+~Gateway getConnectedCount() returns instantaneous count; gateways can flap online/offline rapidly — count is point-in-time (smooth animations on frontend suggested)
+
+#scope
+~arch_summary_update: already done (ADR-057/058 entries added in earlier edit)

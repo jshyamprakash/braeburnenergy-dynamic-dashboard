@@ -50,7 +50,7 @@ export function RenderWidget({ widget, editMode, pageId, onConfigChange }: Rende
     case 'overviewRealtimeChart':
       return <OverviewRealtimeChartWidget widget={widget} editMode={editMode} pageId={pageId} onConfigChange={onConfigChange} />;
     case 'overviewDataFlow':
-      return <OverviewDataFlowWidget widget={widget} editMode={editMode} pageId={pageId} onConfigChange={onConfigChange} />;
+      return <OverviewDataFlowWidget widget={widget} />;
     case 'overviewBeAgentStatus':
       return <OverviewBeAgentStatusWidget widget={widget} editMode={editMode} pageId={pageId} onConfigChange={onConfigChange} />;
     case 'combustionDlHeader':

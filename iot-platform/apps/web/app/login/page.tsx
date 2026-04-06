@@ -323,6 +323,19 @@ export default function LoginPage() {
           </div>
         </div>
 
+        {/* SuperAdmin Login Link */}
+        <div className="text-center border-t border-gray-200 dark:border-gray-700 pt-6">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            SuperAdmin?{' '}
+            <button
+              onClick={() => router.push('/superadmin-login')}
+              className="font-medium text-red-600 hover:text-red-500 dark:text-red-400"
+            >
+              Login here →
+            </button>
+          </p>
+        </div>
+
         {/* Footer */}
         <p className="text-center text-sm text-gray-600 dark:text-gray-400">
           Need an account?{' '}

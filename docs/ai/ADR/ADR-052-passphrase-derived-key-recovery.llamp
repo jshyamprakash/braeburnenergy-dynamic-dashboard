@@ -1,0 +1,49 @@
+// LLAMP-SPEC v1 | ADR-052
+=adr: 052
+=title: Passphrase-Derived Key Authentication (SuperAdmin) + Recovery (Admin)
+=date: 2026-04-01
+=status: accepted
+
+#ctx
+SuperAdmin (client) deploys Docker image to customer campus; system is air-gapped.
+SuperAdmin needs to log in to any deployment without a stored password.
+Admin must self-recover password without superadmin involvement.
+No recovery codes; no email; no external authority after developer delivery.
+
+#opts
+opt1: Password-based superadmin + email recovery — fails in air-gapped environments
+opt2: Static keypair file — can be lost; requires secure per-customer distribution
+opt3: Passphrase-derived keypair baked in image — deterministic; re-derive from passphrase anytime
+
+#decision
+SuperAdmin authentication is KEY-BASED — no stored password in DB.
+Derivation: PBKDF2(passphrase, salt='KOSMOS_RECOVERY_V1', iterations=600000, hash=SHA-256) → seed → RSA-2048.
+Same passphrase always yields same keypair; no file to carry or back up.
+Client generates public key from passphrase ONCE → bakes into Docker image: ARG SUPERADMIN_PUBLIC_KEY → ENV.
+One keypair shared across ALL customer deployments; client maintains one passphrase only.
+SuperAdmin login flow (browser-only, no CLI):
+  1. GET /api/v1/auth/superadmin/challenge → HMAC challenge, valid 15 min
+  2. Browser: enter passphrase → WebCrypto PBKDF2 derives private key → signs challenge
+  3. POST /api/v1/auth/superadmin/login → server verifies signature vs. ENV public key → JWT session
+Worst-case passphrase loss: rebuild image with new public key + redeploy to customer (acceptable).
+Admin recovery (separate mechanism): Admin sets recovery passphrase at first login.
+  Same derivation. Admin's public key stored in DB (recoveryPublicKey on User model).
+  Recovery: GET /auth/recovery/challenge → browser signs → POST /auth/recovery/redeem → one-time reset.
+
+#consequences
++ No password stored for superadmin; immune to DB credential leaks
++ One passphrase works for all deployments — client maintains one credential
++ Browser handles all crypto; no CLI required for login or recovery
++ Admin self-recovers independently; superadmin re-derives from passphrase at any time
+- SuperAdmin passphrase loss = image rebuild + redeploy (client must store passphrase securely)
+- Public key rotation = image rebuild (same as any baked secret; acceptable)
+- WebCrypto requires secure context (HTTPS or localhost)
+
+#scope
+~new_backend: /auth/superadmin/challenge + /auth/superadmin/login (verify vs ENV public key)
+~new_backend: /auth/recovery/challenge + /auth/recovery/redeem (verify vs DB recoveryPublicKey)
+~new_frontend: SuperAdmin login page (passphrase field → WebCrypto derive+sign → session)
+~new_frontend: Admin recovery passphrase setup (first-login modal) + recovery login flow (WebCrypto)
+~docker: ARG SUPERADMIN_PUBLIC_KEY → ENV bake (same pattern as ADR-050 LICENSE_PUBLIC_KEY)
+~user_model: recoveryPublicKey on User (admins only); superadmin record has no password field
+~no_cli: platform-cli not required for auth or recovery; browser-only

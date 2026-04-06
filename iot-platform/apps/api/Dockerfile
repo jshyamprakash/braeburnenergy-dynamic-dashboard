@@ -47,11 +47,14 @@ RUN pnpm build
 # =============================================================================
 # Stage 3: Production
 # =============================================================================
-# ADR-050: Bake the RS256 public key into the image at build time.
-# The customer receives an image with the public key embedded — they cannot
-# forge license tokens without the private key (held by vendor only).
-# Usage: docker build --build-arg LICENSE_PUBLIC_KEY="$(cat public.pem)" .
+# ADR-050: Bake the RS256 license public key into the image at build time.
+# Usage: docker build --build-arg LICENSE_PUBLIC_KEY="$(cat license-public.pem)" .
 ARG LICENSE_PUBLIC_KEY=""
+
+# ADR-052: Bake the SuperAdmin RSA public key into the image at build time.
+# Client generates keypair from passphrase once; public key is baked here.
+# Usage: docker build --build-arg SUPERADMIN_PUBLIC_KEY="$(cat superadmin-public.pem)" .
+ARG SUPERADMIN_PUBLIC_KEY=""
 
 FROM node:20-alpine AS runner
 
@@ -66,9 +69,10 @@ COPY --from=builder --chown=fastify:nodejs /app/apps/api/dist ./dist
 COPY --from=builder --chown=fastify:nodejs /app/apps/api/node_modules ./node_modules
 COPY --from=builder --chown=fastify:nodejs /app/apps/api/package.json ./package.json
 
-# Bake LICENSE_PUBLIC_KEY into the runtime environment (ADR-050).
-# Customers cannot override this without rebuilding the image.
+# Bake both public keys into the runtime environment.
+# Customers cannot override these without rebuilding the image.
 ENV LICENSE_PUBLIC_KEY=$LICENSE_PUBLIC_KEY
+ENV SUPERADMIN_PUBLIC_KEY=$SUPERADMIN_PUBLIC_KEY
 
 # Switch to non-root user
 USER fastify

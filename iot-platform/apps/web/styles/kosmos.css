@@ -622,6 +622,8 @@
 
 .arch-arrow.bidirectional::after { content: '⇄'; }
 .arch-arrow.forward::after { content: '→'; }
+.arch-arrow.backward::after { content: '←'; }
+.arch-arrow.none { display: none; }
 
 /* === Drop zone highlighting === */
 .k-drop-target-active {

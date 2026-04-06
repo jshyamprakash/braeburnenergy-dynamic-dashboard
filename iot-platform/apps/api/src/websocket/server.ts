@@ -110,6 +110,16 @@ export function createWebSocketServer(httpServer?: HTTPServer) {
       });
     });
 
+    // Subscribe to BE Agent token stream for a given requestId (ADR-058)
+    socket.on('subscribe:be-agent', (requestId: string) => {
+      socket.join(`be-agent:${requestId}`);
+      socket.emit('subscribed', { requestId, timestamp: new Date().toISOString() });
+    });
+
+    socket.on('unsubscribe:be-agent', (requestId: string) => {
+      socket.leave(`be-agent:${requestId}`);
+    });
+
     // Ping/Pong for connection health
     socket.on('ping', () => {
       socket.emit('pong', {

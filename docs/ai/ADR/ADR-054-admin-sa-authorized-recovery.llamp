@@ -1,0 +1,44 @@
+# ADR-054: Admin SA-Authorized Offline Recovery
+
+## Title
+Admin Forgot-Password via SuperAdmin Challenge-Response (Offline)
+
+## Context
+Admin loses access (forgot password). Existing self-service recovery (ADR-052) requires
+the Admin to have previously set up a personal recovery keypair. When that is not in place,
+the only path is SA-authorized recovery. The SA may be remote (cannot visit the campus)
+so the mechanism must work over a phone call or SMS — no internet required between
+SA's machine and the client system.
+
+## Decision
+Challenge-response protocol using SA's existing RSA keypair (ADR-053):
+1. Admin opens /recovery → selects "SuperAdmin Recovery" tab → enters username.
+2. Backend generates challenge, stores it with the username.
+3. UI displays a short RECOVERY TOKEN: base32(sha256(challenge).slice(0,5)) — 8 chars.
+4. Also displays full challenge hex for SA CLI input.
+5. SA runs: license-cli sa-recovery-sign --challenge <hex> --private-key sa.pem
+   → outputs base64 signature (the RESPONSE STRING).
+6. Admin enters RESPONSE STRING into the UI.
+7. Backend verifies RSA-PSS signature of the challenge using SA's stored public key.
+8. On success: Admin sets new password; mustChangePassword flag set to true.
+
+## Recovery Token Display
+- Short token (8 chars, base32): for verbal phone confirmation that SA and Admin
+  are working on the same challenge (prevents replay / confusion).
+- Full challenge hex (64 chars): SA pastes into CLI to generate the signature.
+- Response STRING: base64 RSA-PSS signature (~344 chars); transmitted via SMS/email/phone.
+
+## Consequences
+- SA recovery requires the SA to have their private key file available.
+- No internet required between SA's machine and client system — fully offline.
+- Recovery bypasses Admin's own password; mustChangePassword is forced after recovery.
+- New backend routes: GET /auth/recovery/sa-challenge, POST /auth/recovery/sa-redeem.
+- New CLI command: license-cli sa-recovery-sign.
+- Frontend: new tab on existing /recovery page.
+
+## Files
+- MOD: apps/api/src/services/auth.service.ts
+- MOD: apps/api/src/controllers/auth.controller.ts
+- MOD: apps/api/src/routes/auth.routes.ts
+- MOD: apps/web/app/recovery/page.tsx
+- MOD: packages/license-cli/src/index.ts

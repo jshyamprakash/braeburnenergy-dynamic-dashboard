@@ -1,0 +1,26 @@
+// LLAMP-SPEC v1 | ADR-056
+// title: EtherNet/IP Gateway (Allen-Bradley / Rockwell PLCs)
+// date: 2026-04-03
+// status: accepted
+
+#context
+Allen-Bradley ControlLogix / CompactLogix PLCs use EtherNet/IP (CIP) on TCP 44818.
+Tags are named strings (e.g. 'Temperature_1', 'Program:Main.Pressure').
+node-ethernet-ip provides Controller.connect(host, slot) + readTag(tag) API.
+
+#decision
+Add EtherNet/IP gateway following the established gateway pattern:
+- Model: IEnipGateway — host, port(44818), slot(0), timeout, tags(tagName/field/dataType)
+- Manager: EnipGatewayManagerService — dynamic import of node-ethernet-ip, CIP tag reads
+- Routes: /enip-gateways CRUD + /start /stop /test /status /read
+- NATS publish: sensor.raw.${deviceId} with source='enip'
+- slot: CPU slot in ControlLogix chassis (0–15); CompactLogix always 0
+
+#consequences
+~New package: node-ethernet-ip added to apps/api/package.json
+~Tags identified by tagName string (PLC tag path); no numeric addresses
+~dataType hint (REAL, DINT, INT, SINT, BOOL…) optional — CIP returns typed value natively
+~If node-ethernet-ip not installed: dynamic import throws friendly error at startGateway
+~Front-end: EnipGatewayTable/Modal/DetailPanel + useEnipGateways hook
+~Sidebar: 'enip' entity item added to application sub-nav
+~No impact on existing gateways or Processing Engine

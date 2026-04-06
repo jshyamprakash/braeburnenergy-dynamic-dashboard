@@ -8,6 +8,20 @@
 // Core Types
 // ===========================
 
+// ===========================
+// Module System (ADR-051)
+// ===========================
+
+/** Optional module identifier. SuperAdmin enables/disables via PATCH /api/v1/modules. */
+export type LicenseModule = 'combustion_dl' | 'asset_life' | 'be_agent';
+
+/** Singleton document returned by GET /api/v1/modules */
+export interface ModuleConfig {
+  enabled: LicenseModule[];
+}
+
+// ===========================
+
 /** Declares where this device's data originates (ADR-046). One device = one source. */
 export type DeviceDataSource = 'gateway' | 'workflow' | 'http';
 
@@ -69,6 +83,7 @@ export interface User {
   email: string;
   role: UserRole;
   isActive: boolean;
+  mustChangePassword?: boolean;        // true = forced password change on next login
   failedLoginAttempts: number;
   lockedUntil?: string | Date | null;  // Account lock timestamp (if locked)
   lastLogin?: string | Date | null;    // Last login timestamp
@@ -657,6 +672,129 @@ export interface UpdateMqttGatewayInput {
   tls?: { enabled: boolean; rejectUnauthorized?: boolean };
   topicMappings?: MqttTopicMapping[];
   isActive?: boolean;
+}
+
+// ===========================
+// BACnet Gateway Types (ADR-055)
+// ===========================
+
+export type BacnetObjectType =
+  | 'analogInput' | 'analogOutput' | 'analogValue'
+  | 'binaryInput' | 'binaryOutput' | 'binaryValue'
+  | 'multiStateInput' | 'multiStateOutput' | 'multiStateValue';
+
+export type BacnetProperty = 'presentValue' | 'statusFlags' | 'description' | 'units';
+
+export interface BacnetObject {
+  objectType: BacnetObjectType;
+  instanceNumber: number;
+  property: BacnetProperty;
+  field: string;
+  scale?: number;
+  offset?: number;
+  unit?: string;
+  deviceId?: string;
+}
+
+export interface BacnetGateway {
+  id: string;
+  name: string;
+  description?: string;
+  applicationId?: string;
+  host: string;
+  port: number;
+  broadcastAddress?: string;
+  deviceInstance?: number;
+  objects: BacnetObject[];
+  polling: { enabled: boolean; interval: number; onError: 'continue' | 'stop' };
+  deviceMapping: { autoRegister: boolean; deviceIdPrefix?: string };
+  status: 'connected' | 'disconnected' | 'error';
+  lastConnected?: string | Date;
+  lastError?: string;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+}
+
+export interface CreateBacnetGatewayInput {
+  name: string;
+  description?: string;
+  applicationId?: string;
+  host: string;
+  port?: number;
+  broadcastAddress?: string;
+  deviceInstance?: number;
+  objects?: BacnetObject[];
+  polling: { enabled: boolean; interval: number; onError?: 'continue' | 'stop' };
+  deviceMapping?: { autoRegister: boolean; deviceIdPrefix?: string };
+}
+
+export interface UpdateBacnetGatewayInput {
+  name?: string;
+  description?: string;
+  host?: string;
+  port?: number;
+  objects?: BacnetObject[];
+  polling?: Partial<{ enabled: boolean; interval: number; onError: 'continue' | 'stop' }>;
+  deviceMapping?: { autoRegister: boolean; deviceIdPrefix?: string };
+}
+
+// ===========================
+// EtherNet/IP Gateway Types (ADR-056)
+// ===========================
+
+export type EnipDataType = 'REAL' | 'DINT' | 'INT' | 'SINT' | 'BOOL' | 'DWORD' | 'WORD' | 'BYTE';
+
+export interface EnipTag {
+  tagName: string;
+  field: string;
+  dataType?: EnipDataType;
+  scale?: number;
+  offset?: number;
+  unit?: string;
+  deviceId?: string;
+}
+
+export interface EnipGateway {
+  id: string;
+  name: string;
+  description?: string;
+  applicationId?: string;
+  host: string;
+  port: number;
+  slot: number;
+  timeout: number;
+  tags: EnipTag[];
+  polling: { enabled: boolean; interval: number; onError: 'continue' | 'stop' };
+  deviceMapping: { autoRegister: boolean; deviceIdPrefix?: string };
+  status: 'connected' | 'disconnected' | 'error';
+  lastConnected?: string | Date;
+  lastError?: string;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+}
+
+export interface CreateEnipGatewayInput {
+  name: string;
+  description?: string;
+  applicationId?: string;
+  host: string;
+  port?: number;
+  slot?: number;
+  timeout?: number;
+  tags?: EnipTag[];
+  polling: { enabled: boolean; interval: number; onError?: 'continue' | 'stop' };
+  deviceMapping?: { autoRegister: boolean; deviceIdPrefix?: string };
+}
+
+export interface UpdateEnipGatewayInput {
+  name?: string;
+  description?: string;
+  host?: string;
+  port?: number;
+  slot?: number;
+  tags?: EnipTag[];
+  polling?: Partial<{ enabled: boolean; interval: number; onError: 'continue' | 'stop' }>;
+  deviceMapping?: { autoRegister: boolean; deviceIdPrefix?: string };
 }
 
 /**

@@ -7,5 +7,7 @@ import { licenseService } from '../services/license.service';
  * Frontend reads this on app init to determine which modules are enabled.
  */
 export async function getLicenseState(_request: FastifyRequest, reply: FastifyReply) {
+  reply.header('Deprecation', 'true');
+  reply.header('Link', '</api/v1/modules>; rel="successor-version"');
   return reply.send({ success: true, data: licenseService.getState() });
 }

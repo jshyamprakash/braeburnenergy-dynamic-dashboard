@@ -14,6 +14,7 @@ export { ModbusGateway, type IModbusGateway, type ModbusProtocol, type ModbusReg
 export { OpcuaGateway, type IOpcuaGateway, type OpcuaSecurityMode, type OpcuaSecurityPolicy, type OpcuaMonitoringMode, type IOpcuaNodeMapping } from './opcua-gateway.model';
 export { WaterQualityParameter, type IWaterQualityParameter, type ParameterCategory, type RegulatoryStandard, type IComplianceLimit, type ISamplingRequirement } from './water-quality-parameter.model';
 export { Notification, type INotification, type NotificationSeverity, type NotificationSource } from './notification.model';
+export { SystemConfig, type ISystemConfig } from './system-config.model';
 
 import mongoose from 'mongoose';
 

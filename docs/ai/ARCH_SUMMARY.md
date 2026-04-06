@@ -37,6 +37,11 @@
 - Account lockout: track failed attempts, exponential backoff
 - Immutable audit logs (EPA 21 CFR Part 11) - all CRUD captured
 - API keys: bcrypt hash, prefix `iot_live_|iot_test_`, granular permissions
+- **SuperAdmin auth (ADR-052/053):** No password stored. File-based login: SA uploads PKCS#8 private key PEM (generated offline via `license-cli export-private-key`); browser signs challenge with RSA-PSS SHA-256; backend verifies against stored public key. Public key resolution: `system_configs._id='superadmin_public_key'` (DB) → `SUPERADMIN_PUBLIC_KEY` env var (fallback). Key rotation: `PUT /auth/superadmin/rotate-public-key` (SA JWT) + Key Rotation UI on `/admin-management`. `POST /auth/login` rejects `SuperAdmin` role. In-memory challenge store (15min TTL, one-time use).
+- **Admin account lifecycle (ADR-053):** SA creates single Admin via `/admin-management` (temp password, one-time reveal). SA resets Admin password → new temp password. Admin login with temp password → `mustChangePassword=true` → forced redirect to `/profile` → must change before accessing platform.
+- **Admin self-recovery (ADR-052):** Admin stores `recoveryPublicKey` (PEM) via `POST /auth/recovery/setup`; `GET /auth/recovery/challenge → POST /auth/recovery/redeem` → password reset. Self-service, no SA involvement.
+- **Admin SA-authorized recovery (ADR-054):** Admin locked out → `GET /auth/recovery/sa-challenge?username=` → 8-char token (verbal confirm) + 64-char challenge hex → SA runs `license-cli sa-recovery-sign --challenge <hex> --private-key sa.pem` → response string → `POST /auth/recovery/sa-redeem` verifies SA RSA-PSS sig → password reset + `mustChangePassword=true`. Fully offline (no internet between SA machine and client).
+- `organizationId` optional on User model and TokenPayload (SuperAdmin has no org)
 
 ## API Patterns
 - 16 route files, 8 integration test suites, 63+ test cases
@@ -47,13 +52,19 @@
 - Pagination: `{ success, data, pagination }` structure
 - Error format: `{ success: false, error, details }`
 
-## Module System (ADR-048 / ADR-049)
-- License: HS256 JWT; `LICENSE_SECRET` baked in Docker image; `GET /api/v1/license` (public, no auth)
-- Modules: `combustion_dl` (CD Precursor DL tab + `combustion_ml_engine` MQTT device), `asset_life` (Fleet Analytics + IBM Maximo), `be_agent` (BE Agent tab + `be_sense_edge` MQTT device)
+## Module System (ADR-048 / ADR-049 / ADR-051)
+- Module state: `ModuleConfig` singleton in MongoDB (`_id='module-config'`, `enabled: LicenseModule[]`); default all-disabled
+- `GET /api/v1/modules` (public) → `{ enabled: LicenseModule[] }` from DB (replaces `/api/v1/license` for module gating)
+- `PATCH /api/v1/modules` (SuperAdmin JWT only) → replaces `enabled[]` in DB
+- `GET /api/v1/license` retained with `Deprecation: true` header (backward compat — ADR-051)
+- SuperAdmin: `organizationId` optional; seeded from `SUPERADMIN_USERNAME/EMAIL/PASSWORD` env; `requireSuperAdmin` middleware
+- Modules: `combustion_dl` (CD Precursor DL tab + `combustion_ml_engine` MQTT device), `asset_life` (Fleet Analytics + IBM Maximo), `be_agent` (BE Agent tab + `be_sense_edge` MQTT device + `POST /be-agent/chat` ADR-058)
+- **System Health (ADR-057):** `GET /api/v1/health/system` (SuperAdmin/Admin); 5 subsystems — NATS stream stats, Redis ping/memory, BullMQ queue counts, MongoDB replica set, gateway connected counts; no new DB model; `/system-health` frontend page with 30s auto-poll
+- **BE Agent Chat (ADR-058):** `POST /api/v1/be-agent/chat` gated behind `be_agent` module; `openai` npm package with configurable `baseURL` (`AI_CHAT_ENDPOINT/KEY/MODEL` env vars); stub mode when unset; Socket.io `be-agent:token` streaming; device context (derived state + alarms) in system prompt; stateless Phase 1; compatible with Ollama, vLLM, Azure OpenAI, Groq, etc.
 - Dev override: `NODE_ENV=development` + no `LICENSE_KEY` → all modules enabled
 - `overviewDataFlow`: Physical + BE Sense + Outputs always; BE Agent, CD Precursor DL, Asset Life Mgmt layers each gated per module
 - `platformArchitecture`: right-column cards gated per module; IBM Maximo sync node is CORE (no gate)
-- Frontend authority: `licenseSlice` reads `/api/v1/license` — never self-decides module availability
+- Frontend authority: `licenseSlice` reads `/api/v1/modules` — never self-decides module availability
 - WorkflowNodePalette: `NodeTypeConfig.module?` field; `action:ibmMaximoSync` = CORE; `asset_life` nodes gated
 
 ## Frontend Architecture
@@ -64,7 +75,7 @@
   - websocketSlice: connection state, subscriptions, updates
   - workflowSlice: nodes, edges, execution state
   - alarmSlice: alarm instances, rules, statistics, filters
-  - licenseSlice: enabled modules from `/api/v1/license`; authority for all module gating (ADR-048)
+  - licenseSlice: enabled modules from `/api/v1/modules` (ADR-051); authority for all module gating (ADR-048/051)
 - React Query: device/deviceState queries + realtime cache (useDeviceRealtime)
 - Protected routes: ProtectedRoute wrapper with returnUrl
 - API client: Generic type parameters REQUIRED: `apiClient.get<T>()`
@@ -102,7 +113,7 @@
 - EPA 40 CFR Part 141: 5-year water quality data retention
 - ISA-18.2: Alarm state machine (ACTIVE_UNACKED → ACTIVE_ACKED → CLEARED)
 - AWWA M36: Water audit methodology, quality scoring
-- IEC 61158: Modbus TCP/RTU gateway with register mapping
+- IEC 61158: Modbus TCP/RTU gateway with register mapping; BACnet/IP (ADR-055, node-bacnet, object/property polling); EtherNet/IP CIP (ADR-056, node-ethernet-ip, tag-based reads for AB/Rockwell PLCs)
   - Modbus register wordOrder: big-endian | big-endian-swapped per register (see §2d new_architecture.md)
     Applies to float/int32/uint32 only. Default: big-endian.
 - OPC-UA: Subscription-based node monitoring

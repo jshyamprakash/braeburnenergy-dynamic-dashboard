@@ -102,6 +102,79 @@ export interface PlatformArchitectureConfig {
   subsections: PlatSubsection[];
 }
 
+/** Data Flow widget — block configuration */
+export interface DataFlowBlockConfig {
+  id: string;
+  label: string;
+  color: 'sensor' | 'fusion' | 'agent' | 'cloud' | 'output';
+}
+
+/** Data Flow widget — layer configuration */
+export interface DataFlowLayerConfig {
+  id: string;
+  label: string;
+  blocks: DataFlowBlockConfig[];
+  arrowAfter: 'forward' | 'backward' | 'bidirectional' | 'none';
+}
+
+/** Data Flow widget — complete configuration */
+export interface DataFlowWidgetConfig {
+  title: string;
+  layers: DataFlowLayerConfig[];
+}
+
+/** Canonical 5-layer data flow seed (from kosmos_showcase.html) */
+export const DATAFLOW_DEFAULT_CONFIG: DataFlowWidgetConfig = {
+  title: 'DATA FLOW — KOSMOS PLATFORM',
+  layers: [
+    {
+      id: 'physical',
+      label: 'Physical Layer',
+      blocks: [
+        { id: 'b1', label: 'Gas Turbine\nGE / Siemens / MHI', color: 'sensor' },
+        { id: 'b2', label: 'Balance of Plant', color: 'sensor' },
+      ],
+      arrowAfter: 'none', // first layer — no incoming arrow
+    },
+    {
+      id: 'be_sense',
+      label: 'BE Sense™',
+      blocks: [
+        { id: 'b3', label: 'Multimodal\nSensor Fusion', color: 'fusion' },
+        { id: 'b4', label: 'CalorieSense™\nEdge', color: 'fusion' },
+      ],
+      arrowAfter: 'bidirectional', // ⇄ from Physical → BE Sense
+    },
+    {
+      id: 'be_agent',
+      label: 'BE Agent™',
+      blocks: [
+        { id: 'b5', label: 'Agentic AI\nFramework', color: 'agent' },
+        { id: 'b6', label: 'CD Precursor\nDetection', color: 'agent' },
+      ],
+      arrowAfter: 'forward', // → from BE Sense → BE Agent
+    },
+    {
+      id: 'cloud_onprem',
+      label: 'Cloud / On-Prem',
+      blocks: [
+        { id: 'b7', label: 'Fleet\nAnalytics', color: 'cloud' },
+        { id: 'b8', label: 'Asset Life\nManagement', color: 'cloud' },
+      ],
+      arrowAfter: 'bidirectional', // ⇄ from BE Agent → Cloud
+    },
+    {
+      id: 'outputs',
+      label: 'Outputs',
+      blocks: [
+        { id: 'b9', label: 'CMMS\nIntegration', color: 'output' },
+        { id: 'b10', label: 'Operator\nDashboard', color: 'output' },
+      ],
+      arrowAfter: 'forward', // → from Cloud → Outputs
+    },
+  ],
+};
+
 export interface KosmosPage {
   id: string;
   name: string;
@@ -219,7 +292,7 @@ export const PALETTE_ENTRIES: PaletteEntry[] = [
     label: 'Data Flow',
     icon: '⬡',
     description: 'Kosmos platform data flow architecture.',
-    defaultConfig: {},
+    defaultConfig: DATAFLOW_DEFAULT_CONFIG,
     defaultLayout: { x: 332, y: 446, w: 812, h: 330 },
     tabScope: 'overview',
   },

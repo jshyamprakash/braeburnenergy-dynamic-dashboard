@@ -1,10 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Lock } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
-import { useAppDispatch } from '@/lib/store';
+import { useAppDispatch, useAppSelector } from '@/lib/store';
 import { fetchSessions } from '@/lib/store/slices/userSlice';
+import { selectUser, updateUser } from '@/lib/store/slices/authSlice';
 import { toast } from 'sonner';
 
 function validatePassword(password: string): {
@@ -59,6 +61,8 @@ function PasswordStrengthIndicator({ password }: { password: string }) {
 
 export function ChangePasswordSection() {
   const dispatch = useAppDispatch();
+  const router = useRouter();
+  const user = useAppSelector(selectUser);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -90,12 +94,15 @@ export function ChangePasswordSection() {
 
     setPasswordLoading(true);
     try {
+      const wasForced = user?.mustChangePassword;
       await apiClient.post('/auth/change-password', { currentPassword, newPassword });
       toast.success('Password changed successfully');
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      dispatch(fetchSessions()); // refresh sessions in Redux
+      dispatch(updateUser({ mustChangePassword: false }));
+      dispatch(fetchSessions());
+      if (wasForced) router.push('/');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to change password');
     } finally {

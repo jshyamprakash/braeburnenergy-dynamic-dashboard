@@ -4,16 +4,19 @@
  *
  * Generates and verifies JWT license keys for the CaloriSense / Gas Turbine Platform.
  * Supports RS256 (production, asymmetric) and HS256 (dev/staging, symmetric) — ADR-050.
+ * Also derives SuperAdmin RSA-2048 public key from passphrase (ADR-052).
  *
  * Usage:
  *   pnpm --filter @repo/license-cli run generate-keypair
  *   pnpm --filter @repo/license-cli run generate -- --customer "Acme" --algorithm rs256 --private-key private.pem
  *   pnpm --filter @repo/license-cli run verify   -- <LICENSE_KEY> --public-key public.pem
+ *   pnpm --filter @repo/license-cli run superadmin-derive -- --passphrase "my-secret-phrase"
  */
 
 import { Command } from 'commander';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import forge from 'node-forge';
 import fs from 'fs';
 import path from 'path';
 
@@ -234,14 +237,249 @@ function runVerify(token: string, opts: { publicKey?: string; secret?: string })
   if (!valid) process.exit(1);
 }
 
+// ─── SuperAdmin Derive Command (ADR-052) ──────────────────────────────────────
+
+const SA_PBKDF2_SALT       = 'KOSMOS_RECOVERY_V1';
+const SA_PBKDF2_ITERATIONS = 600000;
+const SA_KEY_LENGTH        = 32; // 256 bits
+
+/**
+ * Derive RSA-2048 public key PEM from passphrase.
+ * Mirrors browser lib/crypto/derive-keypair.ts exactly:
+ *   PBKDF2(passphrase, KOSMOS_RECOVERY_V1, 600000, SHA-256, 32 bytes) → seed
+ *   Seed forge PRNG (repeating-byte counter mode) → RSA-2048 → publicKeyToPem()
+ */
+async function deriveSuperAdminPublicKey(passphrase: string): Promise<string> {
+  const encoder = new TextEncoder();
+
+  // PBKDF2 via Node 20 WebCrypto (globalThis.crypto.subtle)
+  const passphraseKey = await globalThis.crypto.subtle.importKey(
+    'raw',
+    encoder.encode(passphrase),
+    { name: 'PBKDF2' },
+    false,
+    ['deriveBits']
+  );
+
+  const seedBits = await globalThis.crypto.subtle.deriveBits(
+    {
+      name:       'PBKDF2',
+      salt:       encoder.encode(SA_PBKDF2_SALT),
+      iterations: SA_PBKDF2_ITERATIONS,
+      hash:       'SHA-256',
+    },
+    passphraseKey,
+    SA_KEY_LENGTH * 8
+  );
+
+  const seedBytes = new Uint8Array(seedBits);
+
+  // Deterministic PRNG: provide `options.prng` so forge skips its native
+  // Node.js crypto shortcut (crypto.generateKeyPairSync) and uses the pure-JS
+  // BigInteger implementation instead. `prng.getBytesSync` must return a
+  // binary string — forge's createKeyPairGenerationState calls it via the rng
+  // wrapper it builds from `options.prng`.
+  let prngIndex = 0;
+  const deterministicPrng = {
+    getBytesSync: (count: number): string => {
+      let result = '';
+      for (let i = 0; i < count; i++) {
+        result += String.fromCharCode(seedBytes[(prngIndex + i) % seedBytes.length]);
+      }
+      prngIndex += count;
+      return result;
+    },
+  };
+
+  const keypair = forge.pki.rsa.generateKeyPair({ bits: 2048, e: 0x10001, prng: deterministicPrng } as any);
+  return forge.pki.publicKeyToPem(keypair.publicKey);
+}
+
+// ─── Export Private Key Command (ADR-053) ─────────────────────────────────────
+
+/**
+ * Derive RSA-2048 keypair and export the private key as PKCS#8 PEM to a file.
+ * Derivation is identical to deriveSuperAdminPublicKey — same passphrase → same keypair.
+ * Also prints the matching public key PEM for use with --rotate-public-key UI.
+ */
+async function runExportPrivateKey(opts: { passphrase?: string; output: string }) {
+  const passphrase = opts.passphrase ?? process.env.SUPERADMIN_PASSPHRASE ?? '';
+
+  if (!passphrase) {
+    console.error('\n❌  Passphrase required.');
+    console.error('    Provide via --passphrase <value> or set SUPERADMIN_PASSPHRASE env var.\n');
+    process.exit(1);
+  }
+
+  const outputPath = path.resolve(opts.output);
+
+  console.log('\n' + hr('─'));
+  console.log('  Deriving RSA-2048 keypair from passphrase (this may take ~2-3 seconds)...');
+  console.log(hr('─'));
+
+  const encoder = new TextEncoder();
+
+  const passphraseKey = await globalThis.crypto.subtle.importKey(
+    'raw',
+    encoder.encode(passphrase),
+    { name: 'PBKDF2' },
+    false,
+    ['deriveBits']
+  );
+
+  const seedBits = await globalThis.crypto.subtle.deriveBits(
+    {
+      name:       'PBKDF2',
+      salt:       encoder.encode(SA_PBKDF2_SALT),
+      iterations: SA_PBKDF2_ITERATIONS,
+      hash:       'SHA-256',
+    },
+    passphraseKey,
+    SA_KEY_LENGTH * 8
+  );
+
+  const seedBytes = new Uint8Array(seedBits);
+
+  let prngIndex = 0;
+  const deterministicPrng = {
+    getBytesSync: (count: number): string => {
+      let result = '';
+      for (let i = 0; i < count; i++) {
+        result += String.fromCharCode(seedBytes[(prngIndex + i) % seedBytes.length]);
+      }
+      prngIndex += count;
+      return result;
+    },
+  };
+
+  const keypair = forge.pki.rsa.generateKeyPair({ bits: 2048, e: 0x10001, prng: deterministicPrng } as any);
+
+  // Export private key as PKCS#8 PEM (-----BEGIN PRIVATE KEY-----)
+  const privateKeyAsn1 = forge.pki.privateKeyToAsn1(keypair.privateKey);
+  const privateKeyInfo = forge.pki.wrapRsaPrivateKey(privateKeyAsn1);
+  const privateKeyPem  = forge.pki.privateKeyInfoToPem(privateKeyInfo);
+
+  // Export matching public key PEM
+  const publicKeyPem = forge.pki.publicKeyToPem(keypair.publicKey);
+  const singleLine   = publicKeyPem.replace(/\n/g, '\\n');
+
+  // Write private key to disk with restrictive permissions
+  fs.writeFileSync(outputPath, privateKeyPem, { mode: 0o600 });
+
+  console.log('\n' + hr('═'));
+  console.log('  KOSMOS PLATFORM — SUPERADMIN PRIVATE KEY EXPORT (ADR-053)');
+  console.log(hr('═'));
+  console.log(`\n  Private key written to: ${outputPath}`);
+  console.log(`  File permissions     : 600 (owner read/write only)`);
+  console.log('\n' + hr('─'));
+  console.log('  Matching Public Key PEM (paste into Key Rotation UI):\n');
+  console.log(publicKeyPem);
+  console.log(hr('─'));
+  console.log('  Docker build command:\n');
+  console.log(`    docker build \\`);
+  console.log(`      --build-arg SUPERADMIN_PUBLIC_KEY="${singleLine}" \\`);
+  console.log(`      -t kosmos-api ./iot-platform`);
+  console.log('\n' + hr('─'));
+  console.log('  ⚠  SECURITY WARNINGS:');
+  console.log('     1. Keep this file secure — it grants SuperAdmin access to all systems');
+  console.log('        using the matching public key.');
+  console.log('     2. Never commit this file to source control.');
+  console.log('     3. Transfer it encrypted (e.g. password-protected USB or SCP).');
+  console.log(hr('═') + '\n');
+}
+
+async function runSuperAdminDerive(opts: { passphrase?: string }) {
+  const passphrase = opts.passphrase ?? process.env.SUPERADMIN_PASSPHRASE ?? '';
+
+  if (!passphrase) {
+    console.error('\n❌  Passphrase required.');
+    console.error('    Provide via --passphrase <value> or set SUPERADMIN_PASSPHRASE env var.\n');
+    process.exit(1);
+  }
+
+  console.log('\n' + hr('─'));
+  console.log('  Deriving RSA-2048 keypair from passphrase (this may take ~2-3 seconds)...');
+  console.log(hr('─'));
+
+  const publicKeyPem = await deriveSuperAdminPublicKey(passphrase);
+
+  // Single-line version for Docker build-arg (strip newlines)
+  const singleLine = publicKeyPem.replace(/\n/g, '\\n');
+
+  console.log('\n' + hr('═'));
+  console.log('  KOSMOS PLATFORM — SUPERADMIN PUBLIC KEY (ADR-052)');
+  console.log(hr('═'));
+  console.log('\n  Public Key PEM:\n');
+  console.log(publicKeyPem);
+  console.log(hr('─'));
+  console.log('  Docker build command:\n');
+  console.log(`    docker build \\`);
+  console.log(`      --build-arg SUPERADMIN_PUBLIC_KEY="${singleLine}" \\`);
+  console.log(`      -t kosmos-api ./iot-platform`);
+  console.log('\n' + hr('─'));
+  console.log('  .env (development only):\n');
+  console.log(`    SUPERADMIN_PUBLIC_KEY="${singleLine}"`);
+  console.log('\n' + hr('─'));
+  console.log('  ⚠  Keep passphrase secret — it is equivalent to a private key.');
+  console.log('     The public key above is safe to embed in the Docker image.');
+  console.log(hr('═') + '\n');
+}
+
+// ─── SA Recovery Sign Command (ADR-054) ──────────────────────────────────────
+
+/**
+ * Sign an Admin recovery challenge using the SA's private key file.
+ * Output is the base64 RSA-PSS signature — the Admin pastes this as the RESPONSE STRING.
+ */
+function runSARecoverySign(opts: { challenge: string; privateKey: string }) {
+  const keyPath = path.resolve(opts.privateKey);
+  if (!fs.existsSync(keyPath)) {
+    console.error(`\n❌  Private key file not found: ${keyPath}\n`);
+    process.exit(1);
+  }
+
+  const keyPem = fs.readFileSync(keyPath, 'utf8');
+  let privateKey: forge.pki.PrivateKey;
+  try {
+    privateKey = forge.pki.privateKeyFromPem(keyPem);
+  } catch {
+    console.error('\n❌  Failed to parse private key PEM. Ensure it is a valid RSA private key.\n');
+    process.exit(1);
+  }
+
+  // Sign the challenge — same algorithm as verifySuperAdminChallenge on the backend:
+  // SHA-256 digest of the challenge hex string (as UTF-8), RSA-PSS, saltLength=32
+  const md = forge.md.sha256.create();
+  md.update(opts.challenge, 'utf8');
+
+  const pss = forge.pss.create({
+    md:        forge.md.sha256.create(),
+    mgf:       forge.mgf.mgf1.create(forge.md.sha256.create()),
+    saltLength: 32,
+  });
+
+  const signature = (privateKey as any).sign(md, pss);
+  const signatureBase64 = forge.util.encode64(signature);
+
+  console.log('\n' + hr('═'));
+  console.log('  KOSMOS PLATFORM — SA RECOVERY SIGNATURE (ADR-054)');
+  console.log(hr('═'));
+  console.log('\n  Give the RESPONSE STRING below to the Admin:\n');
+  console.log('  ' + signatureBase64);
+  console.log('\n' + hr('─'));
+  console.log('  ⚠  This signature is single-use (challenge consumed on redeem).');
+  console.log('     Do not share with anyone other than the account owner.');
+  console.log(hr('═') + '\n');
+}
+
 // ─── CLI Definition ───────────────────────────────────────────────────────────
 
 const program = new Command();
 
 program
   .name('license-cli')
-  .description('Generate and verify JWT license keys for the Kosmos Platform (ADR-048/050)')
-  .version('1.1.0');
+  .description('Generate and verify JWT license keys for the Kosmos Platform (ADR-048/050/052)')
+  .version('1.3.0');
 
 program
   .command('generate-keypair')
@@ -271,6 +509,26 @@ program
   .option('-k, --public-key <path>',  'Path to RSA public key PEM file (required for RS256 tokens)')
   .option('-s, --secret <string>',    'Shared secret for HS256 tokens (overrides LICENSE_SECRET env var)')
   .action((token, opts) => runVerify(token, opts));
+
+program
+  .command('superadmin-derive')
+  .description('Derive SuperAdmin RSA-2048 public key from passphrase (ADR-052) for Docker bake')
+  .option('-p, --passphrase <string>', 'Recovery passphrase (overrides SUPERADMIN_PASSPHRASE env var)')
+  .action((opts) => runSuperAdminDerive(opts));
+
+program
+  .command('export-private-key')
+  .description('Export SuperAdmin private key as PKCS#8 PEM file for file-based login (ADR-053)')
+  .option('-p, --passphrase <string>', 'Passphrase (overrides SUPERADMIN_PASSPHRASE env var)')
+  .option('-o, --output <path>',       'Output file path', 'superadmin.private.pem')
+  .action((opts) => runExportPrivateKey(opts));
+
+program
+  .command('sa-recovery-sign')
+  .description('Sign an Admin recovery challenge with SA private key file (ADR-054)')
+  .requiredOption('-c, --challenge <hex>',    'Challenge hex string (from recovery page)')
+  .requiredOption('-k, --private-key <path>', 'Path to SA private key PEM file')
+  .action((opts) => runSARecoverySign(opts));
 
 program.parse(process.argv);
 

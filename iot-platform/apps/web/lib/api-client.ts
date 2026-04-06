@@ -72,7 +72,8 @@ class ApiClient {
         localStorage.removeItem('iot_user');
 
         // Redirect to login page if we're in the browser and not already there
-        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+        const authPages = ['/login', '/superadmin-login', '/recovery'];
+        if (typeof window !== 'undefined' && !authPages.some((p) => window.location.pathname.startsWith(p))) {
           window.location.href = '/login';
         }
 
@@ -191,6 +192,14 @@ class ApiClient {
   async patch<T>(endpoint: string, body: unknown): Promise<{ data: T }> {
     const data = await this.request<T>(endpoint, {
       method: 'PATCH',
+      body: JSON.stringify(body),
+    });
+    return { data };
+  }
+
+  async put<T>(endpoint: string, body: unknown): Promise<{ data: T }> {
+    const data = await this.request<T>(endpoint, {
+      method: 'PUT',
       body: JSON.stringify(body),
     });
     return { data };

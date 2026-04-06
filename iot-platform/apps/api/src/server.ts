@@ -21,11 +21,15 @@ import { alarmRoutes } from './routes/alarm.routes';
 import { modbusGatewayRoutes } from './routes/modbus-gateway.routes';
 import { opcuaGatewayRoutes } from './routes/opcua-gateway.routes';
 import { mqttGatewayRoutes } from './routes/mqtt-gateway.routes';
+import { bacnetGatewayRoutes } from './routes/bacnet-gateway.routes';
+import { enipGatewayRoutes } from './routes/enip-gateway.routes';
 import { waterQualityRoutes } from './routes/water-quality.routes';
 import { workflowRoutes } from './routes/workflow.routes';
 import { notificationRoutes } from './routes/notification.routes';
 import { webhookRoutes } from './routes/webhook.routes';
 import { licenseRoutes } from './routes/license.routes';
+import { moduleRoutes } from './routes/module.routes';
+import { beAgentRoutes } from './routes/be-agent.routes';
 import { registerAuditMiddleware } from './middleware/audit.middleware';
 
 /**
@@ -92,7 +96,8 @@ export async function createServer() {
         },
       ],
       tags: [
-        { name: 'License', description: 'License state — enabled modules per deployment (ADR-048)' },
+        { name: 'License', description: 'License state — enabled modules per deployment (ADR-048, deprecated — use Modules)' },
+        { name: 'Modules', description: 'Module toggle — SuperAdmin controls optional module activation (ADR-051)' },
         { name: 'Health', description: 'Health check and monitoring endpoints' },
         { name: 'Authentication', description: 'User authentication and authorization (EPA-compliant RBAC)' },
         { name: 'API Keys', description: 'API key management for machine-to-machine authentication' },
@@ -108,6 +113,7 @@ export async function createServer() {
         { name: 'Dashboards', description: 'Dashboard configuration and layout management with cross-device sync' },
         { name: 'Devices', description: 'Device management operations' },
         { name: 'Device States', description: 'Time-series device state management with MongoDB Time Series' },
+        { name: 'BE Agent', description: 'BE Agent AI chat — OpenAI-compatible streaming (ADR-058)' },
       ],
       components: {
         securitySchemes: {
@@ -220,6 +226,7 @@ export async function createServer() {
 
   // Register routes
   await fastify.register(licenseRoutes, { prefix: config.api.fullPrefix });
+  await fastify.register(moduleRoutes, { prefix: config.api.fullPrefix });
   await fastify.register(healthRoutes);
   await fastify.register(authRoutes);
   await fastify.register(apiKeyRoutes);
@@ -230,6 +237,8 @@ export async function createServer() {
   await fastify.register(modbusGatewayRoutes);
   await fastify.register(opcuaGatewayRoutes);
   await fastify.register(mqttGatewayRoutes);
+  await fastify.register(bacnetGatewayRoutes);
+  await fastify.register(enipGatewayRoutes);
   await fastify.register(waterQualityRoutes);
   await fastify.register(workflowRoutes);
   await fastify.register(organizationRoutes);
@@ -239,6 +248,7 @@ export async function createServer() {
   await fastify.register(deviceStateRoutes);
   await fastify.register(notificationRoutes);
   await fastify.register(webhookRoutes);
+  await fastify.register(beAgentRoutes, { prefix: config.api.fullPrefix });
 
   // Root endpoint
   fastify.get('/', async (_request, reply) => {

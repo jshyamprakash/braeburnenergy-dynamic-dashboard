@@ -1,0 +1,26 @@
+// LLAMP-SPEC v1 | ADR-055
+// title: BACnet/IP Gateway
+// date: 2026-04-03
+// status: accepted
+
+#context
+Building-automation devices (HVAC, AHU, VAV, chillers) speak BACnet/IP over UDP 47808.
+Existing gateways (Modbus, OPC-UA, MQTT) follow model→manager→NATS sensor.raw pattern (ADR-043).
+BACnet can be added with the same pattern using the node-bacnet package.
+
+#decision
+Add BACnet/IP gateway following the established gateway pattern:
+- Model: IBacnetGateway — host, port, objects (objectType/instanceNumber/property/field), polling
+- Manager: BacnetGatewayManagerService — dynamic import of node-bacnet, poll presentValue
+- Routes: /bacnet-gateways CRUD + /start /stop /test /status /read
+- NATS publish: sensor.raw.${deviceId} with source='bacnet'
+- Auto-device-registration (same as Modbus) when applicationId set
+
+#consequences
+~New package: node-bacnet added to apps/api/package.json
+~BACnet objects map objectType+instanceNumber+property → field name in sensor.raw
+~readProperty callback wrapped in Promise (node-bacnet is callback-based)
+~If node-bacnet not installed: dynamic import throws friendly error at startGateway
+~Front-end: BacnetGatewayTable/Modal/DetailPanel + useBacnetGateways hook
+~Sidebar: 'bacnet' entity item added to application sub-nav
+~No impact on existing gateways or Processing Engine

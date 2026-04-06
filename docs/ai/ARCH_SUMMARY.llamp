@@ -50,7 +50,7 @@
   system: HS256 JWT (ADR-048/049); LicenseService.init() on startup; GET /api/v1/license (public); dev_override: all_modules_enabled when NODE_ENV=development+no_key,
   combustion_dl: CD Precursor DL analytics tab + combustion_ml_engine MQTT device,
   asset_life: Fleet Analytics + Asset Life Management + IBM Maximo integration (ADR-049),
-  be_agent: Agentic AI Framework tab + be_sense_edge MQTT device,
+  be_agent: Agentic AI Framework tab + be_sense_edge MQTT device + POST /be-agent/chat (ADR-058),
   ibm_maximo_core: action:ibmMaximoSync is CORE node — always in NodePalette (no gate),
   frontend_authority: licenseSlice reads /api/v1/license — NEVER self-decides,
   license_aware_widgets: [overviewDataFlow, platformArchitecture] render only licensed layers,
@@ -100,6 +100,23 @@
   IEC_61158: Modbus TCP/RTU gateway + register mapping,
   modbus_word_order: configurable per register (big-endian|big-endian-swapped) applies_to: float|int32|uint32 default:big-endian (ADR-043),
   OPC-UA: subscription-based node monitoring
+}
+
+=system_health: {
+  endpoint: GET /api/v1/health/system (SuperAdmin+Admin RBAC, ADR-057),
+  subsystems: [NATS stream stats+consumer lag, Redis ping+memoryUsage, BullMQ queue counts, MongoDB isMaster, gateway connectedCount per type],
+  no_db_model: aggregated from existing singleton managers (read-only),
+  frontend: /system-health 30s auto-poll + per-subsystem status cards (green/amber/red)
+}
+
+=be_agent_chat: {
+  endpoint: POST /api/v1/be-agent/chat (be_agent module gate, ADR-058),
+  adapter: openai npm package + configurable baseURL (AI_CHAT_ENDPOINT/KEY/MODEL env vars),
+  stub_mode: AI_CHAT_ENDPOINT unset → simulated streaming (no crash),
+  streaming: openai SSE → Socket.io be-agent:token events,
+  context: deviceId + derived state + 3 recent alarms injected into system prompt,
+  no_history_phase1: stateless per request,
+  compatible_with: [Ollama, vLLM, LM Studio, Azure OpenAI, Groq, OpenRouter, any openai-compat endpoint]
 }
 
 =critical_pitfalls: {

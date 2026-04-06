@@ -187,6 +187,29 @@ export async function requireSameOrganization(
 }
 
 /**
+ * Middleware — SuperAdmin only (ADR-051)
+ * Use for routes that must be restricted exclusively to the SuperAdmin role.
+ */
+export async function requireSuperAdmin(request: FastifyRequest, reply: FastifyReply) {
+  const user = (request as any).user;
+
+  if (!user) {
+    return reply.status(401).send({
+      success: false,
+      error: 'Authentication required',
+    });
+  }
+
+  if (user.role !== 'SuperAdmin') {
+    return reply.status(403).send({
+      success: false,
+      error: 'Forbidden',
+      message: 'SuperAdmin role required',
+    });
+  }
+}
+
+/**
  * Helper function to check permissions programmatically
  */
 export function checkPermission(userRole: UserRole, permission: string): boolean {

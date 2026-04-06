@@ -40,6 +40,11 @@ class ModbusGatewayManagerService {
     this.natsClient = client;
   }
 
+  /** Returns number of gateways currently connected and polling (ADR-057) */
+  getConnectedCount(): number {
+    return this.connections.size;
+  }
+
   /**
    * Start gateway connection and polling
    */

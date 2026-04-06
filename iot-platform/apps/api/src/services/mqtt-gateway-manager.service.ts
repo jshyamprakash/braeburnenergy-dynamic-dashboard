@@ -25,6 +25,11 @@ class MqttGatewayManagerService {
   private instances: Map<string, GatewayInstance> = new Map();
   private natsClient?: NatsClient;
 
+  /** Returns number of MQTT gateways currently connected (ADR-057) */
+  getConnectedCount(): number {
+    return Array.from(this.instances.values()).filter((i) => i.isRunning).length;
+  }
+
   /** Register trigger dispatcher (deprecated: workflow dispatch moved to Processing Engine ADR-043) */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   setTriggerDispatcher(_dispatcher: any, _logger: Logger): void {

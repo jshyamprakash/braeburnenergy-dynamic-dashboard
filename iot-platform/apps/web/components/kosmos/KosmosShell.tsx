@@ -19,6 +19,7 @@ import {
   setKosmosSharedWithUsers,
   initKosmosFromBackend,
   saveKosmosToBackend,
+  resetActiveMandatoryPage,
 } from '@/lib/store/slices/dashboardSlice';
 import type { KosmosWidget } from './types';
 import { PALETTE_ENTRIES } from './types';
@@ -369,6 +370,21 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
               {editMode && (
                 <button className="k-btn k-btn-ghost" onClick={() => setPaletteOpen(!paletteOpen)}>
                   {paletteOpen ? 'HIDE PALETTE' : 'WIDGETS'}
+                </button>
+              )}
+
+              {editMode && activePage?.isMandatory && (
+                <button
+                  className="k-btn k-btn-ghost"
+                  onClick={() => {
+                    if (window.confirm('Reset this page to defaults? All widget configurations will be cleared.')) {
+                      dispatch(resetActiveMandatoryPage());
+                      setSelectedWidgetId(null);
+                      flushSave();
+                    }
+                  }}
+                >
+                  ↻ RESET PAGE
                 </button>
               )}
 

@@ -76,7 +76,7 @@ export async function requireAuth(request: FastifyRequest, _reply: FastifyReply)
       username: payload.username,
       email: payload.email,
       role: payload.role,
-      organizationId: payload.organizationId,
+      organizationId: payload.organizationId ?? '',
       authType: 'jwt',
     };
   }
@@ -148,7 +148,7 @@ export async function optionalAuth(request: FastifyRequest, _reply: FastifyReply
           username: payload.username,
           email: payload.email,
           role: payload.role,
-          organizationId: payload.organizationId,
+          organizationId: payload.organizationId ?? '',
           authType: 'jwt',
         };
       }

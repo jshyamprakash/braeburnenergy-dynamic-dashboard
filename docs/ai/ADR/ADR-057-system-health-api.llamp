@@ -1,0 +1,30 @@
+// LLAMP-SPEC v1 | ADR-057
+=adr: 057
+=title: Platform System Health API
+=date: 2026-04-06
+=status: accepted
+
+#ctx
+~operators need live visibility into infrastructure: NATS, Redis, BullMQ, MongoDB, gateways
+~no current health aggregation endpoint beyond Fastify default /healthz
+~existing singleton managers already track internal state — no new DB models needed
+
+#opts
+~a: poll each subsystem independently from frontend (N separate calls, no RBAC)
+~b: single aggregated GET /api/v1/health/system backend endpoint (RBAC-gated)
+
+#decision
+~b: GET /api/v1/health/system (SuperAdmin + Admin RBAC only)
+~aggregates from existing singleton managers — NO new DB models
+~subsystems: NATS stream stats, Redis ping+memoryUsage, BullMQ queue counts, MongoDB isMaster, gateway counts per type
+~frontend: /system-health page, 30s auto-poll, per-subsystem status card (green/amber/red)
+~HealthController added as 15th controller; registered in server.ts
+
+#consequences
+~+1 endpoint; +1 controller; each manager exposes .getStatus() or equivalent read method
+~read-only; no write path; no DB schema changes
+~gateway managers expose connectedCount (already tracked internally)
+~subsystem status: green=ok, amber=degraded (high latency/queue backlog), red=unreachable
+
+#scope
+~arch_summary_update: yes

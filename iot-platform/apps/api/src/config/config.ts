@@ -95,6 +95,22 @@ export const config = {
     secret: process.env.LICENSE_SECRET || 'license-secret-change-in-production',
     publicKey: process.env.LICENSE_PUBLIC_KEY || '',
   },
+
+  // SuperAdmin keypair auth (ADR-052)
+  // Bake SUPERADMIN_PUBLIC_KEY into Docker image at build time (same pattern as LICENSE_PUBLIC_KEY).
+  // Browser derives private key from passphrase via WebCrypto; backend only stores/uses public key.
+  superadmin: {
+    publicKey: process.env.SUPERADMIN_PUBLIC_KEY || '',
+  },
+
+  // BE Agent AI Chat Configuration (ADR-058)
+  // Supports any OpenAI-compatible endpoint (Ollama, vLLM, Azure OpenAI, Groq, etc.)
+  // Leave AI_CHAT_ENDPOINT empty for stub mode — no external calls, simulated streaming response.
+  ai: {
+    endpoint: process.env.AI_CHAT_ENDPOINT || '',
+    apiKey: process.env.AI_CHAT_API_KEY || 'stub',
+    model: process.env.AI_CHAT_MODEL || 'gpt-4o-mini',
+  },
 } as const;
 
 // Validate required configuration
@@ -120,4 +136,4 @@ export function validateConfig() {
 
 // Export individual configs for convenience
 export const { env, isDevelopment, isProduction, isTest } = config;
-export const { server, database, websocket, logging, security, api, nats, redis, worker, processing, license } = config;
+export const { server, database, websocket, logging, security, api, nats, redis, worker, processing, license, ai } = config;
