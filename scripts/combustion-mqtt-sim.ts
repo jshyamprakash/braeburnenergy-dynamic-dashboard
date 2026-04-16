@@ -14,13 +14,13 @@
  *   npx ts-node scripts/combustion-mqtt-sim.ts [options]
  *
  * Options:
- *   --broker  MQTT broker URL  (default: mqtt://localhost:1883)
+ *   --broker  MQTT broker URL  (default: mqtt://broker.hivemq.com:1883)
  *   --topic   MQTT topic       (default: combustion/ml/data)
  *   --interval  Publish interval in ms  (default: 1000)
  *   --mode    Scenario mode: normal | lean_blowout | flashback | thermo_acoustic (default: normal)
  *
  * Example:
- *   npx ts-node scripts/combustion-mqtt-sim.ts --broker mqtt://localhost:1883 --mode flashback
+ *   npx ts-node scripts/combustion-mqtt-sim.ts --broker mqtt://broker.hivemq.com:1883 --mode flashback
  */
 
 import mqtt from 'mqtt';
@@ -32,7 +32,7 @@ function getArg(name: string, fallback: string): string {
   return idx !== -1 && args[idx + 1] ? args[idx + 1] : fallback;
 }
 
-const BROKER   = getArg('broker',   'mqtt://localhost:1883');
+const BROKER   = getArg('broker',   'mqtt://broker.hivemq.com:1883');
 const TOPIC    = getArg('topic',    'combustion/ml/data');
 const INTERVAL = parseInt(getArg('interval', '1000'), 10);
 const MODE     = getArg('mode',     'normal') as 'normal' | 'lean_blowout' | 'flashback' | 'thermo_acoustic';

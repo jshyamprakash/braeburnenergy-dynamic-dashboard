@@ -1,0 +1,87 @@
+// LLAMP-SPEC v1 | Project Conventions
+// ver: 1.0 | updated: 2026-04-07
+// target: @sonnet @haiku
+// purpose: canonical file placement rules — ALWAYS read at session anchor, ALWAYS enforce before writing any file
+
+---
+
+// ── FILE PLACEMENT RULES (non-negotiable) ──
+=project_root: /home/shyamprakashj/Documents/PROJECTS/DYNAMIC_DASHBOARD/
+
+=placement: {
+  scripts:   project_root/scripts/           // ALL runnable scripts — seed, simulate, test, util
+             !never: iot-platform/apps/api/src/scripts/
+             !never: iot-platform/scripts/
+             !never: iot-platform/apps/web/scripts/
+
+  docs:      project_root/docs/              // ALL documentation — guides, ADRs (human), designs
+             !never: iot-platform/docs/
+             !never: iot-platform/apps/api/docs/
+             !never: iot-platform/apps/web/docs/
+
+  ai_state:  project_root/docs/ai/           // ALL AI state files — *.llamp, TASK_HISTORY, ARCH_SUMMARY
+             !never: iot-platform/docs/ai/
+
+  platform:  iot-platform/apps/api/src/     // Backend source code ONLY (services, routes, models, workers)
+  frontend:  iot-platform/apps/web/         // Frontend source code ONLY (components, pages, hooks)
+  types:     iot-platform/packages/types/   // Shared TypeScript types ONLY
+}
+
+---
+
+// ── SCRIPT CONVENTIONS ──
+=script_rules: {
+  location:    project_root/scripts/,
+  runtime:     tsx (TypeScript, no compile step needed),
+  imports:     use relative paths → ../iot-platform/apps/api/src/...
+               !never: import from within iot-platform/ using package-internal paths
+  idempotent:  ALL seed scripts MUST be idempotent (findOneAndUpdate upsert pattern)
+  naming:      seed-*.ts for seeding | simulate-*.ts or *-sim.ts for simulation | test-*.ts for test utilities
+  package_cmd: add script entry to scripts/package.json (not to apps/api/package.json)
+               exception: if script is api-internal only (e.g. backfill, migration) → apps/api/package.json is acceptable
+}
+
+---
+
+// ── DOC CONVENTIONS ──
+=doc_rules: {
+  location:    project_root/docs/,
+  subdirs: {
+    docs/ai/          → AI state files (llamp + md),
+    docs/architecture/ → system design documents,
+    docs/demo/        → demo and POC guides,
+    docs/security/    → auth and security flows,
+    docs/compliance/  → EPA / ISA / regulatory docs,
+    docs/reference/   → API reference and integration specs,
+    docs/learning/    → onboarding and educational content
+  },
+  format:      .md (Markdown) for all human-readable docs
+               .llamp for all model-readable docs (docs/ai/ only)
+  naming:      SCREAMING_SNAKE_CASE.md for top-level guides (e.g. PIPELINE_TESTING_GUIDE.md)
+}
+
+---
+
+// ── VIOLATION DETECTION ──
+!before_writing_any_file: check placement rules above
+!if_violation_detected: STOP + report to user + propose correct path
+~example_violations: [
+  "I need to create apps/api/src/scripts/seed-foo.ts" → STOP → create scripts/seed-foo.ts instead,
+  "I need to add docs to iot-platform/docs/" → STOP → create docs/ at project root instead,
+  "I need a new script in iot-platform/scripts/" → STOP → create scripts/ at project root instead
+]
+
+---
+
+// ── EXISTING VIOLATIONS (known, not yet migrated) ──
+// These exist due to historical decisions before this convention was formalized.
+// Do NOT copy their pattern. Migrate on next touch.
+=known_violations: [
+  iot-platform/apps/api/src/scripts/seed-poc-demo.ts,
+  iot-platform/apps/api/src/scripts/seed-module-devices.ts,
+  iot-platform/apps/api/src/scripts/seed-kosmos-dashboard.ts,
+  iot-platform/apps/api/src/scripts/seed-admin.ts,
+  iot-platform/scripts/combustion-mqtt-sim.ts
+]
+// Migration target: move all above to project_root/scripts/ with updated import paths
+// Trigger migration when: explicitly requested OR when a script is being modified anyway

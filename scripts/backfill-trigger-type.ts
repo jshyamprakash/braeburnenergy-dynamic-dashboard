@@ -12,8 +12,8 @@
  */
 
 import mongoose from 'mongoose';
-import { config } from '../apps/api/src/config/config';
-import { Workflow, extractTriggerType } from '../apps/api/src/models/workflow.model';
+import { config } from '../iot-platform/apps/api/src/config/config';
+import { Workflow, extractTriggerType } from '../iot-platform/apps/api/src/models/workflow.model';
 
 async function backfillTriggerType() {
   try {

@@ -4,7 +4,12 @@
   "description": "Utility scripts for IoT Platform",
   "private": true,
   "scripts": {
-    "simulate": "tsx device-simulator.ts"
+    "simulate": "tsx device-simulator.ts",
+    "seed:admin": "cd ../iot-platform/apps/api && pnpm tsx ../../../scripts/seed-admin.ts",
+    "seed:module-devices": "cd ../iot-platform/apps/api && pnpm tsx ../../../scripts/seed-module-devices.ts",
+    "seed:kosmos-dashboard": "cd ../iot-platform/apps/api && pnpm tsx ../../../scripts/seed-kosmos-dashboard.ts",
+    "backfill:trigger-type": "cd ../iot-platform/apps/api && pnpm tsx ../../../scripts/backfill-trigger-type.ts",
+    "combustion-sim": "tsx combustion-mqtt-sim.ts"
   },
   "devDependencies": {
     "@types/node": "^22.19.10",

@@ -1,6 +1,6 @@
 // LLAMP-SPEC v1 | AI Operating Protocol
 // src: AI OPERATING MODE — TOKEN EFFICIENT & REPOSITORY-ANCHORED
-// ver: 1.3 | updated: 2026-02-27
+// ver: 1.4 | updated: 2026-04-06
 // target: @haiku @sonnet
 
 ---
@@ -9,7 +9,7 @@
 =mode: repo-anchored
 =mem: NO_CHAT          // never rely on chat history
 =state: docs/ai/       // all state lives here
-=arch_src: ARCH_SUMMARY.md
+=arch_src: ARCH_SUMMARY.llamp   // .llamp is source-of-truth; .md is human-readable backup only
 
 ---
 
@@ -53,20 +53,23 @@
 // ── S1: SESSION ANCHOR (run on every new session) ──
 @self #anchor
 cmd: read seq=[
-  docs/ai/ARCH_SUMMARY.llamp,                                        // always
+  docs/ai/ARCH_SUMMARY.llamp,                                        // always — .llamp ONLY, never .md
+  docs/ai/PROJECT_CONVENTIONS.llamp,                                  // always — file placement rules (scripts/, docs/)
   docs/ai/BACKEND_PATTERNS.llamp  ?if:task.type==backend|api|db,     // backend tasks only
   docs/ai/FRONTEND_PATTERNS.llamp ?if:task.type==frontend|ui|hook,   // frontend tasks only
-  docs/ai/ADR/           !filenames_only !format:*.llamp,
+  docs/ai/ADR/           !filenames_only,                            // filenames only — no file opens
   docs/ai/AI_PROTOCOL.llamp ?if:exists,
   docs/ai/OPEN_GAPS.md ?if:exists,                                   // persistent gap registry
-  docs/ai/TASK_HISTORY.md ?if:exists,
+  docs/ai/TASK_HISTORY.md ?if:exists  !tail:30,                      // last 30 lines ONLY
   docs/ai/CURRENT_TASK.llamp ?if:exists,
   docs/ai/CURRENT_DECISIONS.llamp ?if:exists
 ]
 // task.type is read from CURRENT_TASK.llamp → =task.type field
 // if no CURRENT_TASK.llamp exists: load both patterns files (safe default)
+// !tail:30 on TASK_HISTORY keeps anchor lean as history grows
 !no_full_scan           // scan full repo only if: new_task|drift|explicit
-<text: "Anchored. Ready."
+!never_read_ARCH_SUMMARY_md  // .md is for humans only; model always uses .llamp
+<text: "Anchored. Ready. Current task: [from CURRENT_TASK.llamp]. Last completed: [from TASK_HISTORY tail]."
 
 ---
 
@@ -142,21 +145,25 @@ cmd: step [
 +require_model: sonnet
 ?if: model!=sonnet -> <text: "Switch to Sonnet before generating tasks." + STOP
 cmd: step [
-  1. read [ARCH_SUMMARY.llamp, TASK_HISTORY.md, CURRENT_DECISIONS.llamp],
+  1. read [ARCH_SUMMARY.llamp, TASK_HISTORY.md !tail:30, CURRENT_DECISIONS.llamp],
   2. scan [incomplete_modules, backlog_items, capability_gaps],
   3. propose 3-5 candidates                        // OUTPUT: natural_language to user
      each=[title, 1line_purpose, arch_impact:bool],
   4. WAIT_FOR_USER_SELECT
 ]
 !no_gen_CURRENT_TASK_yet
-// after user selects:
+// after user selects — read ONLY ADRs relevant to the selected task area:
 cmd: gen [
-  docs/ai/CURRENT_TASK.llamp     !format:llamp-spec-v1 !max_lines:40,
-  docs/ai/FEATURE_TASKS.llamp    !format:llamp-spec-v1 !max_tasks:15
+  step[a]: read ADRs relevant to selected task (by keyword match on filenames) !max:5_adrs,
+  step[b]: extract binding constraints from those ADRs → #adr_constraints block,
+  step[c]: write docs/ai/CURRENT_TASK.llamp !format:llamp-spec-v1 !max_lines:40
+           fields=[=task,=type,=model,#scope,#out_of_scope,#adr_constraints,#tasks_ref],
+  step[d]: write docs/ai/FEATURE_TASKS.llamp !format:llamp-spec-v1 !max_tasks:15
 ]
 +remind_user: ~if task.type==backend|api|db → "Switch to Sonnet. Say: Start next task."
              ~if task.type==frontend|ui    → "Switch to Haiku. Say: Start next task."
-!no: [re-summarize_arch, expand_adr, full_repo_scan, recreate_completed]
+!no: [re-summarize_arch, full_repo_scan, recreate_completed]
+!adr_read: only at task generation (step a) — NOT on anchor, NOT during implementation
 
 ---
 
@@ -234,7 +241,7 @@ cmd: step [
 
 // ── S11: MODEL SWITCH SAFETY ──
 @self #model_switch
-cmd: read [ARCH_SUMMARY.llamp, TASK_HISTORY.md, CURRENT_TASK.llamp ?if:exists]
+cmd: read [ARCH_SUMMARY.llamp, PROJECT_CONVENTIONS.llamp, TASK_HISTORY.md, CURRENT_TASK.llamp ?if:exists]
 !never_rely_on_prior_chat_reasoning
 +on_switch: confirm_anchor_natural_language   // tell user "Re-anchored. Current task: X"
 
@@ -264,10 +271,41 @@ cmd: read [ARCH_SUMMARY.llamp, TASK_HISTORY.md, CURRENT_TASK.llamp ?if:exists]
 
 ---
 
-// ── S13: ADR READING RULE (for anchor) ──
+// ── S13: ADR READING RULE ──
 @self #adr_read
->input: docs/ai/ADR/*.llamp
-!filenames_only: default
-!full_parse: only_if [drift_detected | task_relevant | explicit]
-!format_confirm: all_adr_must_be_llamp-spec-v1
-!no_md_adr_files: all ADRs are *.llamp — no *.md ADR files exist
+>input: docs/ai/ADR/*
+!filenames_only: default  // anchor = filenames only, no file opens
+!full_parse: only_if [drift_detected | task_generation | explicit]
+!adr_at_gen: read max 5 ADRs relevant to selected task — extract constraints only
+!adr_at_impl: NEVER — Haiku and Sonnet read #adr_constraints in CURRENT_TASK.llamp instead
+~note: ADR-040/042/043 are .md format (pre-LLAMP era) — valid records, never delete
+
+---
+
+// ── S14: SCOPE GUARD + TOKEN CHECKPOINT ──
+@self #scope_guard
+!if_file_not_in_CURRENT_TASK_scope: stop + ask user before editing
+!CURRENT_TASK_must_have: [#scope, #out_of_scope, #adr_constraints]
+~violation: editing a file outside #scope = architecture drift risk
+
+@self #token_checkpoint
+~after_T05: output code only — no explanation, no rationale unless user asks
+~if_context_gt_70pct: skip all architecture reads; rely on CURRENT_TASK.llamp exclusively
+~never_re-read_files_already_read_this_session
+
+---
+
+// ── S15: CURRENT_TASK.llamp TEMPLATE (mandatory fields) ──
+// All generated CURRENT_TASK.llamp files must include these fields:
+=current_task_template: {
+  header:          "// task: <name> | date: <date>",
+  model:           "=model: sonnet|haiku",
+  type:            "=task_type: backend|frontend|mixed",
+  scope:           "#scope → list of files/services being touched",
+  out_of_scope:    "#out_of_scope → explicit exclusions (iot-platform/, ADR/, etc.)",
+  adr_constraints: "#adr_constraints → binding rules extracted from relevant ADRs",
+  tasks_ref:       "#tasks → see FEATURE_TASKS.llamp"
+}
+// adr_constraints replaces need for Haiku to read ADR files directly
+// Sonnet populates this at task generation; Haiku trusts it during implementation
+
