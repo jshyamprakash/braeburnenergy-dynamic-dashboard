@@ -25,25 +25,32 @@ export function OverviewBeSenseWidget({
   pageId?: string;
   onConfigChange?: () => void;
 } = {}) {
-  type SensorItem = { name: string; value: string; active: boolean; status: string };
+  type SensorItem = { name: string; fieldName?: string; value: string; active: boolean; status: string };
 
   const defaultSensors: SensorItem[] = [
-    { name: 'CD-P01', value: '4.2 kPa', active: true, status: 's-ok' },
-    { name: 'CD-P02', value: '4.1 kPa', active: true, status: 's-ok' },
-    { name: 'T-EGT', value: '612°C', active: true, status: 's-ok' },
-    { name: 'VIB-X', value: '2.1 mm/s', active: false, status: 's-warn' },
-    { name: 'NOx', value: '18.4 ppm', active: true, status: 's-ok' },
-    { name: 'CO', value: '12.1 ppm', active: true, status: 's-ok' },
-    { name: 'CV', value: '38.2 MJ/m³', active: true, status: 's-ok' },
-    { name: 'H₂%', value: '3.2 %', active: true, status: 's-ok' },
+    { name: 'CD-P01', fieldName: '', value: '4.2 kPa', active: true, status: 's-ok' },
+    { name: 'CD-P02', fieldName: '', value: '4.1 kPa', active: true, status: 's-ok' },
+    { name: 'T-EGT', fieldName: '', value: '612°C', active: true, status: 's-ok' },
+    { name: 'VIB-X', fieldName: '', value: '2.1 mm/s', active: false, status: 's-warn' },
+    { name: 'NOx', fieldName: '', value: '18.4 ppm', active: true, status: 's-ok' },
+    { name: 'CO', fieldName: '', value: '12.1 ppm', active: true, status: 's-ok' },
+    { name: 'CV', fieldName: '', value: '38.2 MJ/m³', active: true, status: 's-ok' },
+    { name: 'H₂%', fieldName: '', value: '3.2 %', active: true, status: 's-ok' },
   ];
+
+  const cfg = widget?.config ?? {};
+  const deviceId = (cfg.deviceId as string) || '';
+  const cvFieldName = (cfg.cvFieldName as string) || '';
+
+  const { snapshot } = useDeviceSnapshot(deviceId);
 
   const sampleRate = widget?.config?.sampleRate ?? '50 kHz';
   const channels = widget?.config?.channels ?? '16 Active';
   const latency = widget?.config?.latency ?? '< 8 ms';
-  const cvValue = widget?.config?.cvValue ?? '38.2 MJ/m³';
+  const cvValueLive = cvFieldName && snapshot?.fields?.[cvFieldName] != null
+    ? String(snapshot.fields[cvFieldName])
+    : (widget?.config?.cvValue ?? '38.2 MJ/m³');
 
-  const cfg = widget?.config ?? {};
   const sensors = (cfg.sensors as SensorItem[]) ?? defaultSensors;
 
   return (
@@ -55,17 +62,24 @@ export function OverviewBeSenseWidget({
       <div className="card-body" style={{ flex: 1, minHeight: 0 }}>
         <div className="section-heading">Multimodal Inputs</div>
         <div className="sense-grid">
-          {sensors.map(({ name, value, active, status }, i) => (
-            <div key={i} className={`sensor-item${active ? ' active' : ''}`}>
-              <div>
-                <div className="sensor-name">{name}</div>
-                <div className="sensor-val">{value}</div>
+          {sensors.map(({ name, fieldName, value, active: defaultActive, status }, i) => {
+            const liveValue = fieldName && snapshot?.fields?.[fieldName] != null
+              ? String(snapshot.fields[fieldName])
+              : value;
+            const isActive = fieldName && snapshot?.fields?.[fieldName] != null ? true : defaultActive;
+
+            return (
+              <div key={i} className={`sensor-item${isActive ? ' active' : ''}`}>
+                <div>
+                  <div className="sensor-name">{name}</div>
+                  <div className="sensor-val">{liveValue}</div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                  <div className={`sensor-status ${status}`} />
+                </div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                <div className={`sensor-status ${status}`} />
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="divider" style={{ margin: '12px 0' }} />
@@ -95,7 +109,7 @@ export function OverviewBeSenseWidget({
         <div style={{ background: 'rgba(21,96,189,0.1)', border: '1px solid var(--k-border)', borderRadius: 3, padding: 8 }}>
           <div style={{ fontFamily: 'var(--k-font-tech)', fontSize: 10, color: 'var(--k-text-dim)', marginBottom: 4 }}>CALORIFIC VALUE</div>
           <div style={{ fontFamily: 'var(--k-font-display)', fontSize: 22, fontWeight: 700, color: 'var(--k-soft)' }}>
-            {cvValue}
+            {cvValueLive}
             <span style={{ fontSize: 13, color: 'var(--k-text-secondary)' }}> MJ/m³</span>
           </div>
           <div style={{ fontFamily: 'var(--k-font-tech)', fontSize: 10, color: 'var(--k-text-secondary)', marginTop: 2 }}>1024.7 BTU/SCF</div>
@@ -138,7 +152,15 @@ function OverviewMetricCard({
   const dispatch = useAppDispatch();
   const label = widget?.config?.label ?? defaultLabel;
   const unit = widget?.config?.unit ?? defaultUnit;
-  const value = widget?.config?.value ?? defaultValue;
+  const fieldName = (widget?.config?.fieldName as string) || '';
+  const deviceId = (widget?.config?.deviceId as string) || '';
+
+  // Fetch live data if deviceId configured
+  const { snapshot } = useDeviceSnapshot(deviceId);
+  const liveValue = deviceId && fieldName && snapshot?.fields?.[fieldName] != null
+    ? String(snapshot.fields[fieldName])
+    : defaultValue;
+
   const trend = widget?.config?.trend ?? defaultTrend;
 
   const handleLabelChange = (newLabel: string) => {
@@ -168,7 +190,7 @@ function OverviewMetricCard({
           label
         )}
       </div>
-      <div className="metric-value" id={id}>{value}</div>
+      <div className="metric-value" id={id}>{liveValue}</div>
       <div className="metric-unit">
         {editMode ? (
           <input
@@ -197,11 +219,14 @@ export function OverviewAnomalyMetricWidget({
   onConfigChange?: () => void;
 } = {}) {
   const { anomalyDisplay } = useCombustionSimulator();
+  const deviceId = (widget?.config?.deviceId as string) || '';
+  const fallbackValue = deviceId ? anomalyDisplay : '0.14';
+
   return (
     <OverviewMetricCard
       color="var(--k-green)"
       label="CD ANOMALY SCORE"
-      value={anomalyDisplay}
+      value={fallbackValue}
       unit="Normalised Index"
       trendClass="trend-down"
       trend="▼ LOW RISK"

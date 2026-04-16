@@ -4,7 +4,7 @@
   "private": true,
   "description": "Enterprise IoT Platform - Production-ready POC",
   "scripts": {
-    "dev": "./scripts/ensure-mongodb.sh && turbo run dev",
+    "dev": "../scripts/ensure-mongodb.sh && turbo run dev",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "test": "turbo run test",
@@ -13,7 +13,8 @@
     "stop": "./scripts/stop.sh",
     "status": "./scripts/status.sh",
     "simulate": "cd ../scripts && pnpm run simulate",
-    "seed:admin": "cd apps/api && pnpm seed:admin"
+    "seed:admin": "cd apps/api && pnpm seed:admin",
+    "seed:demo": "cd apps/api && pnpm seed:demo"
   },
   "devDependencies": {
     "turbo": "^1.11.3"

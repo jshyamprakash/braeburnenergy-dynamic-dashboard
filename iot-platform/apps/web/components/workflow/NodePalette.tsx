@@ -1,11 +1,12 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useState, useMemo } from 'react';
 import { ulid } from 'ulid';
 import { useReactFlow } from 'reactflow';
 import { useAppDispatch } from '@/lib/store';
 import { addNode } from '@/lib/store/slices/workflowSlice';
 import { useLicense } from '@/lib/hooks/useLicense';
+import { X } from 'lucide-react';
 
 /**
  * Node Palette Component
@@ -73,6 +74,15 @@ const NODE_TYPES: NodeTypeConfig[] = [
     description: 'Trigger when device stops sending data',
     icon: '📵',
     defaultConfig: { deviceId: '' },
+  },
+  {
+    type: 'trigger:webhook',
+    category: 'trigger',
+    visualType: 'trigger',
+    label: 'Webhook',
+    description: 'Receive HTTP POST from external system',
+    icon: '🔗',
+    defaultConfig: { webhookSecret: '' },
   },
 
   // Conditions
@@ -162,6 +172,15 @@ const NODE_TYPES: NodeTypeConfig[] = [
     defaultConfig: { message: '', level: 'info' },
   },
   {
+    type: 'action:updateVariable',
+    category: 'action',
+    visualType: 'action',
+    label: 'Update Variable',
+    description: 'Set/increment/decrement workflow variables',
+    icon: '🔤',
+    defaultConfig: { variableName: '', value: '', operation: 'set' },
+  },
+  {
     type: 'action:writeDeviceState',
     category: 'action',
     visualType: 'action',
@@ -241,6 +260,15 @@ const NODE_TYPES: NodeTypeConfig[] = [
     description: 'Sum, average, min, max',
     icon: '📊',
     defaultConfig: { field: '', operation: 'sum' },
+  },
+  {
+    type: 'transform:dataMapping',
+    category: 'transform',
+    visualType: 'transform',
+    label: 'Data Mapping',
+    description: 'Map input fields to output fields',
+    icon: '🗺️',
+    defaultConfig: { mappings: [] },
   },
 
   // Data (ADR-017 — renders as ActionNode visual, blue)
@@ -360,6 +388,17 @@ export default function NodePalette() {
   const dispatch = useAppDispatch();
   const { getViewport } = useReactFlow();
   const { isModuleEnabled } = useLicense();
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredNodeTypes = useMemo(() => {
+    if (!searchTerm.trim()) return NODE_TYPES;
+    const lower = searchTerm.toLowerCase();
+    return NODE_TYPES.filter(
+      (node) =>
+        node.label.toLowerCase().includes(lower) ||
+        node.description.toLowerCase().includes(lower)
+    );
+  }, [searchTerm]);
 
   const handleAddNode = useCallback(
     (nodeType: NodeTypeConfig) => {
@@ -436,22 +475,47 @@ export default function NodePalette() {
   };
 
   return (
-    <div className="w-52 h-full bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 overflow-y-auto p-3">
-      <div className="mb-4">
+    <div className="w-52 h-full bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 overflow-y-auto p-3 flex flex-col">
+      <div className="mb-4 flex-shrink-0">
         <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">
           Node Palette
         </h2>
-        <p className="text-xs text-gray-600 dark:text-gray-400">
+        <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
           Click to add nodes to canvas
         </p>
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Search nodes..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
+          />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
       </div>
 
-      {renderCategory('trigger', NODE_TYPES)}
-      {renderCategory('condition', NODE_TYPES)}
-      {renderCategory('action', NODE_TYPES)}
-      {renderCategory('transform', NODE_TYPES)}
-      {renderCategory('data', NODE_TYPES)}
-      {renderCategory('logic', NODE_TYPES)}
+      <div className="overflow-y-auto flex-1">
+        {renderCategory('trigger', filteredNodeTypes)}
+        {renderCategory('condition', filteredNodeTypes)}
+        {renderCategory('action', filteredNodeTypes)}
+        {renderCategory('transform', filteredNodeTypes)}
+        {renderCategory('data', filteredNodeTypes)}
+        {renderCategory('logic', filteredNodeTypes)}
+
+        {searchTerm && filteredNodeTypes.length === 0 && (
+          <p className="text-center text-sm text-gray-500 dark:text-gray-400 py-4">
+            No nodes match "{searchTerm}"
+          </p>
+        )}
+      </div>
     </div>
   );
 }

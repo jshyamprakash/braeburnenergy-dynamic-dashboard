@@ -29,13 +29,13 @@ export function useMqttGateways(params?: { applicationId?: string; limit?: numbe
       if (params?.limit) queryParams.set('limit', params.limit.toString());
       if (params?.page) queryParams.set('page', params.page.toString());
 
-      const response = await apiClient.get<any>(`/mqtt-gateways?${queryParams}`);
-      const gateways = response.data.data?.map((g: any) => ({
+      const response = await apiClient.getPaginated<any>(`/mqtt-gateways?${queryParams}`);
+      const gateways = response.data.map((g: any) => ({
         ...g,
         id: g.id || (g._id ? (typeof g._id === 'string' ? g._id : g._id.toString?.() || g._id) : undefined),
       })) as MqttGateway[];
 
-      return { gateways, pagination: response.data.pagination };
+      return { gateways, pagination: response.pagination };
     },
   });
 }

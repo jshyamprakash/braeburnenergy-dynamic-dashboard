@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAppDispatch } from '@/lib/store';
 import { updateKosmosWidgetConfig } from '@/lib/store/slices/dashboardSlice';
+import { useLicense } from '@/lib/hooks/useLicense';
+import { useBeAgentChat } from '@/lib/hooks/useBeAgentChat';
 import type {
   KosmosPage,
   BeAgentTabConfig,
@@ -78,6 +80,8 @@ interface Props {
 
 export function KosmosBeAgentTabPanel({ page, editMode, onConfigChange }: Props) {
   const dispatch = useAppDispatch();
+  const { isModuleEnabled } = useLicense();
+  const { sendMessage, isStreaming, tokens, error, clearChat } = useBeAgentChat();
 
   /* ── Find widget & config ── */
   const widget = page.widgets.find((w) => w.type === 'beAgentTabConfig');
@@ -87,13 +91,7 @@ export function KosmosBeAgentTabPanel({ page, editMode, onConfigChange }: Props)
   const platformStatus: BeAgentStatusRow[] = cfg.platformStatus ?? [];
   const fleetOverview: BeAgentFleetMetric[] = cfg.fleetOverview ?? [];
   const recentActions: BeAgentAction[] = cfg.recentActions ?? [];
-  const cannedResponses: string[] = cfg.cannedResponses ?? [
-    'All systems nominal. No intervention required.',
-    'CD anomaly score within acceptable range.',
-    'Recommend monitoring VIB-X bearing channel.',
-    'Fleet efficiency benchmark: top quartile.',
-    'CalorieSense™ reporting stable CV. H₂ blend nominal.',
-  ];
+  const deviceId = (cfg.deviceId as string) || undefined;
 
   /* ── Persist helper ── */
   const persist = useCallback(
@@ -143,32 +141,53 @@ export function KosmosBeAgentTabPanel({ page, editMode, onConfigChange }: Props)
     },
   ]);
   const [chatInput, setChatInput] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
+  const [currentAgentMsgId, setCurrentAgentMsgId] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isTyping]);
+  }, [messages, isStreaming]);
+
+  // Handle incoming tokens from hook
+  useEffect(() => {
+    if (tokens.length === 0 || !currentAgentMsgId) return;
+    const fullText = tokens.join('');
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === currentAgentMsgId ? { ...m, text: fullText } : m
+      )
+    );
+  }, [tokens, currentAgentMsgId]);
+
+  // When streaming stops, clear the current message ID
+  useEffect(() => {
+    if (!isStreaming && currentAgentMsgId) {
+      setCurrentAgentMsgId(null);
+    }
+  }, [isStreaming, currentAgentMsgId]);
 
   const sendChat = useCallback(() => {
     const txt = chatInput.trim();
-    if (!txt || isTyping) return;
+    if (!txt || isStreaming || !isModuleEnabled('be_agent')) return;
+
     setChatInput('');
+    const msgId = shortId();
     setMessages((prev) => [
       ...prev,
       { id: shortId(), kind: 'user-q', label: 'OPERATOR', text: txt },
     ]);
-    setIsTyping(true);
-    const delay = 1200 + Math.random() * 600;
-    setTimeout(() => {
-      setIsTyping(false);
-      const reply = cannedResponses[Math.floor(Math.random() * cannedResponses.length)];
-      setMessages((prev) => [
-        ...prev,
-        { id: shortId(), kind: 'agent', label: 'BE AGENT™', text: reply },
-      ]);
-    }, delay);
-  }, [chatInput, isTyping, cannedResponses]);
+
+    // Start agent message
+    const agentMsgId = shortId();
+    setCurrentAgentMsgId(agentMsgId);
+    setMessages((prev) => [
+      ...prev,
+      { id: agentMsgId, kind: 'agent', label: 'BE AGENT™', text: '' },
+    ]);
+
+    // Send to backend (fire-and-forget, streaming via Socket.io)
+    sendMessage(txt, deviceId);
+  }, [chatInput, isStreaming, isModuleEnabled, sendMessage, deviceId]);
 
   /* ── Edit states ── */
   const [editingModIdx, setEditingModIdx] = useState<number | null>(null);
@@ -698,8 +717,26 @@ export function KosmosBeAgentTabPanel({ page, editMode, onConfigChange }: Props)
               );
             })}
 
+            {/* Error message */}
+            {error && (
+              <div
+                style={{
+                  alignSelf: 'flex-start',
+                  background: 'rgba(220,50,50,0.15)',
+                  borderLeft: '2px solid #ff6060',
+                  padding: '10px 14px',
+                  borderRadius: 3,
+                  color: '#ff6060',
+                  fontSize: 12,
+                  fontFamily: 'var(--k-font-tech)',
+                }}
+              >
+                {error}
+              </div>
+            )}
+
             {/* Typing indicator */}
-            {isTyping && (
+            {isStreaming && (
               <div
                 style={{
                   alignSelf: 'flex-start',
@@ -744,7 +781,8 @@ export function KosmosBeAgentTabPanel({ page, editMode, onConfigChange }: Props)
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') sendChat(); }}
-              placeholder="Query BE Agent™..."
+              placeholder={isModuleEnabled('be_agent') ? 'Query BE Agent™...' : 'BE Agent not enabled'}
+              disabled={!isModuleEnabled('be_agent')}
               style={{
                 flex: 1,
                 background: 'rgba(6,15,30,0.8)',
@@ -755,13 +793,14 @@ export function KosmosBeAgentTabPanel({ page, editMode, onConfigChange }: Props)
                 fontFamily: 'var(--k-font-main)',
                 fontSize: 12,
                 outline: 'none',
+                opacity: !isModuleEnabled('be_agent') ? 0.5 : 1,
               }}
             />
             <button
               onClick={sendChat}
-              disabled={isTyping || !chatInput.trim()}
+              disabled={isStreaming || !chatInput.trim() || !isModuleEnabled('be_agent')}
               style={{
-                background: isTyping ? 'rgba(21,96,189,0.3)' : 'var(--k-base)',
+                background: (isStreaming || !isModuleEnabled('be_agent')) ? 'rgba(21,96,189,0.3)' : 'var(--k-base)',
                 border: 'none',
                 borderRadius: 3,
                 padding: '7px 14px',
@@ -769,7 +808,7 @@ export function KosmosBeAgentTabPanel({ page, editMode, onConfigChange }: Props)
                 fontFamily: 'var(--k-font-tech)',
                 fontSize: 10,
                 letterSpacing: 1,
-                cursor: isTyping ? 'default' : 'pointer',
+                cursor: (isStreaming || !isModuleEnabled('be_agent')) ? 'default' : 'pointer',
                 transition: 'background 0.15s',
               }}
             >

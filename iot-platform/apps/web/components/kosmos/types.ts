@@ -66,6 +66,7 @@ export interface BeAgentTabConfig {
   fleetOverview: BeAgentFleetMetric[];
   recentActions: BeAgentAction[];
   cannedResponses: string[];
+  deviceId?: string;
 }
 
 export interface KosmosWidget {
@@ -233,19 +234,21 @@ export const PALETTE_ENTRIES: PaletteEntry[] = [
     icon: '◈',
     description: 'Sensor fusion, acquisition and CalorieSense link.',
     defaultConfig: {
+      deviceId: '',
+      cvFieldName: '',
       sampleRate: '50 kHz',
       channels: '16 Active',
       latency: '< 8 ms',
       cvValue: '38.2 MJ/m³',
       sensors: [
-        { name: 'CD-P01', value: '4.2 kPa', active: true, status: 's-ok' },
-        { name: 'CD-P02', value: '4.1 kPa', active: true, status: 's-ok' },
-        { name: 'T-EGT', value: '612°C', active: true, status: 's-ok' },
-        { name: 'VIB-X', value: '2.1 mm/s', active: false, status: 's-warn' },
-        { name: 'NOx', value: '18.4 ppm', active: true, status: 's-ok' },
-        { name: 'CO', value: '12.1 ppm', active: true, status: 's-ok' },
-        { name: 'CV', value: '38.2 MJ/m³', active: true, status: 's-ok' },
-        { name: 'H₂%', value: '3.2 %', active: true, status: 's-ok' },
+        { name: 'CD-P01', fieldName: '', value: '4.2 kPa', active: true, status: 's-ok' },
+        { name: 'CD-P02', fieldName: '', value: '4.1 kPa', active: true, status: 's-ok' },
+        { name: 'T-EGT', fieldName: '', value: '612°C', active: true, status: 's-ok' },
+        { name: 'VIB-X', fieldName: '', value: '2.1 mm/s', active: false, status: 's-warn' },
+        { name: 'NOx', fieldName: '', value: '18.4 ppm', active: true, status: 's-ok' },
+        { name: 'CO', fieldName: '', value: '12.1 ppm', active: true, status: 's-ok' },
+        { name: 'CV', fieldName: '', value: '38.2 MJ/m³', active: true, status: 's-ok' },
+        { name: 'H₂%', fieldName: '', value: '3.2 %', active: true, status: 's-ok' },
       ],
     },
     defaultLayout: { x: 16, y: 16, w: 300, h: 760 },

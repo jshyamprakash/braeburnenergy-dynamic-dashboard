@@ -28,6 +28,18 @@ const BE_AGENT_DEVICE_WIDGETS = new Set([
   'overviewBeAgentStatus',
 ]);
 
+// Metric widgets with deviceId + fieldName config
+const METRIC_WIDGET_TYPES = new Set([
+  'overviewAnomalyMetric',
+  'overviewLoadMetric',
+  'overviewEgtMetric',
+]);
+
+// BeSense widget needs device selector
+const BESENSE_WIDGET_TYPES = new Set([
+  'overviewBeSense',
+]);
+
 /** Data Flow widget nested layers/blocks editor */
 function DataFlowConfigEditor({
   initialLayers,
@@ -312,7 +324,7 @@ export function WidgetConfigPanel({ pageId, widget, applicationId, onClose, onCo
   // Fetch selected device to get its attributes for field selector
   const selectedDeviceId = (widget.config?.deviceId as string) || '';
   const { data: selectedDevice } = useDevice(
-    selectedDeviceId && (CHART_WIDGET_TYPES.has(type) || BE_AGENT_DEVICE_WIDGETS.has(type)) ? selectedDeviceId : ''
+    selectedDeviceId && (CHART_WIDGET_TYPES.has(type) || BE_AGENT_DEVICE_WIDGETS.has(type) || METRIC_WIDGET_TYPES.has(type) || BESENSE_WIDGET_TYPES.has(type)) ? selectedDeviceId : ''
   );
   const deviceAttributes = selectedDevice?.attributes ? Object.keys(selectedDevice.attributes) : [];
 
@@ -365,10 +377,11 @@ export function WidgetConfigPanel({ pageId, widget, applicationId, onClose, onCo
   const ARRAY_FIELD_SPECS: Record<string, Record<string, ArrayFieldSpec>> = {
     overviewBeSense: {
       sensors: { subFields: [
-        { key: 'name',   kind: 'text' },
-        { key: 'value',  kind: 'text' },
-        { key: 'active', kind: 'bool' },
-        { key: 'status', kind: 'select', options: ['s-ok', 's-warn'] },
+        { key: 'name',      kind: 'text' },
+        { key: 'fieldName', kind: 'text' },
+        { key: 'value',     kind: 'text' },
+        { key: 'active',    kind: 'bool' },
+        { key: 'status',    kind: 'select', options: ['s-ok', 's-warn'] },
       ]},
     },
     overviewBeAgentStatus: {
@@ -718,7 +731,7 @@ export function WidgetConfigPanel({ pageId, widget, applicationId, onClose, onCo
                         padding: 6,
                       }}
                     />
-                  ) : key === 'deviceId' && (CHART_WIDGET_TYPES.has(type) || BE_AGENT_DEVICE_WIDGETS.has(type)) ? (
+                  ) : key === 'deviceId' && (CHART_WIDGET_TYPES.has(type) || BE_AGENT_DEVICE_WIDGETS.has(type) || METRIC_WIDGET_TYPES.has(type) || BESENSE_WIDGET_TYPES.has(type)) ? (
                     <select
                       value={String(value)}
                       onChange={(e) => saveField(key, e.target.value)}
@@ -731,7 +744,7 @@ export function WidgetConfigPanel({ pageId, widget, applicationId, onClose, onCo
                         </option>
                       ))}
                     </select>
-                  ) : key === 'fieldName' && CHART_WIDGET_TYPES.has(type) ? (
+                  ) : key === 'fieldName' && (CHART_WIDGET_TYPES.has(type) || METRIC_WIDGET_TYPES.has(type)) ? (
                     deviceAttributes.length > 0 ? (
                       <select
                         value={String(value)}

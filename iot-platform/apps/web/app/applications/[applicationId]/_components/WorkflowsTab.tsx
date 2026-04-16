@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { Plus, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Upload, Edit2, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { apiClient } from '@/lib/api-client';
 import CreateWorkflowModal from '@/components/workflow/CreateWorkflowModal';
+import { BulkImportModal } from '@/components/workflow/BulkImportModal';
 import { toast } from 'sonner';
 import { PREREQ_TOOLTIPS } from '@/lib/constants/ui-messages';
 import type { Workflow } from '@repo/types';
@@ -23,6 +24,7 @@ export function WorkflowsTab({
   onRefresh,
 }: WorkflowsTabProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [deletingWorkflowId, setDeletingWorkflowId] = useState<string | null>(null);
 
   const handleDelete = useCallback(
@@ -54,7 +56,14 @@ export function WorkflowsTab({
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <button
+          onClick={() => setIsBulkImportOpen(true)}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-gray-700 dark:text-gray-300"
+        >
+          <Upload className="h-4 w-4" />
+          Import
+        </button>
         <button
           onClick={() => setIsModalOpen(true)}
           disabled={deviceCount === 0}
@@ -147,6 +156,15 @@ export function WorkflowsTab({
         applicationId={applicationId}
         onClose={() => setIsModalOpen(false)}
         onSuccess={handleSuccess}
+      />
+
+      {/* Bulk Import Modal */}
+      <BulkImportModal
+        isOpen={isBulkImportOpen}
+        onClose={() => setIsBulkImportOpen(false)}
+        onSuccess={handleSuccess}
+        applicationId={applicationId}
+        existingWorkflows={workflows}
       />
 
       {/* Delete Confirmation Modal */}

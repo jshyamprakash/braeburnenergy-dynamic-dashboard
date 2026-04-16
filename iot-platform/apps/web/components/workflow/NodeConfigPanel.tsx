@@ -348,6 +348,29 @@ const NODE_CONFIG_SCHEMAS: Record<string, FieldConfig[]> = {
     },
     { key: 'outputField', label: 'Output Field', type: 'text', placeholder: 'rul' },
   ],
+  'action:updateVariable': [
+    { key: 'label', label: 'Node Label', type: 'text', placeholder: 'e.g., Increment Counter', required: true },
+    { key: 'description', label: 'Description', type: 'textarea' },
+    { key: 'variableName', label: 'Variable Name', type: 'text', placeholder: 'e.g., counter', required: true, note: 'Name of the workflow variable to update' },
+    { key: 'value', label: 'Value', type: 'textarea', placeholder: 'e.g., 1 or {{workspace.x}}', required: true, note: 'Value or expression (supports {{variables}})' },
+    {
+      key: 'operation',
+      label: 'Operation',
+      type: 'select',
+      options: [
+        { value: 'set', label: 'Set' },
+        { value: 'increment', label: 'Increment' },
+        { value: 'decrement', label: 'Decrement' },
+        { value: 'append', label: 'Append' },
+      ],
+      required: true,
+    },
+  ],
+  'transform:dataMapping': [
+    { key: 'label', label: 'Node Label', type: 'text', placeholder: 'e.g., Rename Fields', required: true },
+    { key: 'description', label: 'Description', type: 'textarea' },
+    { key: 'mappings', label: 'Field Mappings', type: 'mapping-list', note: 'Define which input fields map to output fields' },
+  ],
 };
 
 export default function NodeConfigPanel() {
