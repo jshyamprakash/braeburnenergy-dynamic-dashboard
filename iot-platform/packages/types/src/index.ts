@@ -852,3 +852,74 @@ export interface Dashboard {
   createdAt: string | Date;
   updatedAt: string | Date;
 }
+
+// ===========================
+// Alarm Notifications (ADR-059)
+// ===========================
+
+export type NotificationChannelType = 'email' | 'webhook' | 'in-app';
+export type AlarmPrioritySeverity = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'INFO';
+
+export interface NotificationChannelEmailConfig {
+  to: string;      // comma-separated recipients
+}
+
+export interface NotificationChannelWebhookConfig {
+  url: string;
+  headers?: Record<string, string>;
+}
+
+export interface NotificationChannel {
+  id: string;
+  orgId: string;
+  name: string;
+  type: NotificationChannelType;
+  config: NotificationChannelEmailConfig | NotificationChannelWebhookConfig | Record<string, never>;
+  isActive: boolean;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+}
+
+export interface CreateNotificationChannelBody {
+  name: string;
+  type: NotificationChannelType;
+  config?: Record<string, any>;
+  isActive?: boolean;
+}
+
+export interface UpdateNotificationChannelBody {
+  name?: string;
+  config?: Record<string, any>;
+  isActive?: boolean;
+}
+
+export interface EscalationPolicyTier {
+  delayMinutes: number;
+  channelIds: string[];
+  minimumSeverity: AlarmPrioritySeverity;
+}
+
+export interface EscalationPolicy {
+  id: string;
+  orgId: string;
+  name: string;
+  alarmRuleId?: string;   // Optional: scoped to a specific alarm rule; omit for org-wide
+  tiers: EscalationPolicyTier[];
+  isActive: boolean;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+}
+
+export interface CreateEscalationPolicyBody {
+  name: string;
+  alarmRuleId?: string;
+  tiers: EscalationPolicyTier[];
+  isActive?: boolean;
+}
+
+export interface UpdateEscalationPolicyBody {
+  name?: string;
+  alarmRuleId?: string;
+  tiers?: EscalationPolicyTier[];
+  isActive?: boolean;
+}

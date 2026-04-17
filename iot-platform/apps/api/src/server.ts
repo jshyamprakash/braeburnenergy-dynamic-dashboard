@@ -30,6 +30,8 @@ import { webhookRoutes } from './routes/webhook.routes';
 import { licenseRoutes } from './routes/license.routes';
 import { moduleRoutes } from './routes/module.routes';
 import { beAgentRoutes } from './routes/be-agent.routes';
+import { notificationChannelRoutes } from './routes/notification-channel.routes';
+import { escalationPolicyRoutes } from './routes/escalation-policy.routes';
 import { registerAuditMiddleware } from './middleware/audit.middleware';
 
 /**
@@ -114,6 +116,7 @@ export async function createServer() {
         { name: 'Devices', description: 'Device management operations' },
         { name: 'Device States', description: 'Time-series device state management with MongoDB Time Series' },
         { name: 'BE Agent', description: 'BE Agent AI chat — OpenAI-compatible streaming (ADR-058)' },
+        { name: 'Alarm Notifications', description: 'Notification channels and escalation policies (ADR-059)' },
       ],
       components: {
         securitySchemes: {
@@ -248,6 +251,8 @@ export async function createServer() {
   await fastify.register(deviceStateRoutes);
   await fastify.register(notificationRoutes);
   await fastify.register(webhookRoutes);
+  await fastify.register(notificationChannelRoutes);
+  await fastify.register(escalationPolicyRoutes);
   await fastify.register(beAgentRoutes, { prefix: config.api.fullPrefix });
 
   // Root endpoint

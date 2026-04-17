@@ -1,2 +1,21 @@
 // LLAMP-SPEC v1 | FEATURE_TASKS
-// (cleared — no active task)
+// task: ADR-059 Alarm Notification Channels + Escalation Policies
+// backend: T01-T10 (@sonnet) | frontend: T11-T15 (@haiku, next session)
+
+=T01: [backend] @repo/types — add NotificationChannel + EscalationPolicy + CreateNotificationChannelBody + CreateEscalationPolicyBody interfaces; export from index.ts
+=T02: [backend] notification-channel.model.ts — INotificationChannel Mongoose schema (orgId ObjectId, name string, type enum email|webhook|in-app, config Mixed, isActive bool, timestamps); export model + interface
+=T03: [backend] escalation-policy.model.ts — IEscalationPolicy schema (orgId, name, alarmRuleId? ObjectId, tiers:[{delayMinutes:number, channelIds:ObjectId[], minimumSeverity:enum}], isActive, timestamps); export model + interface
+=T04: [backend] alarm.model.ts — add escalatedTiers:number[] field (default []); add compound index (orgId, state, createdAt) for escalation poll query
+=T05: [backend] alarm-notification.service.ts — AlarmNotificationService class; sendToChannel(channel, alarm); email path: nodemailer createTransport from config.smtp (skip if SMTP_HOST unset); webhook path: fetch with AbortController 10s; in-app path: call NotificationService.create() + broadcastNotification(); notifyOnCreate(orgId, alarm): find active channels by orgId+type:in-app, dispatch fire-and-forget
+=T06: [backend] alarm-escalation.service.ts — AlarmEscalationService singleton; node-cron 60s poll; query AlarmInstance ACTIVE_UNACKED where createdAt < now-delayMinutes; for each: find EscalationPolicy (alarmRuleId match first, org wildcard fallback); for each tier not in escalatedTiers: dispatch channels via AlarmNotificationService; $push escalatedTiers; start()/stop() methods
+=T07: [backend] alarm.service.ts — after createInstance() insert, call alarmNotificationService.notifyOnCreate() fire-and-forget (no await, catch logged); inject AlarmNotificationService via setNotificationService(svc) setter (avoid circular deps)
+=T08: [backend] notification-channel.controller.ts + routes — 5 endpoints: POST /notification-channels, GET /notification-channels, GET /notification-channels/:id, PATCH /notification-channels/:id, DELETE /notification-channels/:id; requireAuth + Admin role; Zod validation; Swagger docs
+=T09: [backend] escalation-policy.controller.ts + routes — 5 endpoints same pattern; requireAuth + Admin role; validate channelIds exist in org; Swagger docs
+=T10: [backend] index.ts + config.ts + server.ts — add smtp block to config.ts (SMTP_HOST/PORT/USER/PASS/FROM); add SMTP_* to .env.example; instantiate AlarmEscalationService after HeartbeatService in index.ts (start/stop teardown); setNotificationService() on AlarmService; register notification-channel + escalation-policy routes in server.ts
+
+// ── FRONTEND (next session — switch to Haiku) ──
+=T11: [frontend] @haiku — useNotificationChannels hook (React Query: list, create, update, delete, toggle mutations); useEscalationPolicies hook (list, create, update, delete mutations)
+=T12: [frontend] @haiku — NotificationChannelModal — type selector (email|webhook|in-app); conditional config fields (email: to+smtpHost display; webhook: url+headers textarea; in-app: no config); isActive toggle; create + edit modes
+=T13: [frontend] @haiku — EscalationPolicyModal — alarmRule selector (optional); dynamic tier builder (add/remove tiers, delayMinutes input, channel multi-select, severity select); create + edit modes
+=T14: [frontend] @haiku — /alarm-management page — two tabs: "Notification Channels" (table: name/type/status + add/edit/delete) + "Escalation Policies" (table: name/rule/tiers count + add/edit/delete); Admin+ gate
+=T15: [frontend] @haiku — Sidebar nav entry for /alarm-management (Bell icon, Admin+ only); build clean verification

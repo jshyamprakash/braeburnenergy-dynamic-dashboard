@@ -118,6 +118,17 @@
     Applies to float/int32/uint32 only. Default: big-endian.
 - OPC-UA: Subscription-based node monitoring
 
+## Alarm Notifications & Escalation (ADR-059)
+- `NotificationChannel` model (org-scoped): `type: email | webhook | in-app`; config holds SMTP or webhook URL+headers
+- `EscalationPolicy` model (org-scoped): optional `alarmRuleId`; `tiers[]: { delayMinutes, channelIds[], minimumSeverity }`
+- `AlarmInstance` gains `escalatedTiers: number[]` — tracks dispatched tier indices to prevent re-fire
+- `AlarmNotificationService`: fire-and-forget `sendToChannel()` — nodemailer (email), fetch 10s timeout (webhook), Socket.io (in-app)
+- `AlarmEscalationService`: node-cron 60s singleton; queries `ACTIVE_UNACKED` alarms past tier delay; matches policy by `alarmRuleId` then org wildcard; wired in `index.ts` after `HeartbeatService`
+- Alarm creation: `AlarmService.createInstance()` calls `notifyOnCreate()` fire-and-forget (ADR-020 pattern)
+- SMTP stub mode: `SMTP_HOST` unset → email channels skip silently (no crash)
+- Env vars: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`
+- Routes: `POST|GET|PATCH|DELETE /notification-channels`, `POST|GET|PATCH|DELETE /escalation-policies` (Admin+)
+
 ## Critical Pitfalls
 - MongoDB replica set REQUIRED (compliance, oplog, transactions)
 - `device_derived_states` upserted via per-key `$set` paths (`'derived.key'`); never replace whole object

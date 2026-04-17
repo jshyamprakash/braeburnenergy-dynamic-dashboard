@@ -8,6 +8,9 @@ import { WorkflowEngineService } from './services/workflow-engine.service';
 import { WorkflowTriggerDispatcher } from './services/workflow-trigger-dispatcher.service';
 import { workflowSchedulerService } from './services/workflow-scheduler.service';
 import { heartbeatService } from './services/heartbeat.service';
+import { alarmNotificationService } from './services/alarm-notification.service';
+import { alarmEscalationService } from './services/alarm-escalation.service';
+import { alarmServiceInstance } from './services/alarm.service';
 import { modbusGatewayManager } from './services/modbus-gateway-manager.service';
 import { opcuaGatewayManager } from './services/opcua-gateway-manager.service';
 import { mqttGatewayManager } from './services/mqtt-gateway-manager.service';
@@ -123,6 +126,12 @@ async function main() {
     // Register trigger dispatcher with heartbeat service (ADR-041: device offline detection)
     heartbeatService.setTriggerDispatcher(triggerDispatcher, fastify.log as any);
 
+    // Wire ADR-059: Alarm Notification + Escalation services
+    alarmNotificationService.setIo(io);
+    alarmNotificationService.setLogger(fastify.log as any);
+    alarmServiceInstance.setNotificationService(alarmNotificationService);
+    alarmEscalationService.setNotificationService(alarmNotificationService);
+
     // Start workflow scheduler for trigger:scheduled workflows
     console.log('⏰ Starting workflow scheduler...');
     await workflowSchedulerService.start(workflowEngineService, fastify.log as any);
@@ -130,6 +139,10 @@ async function main() {
     // Start device heartbeat monitor (ADR-041)
     console.log('💓 Starting device heartbeat monitor...');
     heartbeatService.start(fastify.log as any);
+
+    // Start alarm escalation daemon (ADR-059)
+    console.log('🔔 Starting alarm escalation service...');
+    alarmEscalationService.start(fastify.log as any);
 
     // Now start the server
     await fastify.listen({
@@ -155,6 +168,7 @@ async function main() {
         fastify.log.info(`Received ${signal}, closing server gracefully...`);
         workflowSchedulerService.stop();
         heartbeatService.stop();
+        alarmEscalationService.stop();
         await stopWebSocketBridge();
         await stopProcessingEngine();
         await stopStorageWorker();

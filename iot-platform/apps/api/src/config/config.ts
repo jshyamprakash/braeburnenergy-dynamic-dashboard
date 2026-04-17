@@ -111,6 +111,16 @@ export const config = {
     apiKey: process.env.AI_CHAT_API_KEY || 'stub',
     model: process.env.AI_CHAT_MODEL || 'gpt-4o-mini',
   },
+
+  // SMTP Configuration (ADR-059 — Alarm Notification Channels)
+  // Leave SMTP_HOST empty to run in stub mode — email channels skip silently.
+  smtp: {
+    host: process.env.SMTP_HOST || '',
+    port: parseInt(process.env.SMTP_PORT || '587', 10),
+    user: process.env.SMTP_USER || '',
+    pass: process.env.SMTP_PASS || '',
+    from: process.env.SMTP_FROM || '',
+  },
 } as const;
 
 // Validate required configuration
@@ -136,4 +146,4 @@ export function validateConfig() {
 
 // Export individual configs for convenience
 export const { env, isDevelopment, isProduction, isTest } = config;
-export const { server, database, websocket, logging, security, api, nats, redis, worker, processing, license, ai } = config;
+export const { server, database, websocket, logging, security, api, nats, redis, worker, processing, license, ai, smtp } = config;

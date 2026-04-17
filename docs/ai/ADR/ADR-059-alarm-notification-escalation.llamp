@@ -1,0 +1,40 @@
+// LLAMP-SPEC v1 | ADR-059
+=adr: 059
+=title: Alarm Notification Channels + Escalation Policies
+=date: 2026-04-17
+=status: accepted
+
+#ctx
+~AlarmInstance ISA-18.2 state machine fires alarms but has no outbound delivery mechanism
+~No escalation path when ACTIVE_UNACKED alarms age past operator response threshold
+~Notification model (ADR task) already exists for workflow:sendNotification — in-app only
+~HeartbeatService (ADR-041) and WorkflowSchedulerService (ADR-040) establish node-cron singleton pattern
+
+#opts
+=opt_A: Push all notifications synchronously from alarm creation — blocks ingest path
+=opt_B: Fire-and-forget from alarm creation + separate escalation cron — non-blocking, consistent with ADR-020/041
+~selected: opt_B
+
+#decision
+~NotificationChannel model (orgId, name, type:email|webhook|in-app, config:{to,smtpHost}|{url,headers}|{})
+~EscalationPolicy model (orgId, alarmRuleId?:ObjectId optional, tiers:[{delayMinutes,channelIds[],minimumSeverity}])
+~AlarmNotificationService: sendToChannel(channel, alarm) — nodemailer(email) | fetch(webhook) | Socket.io(in-app) — fire-and-forget, errors logged only
+~AlarmService.createInstance(): after ISA-18.2 insert, call AlarmNotificationService.notifyOnCreate() fire-and-forget (same pattern as dispatchDeviceStateChange in ADR-020)
+~AlarmEscalationService: node-cron 60s singleton — query ACTIVE_UNACKED where createdAt < now−tier.delayMinutes; match EscalationPolicy by alarmRuleId (exact) then orgId wildcard; dispatch via AlarmNotificationService; idempotent (track dispatched tiers in AlarmInstance.escalatedTiers[])
+~AlarmInstance gains escalatedTiers:number[] field (tier indices already dispatched — prevents re-fire)
+~Routes: /notification-channels (CRUD, Admin+) | /escalation-policies (CRUD, Admin+)
+~SMTP env: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM added to config.ts + .env.example
+~Wire AlarmEscalationService in index.ts after HeartbeatService (same SIGINT/SIGTERM teardown)
+
+#consequences
+=breaking: AlarmInstance gains optional escalatedTiers field — existing docs unaffected (undefined treated as [])
+=perf: +1 compound query per 60s poll (index: orgId + state + createdAt); +nodemailer dep
+=email: SMTP_HOST unset → email channels skip silently (stub mode, no crash)
+=webhook: native fetch with 10s AbortController timeout (same pattern as executeActionCallWebhook)
+=scope: frontend = new /alarm-management page (NotificationChannels tab + EscalationPolicies tab)
+
+#scope
+=arch_summary_update: yes
+=extends_adrs: [ADR-020, ADR-041, ADR-040]
+=new_models: [NotificationChannel, EscalationPolicy]
+=modified_models: [AlarmInstance (+escalatedTiers)]

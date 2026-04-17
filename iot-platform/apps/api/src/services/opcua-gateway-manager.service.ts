@@ -3,7 +3,7 @@ import { OpcuaGateway, type IOpcuaGateway } from '../models';
 import { OpcuaClientService } from './opcua-client.service';
 import mongoose from 'mongoose';
 import { DataQualityService } from './data-quality.service';
-import { AlarmService } from './alarm.service';
+import { alarmServiceInstance } from './alarm.service';
 import type { NatsClient } from '../lib/nats-client.js';
 import { DEFAULT_ORG_ID } from '../lib/request-context';
 
@@ -27,12 +27,12 @@ interface GatewayInstance {
 export class OpcuaGatewayManager {
   private instances: Map<string, GatewayInstance> = new Map();
   private dataQualityService: DataQualityService;
-  private alarmService: AlarmService;
+  private alarmService: typeof alarmServiceInstance;
   private natsClient?: NatsClient;
 
   constructor() {
     this.dataQualityService = new DataQualityService();
-    this.alarmService = new AlarmService();
+    this.alarmService = alarmServiceInstance;
   }
 
   /** Returns number of gateways currently running (ADR-057) */

@@ -1,4 +1,6 @@
 import { AlarmRule, AlarmInstance, DeviceState, type IAlarmRule, type IAlarmInstance, type AlarmState } from '../models';
+import type { AlarmNotificationService } from './alarm-notification.service';
+import { DEFAULT_ORG_ID } from '../lib/request-context';
 
 /**
  * AlarmService
@@ -14,6 +16,16 @@ export interface AlarmEvaluationResult {
 }
 
 export class AlarmService {
+  private notificationService?: AlarmNotificationService;
+
+  /**
+   * Inject AlarmNotificationService (ADR-059) — setter avoids circular deps.
+   * Call this from index.ts after both services are instantiated.
+   */
+  setNotificationService(svc: AlarmNotificationService): void {
+    this.notificationService = svc;
+  }
+
   /**
    * Evaluate device state against all active alarm rules
    * Called during device state ingestion
@@ -77,6 +89,14 @@ export class AlarmService {
               },
             ],
           });
+
+          // ADR-059: fire-and-forget in-app notification on alarm creation
+          // AlarmRule has no orgId field (POC constraint) — use DEFAULT_ORG_ID
+          if (this.notificationService) {
+            this.notificationService
+              .notifyOnCreate(DEFAULT_ORG_ID, alarm)
+              .catch(() => {}); // silently ignore — never block ingest
+          }
 
           triggeredAlarms.push(alarm);
         }
@@ -660,3 +680,6 @@ export class AlarmService {
     }
   }
 }
+
+/** Module-level singleton — wire setNotificationService() in index.ts (ADR-059) */
+export const alarmServiceInstance = new AlarmService();

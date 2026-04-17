@@ -16,6 +16,7 @@ import { apiClient } from '@/lib/api-client';
 const mainNavItems = [
   { href: '/alarms', label: 'Alarms', icon: Bell },
   { href: '/alarm-rules', label: 'Rules', icon: Settings },
+  { href: '/alarm-management', label: 'Alarm Mgmt', icon: Bell, adminOnly: true },
   { href: '/audit-logs', label: 'Audit Logs', icon: ClipboardList },
   { href: '/guide', label: 'Guide', icon: BookOpen },
   { href: '/retention-policies', label: 'Retention', icon: Archive },
@@ -34,6 +35,13 @@ const entityItems = [
   { key: 'bacnet',     label: 'BACnet Gateway',    icon: LayoutGrid },
   { key: 'enip',       label: 'EtherNet/IP GW',    icon: Shield },
 ];
+
+interface NavItem {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  adminOnly?: boolean;
+}
 
 interface AppItem {
   applicationId: string;
@@ -218,25 +226,27 @@ export function Sidebar() {
           )}
 
           {/* Other nav items */}
-          {mainNavItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors border-l-2 ${
-                  isActive
-                    ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border-l-blue-500'
-                    : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 border-l-transparent'
-                }`}
-                title={!isExpanded ? item.label : undefined}
-              >
-                <Icon className="w-5 h-5 flex-shrink-0" />
-                {isExpanded && <span className="text-sm font-medium">{item.label}</span>}
-              </Link>
-            );
-          })}
+          {mainNavItems
+            .filter(item => !item.adminOnly || user?.role === 'Admin' || user?.role === 'SuperAdmin')
+            .map((item) => {
+              const Icon = item.icon;
+              const isActive = pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors border-l-2 ${
+                    isActive
+                      ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border-l-blue-500'
+                      : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 border-l-transparent'
+                  }`}
+                  title={!isExpanded ? item.label : undefined}
+                >
+                  <Icon className="w-5 h-5 flex-shrink-0" />
+                  {isExpanded && <span className="text-sm font-medium">{item.label}</span>}
+                </Link>
+              );
+            })}
 
         </nav>
 

@@ -4,7 +4,7 @@ import { deviceStateService } from '../services/device-state.service';
 import { deviceDerivedStateService } from '../services/device-derived-state.service';
 import { Device } from '../models/device.model';
 import { DataQualityService } from '../services/data-quality.service';
-import { AlarmService } from '../services/alarm.service';
+import { alarmServiceInstance } from '../services/alarm.service';
 import { NotFoundError, BadRequestError } from '../lib/errors';
 import { sendSuccess, sendCreated, sendPaginated } from '../lib/response';
 import { getRequestContext } from '../lib/request-context';
@@ -31,7 +31,7 @@ import { config } from '../config/config.js';
  */
 export class DeviceStateController {
   private dataQualityService = new DataQualityService();
-  private alarmService = new AlarmService();
+  private alarmService = alarmServiceInstance;
 
   /**
    * POST /devices/:deviceId/states

@@ -1,2 +1,37 @@
 // LLAMP-SPEC v1 | CURRENT_TASK
-// (cleared — no active task)
+// task: ADR-059 Alarm Notification Channels + Escalation Policies (Frontend) | date: 2026-04-17
+=model: haiku
+=task_type: frontend
+
+#scope
+=new_files: [
+  iot-platform/apps/web/src/hooks/useNotificationChannels.ts,
+  iot-platform/apps/web/src/hooks/useEscalationPolicies.ts,
+  iot-platform/apps/web/src/components/NotificationChannelModal.tsx,
+  iot-platform/apps/web/src/components/EscalationPolicyModal.tsx,
+  iot-platform/apps/web/src/app/alarm-management/page.tsx
+]
+=modified_files: [
+  iot-platform/apps/web/src/app/layout.tsx,  // +sidebar nav entry for /alarm-management
+]
+
+#out_of_scope
+~Backend implementation (complete)
+~ADR-059 (complete)
+~Other frontend pages
+~Testing (post-MVP)
+
+#adr_constraints
+~NotificationChannel type conditional: email shows to field; webhook shows url+headers; in-app empty
+~EscalationPolicy.alarmRuleId is optional — omit for org-wide
+~Tiers are dynamic — add/remove via UI
+~Admin+ gate on /alarm-management (useAuth hook or ProtectedRoute)
+~React Query mutations for list/create/update/delete (follow existing pattern in useDevices, useDashboards)
+~Sidebar icon: Bell (lucide-react)
+
+#tasks_ref
+// T11: useNotificationChannels hook
+// T12: NotificationChannelModal component
+// T13: EscalationPolicyModal component
+// T14: /alarm-management page
+// T15: Sidebar nav + build clean

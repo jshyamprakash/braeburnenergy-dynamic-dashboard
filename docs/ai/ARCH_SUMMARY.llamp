@@ -119,6 +119,17 @@
   compatible_with: [Ollama, vLLM, LM Studio, Azure OpenAI, Groq, OpenRouter, any openai-compat endpoint]
 }
 
+=alarm_notifications: {
+  models: [NotificationChannel (orgId,name,type:email|webhook|in-app,config), EscalationPolicy (orgId,alarmRuleId?,tiers:[{delayMinutes,channelIds[],minimumSeverity}])],
+  AlarmInstance: +escalatedTiers:number[] (idempotent tier tracking — undefined==[]),
+  notify_on_create: AlarmService.createInstance() fire-and-forget → AlarmNotificationService.notifyOnCreate() (ADR-020 pattern),
+  escalation_poll: AlarmEscalationService singleton 60s node-cron (ADR-041 pattern) — ACTIVE_UNACKED where createdAt<now-delayMin,
+  dispatch: email(nodemailer) | webhook(fetch 10s timeout) | in-app(Socket.io existing broadcast),
+  stub_mode: SMTP_HOST unset → email channels skip silently,
+  routes: [/notification-channels CRUD Admin+, /escalation-policies CRUD Admin+],
+  env: [SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM]
+}
+
 =critical_pitfalls: {
   p1: MongoDB replica_set REQUIRED (compliance + oplog + transactions),
   p2: device_derived_states upsert via per-key $set paths ('derived.key') — NEVER replace whole object,

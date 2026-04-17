@@ -73,6 +73,10 @@ export interface IAlarmInstance extends Document {
     error?: string;
   }>;
 
+  // Escalation tracking (ADR-059)
+  // Stores tier indices (0-based) already dispatched — prevents re-fire on next poll
+  escalatedTiers: number[];
+
   // Metadata
   createdAt: Date;
   updatedAt: Date;
@@ -226,6 +230,11 @@ const alarmInstanceSchema = new Schema<IAlarmInstance>({
     }],
     default: [],
   },
+  // ADR-059: escalation tier dispatch tracking
+  escalatedTiers: {
+    type: [Number],
+    default: [],
+  },
 }, {
   timestamps: true,
   collection: 'alarm_instances',
@@ -237,6 +246,7 @@ alarmInstanceSchema.index({ state: 1, priority: 1, activeTimestamp: -1 });
 alarmInstanceSchema.index({ alarmRuleId: 1, state: 1 });
 alarmInstanceSchema.index({ state: 1, acknowledgedTimestamp: 1 });
 alarmInstanceSchema.index({ resolvedTimestamp: 1 }); // For TTL or archival
+alarmInstanceSchema.index({ alarmRuleId: 1, state: 1, activeTimestamp: -1 }); // ADR-059 escalation poll
 
 // Virtual: Is alarm currently active
 alarmInstanceSchema.virtual('isActive').get(function() {
