@@ -229,7 +229,9 @@ export type NodeType =
   | 'action:writeDeviceState'
   // Asset Life Management — module: asset_life (ADR-049)
   | 'action:ibmMaximoSync' | 'action:ibmMaximoCreateWorkOrder'
-  | 'data:fleetQuery' | 'data:assetLifeCalc';
+  | 'data:fleetQuery' | 'data:assetLifeCalc'
+  // Combustion DL CSV playback — module: combustion_dl
+  | 'action:combustionCsvPlayer';
 
 /**
  * Workflow type (deployment target/use case)

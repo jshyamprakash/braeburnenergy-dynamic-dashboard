@@ -177,6 +177,24 @@ const NODE_CONFIG_SCHEMAS: Record<string, FieldConfig[]> = {
     { key: 'deviceId', label: 'Target Device', type: 'device-select', required: true },
     { key: 'mappings', label: 'Field Mappings', type: 'mapping-list', required: true },
   ],
+  'action:combustionCsvPlayer': [
+    { key: 'label', label: 'Node Label', type: 'text', placeholder: 'e.g., Combustion CSV Player', required: true },
+    { key: 'description', label: 'Description', type: 'textarea' },
+    {
+      key: 'scanNumber',
+      label: 'Scan / Fuel Mix',
+      type: 'select',
+      required: true,
+      options: [
+        { value: 5, label: 'Scan 5 — 100% CH₄ (Stable)' },
+        { value: 2, label: 'Scan 2 — 90/10 CH₄/H₂ (Lean Blowout Precursor)' },
+        { value: 3, label: 'Scan 3 — 80/20 CH₄/H₂ (Lean Blowout, stronger)' },
+        { value: 4, label: 'Scan 4 — 70/30 CH₄/H₂ (Thermo-Acoustic Instability)' },
+      ],
+    },
+    { key: 'windowSize', label: 'Window Size (samples)', type: 'number', placeholder: '2000', note: '100–5000 samples at 10 kHz (0.01–0.5 s per tick)' },
+    { key: 'stepSize',   label: 'Step Size (samples)',   type: 'number', placeholder: '200',  note: '10–1000 samples advanced per workflow execution' },
+  ],
   'transform:mapData': [
     { key: 'label', label: 'Node Label', type: 'text', placeholder: 'e.g., Transform Data', required: true },
     { key: 'description', label: 'Description', type: 'textarea' },
@@ -561,7 +579,7 @@ export default function NodeConfigPanel() {
           onClick={() => setActiveTab('config')}
           className={`px-3 py-2 text-xs font-medium rounded-t-lg transition-colors ${
             activeTab === 'config'
-              ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+              ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
               : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
           }`}
         >
@@ -571,7 +589,7 @@ export default function NodeConfigPanel() {
           onClick={() => setActiveTab('info')}
           className={`px-3 py-2 text-xs font-medium rounded-t-lg transition-colors ${
             activeTab === 'info'
-              ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+              ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
               : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
           }`}
         >
@@ -598,7 +616,7 @@ export default function NodeConfigPanel() {
                       value={getFieldValue(field.key)}
                       onChange={e => handleFieldChange(field.key, e.target.value)}
                       placeholder={field.placeholder}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
                   )}
 
@@ -608,7 +626,7 @@ export default function NodeConfigPanel() {
                       value={getFieldValue(field.key)}
                       onChange={e => handleFieldChange(field.key, e.target.valueAsNumber)}
                       placeholder={field.placeholder}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
                   )}
 
@@ -619,7 +637,7 @@ export default function NodeConfigPanel() {
                       onChange={e => handleFieldChange(field.key, e.target.value)}
                       placeholder={field.placeholder}
                       rows={3}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
                     />
                   )}
 
@@ -627,7 +645,7 @@ export default function NodeConfigPanel() {
                     <select
                       value={getFieldValue(field.key)}
                       onChange={e => handleFieldChange(field.key, e.target.value)}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     >
                       <option value="">Select an option...</option>
                       {field.options?.map(opt => (
@@ -643,7 +661,7 @@ export default function NodeConfigPanel() {
                       type="checkbox"
                       checked={getFieldValue(field.key) || false}
                       onChange={e => handleFieldChange(field.key, e.target.checked)}
-                      className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 dark:bg-gray-700 dark:border-gray-600 rounded focus:ring-2 focus:ring-blue-500"
+                      className="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 dark:bg-gray-700 dark:border-gray-600 rounded focus:ring-2 focus:ring-indigo-500"
                     />
                   )}
 
@@ -656,7 +674,7 @@ export default function NodeConfigPanel() {
                         onChange={e => handleFieldChange(field.key, e.target.value)}
                         placeholder={field.placeholder}
                         list={`datalist-${field.key}`}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       />
                       {deviceAttributes && (
                         <datalist id={`datalist-${field.key}`}>
@@ -674,7 +692,7 @@ export default function NodeConfigPanel() {
                     <select
                       value={getFieldValue(field.key) || ''}
                       onChange={e => handleFieldChange(field.key, e.target.value)}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     >
                       <option value="">Select a device...</option>
                       {devices.map((device: any) => (
@@ -702,14 +720,14 @@ export default function NodeConfigPanel() {
                             onChange={e => updateMappingRow(i, 'key', e.target.value)}
                             placeholder="{{derived.freq}}"
                             list="datalist-mapping-keys"
-                            className="px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                           />
                           <input
                             type="text"
                             value={row.expression}
                             onChange={e => updateMappingRow(i, 'expression', e.target.value)}
                             placeholder="{{workspace.voltage}}"
-                            className="px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                           />
                           <button
                             onClick={() => removeMappingRow(i)}
@@ -745,7 +763,7 @@ export default function NodeConfigPanel() {
                             handleFieldChange(field.key, e.target.value);
                           }
                         }}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-2"
                       >
                         {CRON_PRESETS.map(preset => (
                           <option key={preset.value} value={preset.value}>
@@ -759,7 +777,7 @@ export default function NodeConfigPanel() {
                         value={getFieldValue(field.key)}
                         onChange={e => handleFieldChange(field.key, e.target.value)}
                         placeholder={field.placeholder || '0 0 * * *'}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       />
                       <CronPreview expression={getFieldValue(field.key)} timezone={getFieldValue('timezone')} />
                     </div>
@@ -769,7 +787,7 @@ export default function NodeConfigPanel() {
                     <select
                       value={getFieldValue(field.key) || 'UTC'}
                       onChange={e => handleFieldChange(field.key, e.target.value)}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     >
                       {COMMON_TIMEZONES.map(tz => (
                         <option key={tz} value={tz}>
@@ -795,7 +813,7 @@ export default function NodeConfigPanel() {
                               setCopiedField(field.key);
                               setTimeout(() => setCopiedField(null), 1500);
                             }}
-                            className="px-2 py-2 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                            className="px-2 py-2 text-xs font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
                           >
                             {copiedField === field.key ? '✓ Copied' : 'Copy'}
                           </button>

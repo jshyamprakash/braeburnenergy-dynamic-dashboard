@@ -233,6 +233,18 @@ const NODE_TYPES: NodeTypeConfig[] = [
     module: 'asset_life' as const,
   },
 
+  // Combustion DL — module: combustion_dl
+  {
+    type: 'action:combustionCsvPlayer',
+    category: 'action',
+    visualType: 'action',
+    label: 'Combustion CSV Player',
+    description: 'Replay real combustion lab CSV data (Scan 2–5) into device state',
+    icon: '◑',
+    defaultConfig: { scanNumber: 4, windowSize: 2000, stepSize: 200 },
+    module: 'combustion_dl' as const,
+  },
+
   // Transformations
   {
     type: 'transform:mathOperation',

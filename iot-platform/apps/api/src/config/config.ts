@@ -112,6 +112,11 @@ export const config = {
     model: process.env.AI_CHAT_MODEL || 'gpt-4o-mini',
   },
 
+  // Demo CSV data directory (combustion DL CSV playback node)
+  demo: {
+    csvDir: process.env.DEMO_DATA_DIR ?? require('path').resolve(__dirname, '../../../../../docs/demo'),
+  },
+
   // SMTP Configuration (ADR-059 — Alarm Notification Channels)
   // Leave SMTP_HOST empty to run in stub mode — email channels skip silently.
   smtp: {
@@ -146,4 +151,4 @@ export function validateConfig() {
 
 // Export individual configs for convenience
 export const { env, isDevelopment, isProduction, isTest } = config;
-export const { server, database, websocket, logging, security, api, nats, redis, worker, processing, license, ai, smtp } = config;
+export const { server, database, websocket, logging, security, api, nats, redis, worker, processing, license, ai, smtp, demo } = config;

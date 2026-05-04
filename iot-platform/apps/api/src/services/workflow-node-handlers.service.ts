@@ -190,6 +190,10 @@ export class WorkflowNodeHandlers {
       case 'data:assetLifeCalc':
         return this.executeDataAssetLifeCalc(config, context);
 
+      // Combustion DL CSV playback (module: combustion_dl)
+      case 'action:combustionCsvPlayer':
+        return this.executeActionCombustionCsvPlayer(config, context);
+
       default:
         throw new Error(`Unknown node type: ${node.type}`);
     }
@@ -1427,6 +1431,90 @@ export class WorkflowNodeHandlers {
         },
       },
       notes: `ℹ️ assetLifeCalc stub executed for assetId=${assetId}`,
+    };
+  }
+
+  // ==========================================================================
+  // Combustion DL CSV Playback (module: combustion_dl)
+  // ==========================================================================
+
+  /**
+   * action:combustionCsvPlayer
+   * Replays real combustion lab CSV data through the workflow pipeline.
+   * Reads a sliding window of PD_CC_1_1 values, derives physics features,
+   * and writes all dashboard fields into context.workspace.
+   *
+   * Config:
+   *   scanNumber: 2 | 3 | 4 | 5   — which CSV file (default: 4)
+   *   windowSize: number           — samples per window (default: 2000, = 0.2s at 10kHz)
+   *   stepSize:   number           — samples to advance per call (default: 200)
+   *   storageKey: string           — WorkflowStorage cursor key (default: 'csv_cursor')
+   *
+   * Outputs into context.workspace: cd_pressure, fft_freqs, fft_amps,
+   *   anomaly_score, confidence, precursor_class, normal_prob,
+   *   lean_blowout_prob, flashback_prob, thermo_acoustic_prob,
+   *   spl, hurst_exponent, shannon_entropy, dft_energy, feature_cells
+   */
+  private async executeActionCombustionCsvPlayer(config: any, context: any): Promise<NodeExecutionResult> {
+    const {
+      loadAndCacheCSV,
+      buildCsvPayload,
+    } = await import('../lib/combustion-csv-utils');
+    const { WorkflowStorage } = await import('../models/workflow-storage.model');
+
+    const scanNumber = (config.scanNumber ?? 4) as 2 | 3 | 4 | 5;
+    const windowSize = Math.max(100, Math.min(5000, config.windowSize ?? 2000));
+    const stepSize   = Math.max(10,  Math.min(1000, config.stepSize   ?? 200));
+    const storageKey = config.storageKey ?? 'csv_cursor';
+
+    // Load (and cache) CSV
+    let signal: number[];
+    try {
+      signal = loadAndCacheCSV(scanNumber);
+    } catch (err: any) {
+      return {
+        output: { ...context.currentData },
+        notes: `⚠️ combustionCsvPlayer: ${err.message}`,
+      };
+    }
+
+    const maxCursor = Math.max(signal.length - windowSize, 0);
+
+    // Read cursor from WorkflowStorage
+    const orgId = DEFAULT_ORG_ID;
+    const scopeQuery = { orgId, workflowId: context.workflowId, key: storageKey };
+    const stored = await WorkflowStorage.findOne(scopeQuery).lean();
+    let cursor: number = (stored?.value as number) ?? 0;
+    if (cursor > maxCursor) cursor = 0;
+
+    // Extract window
+    const window = signal.slice(cursor, cursor + windowSize);
+    if (window.length < windowSize) {
+      // Wrap: pad by looping from start
+      const pad = signal.slice(0, windowSize - window.length);
+      window.push(...pad);
+    }
+
+    // Compute physics + build payload
+    const payload = buildCsvPayload(window, scanNumber, cursor);
+
+    // Advance cursor (with wrap-around)
+    const nextCursor = (cursor + stepSize) > maxCursor ? 0 : cursor + stepSize;
+
+    // Persist cursor back to WorkflowStorage
+    await WorkflowStorage.findOneAndUpdate(
+      scopeQuery,
+      { $set: { value: nextCursor, updatedAt: new Date() } },
+      { upsert: true, new: true }
+    ).lean();
+
+    return {
+      output: {
+        ...context.currentData,
+        ...payload,
+      },
+      variables: { ...payload },
+      notes: `✅ combustionCsvPlayer: scan=${scanNumber} cursor=${cursor}→${nextCursor} window=${windowSize}`,
     };
   }
 }

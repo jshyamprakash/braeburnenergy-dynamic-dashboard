@@ -57,7 +57,9 @@ export type NodeType =
   | 'action:ibmMaximoSync'
   | 'action:ibmMaximoCreateWorkOrder'
   | 'data:fleetQuery'
-  | 'data:assetLifeCalc';
+  | 'data:assetLifeCalc'
+  // Combustion DL CSV playback — module: combustion_dl
+  | 'action:combustionCsvPlayer';
 
 export interface WorkflowNode {
   id: string;                      // ULID
@@ -179,6 +181,13 @@ const workflowNodeSchema = new Schema<WorkflowNode>({
       'logic:mutate',
       // Action: write structured data back to DeviceState (ADR-022)
       'action:writeDeviceState',
+      // Asset Life Management — module: asset_life (ADR-049)
+      'action:ibmMaximoSync',
+      'action:ibmMaximoCreateWorkOrder',
+      'data:fleetQuery',
+      'data:assetLifeCalc',
+      // Combustion DL CSV playback — module: combustion_dl
+      'action:combustionCsvPlayer',
     ],
   },
   position: {

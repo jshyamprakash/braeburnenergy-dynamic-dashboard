@@ -43,6 +43,7 @@ export const nodeTypeSchema = z.enum([
   'action:updateVariable',
   'action:writeDeviceState',   // ADR-022
   'action:debug',              // Real-time debug output node
+  'action:combustionCsvPlayer', // Combustion DL CSV playback — module: combustion_dl
   // Transformations
   'transform:mathOperation',
   'transform:stringOperation',
@@ -71,6 +72,16 @@ export const workflowNodeSchema = z.object({
     description: z.string().optional(),
     config: z.record(z.unknown()).default({}),
   }),
+});
+
+/**
+ * Config schema for action:combustionCsvPlayer node (module: combustion_dl)
+ */
+export const combustionCsvPlayerConfigSchema = z.object({
+  scanNumber: z.union([z.literal(2), z.literal(3), z.literal(4), z.literal(5)]),
+  windowSize: z.number().int().min(100).max(5000).optional(),
+  stepSize:   z.number().int().min(10).max(1000).optional(),
+  storageKey: z.string().min(1).max(64).optional(),
 });
 
 /**
