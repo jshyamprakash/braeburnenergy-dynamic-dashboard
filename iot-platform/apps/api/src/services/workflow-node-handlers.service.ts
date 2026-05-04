@@ -1466,6 +1466,7 @@ export class WorkflowNodeHandlers {
     const windowSize = Math.max(100, Math.min(5000, config.windowSize ?? 2000));
     const stepSize   = Math.max(10,  Math.min(1000, config.stepSize   ?? 200));
     const storageKey = config.storageKey ?? 'csv_cursor';
+    const targetDeviceId: string | undefined = config.deviceId;
 
     // Load (and cache) CSV
     let signal: number[];
@@ -1515,6 +1516,16 @@ export class WorkflowNodeHandlers {
       },
       variables: { ...payload },
       notes: `✅ combustionCsvPlayer: scan=${scanNumber} cursor=${cursor}→${nextCursor} window=${windowSize}`,
+      ...(targetDeviceId
+        ? {
+            broadcastState: {
+              deviceId: targetDeviceId,
+              data: payload as Record<string, any>,
+              derived: {},
+              timestamp: new Date(),
+            },
+          }
+        : {}),
     };
   }
 }

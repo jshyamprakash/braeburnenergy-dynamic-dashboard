@@ -7,7 +7,7 @@ import {
   Menu, X, Bell, Settings, ClipboardList, BookOpen,
   Archive, Users, Wifi, LayoutGrid, ChevronLeft, Cpu,
   GitBranch, LayoutDashboard, Radio, Network, User, Zap, Shield, ShieldCheck, Activity,
-  BarChart2, Building2, BellDot,
+  BarChart2, Building2, BellDot, Share2,
 } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/lib/store';
 import { toggleSidebar, selectSidebarOpen } from '@/lib/store/slices/uiSlice';
@@ -83,6 +83,12 @@ const platformNavSections = [
       { href: '/audit-logs', label: 'Audit Logs', icon: ClipboardList },
       { href: '/retention-policies', label: 'Retention', icon: Archive },
       { href: '/users', label: 'Users', icon: User },
+    ],
+  },
+  {
+    label: 'Dashboards',
+    items: [
+      { href: '/shared-dashboards', label: 'Shared with me', icon: Share2 },
     ],
   },
   {

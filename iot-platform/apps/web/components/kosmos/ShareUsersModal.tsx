@@ -51,8 +51,11 @@ export default function ShareUsersModal({
 
   const [isSaving, setIsSaving] = useState(false);
 
-  const viewerUsers = useMemo(() => {
-    return allUsers.filter((user: User) => user.role === 'Viewer');
+  const usersByRole = useMemo(() => {
+    const order: Array<User['role']> = ['Admin', 'Operator', 'Viewer'];
+    return order
+      .map((role) => ({ role, users: allUsers.filter((u: User) => u.role === role) }))
+      .filter((g) => g.users.length > 0);
   }, [allUsers]);
 
   const handleToggleUser = (userId: string) => {
@@ -151,39 +154,48 @@ export default function ShareUsersModal({
           </div>
         </div>
 
-        {/* ── Viewer users ── */}
+        {/* ── Share with users ── */}
         <div className="mb-6">
           <div className="mb-2">
             <span className="text-xs font-semibold uppercase tracking-widest text-gray-400">
-              Share with viewers
+              Share with users
             </span>
           </div>
           <div className="max-h-48 overflow-y-auto rounded border border-gray-700 bg-gray-950 dark:border-gray-600 dark:bg-gray-900">
-            {viewerUsers.length === 0 ? (
+            {usersByRole.length === 0 ? (
               <div className="p-4 text-center text-sm text-gray-500">
-                No Viewer accounts found. Create users at <span className="text-cyan-400">/users</span> page.
+                No users found. Create users at <span className="text-cyan-400">/users</span> page.
               </div>
             ) : (
-              <div className="divide-y divide-gray-700 dark:divide-gray-600">
-                {viewerUsers.map((user: User) => (
-                  <label
-                    key={user.id}
-                    className="flex cursor-pointer items-center gap-3 p-3 hover:bg-gray-900 dark:hover:bg-gray-700"
-                  >
-                    <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 text-white text-sm font-semibold">
-                      {user.username[0]?.toUpperCase()}
+              <div>
+                {usersByRole.map(({ role, users }) => (
+                  <div key={role}>
+                    <div className="sticky top-0 bg-gray-900 px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-gray-500">
+                      {role}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-gray-100">{user.username}</div>
-                      <div className="truncate text-xs text-gray-500">{user.email}</div>
+                    <div className="divide-y divide-gray-800 dark:divide-gray-700">
+                      {users.map((user: User) => (
+                        <label
+                          key={user.id}
+                          className="flex cursor-pointer items-center gap-3 p-3 hover:bg-gray-900 dark:hover:bg-gray-700"
+                        >
+                          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 text-white text-sm font-semibold">
+                            {user.username[0]?.toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium text-gray-100">{user.username}</div>
+                            <div className="truncate text-xs text-gray-500">{user.email}</div>
+                          </div>
+                          <input
+                            type="checkbox"
+                            checked={selectedUserIds.has(user.id)}
+                            onChange={() => handleToggleUser(user.id)}
+                            className="h-4 w-4 cursor-pointer rounded border-gray-500 bg-gray-800 text-cyan-500"
+                          />
+                        </label>
+                      ))}
                     </div>
-                    <input
-                      type="checkbox"
-                      checked={selectedUserIds.has(user.id)}
-                      onChange={() => handleToggleUser(user.id)}
-                      className="h-4 w-4 cursor-pointer rounded border-gray-500 bg-gray-800 text-cyan-500"
-                    />
-                  </label>
+                  </div>
                 ))}
               </div>
             )}

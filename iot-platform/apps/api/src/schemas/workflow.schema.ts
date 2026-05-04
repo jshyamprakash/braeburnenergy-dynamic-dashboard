@@ -82,6 +82,7 @@ export const combustionCsvPlayerConfigSchema = z.object({
   windowSize: z.number().int().min(100).max(5000).optional(),
   stepSize:   z.number().int().min(10).max(1000).optional(),
   storageKey: z.string().min(1).max(64).optional(),
+  deviceId:   z.string().optional(),
 });
 
 /**

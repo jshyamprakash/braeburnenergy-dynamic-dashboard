@@ -194,6 +194,7 @@ const NODE_CONFIG_SCHEMAS: Record<string, FieldConfig[]> = {
     },
     { key: 'windowSize', label: 'Window Size (samples)', type: 'number', placeholder: '2000', note: '100–5000 samples at 10 kHz (0.01–0.5 s per tick)' },
     { key: 'stepSize',   label: 'Step Size (samples)',   type: 'number', placeholder: '200',  note: '10–1000 samples advanced per workflow execution' },
+    { key: 'deviceId',   label: 'Target Device (optional)', type: 'device-select', note: 'When set, broadcasts output directly to WebSocket — no Write Device State node needed.' },
   ],
   'transform:mapData': [
     { key: 'label', label: 'Node Label', type: 'text', placeholder: 'e.g., Transform Data', required: true },
