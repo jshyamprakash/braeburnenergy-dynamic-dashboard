@@ -107,7 +107,12 @@ export class DashboardService {
    * Replaces the old public shareToken approach.
    * userIds: array of User ObjectId strings to grant access.
    */
-  async shareWithUsers(orgId: string, dashboardId: string, userIds: string[]): Promise<{ sharedWithUsers: string[] }> {
+  async shareWithUsers(
+    orgId: string,
+    dashboardId: string,
+    userIds: string[],
+    pageIds?: string[]
+  ): Promise<{ sharedWithUsers: string[]; sharedPageIds: string[] }> {
     const orgIdObj = new mongoose.Types.ObjectId(orgId);
 
     // Validate that all userIds belong to the same org
@@ -119,13 +124,16 @@ export class DashboardService {
 
     const dashboard = await Dashboard.findOneAndUpdate(
       { orgId: orgIdObj, dashboardId },
-      { $set: { sharedWithUsers: userObjectIds } },
+      { $set: { sharedWithUsers: userObjectIds, sharedPageIds: pageIds ?? [] } },
       { new: true }
     );
 
     if (!dashboard) throw new NotFoundError('Dashboard');
 
-    return { sharedWithUsers: dashboard.sharedWithUsers.map((id) => id.toString()) };
+    return {
+      sharedWithUsers: dashboard.sharedWithUsers.map((id) => id.toString()),
+      sharedPageIds: (dashboard.sharedPageIds ?? []) as string[],
+    };
   }
 
   /**

@@ -36,11 +36,18 @@ export default function ViewerPage() {
   const activeDashboard = dashboards?.[activeIndex];
 
   // Populate Kosmos pages from already-fetched dashboard data (skip second API call)
+  // Filter pages by sharedPageIds so viewer only sees the tabs the admin selected
   useEffect(() => {
     if (!activeDashboard?.pages) return;
+    const rawPages = activeDashboard.pages ?? [];
+    const sharedPageIds = activeDashboard.sharedPageIds ?? [];
+    const pagesToShow = sharedPageIds.length > 0
+      ? rawPages.filter((p: any) => sharedPageIds.includes(p.id))
+      : rawPages;
     dispatch(setKosmosFromDashboard({
-      pages: activeDashboard.pages,
+      pages: pagesToShow,
       sharedWithUsers: activeDashboard.sharedWithUsers ?? [],
+      sharedPageIds,
     }));
   }, [activeDashboard, dispatch]);
 

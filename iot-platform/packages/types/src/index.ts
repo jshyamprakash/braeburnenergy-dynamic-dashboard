@@ -849,6 +849,7 @@ export interface Dashboard {
   layouts?: Record<string, any>;
   pages?: any[];            // Kosmos pages with unified widgets[]
   sharedWithUsers: string[]; // List of User ObjectIds with viewer access (ADR-045)
+  sharedPageIds?: string[];  // Page IDs visible to viewers; empty = all pages
   createdAt: string | Date;
   updatedAt: string | Date;
 }

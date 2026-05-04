@@ -90,6 +90,8 @@ export interface IDashboard extends Document {
   pages: IKosmosPage[];
   /** User-based sharing (ADR-045): list of User ObjectIds with viewer access */
   sharedWithUsers: mongoose.Types.ObjectId[];
+  /** Selective tab sharing: page IDs visible to viewers. Empty = all pages. */
+  sharedPageIds: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -127,6 +129,7 @@ const DashboardSchema = new Schema<IDashboard>(
     layouts: Schema.Types.Mixed,
     pages: [Schema.Types.Mixed],
     sharedWithUsers: [{ type: Schema.Types.ObjectId, ref: 'User', default: [] }],
+    sharedPageIds: [{ type: String, default: [] }],
   },
   {
     timestamps: true,

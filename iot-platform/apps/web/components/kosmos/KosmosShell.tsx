@@ -7,7 +7,9 @@ import {
   selectKosmosPages,
   selectKosmosActivePage,
   selectKosmosSharedWithUsers,
+  selectKosmosSharedPageIds,
   addKosmosPage,
+  addCombustionDlPage,
   removeKosmosPage,
   renameKosmosPage,
   setKosmosActivePage,
@@ -17,6 +19,7 @@ import {
   updateKosmosWidgetLayout,
   updateKosmosWidgetConfig,
   setKosmosSharedWithUsers,
+  setKosmosSharedPageIds,
   initKosmosFromBackend,
   saveKosmosToBackend,
   resetActiveMandatoryPage,
@@ -109,9 +112,11 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
   const pages = useAppSelector(selectKosmosPages);
   const activePageId = useAppSelector(selectKosmosActivePage);
   const sharedWithUsers = useAppSelector(selectKosmosSharedWithUsers);
+  const sharedPageIds = useAppSelector(selectKosmosSharedPageIds);
   const { isModuleEnabled } = useLicense();
 
   const [editMode, setEditMode] = useState(false);
+  const [editSubMode, setEditSubMode] = useState<'layout' | 'config'>('layout');
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
@@ -196,6 +201,11 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
     triggerSave();
   };
 
+  const handleAddCombustionDlPage = () => {
+    dispatch(addCombustionDlPage());
+    triggerSave();
+  };
+
   const handleRemovePage = (id: string) => {
     if (pages.length <= 1) {
       toast.error('Cannot remove the last page');
@@ -275,8 +285,9 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
     setShareModalOpen(true);
   };
 
-  const handleSaveSharedUsers = (userIds: string[]) => {
+  const handleSaveSharedUsers = (userIds: string[], pageIds: string[]) => {
     dispatch(setKosmosSharedWithUsers(userIds));
+    dispatch(setKosmosSharedPageIds(pageIds));
   };
 
   /* ── Project (kiosk view) ── */
@@ -360,6 +371,7 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
                   if (wasEditing) {
                     setPaletteOpen(false);
                     setSelectedWidgetId(null);
+                    setEditSubMode('layout');
                     flushSave();
                   }
                 }}
@@ -368,6 +380,31 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
               </button>
 
               {editMode && (
+                <>
+                  <button
+                    className={editSubMode === 'layout' ? 'k-btn k-btn-primary' : 'k-btn k-btn-ghost'}
+                    title="Layout mode — drag and resize widgets"
+                    onClick={() => {
+                      setEditSubMode('layout');
+                      setSelectedWidgetId(null);
+                    }}
+                  >
+                    ⇄ LAYOUT
+                  </button>
+                  <button
+                    className={editSubMode === 'config' ? 'k-btn k-btn-primary' : 'k-btn k-btn-ghost'}
+                    title="Config mode — click a widget to configure it"
+                    onClick={() => {
+                      setEditSubMode('config');
+                      setPaletteOpen(false);
+                    }}
+                  >
+                    ⚙ CONFIG
+                  </button>
+                </>
+              )}
+
+              {editMode && editSubMode === 'layout' && (
                 <button className="k-btn k-btn-ghost" onClick={() => setPaletteOpen(!paletteOpen)}>
                   {paletteOpen ? 'HIDE PALETTE' : 'WIDGETS'}
                 </button>
@@ -464,6 +501,20 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
             +
           </button>
         )}
+        {editMode && !readOnly && isModuleEnabled('combustion_dl') && (
+          <button
+            onClick={handleAddCombustionDlPage}
+            title="Add Combustion DL Tab"
+            style={{
+              padding: '6px 12px', background: 'none', border: '1px dashed var(--k-border)',
+              borderBottom: 'none', borderRadius: '4px 4px 0 0', color: 'var(--k-text-dim)',
+              cursor: 'pointer', fontFamily: 'var(--k-font-tech)', fontSize: 12, lineHeight: 1,
+              transition: 'all 0.2s', alignSelf: 'flex-end', marginLeft: 4,
+            }}
+          >
+            ◑+
+          </button>
+        )}
       </div>
 
       {/* ── Body: Canvas + optional WidgetConfigPanel ── */}
@@ -487,6 +538,7 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
                 <KosmosOverviewTabPanel
                   page={activePage}
                   editMode={editMode}
+                  layoutLocked={editMode && editSubMode === 'config'}
                   onDrop={handleDrop}
                   onLayoutChange={(pageId, layouts) => {
                     layouts.forEach((layout) => {
@@ -511,6 +563,7 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
                 <KosmosCombustionDlTabPanel
                   page={activePage}
                   editMode={editMode}
+                  layoutLocked={editMode && editSubMode === 'config'}
                   onDrop={handleDrop}
                   onLayoutChange={(pageId, layouts) => {
                     layouts.forEach((layout) => {
@@ -549,6 +602,7 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
                 <UnifiedCanvas
                   widgets={activePage.widgets}
                   editMode={editMode}
+                  layoutLocked={editMode && editSubMode === 'config'}
                   onDrop={handleDrop}
                   onRemove={handleRemoveWidget}
                   onLayoutChange={handleLayoutChange}
@@ -558,8 +612,8 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
               </div>
             )}
 
-            {/* Config panel — only in edit mode when a widget is selected */}
-            {editMode && selectedWidget && (
+            {/* Config panel — only in CONFIG sub-mode when a widget is selected */}
+            {editMode && editSubMode === 'config' && selectedWidget && (
               <WidgetConfigPanel
                 pageId={activePage.id}
                 widget={selectedWidget}
@@ -593,7 +647,14 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
         </span>
         <span style={{ display: 'flex', gap: 16 }}>
           {editMode && <span style={{ color: 'var(--k-amber)' }}>● EDIT MODE</span>}
-          {sharedWithUsers.length > 0 && <span style={{ color: 'var(--k-green)' }}>👥 SHARED ({sharedWithUsers.length})</span>}
+          {sharedWithUsers.length > 0 && (
+            <span style={{ color: 'var(--k-green)' }}>
+              👥 SHARED ({sharedWithUsers.length})
+              {sharedPageIds.length > 0 && sharedPageIds.length < allowedPages.length
+                ? ` — ${sharedPageIds.length} tab${sharedPageIds.length !== 1 ? 's' : ''}`
+                : ''}
+            </span>
+          )}
           <span>{allowedPages.length} PAGE{allowedPages.length !== 1 ? 'S' : ''}{pages.length > allowedPages.length ? ` (${pages.length - allowedPages.length} hidden)` : ''}</span>
         </span>
       </footer>
@@ -611,6 +672,8 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
         <ShareUsersModal
           dashboardId={dashboardId}
           currentSharedUsers={sharedWithUsers}
+          currentSharedPageIds={sharedPageIds}
+          availablePages={allowedPages}
           onClose={() => setShareModalOpen(false)}
           onSaved={handleSaveSharedUsers}
         />

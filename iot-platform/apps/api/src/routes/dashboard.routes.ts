@@ -168,12 +168,20 @@ export async function dashboardRoutes(fastify: FastifyInstance) {
         type: 'object',
         properties: {
           userIds: { type: 'array', items: { type: 'string' }, description: 'User ObjectIds to grant access' },
+          pageIds: { type: 'array', items: { type: 'string' }, description: 'Page IDs visible to viewers (empty = all pages)' },
         },
         required: ['userIds'],
       },
       response: {
         200: successResponse(
-          { type: 'object', properties: { sharedWithUsers: { type: 'array', items: { type: 'string' } } }, additionalProperties: false },
+          {
+            type: 'object',
+            properties: {
+              sharedWithUsers: { type: 'array', items: { type: 'string' } },
+              sharedPageIds: { type: 'array', items: { type: 'string' } },
+            },
+            additionalProperties: false,
+          },
           'Dashboard shared with users'
         ),
       },

@@ -78,6 +78,7 @@ export interface DashboardState {
   kosmosPages: KosmosPage[];
   kosmosActivePage: string | null;
   kosmosSharedWithUsers: string[]; // List of User ObjectIds (ADR-045)
+  kosmosSharedPageIds: string[];   // Page IDs visible to viewers; empty = all pages
   // Viewer dashboards (dashboards shared with current user)
   viewerDashboards: Dashboard[];
 }
@@ -473,6 +474,8 @@ function scaleUpPageIfNeeded(page: KosmosPage): KosmosPage {
  */
 function resetMandatoryPageIfCorrupted(page: KosmosPage): KosmosPage {
   if (!page.mandatoryType) return page;
+  // Non-mandatory combustionDl pages (user-created extra tabs) are never re-seeded
+  if (!page.isMandatory) return page;
 
   // Force re-seed if schema version is missing or outdated — but preserve user-edited configs
   if ((page.layoutSchemaVersion ?? 0) < CURRENT_LAYOUT_SCHEMA) {
@@ -784,6 +787,7 @@ const initialState: DashboardState = {
   kosmosPages: [],
   kosmosActivePage: null,
   kosmosSharedWithUsers: [],
+  kosmosSharedPageIds: [],
   viewerDashboards: [],
 };
 
@@ -961,6 +965,23 @@ const dashboardSlice = createSlice({
       state.kosmosActivePage = page.id;
     },
 
+    /** Add an extra (non-mandatory) Combustion DL tab */
+    addCombustionDlPage: (state) => {
+      const dlCount = state.kosmosPages.filter((p) => p.mandatoryType === 'combustionDl').length;
+      const page: KosmosPage = {
+        id: `page_${shortId()}`,
+        name: `COMBUSTION DL ${dlCount + 1}`,
+        order: state.kosmosPages.length,
+        widgets: [],
+        isMandatory: false,
+        mandatoryType: 'combustionDl',
+        layoutVersion: 2,
+        layoutSchemaVersion: CURRENT_LAYOUT_SCHEMA,
+      };
+      state.kosmosPages.push(page);
+      state.kosmosActivePage = page.id;
+    },
+
     removeKosmosPage: (state, action: PayloadAction<string>) => {
       const idx = state.kosmosPages.findIndex((p) => p.id === action.payload);
       if (idx === -1) return;
@@ -1046,10 +1067,14 @@ const dashboardSlice = createSlice({
       state.kosmosSharedWithUsers = action.payload;
     },
 
+    setKosmosSharedPageIds: (state, action: PayloadAction<string[]>) => {
+      state.kosmosSharedPageIds = action.payload;
+    },
+
     /** Load pages directly (skip API call) — used by Viewer kiosk (ADR-045) */
     setKosmosFromDashboard: (
       state,
-      action: PayloadAction<{ pages: any[]; sharedWithUsers?: string[] }>
+      action: PayloadAction<{ pages: any[]; sharedWithUsers?: string[]; sharedPageIds?: string[] }>
     ) => {
       const migrated = action.payload.pages
         .map(migratePageFormat)
@@ -1059,6 +1084,9 @@ const dashboardSlice = createSlice({
       state.kosmosActivePage = migrated[0]?.id ?? null;
       if (action.payload.sharedWithUsers) {
         state.kosmosSharedWithUsers = action.payload.sharedWithUsers;
+      }
+      if (action.payload.sharedPageIds !== undefined) {
+        state.kosmosSharedPageIds = action.payload.sharedPageIds;
       }
     },
 
@@ -1277,6 +1305,7 @@ export const {
   updateDashboardMetadata,
   // Kosmos actions
   addKosmosPage,
+  addCombustionDlPage,
   removeKosmosPage,
   renameKosmosPage,
   setKosmosActivePage,
@@ -1286,6 +1315,7 @@ export const {
   updateKosmosWidgetLayout,
   updateKosmosWidgetConfig,
   setKosmosSharedWithUsers,
+  setKosmosSharedPageIds,
   setKosmosFromDashboard,
   resetActiveMandatoryPage,
 } = dashboardSlice.actions;
@@ -1333,5 +1363,7 @@ export const selectKosmosActivePage = (state: { dashboard: DashboardState }) =>
   state.dashboard.kosmosActivePage;
 export const selectKosmosSharedWithUsers = (state: { dashboard: DashboardState }) =>
   state.dashboard.kosmosSharedWithUsers;
+export const selectKosmosSharedPageIds = (state: { dashboard: DashboardState }) =>
+  state.dashboard.kosmosSharedPageIds;
 export const selectViewerDashboards = (state: { dashboard: DashboardState }) =>
   state.dashboard.viewerDashboards;
