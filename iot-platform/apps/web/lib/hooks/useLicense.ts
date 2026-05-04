@@ -27,7 +27,7 @@ export function useLicense() {
   const status = useAppSelector(selectLicenseStatus);
 
   useEffect(() => {
-    if (status === 'idle') {
+    if (status === 'idle' || status === 'error') {
       dispatch(fetchLicense());
     }
   }, [status, dispatch]);

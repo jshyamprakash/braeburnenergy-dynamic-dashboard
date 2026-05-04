@@ -62,14 +62,14 @@ export function NotificationChannelModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="w-full max-w-md rounded-lg bg-white dark:bg-gray-900 p-6 shadow-xl">
+      <div className="w-full max-w-md rounded-lg bg-white dark:bg-slate-900 p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">
             {mode === 'create' ? 'Create Notification Channel' : 'Edit Notification Channel'}
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            className="text-slate-400 hover:text-gray-600 dark:hover:text-gray-300"
           >
             <X className="h-5 w-5" />
           </button>
@@ -78,7 +78,7 @@ export function NotificationChannelModal({
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Name */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300">
               Name
             </label>
             <input
@@ -86,13 +86,13 @@ export function NotificationChannelModal({
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               required
-              className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white"
+              className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-slate-800 dark:text-white"
             />
           </div>
 
           {/* Type */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300">
               Type
             </label>
             <select
@@ -104,7 +104,7 @@ export function NotificationChannelModal({
                   config: {}, // Reset config on type change
                 });
               }}
-              className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white"
+              className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-slate-800 dark:text-white"
             >
               <option value="email">Email</option>
               <option value="webhook">Webhook</option>
@@ -115,7 +115,7 @@ export function NotificationChannelModal({
           {/* Type-specific config */}
           {formData.type === 'email' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300">
                 Recipient Email(s)
               </label>
               <input
@@ -129,9 +129,9 @@ export function NotificationChannelModal({
                   })
                 }
                 required
-                className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white"
+                className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-slate-800 dark:text-white"
               />
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                 Comma-separated email addresses
               </p>
             </div>
@@ -140,7 +140,7 @@ export function NotificationChannelModal({
           {formData.type === 'webhook' && (
             <>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300">
                   Webhook URL
                 </label>
                 <input
@@ -154,11 +154,11 @@ export function NotificationChannelModal({
                     })
                   }
                   required
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white"
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-slate-800 dark:text-white"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300">
                   Headers (JSON)
                 </label>
                 <textarea
@@ -179,7 +179,7 @@ export function NotificationChannelModal({
                       // Invalid JSON, don't update
                     }
                   }}
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white font-mono text-sm"
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-slate-800 dark:text-white font-mono text-sm"
                   rows={3}
                 />
               </div>
@@ -187,7 +187,7 @@ export function NotificationChannelModal({
           )}
 
           {formData.type === 'in-app' && (
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
               In-app notifications require no configuration
             </p>
           )}
@@ -201,7 +201,7 @@ export function NotificationChannelModal({
               onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
               className="rounded border-gray-300"
             />
-            <label htmlFor="isActive" className="text-sm text-gray-700 dark:text-gray-300">
+            <label htmlFor="isActive" className="text-sm text-gray-700 dark:text-slate-300">
               Active
             </label>
           </div>
@@ -211,14 +211,14 @@ export function NotificationChannelModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-gray-800"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isLoading}
-              className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+              className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
             >
               {isLoading ? 'Saving...' : mode === 'create' ? 'Create' : 'Update'}
             </button>

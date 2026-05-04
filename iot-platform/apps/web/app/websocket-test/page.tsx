@@ -127,9 +127,9 @@ export default function WebSocketTestPage() {
       </div>
 
       {/* Connection Info */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+      <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
         <h3 className="text-sm font-medium text-blue-900 mb-2">Connection Details</h3>
-        <div className="text-xs text-blue-700 space-y-1">
+        <div className="text-xs text-indigo-700 space-y-1">
           <p>WebSocket URL: ws://localhost:3001</p>
           <p>Status: {isConnected ? '✅ Connected' : '❌ Disconnected'}</p>
           {socket && <p>Socket ID: {socket.id}</p>}
@@ -162,7 +162,7 @@ export default function WebSocketTestPage() {
             className={`px-4 py-2 rounded-md text-white ${
               isSubscribed
                 ? 'bg-red-600 hover:bg-red-700'
-                : 'bg-blue-600 hover:bg-blue-700'
+                : 'bg-indigo-600 hover:bg-indigo-700'
             } disabled:bg-gray-400 disabled:cursor-not-allowed`}
           >
             {isSubscribed ? '🔕 Unsubscribe' : '🔔 Subscribe to Device'}

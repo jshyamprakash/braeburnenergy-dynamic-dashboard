@@ -506,7 +506,7 @@ export function DashboardBuilder({
           isEditMode
             ? 'border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800'
             : 'bg-transparent'
-        } ${isSelected ? 'ring-2 ring-blue-500' : ''}`}
+        } ${isSelected ? 'ring-2 ring-indigo-500' : ''}`}
       >
         {/* Edit mode controls */}
         {isEditMode && (
@@ -602,14 +602,14 @@ export function DashboardBuilder({
             {/* Sync Status Indicator — mounted guard prevents SSR/client hydration mismatch */}
             <div className="flex items-center gap-2">{mounted && (<>
               {syncStatus === 'loading' && (
-                <div className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400">
-                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse" />
+                <div className="flex items-center gap-2 text-xs text-indigo-600 dark:text-indigo-400">
+                  <div className="w-2 h-2 bg-indigo-600 rounded-full animate-pulse" />
                   <span>Loading...</span>
                 </div>
               )}
               {syncStatus === 'syncing' && (
-                <div className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400">
-                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse" />
+                <div className="flex items-center gap-2 text-xs text-indigo-600 dark:text-indigo-400">
+                  <div className="w-2 h-2 bg-indigo-600 rounded-full animate-pulse" />
                   <span>Syncing...</span>
                 </div>
               )}
@@ -645,7 +645,7 @@ export function DashboardBuilder({
               <>
                 <button
                   onClick={() => setShowPalette(!showPalette)}
-                  className="px-4 py-2 text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded hover:bg-blue-200 dark:hover:bg-blue-900/50"
+                  className="px-4 py-2 text-sm bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded hover:bg-indigo-200 dark:hover:bg-indigo-900/50"
                 >
                   {showPalette ? 'Hide' : 'Show'} Palette
                 </button>
@@ -668,7 +668,7 @@ export function DashboardBuilder({
               className={`px-4 py-2 text-sm rounded ${
                 isEditMode
                   ? 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                  : 'bg-blue-600 text-white hover:bg-blue-700'
+                  : 'bg-indigo-600 text-white hover:bg-indigo-700'
               }`}
             >
               {isEditMode ? 'Exit Edit Mode' : 'Edit Dashboard'}

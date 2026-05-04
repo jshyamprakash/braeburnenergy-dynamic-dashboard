@@ -564,7 +564,80 @@ export function WidgetConfigPanel({ pageId, widget, applicationId, onClose, onCo
             No configurable fields
           </div>
         ) : (
-          Object.entries(displayConfig).map(([key, value]) => {
+          <>
+          {/* ── DATA SOURCE section — shown for all device-binding widget types ── */}
+          {(CHART_WIDGET_TYPES.has(type) || BE_AGENT_DEVICE_WIDGETS.has(type) || METRIC_WIDGET_TYPES.has(type) || BESENSE_WIDGET_TYPES.has(type)) && (
+            <div style={{ marginBottom: 10 }}>
+              {/* Section header */}
+              <div style={{
+                fontFamily: 'var(--k-font-tech)',
+                fontSize: 9,
+                color: 'var(--k-green)',
+                letterSpacing: 2,
+                textTransform: 'uppercase',
+                borderBottom: '1px solid var(--k-green)',
+                paddingBottom: 4,
+                marginBottom: 8,
+              }}>
+                ◈ Data Source
+              </div>
+
+              {/* Device selector */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
+                <div style={keyLabelStyle}>Device</div>
+                <select
+                  value={(widget.config?.deviceId as string) || ''}
+                  onChange={(e) => saveField('deviceId', e.target.value)}
+                  style={{ ...inputStyle as React.CSSProperties, flex: 1 }}
+                >
+                  <option value="">— select device —</option>
+                  {devices.length === 0 && (
+                    <option disabled value="">No devices in this application</option>
+                  )}
+                  {devices.map((device) => (
+                    <option key={device.deviceId} value={device.deviceId}>
+                      {device.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Field selector — only for types that need a field name */}
+              {(CHART_WIDGET_TYPES.has(type) || METRIC_WIDGET_TYPES.has(type)) && (
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                  <div style={keyLabelStyle}>Field</div>
+                  {deviceAttributes.length > 0 ? (
+                    <select
+                      value={(widget.config?.fieldName as string) || ''}
+                      onChange={(e) => saveField('fieldName', e.target.value)}
+                      style={{ ...inputStyle as React.CSSProperties, flex: 1 }}
+                    >
+                      <option value="">— select field —</option>
+                      {deviceAttributes.map((attr) => (
+                        <option key={attr} value={attr}>{attr}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      placeholder={selectedDeviceId ? 'No attributes defined' : 'Select device first'}
+                      value={(widget.config?.fieldName as string) || ''}
+                      onChange={(e) => saveField('fieldName', e.target.value)}
+                      style={{ ...inputStyle, flex: 1 }}
+                      disabled={!selectedDeviceId}
+                    />
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Generic config fields (skip deviceId / fieldName — handled above) ── */}
+          {Object.entries(displayConfig).map(([key, value]) => {
+            if (
+              (key === 'deviceId' || key === 'fieldName') &&
+              (CHART_WIDGET_TYPES.has(type) || BE_AGENT_DEVICE_WIDGETS.has(type) || METRIC_WIDGET_TYPES.has(type) || BESENSE_WIDGET_TYPES.has(type))
+            ) return null;
             // ── Structured array field branch ────────────────────────────────
             const arraySpec = ARRAY_FIELD_SPECS[widget.type]?.[key];
             if (arraySpec && Array.isArray(value)) {
@@ -739,7 +812,7 @@ export function WidgetConfigPanel({ pageId, widget, applicationId, onClose, onCo
                     >
                       <option value="">-- Select Device --</option>
                       {devices.map((device) => (
-                        <option key={device.id} value={device.id}>
+                        <option key={device.deviceId} value={device.deviceId}>
                           {device.name}
                         </option>
                       ))}
@@ -799,7 +872,8 @@ export function WidgetConfigPanel({ pageId, widget, applicationId, onClose, onCo
                 )}
               </div>
             );
-          })
+          })}
+          </>
         )}
       </div>
 

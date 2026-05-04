@@ -75,20 +75,20 @@ export function ApiKeysSection() {
 
   return (
     <>
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+      <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
         {/* Header */}
-        <div className="border-b border-gray-200 dark:border-gray-700 p-6 flex items-center justify-between">
+        <div className="border-b border-slate-200 dark:border-slate-700 p-6 flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">
               API Keys
             </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            <p className="text-sm text-gray-600 dark:text-slate-400 mt-1">
               Create and manage API keys for machine-to-machine authentication
             </p>
           </div>
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors font-medium"
           >
             <Plus className="w-4 h-4" />
             Create Key
@@ -98,35 +98,35 @@ export function ApiKeysSection() {
         {/* Content */}
         <div className="p-6">
           {isLoading ? (
-            <div className="text-center py-8 text-gray-500">Loading API keys...</div>
+            <div className="text-center py-8 text-slate-500">Loading API keys...</div>
           ) : !apiKeys || apiKeys.length === 0 ? (
-            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+            <div className="text-center py-8 text-slate-500 dark:text-slate-400">
               No API keys yet. Create one to get started.
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="border-b border-gray-200 dark:border-gray-700">
+                <thead className="border-b border-slate-200 dark:border-slate-700">
                   <tr>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-slate-300">
                       Name
                     </th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-slate-300">
                       Prefix
                     </th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-slate-300">
                       Permissions
                     </th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-slate-300">
                       Last Used
                     </th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-slate-300">
                       Expires
                     </th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-slate-300">
                       Status
                     </th>
-                    <th className="text-right py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">
+                    <th className="text-right py-3 px-4 font-semibold text-gray-700 dark:text-slate-300">
                       Actions
                     </th>
                   </tr>
@@ -137,31 +137,31 @@ export function ApiKeysSection() {
                       key={key.id}
                       className={`${
                         !key.isActive
-                          ? 'bg-gray-50 dark:bg-gray-900 opacity-60'
+                          ? 'bg-slate-50 dark:bg-slate-900 opacity-60'
                           : ''
-                      } hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors`}
+                      } hover:bg-slate-50 dark:hover:bg-gray-700/50 transition-colors`}
                     >
-                      <td className="py-3 px-4 text-gray-900 dark:text-white font-medium">
+                      <td className="py-3 px-4 text-slate-900 dark:text-white font-medium">
                         {key.name}
                       </td>
                       <td className="py-3 px-4">
                         <code
                           className={`text-xs px-2 py-1 rounded font-mono ${
                             key.prefix === 'iot_test_'
-                              ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                              ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
                               : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
                           }`}
                         >
                           {key.prefix}
                         </code>
                       </td>
-                      <td className="py-3 px-4 text-gray-600 dark:text-gray-400">
+                      <td className="py-3 px-4 text-gray-600 dark:text-slate-400">
                         {key.permissions.length}
                       </td>
-                      <td className="py-3 px-4 text-gray-600 dark:text-gray-400">
+                      <td className="py-3 px-4 text-gray-600 dark:text-slate-400">
                         {getRelativeTime(key.lastUsedAt)}
                       </td>
-                      <td className="py-3 px-4 text-gray-600 dark:text-gray-400">
+                      <td className="py-3 px-4 text-gray-600 dark:text-slate-400">
                         {formatDate(key.expiresAt)}
                       </td>
                       <td className="py-3 px-4">
@@ -182,7 +182,7 @@ export function ApiKeysSection() {
                               <button
                                 onClick={() => handleRotate(key.id)}
                                 disabled={rotateMutation.isPending}
-                                className="p-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg transition-colors disabled:opacity-50"
+                                className="p-2 hover:bg-indigo-50 dark:hover:bg-blue-900/20 text-indigo-600 dark:text-indigo-400 rounded-lg transition-colors disabled:opacity-50"
                                 title="Rotate key"
                               >
                                 <RotateCcw className="w-4 h-4" />
@@ -198,7 +198,7 @@ export function ApiKeysSection() {
                           )}
                           <button
                             onClick={() => setDeleteConfirm(key.id)}
-                            className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg transition-colors"
+                            className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 text-rose-600 dark:text-red-400 rounded-lg transition-colors"
                             title="Delete key"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -217,14 +217,14 @@ export function ApiKeysSection() {
       {/* Revoke Confirmation Dialog */}
       {revokeConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-lg max-w-sm w-full shadow-xl border border-gray-200 dark:border-gray-700 p-6">
+          <div className="bg-white dark:bg-slate-900 rounded-lg max-w-sm w-full shadow-xl border border-slate-200 dark:border-slate-700 p-6">
             <div className="flex gap-3 mb-4">
               <AlertTriangle className="w-6 h-6 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
               <div>
-                <h3 className="font-bold text-gray-900 dark:text-white">
+                <h3 className="font-bold text-slate-900 dark:text-white">
                   Revoke API Key?
                 </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                <p className="text-sm text-gray-600 dark:text-slate-400 mt-1">
                   This will deactivate the key. It will no longer work but the record will be kept for audit.
                 </p>
               </div>
@@ -232,7 +232,7 @@ export function ApiKeysSection() {
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setRevokeConfirm(null)}
-                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded-lg transition-colors"
+                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-slate-900 dark:text-white rounded-lg transition-colors"
               >
                 Cancel
               </button>
@@ -251,14 +251,14 @@ export function ApiKeysSection() {
       {/* Delete Confirmation Dialog */}
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-lg max-w-sm w-full shadow-xl border border-gray-200 dark:border-gray-700 p-6">
+          <div className="bg-white dark:bg-slate-900 rounded-lg max-w-sm w-full shadow-xl border border-slate-200 dark:border-slate-700 p-6">
             <div className="flex gap-3 mb-4">
-              <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400 flex-shrink-0" />
+              <AlertTriangle className="w-6 h-6 text-rose-600 dark:text-red-400 flex-shrink-0" />
               <div>
-                <h3 className="font-bold text-gray-900 dark:text-white">
+                <h3 className="font-bold text-slate-900 dark:text-white">
                   Delete API Key?
                 </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                <p className="text-sm text-gray-600 dark:text-slate-400 mt-1">
                   This action cannot be undone. The key will be permanently deleted.
                 </p>
               </div>
@@ -266,14 +266,14 @@ export function ApiKeysSection() {
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setDeleteConfirm(null)}
-                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded-lg transition-colors"
+                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-slate-900 dark:text-white rounded-lg transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleDelete(deleteConfirm)}
                 disabled={deleteMutation.isPending}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors disabled:opacity-50"
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition-colors disabled:opacity-50"
               >
                 {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
               </button>

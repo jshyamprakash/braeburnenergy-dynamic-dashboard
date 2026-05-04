@@ -122,16 +122,16 @@ export default function OpcuaGatewaysPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
             OPC-UA Gateways
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
+          <p className="text-slate-500 dark:text-slate-400 mt-0.5 text-sm">
             Manage OPC-UA connections to industrial devices
           </p>
         </div>
         <button
           onClick={handleCreateClick}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 font-medium"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 text-sm font-medium transition-colors"
         >
           <Plus className="h-4 w-4" />
           Add Gateway
@@ -141,7 +141,7 @@ export default function OpcuaGatewaysPage() {
       {/* Table */}
       {isLoadingGateways ? (
         <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
         </div>
       ) : (
         <OpcuaGatewayTable
@@ -185,25 +185,25 @@ export default function OpcuaGatewaysPage() {
 
       {/* Delete Confirmation Modal */}
       {deletingGatewayId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="w-full max-w-sm rounded-lg bg-white p-6 dark:bg-gray-900 dark:text-white shadow-xl">
-            <h2 className="mb-2 text-xl font-bold text-red-600">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-xl bg-white dark:bg-slate-900 p-6 shadow-[var(--shadow-modal)] border border-slate-200 dark:border-slate-700">
+            <h2 className="mb-2 text-base font-semibold text-rose-600">
               Delete Gateway
             </h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
               Are you sure? This will deactivate the gateway and remove its configuration.
             </p>
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setDeletingGatewayId(null)}
-                className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800 font-medium"
+                className="px-4 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleDelete(deletingGatewayId)}
                 disabled={deleteGateway.isPending}
-                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 font-medium"
+                className="px-4 py-2 text-sm rounded-lg bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-50 transition-colors"
               >
                 {deleteGateway.isPending ? 'Deleting...' : 'Delete'}
               </button>

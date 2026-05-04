@@ -32,7 +32,7 @@ export function OpcuaGatewayDetailPanel({
   const getConnectionColor = (isConnected: boolean) => {
     return isConnected
       ? 'text-green-600 dark:text-green-400'
-      : 'text-red-600 dark:text-red-400';
+      : 'text-rose-600 dark:text-red-400';
   };
 
   const successRate = gateway.totalReads > 0
@@ -41,15 +41,15 @@ export function OpcuaGatewayDetailPanel({
 
   return (
     <div className="fixed inset-0 z-40 bg-black bg-opacity-50">
-      <div className="absolute right-0 top-0 h-full w-96 bg-white dark:bg-gray-900 shadow-lg flex flex-col">
+      <div className="absolute right-0 top-0 h-full w-96 bg-white dark:bg-slate-900 shadow-lg flex flex-col">
         {/* Header */}
-        <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+        <div className="flex justify-between items-center p-4 border-b border-slate-200 dark:border-slate-700">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
             Gateway Details
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+            className="text-slate-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-300"
           >
             <X className="h-5 w-5" />
           </button>
@@ -59,20 +59,20 @@ export function OpcuaGatewayDetailPanel({
         <div className="flex-1 overflow-y-auto p-4 space-y-6">
           {/* Gateway Info */}
           <div className="space-y-2">
-            <h3 className="font-semibold text-gray-900 dark:text-white">
+            <h3 className="font-semibold text-slate-900 dark:text-white">
               {gateway.name}
             </h3>
             {gateway.description && (
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+              <p className="text-sm text-gray-600 dark:text-slate-400">
                 {gateway.description}
               </p>
             )}
           </div>
 
           {/* Connection Status Card */}
-          <div className="rounded-lg bg-gray-50 dark:bg-gray-800 p-4 space-y-3">
+          <div className="rounded-lg bg-slate-50 dark:bg-slate-800 p-4 space-y-3">
             <div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Connection Status
               </p>
               <p className={`text-lg font-semibold ${getConnectionColor(gateway.isConnected)}`}>
@@ -82,16 +82,16 @@ export function OpcuaGatewayDetailPanel({
 
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Active</p>
-                <p className="text-gray-700 dark:text-gray-300 font-medium">
+                <p className="text-xs text-slate-500 dark:text-slate-400">Active</p>
+                <p className="text-gray-700 dark:text-slate-300 font-medium">
                   {gateway.isActive ? 'Yes' : 'No'}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   Consecutive Failures
                 </p>
-                <p className="text-gray-700 dark:text-gray-300 font-medium">
+                <p className="text-gray-700 dark:text-slate-300 font-medium">
                   {gateway.consecutiveFailures || 0}
                 </p>
               </div>
@@ -99,10 +99,10 @@ export function OpcuaGatewayDetailPanel({
 
             {gateway.lastError && (
               <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   Last Error
                 </p>
-                <p className="text-sm text-red-600 dark:text-red-400 break-words">
+                <p className="text-sm text-rose-600 dark:text-red-400 break-words">
                   {gateway.lastError}
                 </p>
               </div>
@@ -111,21 +111,21 @@ export function OpcuaGatewayDetailPanel({
 
           {/* Connection Config */}
           <div className="space-y-2 text-sm">
-            <p className="text-xs font-semibold text-gray-600 dark:text-gray-400">
+            <p className="text-xs font-semibold text-gray-600 dark:text-slate-400">
               CONNECTION
             </p>
-            <div className="space-y-1 text-gray-700 dark:text-gray-300">
+            <div className="space-y-1 text-gray-700 dark:text-slate-300">
               <p>
-                <span className="text-gray-500 dark:text-gray-400">Endpoint:</span>{' '}
+                <span className="text-slate-500 dark:text-slate-400">Endpoint:</span>{' '}
                 <span className="font-mono text-xs break-all">{gateway.endpointUrl}</span>
               </p>
               <p>
-                <span className="text-gray-500 dark:text-gray-400">Security Mode:</span>{' '}
+                <span className="text-slate-500 dark:text-slate-400">Security Mode:</span>{' '}
                 {gateway.securityMode}
               </p>
               {gateway.securityPolicy && (
                 <p>
-                  <span className="text-gray-500 dark:text-gray-400">
+                  <span className="text-slate-500 dark:text-slate-400">
                     Security Policy:
                   </span>{' '}
                   {gateway.securityPolicy}
@@ -133,7 +133,7 @@ export function OpcuaGatewayDetailPanel({
               )}
               {gateway.username && (
                 <p>
-                  <span className="text-gray-500 dark:text-gray-400">User:</span>{' '}
+                  <span className="text-slate-500 dark:text-slate-400">User:</span>{' '}
                   {gateway.username}
                 </p>
               )}
@@ -142,17 +142,17 @@ export function OpcuaGatewayDetailPanel({
 
           {/* Monitoring Config */}
           <div className="space-y-2 text-sm">
-            <p className="text-xs font-semibold text-gray-600 dark:text-gray-400">
+            <p className="text-xs font-semibold text-gray-600 dark:text-slate-400">
               MONITORING
             </p>
-            <div className="space-y-1 text-gray-700 dark:text-gray-300">
+            <div className="space-y-1 text-gray-700 dark:text-slate-300">
               <p>
-                <span className="text-gray-500 dark:text-gray-400">Mode:</span>{' '}
+                <span className="text-slate-500 dark:text-slate-400">Mode:</span>{' '}
                 {gateway.monitoringMode}
               </p>
               {gateway.monitoringMode === 'Polling' && gateway.pollingInterval && (
                 <p>
-                  <span className="text-gray-500 dark:text-gray-400">Interval:</span>{' '}
+                  <span className="text-slate-500 dark:text-slate-400">Interval:</span>{' '}
                   {gateway.pollingInterval}ms
                 </p>
               )}
@@ -160,13 +160,13 @@ export function OpcuaGatewayDetailPanel({
                 gateway.subscriptionSettings && (
                   <>
                     <p>
-                      <span className="text-gray-500 dark:text-gray-400">
+                      <span className="text-slate-500 dark:text-slate-400">
                         Publishing Interval:
                       </span>{' '}
                       {gateway.subscriptionSettings.publishingInterval}ms
                     </p>
                     <p>
-                      <span className="text-gray-500 dark:text-gray-400">
+                      <span className="text-slate-500 dark:text-slate-400">
                         Sampling Interval:
                       </span>{' '}
                       {gateway.subscriptionSettings.samplingInterval}ms
@@ -178,38 +178,38 @@ export function OpcuaGatewayDetailPanel({
 
           {/* Statistics */}
           <div className="space-y-2">
-            <p className="text-xs font-semibold text-gray-600 dark:text-gray-400">
+            <p className="text-xs font-semibold text-gray-600 dark:text-slate-400">
               STATISTICS
             </p>
             <div className="grid grid-cols-2 gap-2 text-sm">
-              <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded">
-                <p className="text-xs text-gray-500 dark:text-gray-400">Total Reads</p>
-                <p className="text-lg font-semibold text-gray-700 dark:text-gray-300">
+              <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded">
+                <p className="text-xs text-slate-500 dark:text-slate-400">Total Reads</p>
+                <p className="text-lg font-semibold text-gray-700 dark:text-slate-300">
                   {gateway.totalReads || 0}
                 </p>
               </div>
-              <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded">
-                <p className="text-xs text-gray-500 dark:text-gray-400">Successful</p>
+              <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded">
+                <p className="text-xs text-slate-500 dark:text-slate-400">Successful</p>
                 <p className="text-lg font-semibold text-green-600 dark:text-green-400">
                   {gateway.successfulReads || 0}
                 </p>
               </div>
-              <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded">
-                <p className="text-xs text-gray-500 dark:text-gray-400">Failed</p>
-                <p className="text-lg font-semibold text-red-600 dark:text-red-400">
+              <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded">
+                <p className="text-xs text-slate-500 dark:text-slate-400">Failed</p>
+                <p className="text-lg font-semibold text-rose-600 dark:text-red-400">
                   {gateway.failedReads || 0}
                 </p>
               </div>
-              <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded">
-                <p className="text-xs text-gray-500 dark:text-gray-400">Success Rate</p>
-                <p className="text-lg font-semibold text-gray-700 dark:text-gray-300">
+              <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded">
+                <p className="text-xs text-slate-500 dark:text-slate-400">Success Rate</p>
+                <p className="text-lg font-semibold text-gray-700 dark:text-slate-300">
                   {successRate}%
                 </p>
               </div>
             </div>
             {gateway.averageResponseTime && (
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                <span className="text-gray-500">Avg Response Time:</span>{' '}
+              <p className="text-sm text-gray-600 dark:text-slate-400">
+                <span className="text-slate-500">Avg Response Time:</span>{' '}
                 {gateway.averageResponseTime.toFixed(2)}ms
               </p>
             )}
@@ -218,21 +218,21 @@ export function OpcuaGatewayDetailPanel({
           {/* Node Mappings */}
           {gateway.nodeMappings.length > 0 && (
             <div className="space-y-2">
-              <p className="text-xs font-semibold text-gray-600 dark:text-gray-400">
+              <p className="text-xs font-semibold text-gray-600 dark:text-slate-400">
                 NODE MAPPINGS ({gateway.nodeMappings.length})
               </p>
               <div className="space-y-1 max-h-40 overflow-y-auto">
                 {gateway.nodeMappings.map((node, i) => (
                   <div
                     key={i}
-                    className="text-xs p-2 bg-gray-50 dark:bg-gray-800 rounded text-gray-700 dark:text-gray-300"
+                    className="text-xs p-2 bg-slate-50 dark:bg-slate-800 rounded text-gray-700 dark:text-slate-300"
                   >
                     <p className="font-medium">{node.field}</p>
-                    <p className="text-gray-500 dark:text-gray-400 font-mono">
+                    <p className="text-slate-500 dark:text-slate-400 font-mono">
                       {node.nodeId}
                     </p>
                     {node.dataType && (
-                      <p className="text-gray-500 dark:text-gray-400 text-xs">
+                      <p className="text-slate-500 dark:text-slate-400 text-xs">
                         {node.dataType}
                         {node.scale && ` (scale: ${node.scale})`}
                         {node.unit && ` [${node.unit}]`}
@@ -249,19 +249,19 @@ export function OpcuaGatewayDetailPanel({
             gateway.lastSuccessTimestamp ||
             gateway.lastErrorTimestamp) && (
             <div className="space-y-2 text-sm">
-              <p className="text-xs font-semibold text-gray-600 dark:text-gray-400">
+              <p className="text-xs font-semibold text-gray-600 dark:text-slate-400">
                 TIMESTAMPS
               </p>
-              <div className="space-y-1 text-gray-700 dark:text-gray-300 text-xs">
+              <div className="space-y-1 text-gray-700 dark:text-slate-300 text-xs">
                 {gateway.lastPollTimestamp && (
                   <p>
-                    <span className="text-gray-500 dark:text-gray-400">Last Poll:</span>{' '}
+                    <span className="text-slate-500 dark:text-slate-400">Last Poll:</span>{' '}
                     {new Date(gateway.lastPollTimestamp).toLocaleString()}
                   </p>
                 )}
                 {gateway.lastSuccessTimestamp && (
                   <p>
-                    <span className="text-gray-500 dark:text-gray-400">
+                    <span className="text-slate-500 dark:text-slate-400">
                       Last Success:
                     </span>{' '}
                     {new Date(gateway.lastSuccessTimestamp).toLocaleString()}
@@ -269,7 +269,7 @@ export function OpcuaGatewayDetailPanel({
                 )}
                 {gateway.lastErrorTimestamp && (
                   <p>
-                    <span className="text-gray-500 dark:text-gray-400">
+                    <span className="text-slate-500 dark:text-slate-400">
                       Last Error:
                     </span>{' '}
                     {new Date(gateway.lastErrorTimestamp).toLocaleString()}
@@ -281,7 +281,7 @@ export function OpcuaGatewayDetailPanel({
         </div>
 
         {/* Actions Footer */}
-        <div className="border-t border-gray-200 dark:border-gray-700 p-4 space-y-2">
+        <div className="border-t border-slate-200 dark:border-slate-700 p-4 space-y-2">
           <button
             onClick={() => onTest(gateway)}
             disabled={isTesting}

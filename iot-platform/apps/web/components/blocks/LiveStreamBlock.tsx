@@ -194,7 +194,7 @@ export function LiveStreamBlock({
         style={style}
         {...ariaAttributes}
         className={`px-4 py-3 hover:bg-white dark:hover:bg-gray-700 transition-colors border-b border-gray-200 dark:border-gray-700 ${
-          index === 0 ? 'bg-blue-50 dark:bg-blue-900/20' : 'bg-gray-50 dark:bg-gray-800'
+          index === 0 ? 'bg-indigo-50 dark:bg-indigo-900/20' : 'bg-gray-50 dark:bg-gray-800'
         }`}
       >
         {/* Timestamp */}
@@ -203,7 +203,7 @@ export function LiveStreamBlock({
             {formatTime(update.timestamp)}
           </span>
           {index === 0 && (
-            <span className="text-xs font-medium text-blue-600 dark:text-blue-400">New</span>
+            <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400">New</span>
           )}
         </div>
 
@@ -299,7 +299,7 @@ export function LiveStreamBlock({
               }
             }}
             disabled={updates.length === 0}
-            className="px-3 py-1 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded hover:bg-blue-200 dark:hover:bg-blue-900/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+            className="px-3 py-1 text-xs bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded hover:bg-blue-200 dark:hover:bg-blue-900/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
             title="Export visible data to CSV"
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5">

@@ -28,9 +28,9 @@ function ActionNode({ data, selected, id }: NodeProps<ActionNodeData>) {
     <div
       className={`
         relative px-3 py-2 rounded-lg border-2 shadow-lg min-w-[160px]
-        bg-blue-50 dark:bg-blue-900/20
-        border-blue-500 dark:border-blue-400
-        ${selected ? 'ring-2 ring-blue-500 ring-offset-2' : ''}
+        bg-indigo-50 dark:bg-indigo-900/20
+        border-indigo-500 dark:border-blue-400
+        ${selected ? 'ring-2 ring-indigo-500 ring-offset-2' : ''}
         ${hasError ? 'ring-2 ring-red-500 ring-offset-2' : ''}
         transition-all duration-200
       `}
@@ -42,7 +42,7 @@ function ActionNode({ data, selected, id }: NodeProps<ActionNodeData>) {
         type="target"
         position={Position.Top}
         style={{ transform: 'translate(-50%, -20%) rotate(45deg)' }}
-        className="!w-2.5 !h-2.5 !rounded-none !bg-blue-500 dark:!bg-blue-400 !border-2 !border-white dark:!border-gray-800"
+        className="!w-2.5 !h-2.5 !rounded-none !bg-indigo-500 dark:!bg-indigo-400 !border-2 !border-white dark:!border-gray-800"
       />
 
       {/* Label only */}
@@ -55,7 +55,7 @@ function ActionNode({ data, selected, id }: NodeProps<ActionNodeData>) {
         type="source"
         position={Position.Bottom}
         style={{ transform: 'translate(-50%, 20%) rotate(45deg)' }}
-        className="!w-2.5 !h-2.5 !rounded-none !bg-blue-500 dark:!bg-blue-400 !border-2 !border-white dark:!border-gray-800"
+        className="!w-2.5 !h-2.5 !rounded-none !bg-indigo-500 dark:!bg-indigo-400 !border-2 !border-white dark:!border-gray-800"
       />
     </div>
   );

@@ -26,6 +26,15 @@ export const organizationKeys = {
   stats: (id: string) => [...organizationKeys.all, 'stats', id] as const,
 };
 
+export function useOrganization(id: string | undefined) {
+  return useQuery({
+    queryKey: [...organizationKeys.all, 'detail', id] as const,
+    queryFn: () => apiClient.get<Organization>(`/organizations/${id}`),
+    enabled: !!id,
+    staleTime: 60_000,
+  });
+}
+
 export function useOrganizations(params: { search?: string; limit: number; offset: number }) {
   return useQuery({
     queryKey: organizationKeys.list(params),

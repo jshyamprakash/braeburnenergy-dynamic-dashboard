@@ -45,24 +45,24 @@ function GuideContent() {
   const handlePrint = () => window.print();
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-950">
+    <div>
       {/* Header */}
-      <header className="sticky top-0 z-40 border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+      <header className="sticky top-0 z-40 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between py-4">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
             Platform Guide
           </h1>
           <div className="flex items-center gap-2">
             <button
               onClick={handlePrint}
-              className="hidden rounded-lg bg-gray-100 p-2 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 sm:flex"
+              className="hidden rounded-lg bg-slate-100 p-2 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 sm:flex transition-colors"
               title="Print guide"
             >
               <Printer className="h-5 w-5" />
             </button>
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="rounded-lg bg-gray-100 p-2 sm:hidden dark:bg-gray-800"
+              className="rounded-lg bg-slate-100 p-2 sm:hidden dark:bg-slate-800"
             >
               {mobileMenuOpen ? (
                 <X className="h-5 w-5" />
@@ -75,7 +75,7 @@ function GuideContent() {
       </header>
 
       {/* Main content */}
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div>
         <div className="grid grid-cols-1 gap-6 py-8 sm:grid-cols-4">
           {/* Sidebar TOC */}
           <aside
@@ -94,8 +94,8 @@ function GuideContent() {
                   }}
                   className={`block rounded px-3 py-2 text-sm transition-colors ${
                     activeSection === id
-                      ? 'bg-blue-100 font-semibold text-blue-700 dark:bg-blue-900 dark:text-blue-200'
-                      : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
+                      ? 'text-indigo-600 dark:text-indigo-400 font-medium border-l-2 border-l-indigo-500 pl-2 -ml-0.5 bg-indigo-50/60 dark:bg-indigo-950/30'
+                      : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800/60 border-l-2 border-l-transparent'
                   }`}
                 >
                   {title}
@@ -111,15 +111,15 @@ function GuideContent() {
               id="quick-start"
               className="mb-12 scroll-mt-24"
             >
-              <h2 className="mb-4 text-3xl font-bold text-gray-900 dark:text-white">
+              <h2 className="mb-4 text-3xl font-bold text-slate-900 dark:text-white">
                 Quick Start
               </h2>
-              <div className="space-y-4 text-gray-700 dark:text-gray-300">
+              <div className="space-y-4 text-slate-700 dark:text-slate-300">
                 <p>
                   Welcome to the IoT Platform. This guide covers the key features and workflows to help you get
                   started with device management, dashboards, and real-time monitoring.
                 </p>
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
                   Authentication
                 </h3>
                 <p>
@@ -127,7 +127,7 @@ function GuideContent() {
                   and used to automatically refresh your session. Tokens are tracked in the backend for
                   security—logging out immediately revokes your token.
                 </p>
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
                   Key Concepts
                 </h3>
                 <ul className="list-inside list-disc space-y-2">
@@ -155,15 +155,15 @@ function GuideContent() {
               id="dashboard-builder"
               className="mb-12 scroll-mt-24"
             >
-              <h2 className="mb-4 text-3xl font-bold text-gray-900 dark:text-white">
+              <h2 className="mb-4 text-3xl font-bold text-slate-900 dark:text-white">
                 Dashboard Builder
               </h2>
-              <div className="space-y-4 text-gray-700 dark:text-gray-300">
+              <div className="space-y-4 text-slate-700 dark:text-slate-300">
                 <p>
                   Create custom dashboards by dragging and dropping data visualization blocks onto a grid
                   layout.
                 </p>
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
                   How to Create a Dashboard
                 </h3>
                 <ol className="list-inside list-decimal space-y-2">
@@ -177,7 +177,7 @@ function GuideContent() {
                   </li>
                   <li>Dashboards auto-save after 1 second of inactivity</li>
                 </ol>
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
                   Block Types
                 </h3>
                 <ul className="list-inside list-disc space-y-2">
@@ -199,15 +199,15 @@ function GuideContent() {
               id="device-simulator"
               className="mb-12 scroll-mt-24"
             >
-              <h2 className="mb-4 text-3xl font-bold text-gray-900 dark:text-white">
+              <h2 className="mb-4 text-3xl font-bold text-slate-900 dark:text-white">
                 Device Simulator
               </h2>
-              <div className="space-y-4 text-gray-700 dark:text-gray-300">
+              <div className="space-y-4 text-slate-700 dark:text-slate-300">
                 <p>
                   The device simulator generates realistic synthetic data for testing. Run it from the
                   backend directory.
                 </p>
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
                   Basic Usage
                 </h3>
                 <CodeBlock
@@ -215,7 +215,7 @@ function GuideContent() {
                   language="bash"
                   code="cd iot-platform/apps/api\npnpm run simulate -- --devices 5 --interval 1s"
                 />
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
                   Device Profiles
                 </h3>
                 <ul className="list-inside list-disc space-y-2">
@@ -243,15 +243,15 @@ function GuideContent() {
               id="workflow-editor"
               className="mb-12 scroll-mt-24"
             >
-              <h2 className="mb-4 text-3xl font-bold text-gray-900 dark:text-white">
+              <h2 className="mb-4 text-3xl font-bold text-slate-900 dark:text-white">
                 Workflow Editor
               </h2>
-              <div className="space-y-4 text-gray-700 dark:text-gray-300">
+              <div className="space-y-4 text-slate-700 dark:text-slate-300">
                 <p>
                   Workflows are visual automation pipelines. Create them by connecting nodes on a canvas
                   and then execute them on-demand or on a schedule.
                 </p>
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
                   Creating a Workflow
                 </h3>
                 <ol className="list-inside list-decimal space-y-2">
@@ -262,7 +262,7 @@ function GuideContent() {
                   <li>Save the workflow (auto-save every 1 second)</li>
                   <li>Click Run to execute the workflow and see step-by-step logs</li>
                 </ol>
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
                   Node Types (19 total)
                 </h3>
                 <ul className="list-inside list-disc space-y-2">
@@ -288,15 +288,15 @@ function GuideContent() {
               id="alarms"
               className="mb-12 scroll-mt-24"
             >
-              <h2 className="mb-4 text-3xl font-bold text-gray-900 dark:text-white">
+              <h2 className="mb-4 text-3xl font-bold text-slate-900 dark:text-white">
                 Alarm Management
               </h2>
-              <div className="space-y-4 text-gray-700 dark:text-gray-300">
+              <div className="space-y-4 text-slate-700 dark:text-slate-300">
                 <p>
                   Alarms notify you when sensor data triggers configured rules. They follow the ISA-18.2
                   state machine for rigorous alert management.
                 </p>
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
                   ISA-18.2 State Machine
                 </h3>
                 <CodeBlock
@@ -304,7 +304,7 @@ function GuideContent() {
                   language="text"
                   code="ACTIVE_UNACKED → ACTIVE_ACKED → CLEARED\n\n- ACTIVE_UNACKED: Alarm triggered, operator must acknowledge\n- ACTIVE_ACKED: Operator acknowledged the alarm\n- CLEARED: Condition no longer met, alarm resolved"
                 />
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
                   Alarm Types
                 </h3>
                 <ul className="list-inside list-disc space-y-2">
@@ -332,15 +332,15 @@ function GuideContent() {
               id="data-quality"
               className="mb-12 scroll-mt-24"
             >
-              <h2 className="mb-4 text-3xl font-bold text-gray-900 dark:text-white">
+              <h2 className="mb-4 text-3xl font-bold text-slate-900 dark:text-white">
                 Data Quality
               </h2>
-              <div className="space-y-4 text-gray-700 dark:text-gray-300">
+              <div className="space-y-4 text-slate-700 dark:text-slate-300">
                 <p>
                   The platform validates all incoming sensor data against configurable rules and computes
                   a quality score (0–100). This is essential for EPA QAPP compliance.
                 </p>
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
                   Validation Rules
                 </h3>
                 <ul className="list-inside list-disc space-y-2">
@@ -366,7 +366,7 @@ function GuideContent() {
                     <strong>OUTLIER:</strong> Statistical anomaly detection (IQR method)
                   </li>
                 </ul>
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
                   Quality Score
                 </h3>
                 <p>
@@ -391,15 +391,15 @@ function GuideContent() {
               id="water-quality"
               className="mb-12 scroll-mt-24"
             >
-              <h2 className="mb-4 text-3xl font-bold text-gray-900 dark:text-white">
+              <h2 className="mb-4 text-3xl font-bold text-slate-900 dark:text-white">
                 Water Quality Compliance
               </h2>
-              <div className="space-y-4 text-gray-700 dark:text-gray-300">
+              <div className="space-y-4 text-slate-700 dark:text-slate-300">
                 <p>
                   The platform enforces EPA 40 CFR Part 141 and AWWA M36 standards for water quality
                   monitoring. All measurements are automatically validated and compliance reports generated.
                 </p>
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
                   EPA Parameters
                 </h3>
                 <p>
@@ -422,7 +422,7 @@ function GuideContent() {
                     <strong>Bacteria (Total Coliform):</strong> 0 CFU/100mL
                   </li>
                 </ul>
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
                   Sampling Requirements
                 </h3>
                 <p>
@@ -437,15 +437,15 @@ function GuideContent() {
               id="modbus"
               className="mb-12 scroll-mt-24"
             >
-              <h2 className="mb-4 text-3xl font-bold text-gray-900 dark:text-white">
+              <h2 className="mb-4 text-3xl font-bold text-slate-900 dark:text-white">
                 Modbus Gateway
               </h2>
-              <div className="space-y-4 text-gray-700 dark:text-gray-300">
+              <div className="space-y-4 text-slate-700 dark:text-slate-300">
                 <p>
                   Connect to legacy industrial equipment via Modbus TCP or RTU. The gateway automatically
                   polls registers and ingests data into the platform.
                 </p>
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
                   Supported Protocols
                 </h3>
                 <ul className="list-inside list-disc space-y-2">
@@ -456,7 +456,7 @@ function GuideContent() {
                     <strong>Modbus RTU:</strong> Serial or TCP wrapper, binary encoding
                   </li>
                 </ul>
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
                   Register Types
                 </h3>
                 <ul className="list-inside list-disc space-y-2">
@@ -473,7 +473,7 @@ function GuideContent() {
                     <strong>Discrete Inputs:</strong> Read-only boolean
                   </li>
                 </ul>
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
                   Data Types
                 </h3>
                 <p>
@@ -501,15 +501,15 @@ function GuideContent() {
               id="audit-logs"
               className="mb-12 scroll-mt-24"
             >
-              <h2 className="mb-4 text-3xl font-bold text-gray-900 dark:text-white">
+              <h2 className="mb-4 text-3xl font-bold text-slate-900 dark:text-white">
                 Audit Logs
               </h2>
-              <div className="space-y-4 text-gray-700 dark:text-gray-300">
+              <div className="space-y-4 text-slate-700 dark:text-slate-300">
                 <p>
                   The platform maintains an immutable audit trail of all CRUD operations for EPA 21 CFR
                   Part 11 compliance. Logs are retained for 10 years.
                 </p>
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
                   Logged Events
                 </h3>
                 <ul className="list-inside list-disc space-y-2">
@@ -526,7 +526,7 @@ function GuideContent() {
                     <strong>Delete:</strong> Removed resources and reason
                   </li>
                 </ul>
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                <h3 className="text-xl font-semibold text-slate-900 dark:text-white">
                   Audit Log Fields
                 </h3>
                 <CodeBlock

@@ -57,10 +57,10 @@ function StorageTierBar({ policy }: { policy: RetentionPolicy }) {
 
   return (
     <div className="space-y-2">
-      <div className="flex h-6 overflow-hidden rounded-lg border border-gray-300 dark:border-gray-600">
+      <div className="flex h-6 overflow-hidden rounded-lg border border-slate-300 dark:border-slate-600">
         {hot > 0 && (
           <div
-            className="bg-blue-500 hover:bg-blue-600 transition-colors"
+            className="bg-indigo-500 hover:bg-indigo-600 transition-colors"
             style={{ width: `${hotPercent}%` }}
             title={`Hot: ${secondsToDuration(hot)}`}
           />
@@ -80,10 +80,10 @@ function StorageTierBar({ policy }: { policy: RetentionPolicy }) {
           />
         )}
       </div>
-      <div className="flex gap-4 text-xs text-gray-600 dark:text-gray-400">
+      <div className="flex gap-4 text-xs text-slate-500 dark:text-slate-400">
         {hot > 0 && (
           <span>
-            <span className="inline-block h-2 w-2 rounded-full bg-blue-500 mr-1" />
+            <span className="inline-block h-2 w-2 rounded-full bg-indigo-500 mr-1" />
             Hot: {secondsToDuration(hot)}
           </span>
         )}
@@ -174,7 +174,7 @@ function CreateEditModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="w-full max-w-2xl rounded-lg bg-white p-6 dark:bg-gray-900 dark:text-white shadow-xl">
+      <div className="w-full max-w-2xl rounded-lg bg-white p-6 dark:bg-slate-900 dark:text-white shadow-[var(--shadow-modal)]">
         <h2 className="mb-4 text-xl font-bold">
           {policy ? 'Edit Policy' : 'Create Policy'}
         </h2>
@@ -186,7 +186,7 @@ function CreateEditModal({
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-700"
+              className="w-full px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-gray-700"
               required
             />
           </div>
@@ -196,7 +196,7 @@ function CreateEditModal({
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value as RetentionPolicy['category'])}
-              className="w-full px-3 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-700"
+              className="w-full px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-gray-700"
               disabled={!!policy}
             >
               {CATEGORIES.map((cat) => (
@@ -214,7 +214,7 @@ function CreateEditModal({
                 type="number"
                 value={hotDays}
                 onChange={(e) => setHotDays(Number(e.target.value))}
-                className="w-full px-3 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-700"
+                className="w-full px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-gray-700"
                 min="0"
               />
             </div>
@@ -224,7 +224,7 @@ function CreateEditModal({
                 type="number"
                 value={warmDays}
                 onChange={(e) => setWarmDays(Number(e.target.value))}
-                className="w-full px-3 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-700"
+                className="w-full px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-gray-700"
                 min="0"
               />
             </div>
@@ -234,7 +234,7 @@ function CreateEditModal({
                 type="number"
                 value={coldDays}
                 onChange={(e) => setColdDays(Number(e.target.value))}
-                className="w-full px-3 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-700"
+                className="w-full px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-gray-700"
                 min="0"
               />
             </div>
@@ -247,7 +247,7 @@ function CreateEditModal({
               value={regulatory}
               onChange={(e) => setRegulatory(e.target.value)}
               placeholder="e.g., EPA 40 CFR Part 141"
-              className="w-full px-3 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-700"
+              className="w-full px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-gray-700"
             />
           </div>
 
@@ -269,7 +269,7 @@ function CreateEditModal({
                 value={archiveDestination}
                 onChange={(e) => setArchiveDestination(e.target.value)}
                 placeholder="Archive destination (S3, etc.)"
-                className="w-full px-3 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-700 mb-3"
+                className="w-full px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-gray-700 mb-3"
               />
             )}
 
@@ -290,7 +290,7 @@ function CreateEditModal({
                 value={compressionThreshold}
                 onChange={(e) => setCompressionThreshold(Number(e.target.value))}
                 placeholder="Compress after (days)"
-                className="w-full px-3 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-700"
+                className="w-full px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-gray-700"
                 min="1"
               />
             )}
@@ -300,14 +300,14 @@ function CreateEditModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800"
+              className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-slate-50 dark:border-gray-600 dark:hover:bg-gray-800"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+              className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
             >
               {loading ? 'Saving...' : 'Save'}
             </button>
@@ -351,9 +351,9 @@ function DeleteConfirmModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="w-full max-w-md rounded-lg bg-white p-6 dark:bg-gray-900 dark:text-white shadow-xl">
+      <div className="w-full max-w-md rounded-lg bg-white p-6 dark:bg-slate-900 dark:text-white shadow-[var(--shadow-modal)]">
         <h2 className="mb-4 text-xl font-bold text-red-600">Delete Policy</h2>
-        <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
+        <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
           This action cannot be undone. Type the policy name to confirm.
         </p>
         <input
@@ -361,12 +361,12 @@ function DeleteConfirmModal({
           value={confirmText}
           onChange={(e) => setConfirmText(e.target.value)}
           placeholder={`Type: ${policy.name}`}
-          className="w-full px-3 py-2 border rounded-lg mb-4 dark:bg-gray-800 dark:border-gray-700"
+          className="w-full px-3 py-2 border rounded-lg mb-4 dark:bg-slate-800 dark:border-gray-700"
         />
         <div className="flex gap-3 justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800"
+            className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-slate-50 dark:border-gray-600 dark:hover:bg-gray-800"
           >
             Cancel
           </button>
@@ -419,10 +419,10 @@ function RetentionPoliciesContent() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
             Retention Policies
           </h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
             EPA-compliant data retention tiers and archival policies
           </p>
         </div>
@@ -432,7 +432,7 @@ function RetentionPoliciesContent() {
               setEditingPolicy(null);
               setShowCreateModal(true);
             }}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
           >
             <Plus className="h-4 w-4" />
             New Policy
@@ -446,14 +446,14 @@ function RetentionPoliciesContent() {
           {stats.map((stat) => (
             <div
               key={stat.category}
-              className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+              className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-slate-900 dark:text-white"
             >
               <h3 className="font-semibold text-sm mb-3">{stat.label}</h3>
-              <div className="space-y-2 text-xs text-gray-600 dark:text-gray-400">
+              <div className="space-y-2 text-xs text-slate-500 dark:text-slate-400">
                 <div>Hot: {stat.hotDays}d</div>
                 <div>Warm: {stat.warmDays}d</div>
                 <div>Cold: {stat.coldDays}d</div>
-                <div className="pt-2 border-t dark:border-gray-700 font-semibold text-gray-900 dark:text-white">
+                <div className="pt-2 border-t dark:border-gray-700 font-semibold text-slate-900 dark:text-white">
                   Total: {stat.totalDays}d
                 </div>
               </div>
@@ -466,13 +466,13 @@ function RetentionPoliciesContent() {
       {loading ? (
         <div className="text-center py-8">Loading policies...</div>
       ) : (
-        <div className="rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 overflow-hidden">
-          <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+        <div className="rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-slate-900 overflow-hidden">
+          <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
             <h2 className="font-semibold">All Policies</h2>
             <select
               value={selectedCategory || ''}
               onChange={(e) => setSelectedCategory(e.target.value || null)}
-              className="px-3 py-1 text-sm border rounded dark:bg-gray-800 dark:border-gray-700"
+              className="px-3 py-1 text-sm border rounded dark:bg-slate-800 dark:border-gray-700"
             >
               <option value="">All Categories</option>
               {CATEGORIES.map((cat) => (
@@ -485,7 +485,7 @@ function RetentionPoliciesContent() {
 
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800">
+              <thead className="border-b border-gray-200 bg-slate-50 dark:border-gray-700 dark:bg-slate-800">
                 <tr>
                   <th className="px-4 py-3 text-left text-sm font-semibold">Name</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold">Category</th>
@@ -501,18 +501,18 @@ function RetentionPoliciesContent() {
                 {filteredPolicies.map((policy) => (
                   <tr
                     key={policy._id}
-                    className="border-b border-gray-200 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
+                    className="border-b border-gray-200 hover:bg-slate-50 dark:border-gray-700 dark:hover:bg-gray-800"
                   >
                     <td className="px-4 py-3 font-medium">{policy.name}</td>
                     <td className="px-4 py-3">
-                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded dark:bg-blue-900 dark:text-blue-200">
+                      <span className="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded dark:bg-indigo-900 dark:text-blue-200">
                         {CATEGORIES.find((c) => c.value === policy.category)?.label}
                       </span>
                     </td>
                     <td className="px-4 py-3">
                       <StorageTierBar policy={policy} />
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                    <td className="px-4 py-3 text-sm text-slate-500 dark:text-slate-400">
                       {policy.regulatoryRequirement || '—'}
                     </td>
                     <td className="px-4 py-3">
@@ -520,7 +520,7 @@ function RetentionPoliciesContent() {
                         className={`text-xs px-2 py-1 rounded ${
                           policy.isActive
                             ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                            : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                            : 'bg-slate-100 text-gray-800 dark:bg-slate-700 dark:text-gray-300'
                         }`}
                       >
                         {policy.isActive ? 'Active' : 'Inactive'}
@@ -531,7 +531,7 @@ function RetentionPoliciesContent() {
                         <div className="flex justify-end gap-2">
                           <button
                             onClick={() => setEditingPolicy(policy)}
-                            className="text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                            className="text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
                             title="Edit"
                           >
                             <Edit2 className="h-4 w-4" />
@@ -580,7 +580,7 @@ function RetentionPoliciesContent() {
 export default function RetentionPoliciesPage() {
   return (
     <>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 px-4 py-8 sm:px-6 lg:px-8">
+      <div className="min-h-screen">
         <div className="mx-auto max-w-7xl">
           <RetentionPoliciesContent />
         </div>

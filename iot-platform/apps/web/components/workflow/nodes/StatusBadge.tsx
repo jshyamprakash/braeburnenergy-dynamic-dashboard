@@ -19,7 +19,7 @@ export default function StatusBadge({ status }: StatusBadgeProps) {
   const getStatusStyles = () => {
     switch (status) {
       case 'running':
-        return 'bg-blue-500 animate-pulse';
+        return 'bg-indigo-500 animate-pulse';
       case 'completed':
         return 'bg-green-500';
       case 'failed':

@@ -13,7 +13,7 @@ export function ProfileInfoSection() {
       <h2 className="mb-4 text-xl font-semibold">Profile Information</h2>
       <div className="flex items-start gap-6">
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900">
-          <span className="text-2xl font-bold text-blue-600 dark:text-blue-200">
+          <span className="text-2xl font-bold text-indigo-600 dark:text-blue-200">
             {profile.username.charAt(0).toUpperCase()}
           </span>
         </div>

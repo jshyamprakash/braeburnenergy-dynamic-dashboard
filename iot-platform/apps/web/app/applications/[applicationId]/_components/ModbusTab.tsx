@@ -129,7 +129,7 @@ export function ModbusTab({ applicationId }: ModbusTabProps) {
       <div className="flex justify-end">
         <button
           onClick={handleCreateClick}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 font-medium"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 font-medium"
         >
           <Plus className="h-4 w-4" />
           Add Gateway
@@ -139,7 +139,7 @@ export function ModbusTab({ applicationId }: ModbusTabProps) {
       {/* Table */}
       {isLoading ? (
         <div className="text-center py-8">
-          <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
+          <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600" />
         </div>
       ) : (
         <GatewayTable

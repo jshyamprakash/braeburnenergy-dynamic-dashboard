@@ -106,14 +106,14 @@ export function EscalationPolicyModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 overflow-y-auto">
-      <div className="w-full max-w-2xl rounded-lg bg-white dark:bg-gray-900 p-6 shadow-xl my-8">
+      <div className="w-full max-w-2xl rounded-lg bg-white dark:bg-slate-900 p-6 shadow-xl my-8">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">
             {mode === 'create' ? 'Create Escalation Policy' : 'Edit Escalation Policy'}
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            className="text-slate-400 hover:text-gray-600 dark:hover:text-gray-300"
           >
             <X className="h-5 w-5" />
           </button>
@@ -122,7 +122,7 @@ export function EscalationPolicyModal({
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Name */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300">
               Policy Name
             </label>
             <input
@@ -130,23 +130,23 @@ export function EscalationPolicyModal({
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               required
-              className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white"
+              className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-slate-800 dark:text-white"
             />
           </div>
 
           {/* Alarm Rule (optional) */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300">
               Alarm Rule (optional)
             </label>
             <select
               value={formData.alarmRuleId}
               onChange={(e) => setFormData({ ...formData, alarmRuleId: e.target.value })}
-              className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white"
+              className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-slate-800 dark:text-white"
             >
               <option value="">-- All Alarms (Organization-wide) --</option>
             </select>
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
               Leave empty to apply this policy to all alarms
             </p>
           </div>
@@ -154,7 +154,7 @@ export function EscalationPolicyModal({
           {/* Tiers */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300">
                 Escalation Tiers
               </label>
               <button
@@ -171,14 +171,14 @@ export function EscalationPolicyModal({
               {formData.tiers.map((tier, index) => (
                 <div
                   key={index}
-                  className="p-4 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800"
+                  className="p-4 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-slate-800"
                 >
                   <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-semibold text-gray-900 dark:text-white">Tier {index + 1}</h4>
+                    <h4 className="font-semibold text-slate-900 dark:text-white">Tier {index + 1}</h4>
                     <button
                       type="button"
                       onClick={() => handleRemoveTier(index)}
-                      className="text-red-600 hover:text-red-700"
+                      className="text-rose-600 hover:text-red-700"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -187,7 +187,7 @@ export function EscalationPolicyModal({
                   <div className="grid grid-cols-2 gap-3">
                     {/* Delay Minutes */}
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
+                      <label className="block text-xs font-medium text-gray-700 dark:text-slate-300">
                         Delay (minutes)
                       </label>
                       <input
@@ -203,7 +203,7 @@ export function EscalationPolicyModal({
 
                     {/* Minimum Severity */}
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
+                      <label className="block text-xs font-medium text-gray-700 dark:text-slate-300">
                         Min. Severity
                       </label>
                       <select
@@ -226,14 +226,14 @@ export function EscalationPolicyModal({
 
                   {/* Channels */}
                   <div className="mt-3">
-                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-2">
                       Notification Channels
                     </label>
                     <div className="flex flex-wrap gap-2">
                       {channels?.map((channel) => (
                         <label
                           key={channel.id}
-                          className="flex items-center gap-2 px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-sm"
+                          className="flex items-center gap-2 px-2 py-1 bg-slate-100 dark:bg-gray-700 rounded text-sm"
                         >
                           <input
                             type="checkbox"
@@ -250,7 +250,7 @@ export function EscalationPolicyModal({
                       ))}
                     </div>
                     {!channels || channels.length === 0 && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                         No notification channels created yet
                       </p>
                     )}
@@ -269,7 +269,7 @@ export function EscalationPolicyModal({
               onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
               className="rounded border-gray-300"
             />
-            <label htmlFor="isActive" className="text-sm text-gray-700 dark:text-gray-300">
+            <label htmlFor="isActive" className="text-sm text-gray-700 dark:text-slate-300">
               Active
             </label>
           </div>
@@ -279,14 +279,14 @@ export function EscalationPolicyModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-gray-800"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isLoading}
-              className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+              className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
             >
               {isLoading ? 'Saving...' : mode === 'create' ? 'Create' : 'Update'}
             </button>

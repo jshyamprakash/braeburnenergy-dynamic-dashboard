@@ -29,6 +29,7 @@ const WIDGET_LIMITS: Record<KosmosWidgetType, { minW: number; maxW: number; minH
 interface Props {
   page: KosmosPage;
   editMode: boolean;
+  layoutLocked?: boolean;
   onLayoutChange?: (
     pageId: string,
     layouts: Array<{ i: string; x: number; y: number; w: number; h: number }>

@@ -100,7 +100,7 @@ export function BlockPalette({ onAddBlock, onClose }: BlockPaletteProps) {
             className="w-full p-4 text-left bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 hover:border-blue-500 dark:hover:border-blue-500 hover:shadow-md transition-all group"
           >
             <div className="flex items-start gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400 group-hover:bg-blue-200 dark:group-hover:bg-blue-900/50 transition-colors">
+              <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg text-indigo-600 dark:text-indigo-400 group-hover:bg-blue-200 dark:group-hover:bg-blue-900/50 transition-colors">
                 {blockType.icon}
               </div>
               <div className="flex-1">
@@ -117,11 +117,11 @@ export function BlockPalette({ onAddBlock, onClose }: BlockPaletteProps) {
       </div>
 
       {/* Instructions */}
-      <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border-t border-blue-200 dark:border-blue-800">
-        <h4 className="text-sm font-medium text-blue-900 dark:text-blue-300 mb-2">
+      <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 border-t border-indigo-200 dark:border-indigo-800">
+        <h4 className="text-sm font-medium text-blue-900 dark:text-indigo-300 mb-2">
           How to use:
         </h4>
-        <ul className="text-xs text-blue-700 dark:text-blue-400 space-y-1 mb-3">
+        <ul className="text-xs text-indigo-700 dark:text-indigo-400 space-y-1 mb-3">
           <li>• Click a block type to add it to your dashboard</li>
           <li>• Drag blocks to reposition them</li>
           <li>• Resize blocks by dragging corners or edges</li>
@@ -129,13 +129,13 @@ export function BlockPalette({ onAddBlock, onClose }: BlockPaletteProps) {
           <li>• Select "Edit Settings" to configure properties</li>
           <li>• Select "Duplicate Block" to create a copy</li>
         </ul>
-        <h4 className="text-sm font-medium text-blue-900 dark:text-blue-300 mb-2">
+        <h4 className="text-sm font-medium text-blue-900 dark:text-indigo-300 mb-2">
           Keyboard shortcuts:
         </h4>
-        <ul className="text-xs text-blue-700 dark:text-blue-400 space-y-1">
-          <li>• <kbd className="px-1 bg-blue-100 dark:bg-blue-900/40 rounded">Delete</kbd> - Remove selected block</li>
-          <li>• <kbd className="px-1 bg-blue-100 dark:bg-blue-900/40 rounded">Ctrl+D</kbd> - Duplicate selected block</li>
-          <li>• <kbd className="px-1 bg-blue-100 dark:bg-blue-900/40 rounded">Esc</kbd> - Close config panel</li>
+        <ul className="text-xs text-indigo-700 dark:text-indigo-400 space-y-1">
+          <li>• <kbd className="px-1 bg-indigo-100 dark:bg-indigo-900/40 rounded">Delete</kbd> - Remove selected block</li>
+          <li>• <kbd className="px-1 bg-indigo-100 dark:bg-indigo-900/40 rounded">Ctrl+D</kbd> - Duplicate selected block</li>
+          <li>• <kbd className="px-1 bg-indigo-100 dark:bg-indigo-900/40 rounded">Esc</kbd> - Close config panel</li>
         </ul>
       </div>
     </div>

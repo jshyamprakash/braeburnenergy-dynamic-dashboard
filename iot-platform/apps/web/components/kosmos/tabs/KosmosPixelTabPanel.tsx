@@ -103,6 +103,7 @@ function hybridPackWidgets(widgets: ReturnType<typeof normalizeWidgetsInCanvas>,
 interface Props {
   page: KosmosPage;
   editMode: boolean;
+  layoutLocked?: boolean;
   widgetLimits: WidgetLimitMap;
   onLayoutChange?: (
     pageId: string,
@@ -118,6 +119,7 @@ interface Props {
 export function KosmosPixelTabPanel({
   page,
   editMode,
+  layoutLocked,
   widgetLimits,
   onLayoutChange = () => {},
   onRemoveWidget = () => {},
@@ -215,8 +217,8 @@ export function KosmosPixelTabPanel({
               maxWidth={maxWidth}
               minHeight={limits.minH}
               maxHeight={maxHeight}
-              disableDragging={!editMode}
-              enableResizing={editMode}
+              disableDragging={!editMode || !!layoutLocked}
+              enableResizing={editMode && !layoutLocked}
               cancel=".k-widget-action"
               onDrag={(_, data) => {
                 applyWidgetLayout(widget.id, {
@@ -254,6 +256,7 @@ export function KosmosPixelTabPanel({
             >
               <div
                 onClick={(e) => {
+                  if (!editMode || !layoutLocked) return;
                   e.stopPropagation();
                   onSelect?.(widget.id);
                 }}

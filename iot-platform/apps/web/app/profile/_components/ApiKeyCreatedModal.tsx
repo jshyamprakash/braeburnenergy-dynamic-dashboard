@@ -28,10 +28,10 @@ export function ApiKeyCreatedModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-lg max-w-2xl w-full shadow-xl border border-gray-200 dark:border-gray-700">
+      <div className="bg-white dark:bg-slate-900 rounded-lg max-w-2xl w-full shadow-xl border border-slate-200 dark:border-slate-700">
         {/* Header */}
-        <div className="border-b border-gray-200 dark:border-gray-700 p-6">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+        <div className="border-b border-slate-200 dark:border-slate-700 p-6">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">
             API Key Created
           </h2>
         </div>
@@ -54,16 +54,16 @@ export function ApiKeyCreatedModal({
 
           {/* Key Display */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300">
               Your API Key
             </label>
             <div className="flex gap-2">
-              <div className="flex-1 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 font-mono text-sm break-all text-gray-900 dark:text-gray-100 overflow-x-auto">
+              <div className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 font-mono text-sm break-all text-slate-900 dark:text-gray-100 overflow-x-auto">
                 {keyValue}
               </div>
               <button
                 onClick={handleCopy}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2 whitespace-nowrap"
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors flex items-center gap-2 whitespace-nowrap"
               >
                 {copied ? (
                   <>
@@ -81,10 +81,10 @@ export function ApiKeyCreatedModal({
           </div>
 
           {/* Info */}
-          <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-sm text-blue-900 dark:text-blue-200">
+          <div className="bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 rounded-lg p-4 text-sm text-blue-900 dark:text-blue-200">
             <p>
               Use this key in API requests via the{' '}
-              <code className="bg-blue-100 dark:bg-blue-900 px-2 py-0.5 rounded font-mono">
+              <code className="bg-indigo-100 dark:bg-indigo-900 px-2 py-0.5 rounded font-mono">
                 Authorization: Bearer
               </code>{' '}
               header.
@@ -93,10 +93,10 @@ export function ApiKeyCreatedModal({
         </div>
 
         {/* Footer */}
-        <div className="border-t border-gray-200 dark:border-gray-700 p-6 flex justify-end">
+        <div className="border-t border-slate-200 dark:border-slate-700 p-6 flex justify-end">
           <button
             onClick={onClose}
-            className="px-6 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded-lg transition-colors font-medium"
+            className="px-6 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-slate-900 dark:text-white rounded-lg transition-colors font-medium"
           >
             Done
           </button>

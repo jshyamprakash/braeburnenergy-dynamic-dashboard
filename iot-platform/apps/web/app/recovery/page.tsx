@@ -71,7 +71,7 @@ function SelfServiceRecovery({ onSuccess }: { onSuccess: (pw: string) => void })
           value={userId}
           onChange={(e) => setUserId(e.target.value)}
           disabled={isSubmitting}
-          className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
+          className="block w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 disabled:opacity-50"
           placeholder="e.g. 6789abcd..."
           required
         />
@@ -86,7 +86,7 @@ function SelfServiceRecovery({ onSuccess }: { onSuccess: (pw: string) => void })
             value={passphrase}
             onChange={(e) => setPassphrase(e.target.value)}
             disabled={isSubmitting}
-            className="appearance-none block w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
+            className="appearance-none block w-full px-3 py-2 pr-10 border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 disabled:opacity-50"
             placeholder="Enter your recovery passphrase"
             required
           />
@@ -97,7 +97,7 @@ function SelfServiceRecovery({ onSuccess }: { onSuccess: (pw: string) => void })
         </div>
       </div>
       <button type="submit" disabled={isSubmitting}
-        className="w-full flex justify-center py-2 px-4 rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-colors">
+        className="w-full flex justify-center py-2 px-4 rounded-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 transition-colors">
         {isSubmitting ? (
           <><span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />Resetting...</>
         ) : 'Reset Password'}
@@ -192,13 +192,13 @@ function SARecovery({ onSuccess }: { onSuccess: (pw: string) => void }) {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             disabled={isLoading}
-            className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
+            className="block w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 disabled:opacity-50"
             placeholder="Enter your username"
             required
           />
         </div>
         <button type="submit" disabled={isLoading}
-          className="w-full flex justify-center py-2 px-4 rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-colors">
+          className="w-full flex justify-center py-2 px-4 rounded-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 transition-colors">
           {isLoading ? (
             <><span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />Generating...</>
           ) : 'Generate Challenge'}
@@ -211,39 +211,39 @@ function SARecovery({ onSuccess }: { onSuccess: (pw: string) => void }) {
   return (
     <form className="space-y-5" onSubmit={handleRedeem}>
       {/* Recovery Token */}
-      <div className="rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 p-4 space-y-3">
-        <p className="text-sm font-medium text-blue-800 dark:text-blue-300">
+      <div className="rounded-lg bg-indigo-50 dark:bg-indigo-950/30 border border-blue-200 dark:border-blue-800 p-4 space-y-3">
+        <p className="text-sm font-medium text-indigo-800 dark:text-indigo-300">
           Step 1: Share these with your SuperAdmin
         </p>
         <div>
-          <p className="text-xs text-blue-600 dark:text-blue-400 mb-1">
+          <p className="text-xs text-indigo-600 dark:text-indigo-400 mb-1">
             Short token (read over phone — confirms you share the same challenge):
           </p>
           <div className="flex items-center gap-2">
-            <code className="flex-1 rounded bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-700 px-3 py-2 font-mono text-lg font-bold text-blue-900 dark:text-blue-200 tracking-[0.3em]">
+            <code className="flex-1 rounded bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-700 px-3 py-2 font-mono text-lg font-bold text-blue-900 dark:text-blue-200 tracking-[0.3em]">
               {challengeData!.recoveryToken}
             </code>
             <button type="button" onClick={() => copyText(challengeData!.recoveryToken, 'token')}
-              className="p-2 rounded border border-blue-300 dark:border-blue-700 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors">
+              className="p-2 rounded border border-blue-300 dark:border-blue-700 text-indigo-600 hover:bg-indigo-100 dark:hover:bg-blue-900/50 transition-colors">
               {copied === 'token' ? <CheckCircle className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
             </button>
           </div>
         </div>
         <div>
-          <p className="text-xs text-blue-600 dark:text-blue-400 mb-1">
+          <p className="text-xs text-indigo-600 dark:text-indigo-400 mb-1">
             Full challenge hex (SA pastes into CLI):
           </p>
           <div className="flex items-start gap-2">
-            <code className="flex-1 rounded bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-700 px-3 py-2 font-mono text-xs text-blue-900 dark:text-blue-300 break-all">
+            <code className="flex-1 rounded bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-700 px-3 py-2 font-mono text-xs text-blue-900 dark:text-indigo-300 break-all">
               {challengeData!.challenge}
             </code>
             <button type="button" onClick={() => copyText(challengeData!.challenge, 'challenge')}
-              className="p-2 rounded border border-blue-300 dark:border-blue-700 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors flex-shrink-0">
+              className="p-2 rounded border border-blue-300 dark:border-blue-700 text-indigo-600 hover:bg-indigo-100 dark:hover:bg-blue-900/50 transition-colors flex-shrink-0">
               {copied === 'challenge' ? <CheckCircle className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
             </button>
           </div>
         </div>
-        <div className="text-xs text-blue-700 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 rounded p-2 font-mono">
+        <div className="text-xs text-indigo-700 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-900/30 rounded p-2 font-mono">
           SA runs: license-cli sa-recovery-sign --challenge &lt;hex&gt; --private-key sa.pem
         </div>
       </div>
@@ -258,7 +258,7 @@ function SARecovery({ onSuccess }: { onSuccess: (pw: string) => void }) {
           onChange={(e) => setSignature(e.target.value)}
           rows={4}
           disabled={isSubmitting}
-          className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white text-xs font-mono focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 resize-none"
+          className="block w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white text-xs font-mono focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 disabled:opacity-50 resize-none"
           placeholder="Paste the response string given by SuperAdmin..."
           required
         />
@@ -275,7 +275,7 @@ function SARecovery({ onSuccess }: { onSuccess: (pw: string) => void }) {
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
             disabled={isSubmitting}
-            className="appearance-none block w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
+            className="appearance-none block w-full px-3 py-2 pr-10 border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 disabled:opacity-50"
             placeholder="Choose a new password"
             required
             minLength={8}
@@ -285,18 +285,18 @@ function SARecovery({ onSuccess }: { onSuccess: (pw: string) => void }) {
             {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
           </button>
         </div>
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+        <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
           Min 8 chars, uppercase, lowercase, number, special character.
         </p>
       </div>
 
       <div className="flex gap-3">
         <button type="button" onClick={() => { setSAStep('username'); setChallengeData(null); setSignature(''); }}
-          className="flex-1 py-2 px-4 rounded-md text-sm font-medium border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+          className="flex-1 py-2 px-4 rounded-md text-sm font-medium border border-slate-300 dark:border-slate-600 text-gray-700 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors">
           Start Over
         </button>
         <button type="submit" disabled={isSubmitting || !signature.trim() || !newPassword}
-          className="flex-2 flex-grow flex justify-center py-2 px-4 rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-colors">
+          className="flex-2 flex-grow flex justify-center py-2 px-4 rounded-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 transition-colors">
           {isSubmitting ? (
             <><span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />Resetting...</>
           ) : 'Reset Password'}
@@ -311,36 +311,29 @@ function SARecovery({ onSuccess }: { onSuccess: (pw: string) => void }) {
 function SuccessScreen({ newPassword, onLogin }: { newPassword: string; onLogin: () => void }) {
   const [copied, setCopied] = useState(false);
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100 dark:from-gray-900 dark:to-gray-800 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div className="text-center">
-          <div className="mx-auto h-16 w-16 bg-green-600 rounded-xl flex items-center justify-center shadow-lg">
-            <svg className="h-10 w-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
+    <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-950 px-4">
+      <div className="max-w-sm w-full">
+        <div className="text-center mb-6">
+          <div className="mx-auto h-12 w-12 bg-emerald-100 dark:bg-emerald-900/40 rounded-full flex items-center justify-center mb-4">
+            <CheckCircle className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
           </div>
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900 dark:text-white">Password Reset</h2>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Password Reset</h2>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             Your password has been reset. You must change it on next login.
           </p>
         </div>
-        <div className="bg-white dark:bg-gray-800 py-8 px-6 shadow-xl rounded-lg sm:px-10 space-y-4">
-          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
-            <p className="text-sm text-green-800 dark:text-green-300">
-              New password: <strong className="font-mono break-all">{newPassword}</strong>
-            </p>
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5 space-y-3">
+          <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 rounded-lg p-3">
+            <p className="text-xs text-emerald-700 dark:text-emerald-300 mb-1 font-medium">Your new temporary password</p>
+            <p className="font-mono text-sm text-emerald-800 dark:text-emerald-200 break-all font-semibold">{newPassword}</p>
           </div>
-          <button onClick={async () => {
-            await navigator.clipboard.writeText(newPassword);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-          }}
-            className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-md text-sm font-medium text-white bg-green-600 hover:bg-green-700 transition-colors">
+          <button onClick={async () => { await navigator.clipboard.writeText(newPassword); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
+            className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 transition-colors">
             {copied ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
             {copied ? 'Copied!' : 'Copy Password'}
           </button>
           <button onClick={onLogin}
-            className="w-full py-2 px-4 rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors">
+            className="w-full py-2 px-4 rounded-lg text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors">
             Go to Login
           </button>
         </div>
@@ -361,55 +354,77 @@ export default function RecoveryPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div className="text-center">
-          <div className="mx-auto h-16 w-16 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg">
-            <svg className="h-10 w-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+    <div className="min-h-screen flex">
+      {/* Left panel */}
+      <div className="hidden lg:flex lg:w-[55%] xl:w-[60%] relative bg-slate-900 flex-col justify-between p-10 overflow-hidden">
+        <div className="absolute inset-0 opacity-20"
+          style={{ backgroundImage: 'linear-gradient(rgba(99,102,241,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.3) 1px, transparent 1px)', backgroundSize: '48px 48px' }} />
+        <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 30% 50%, rgba(99,102,241,0.15) 0%, transparent 60%)' }} />
+
+        <div className="relative z-10 flex items-center gap-3">
+          <div className="h-9 w-9 rounded-lg bg-indigo-600 flex items-center justify-center">
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
           </div>
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900 dark:text-white">Account Recovery</h2>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-            Reset your password using a recovery method below
+          <span className="text-white font-semibold text-lg">IoT Platform</span>
+        </div>
+
+        <div className="relative z-10 space-y-4">
+          <h2 className="text-3xl font-bold text-white leading-tight">Account Recovery</h2>
+          <p className="text-slate-400 text-sm leading-relaxed max-w-sm">
+            Recover access to your account using your recovery passphrase or with assistance from a SuperAdmin.
           </p>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 shadow-xl rounded-lg overflow-hidden">
-          {/* Tab toggle */}
-          <div className="flex border-b border-gray-200 dark:border-gray-700">
+        <div className="relative z-10">
+          <div className="rounded-xl border border-slate-700/60 bg-slate-800/60 backdrop-blur p-4 max-w-xs">
+            <p className="text-[10px] uppercase tracking-widest text-slate-500 font-medium mb-2">Two methods available</p>
+            <div className="space-y-1.5 text-xs text-slate-400">
+              <p>① Self-service via recovery passphrase</p>
+              <p>② SuperAdmin-assisted challenge-response</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Right panel */}
+      <div className="flex-1 flex flex-col justify-center px-6 sm:px-10 lg:px-14 bg-white dark:bg-slate-950 min-h-screen">
+        <div className="max-w-sm w-full mx-auto">
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Account Recovery</h1>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Reset your password using a recovery method below</p>
+          </div>
+
+          {/* Pill tab switcher */}
+          <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1 mb-6 gap-1">
             {([
-              { key: 'self', label: 'Recovery Passphrase' },
-              { key: 'sa',   label: 'SuperAdmin Recovery' },
+              { key: 'self', label: 'Passphrase' },
+              { key: 'sa',   label: 'SuperAdmin' },
             ] as const).map(({ key, label }) => (
               <button key={key} type="button" onClick={() => setActiveTab(key)}
-                className={`flex-1 py-3 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all duration-150 ${
                   activeTab === key
-                    ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700'
+                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
                 }`}>
                 {label}
               </button>
             ))}
           </div>
 
-          <div className="py-6 px-6 sm:px-8">
-            {activeTab === 'self'
-              ? <SelfServiceRecovery onSuccess={setSuccessPassword} />
-              : <SARecovery onSuccess={setSuccessPassword} />
-            }
-          </div>
+          {activeTab === 'self'
+            ? <SelfServiceRecovery onSuccess={setSuccessPassword} />
+            : <SARecovery onSuccess={setSuccessPassword} />
+          }
 
-          <div className="pb-6 text-center text-sm">
-            <span className="text-gray-600 dark:text-gray-400">
-              Remember your password?{' '}
-              <button onClick={() => router.push('/login')}
-                className="text-blue-600 dark:text-blue-400 hover:underline">
-                Back to login
-              </button>
-            </span>
-          </div>
+          <p className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
+            Remember your password?{' '}
+            <button onClick={() => router.push('/login')}
+              className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
+              Back to login →
+            </button>
+          </p>
         </div>
       </div>
     </div>

@@ -32,14 +32,14 @@ export function BrowseNodeItem({
       {isExpandable ? (
         <button
           onClick={() => onExpand(node)}
-          className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors flex-shrink-0"
+          className="p-1 hover:bg-slate-100 dark:hover:bg-gray-800 rounded transition-colors flex-shrink-0"
           title={isExpanded ? 'Collapse' : 'Expand'}
         >
           {isLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
+            <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
           ) : (
             <ChevronRight
-              className={`h-4 w-4 text-gray-500 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+              className={`h-4 w-4 text-slate-500 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
             />
           )}
         </button>
@@ -51,7 +51,7 @@ export function BrowseNodeItem({
       {isObject ? (
         <Folder className="h-4 w-4 text-yellow-600 dark:text-yellow-500 flex-shrink-0" />
       ) : (
-        <Variable className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+        <Variable className="h-4 w-4 text-indigo-600 dark:text-blue-400 flex-shrink-0" />
       )}
 
       {/* Checkbox (Variables only) */}
@@ -66,12 +66,12 @@ export function BrowseNodeItem({
       )}
 
       {/* Name */}
-      <span className="text-sm text-gray-700 dark:text-gray-300 truncate flex-1">
+      <span className="text-sm text-gray-700 dark:text-slate-300 truncate flex-1">
         {node.displayName || node.browseName}
       </span>
 
       {/* Node ID (small) */}
-      <span className="text-xs text-gray-500 dark:text-gray-500 font-mono ml-2 flex-shrink-0">
+      <span className="text-xs text-slate-500 dark:text-slate-500 font-mono ml-2 flex-shrink-0">
         {node.nodeId}
       </span>
     </div>

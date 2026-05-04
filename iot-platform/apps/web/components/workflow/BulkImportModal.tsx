@@ -174,7 +174,7 @@ export function BulkImportModal({
             <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center">
               <Upload className="mx-auto h-8 w-8 text-gray-400 mb-2" />
               <label className="cursor-pointer">
-                <span className="text-blue-600 dark:text-blue-400 hover:underline font-medium">
+                <span className="text-indigo-600 dark:text-indigo-400 hover:underline font-medium">
                   Click to select
                 </span>
                 <input
@@ -240,7 +240,7 @@ export function BulkImportModal({
               <button
                 onClick={handleImport}
                 disabled={!files.some((f) => f.status !== 'invalid')}
-                className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 font-medium text-sm"
+                className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 font-medium text-sm"
               >
                 Import {files.filter((f) => f.status !== 'invalid').length}
               </button>
@@ -282,7 +282,7 @@ export function BulkImportModal({
                   onClose();
                   onSuccess();
                 }}
-                className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 font-medium text-sm"
+                className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 font-medium text-sm"
               >
                 Done
               </button>

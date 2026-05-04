@@ -10,6 +10,7 @@ import { RenderWidget } from './widgets/index';
 interface UnifiedCanvasProps {
   widgets: KosmosWidget[];
   editMode: boolean;
+  layoutLocked?: boolean;
   onDrop: (widgetType: string) => void;
   onRemove: (widgetId: string) => void;
   onLayoutChange: (layouts: Array<{ i: string; x: number; y: number; w: number; h: number }>) => void;
@@ -28,6 +29,7 @@ const ROW_H = 10;
 export function UnifiedCanvas({
   widgets,
   editMode,
+  layoutLocked,
   onDrop,
   onRemove,
   onLayoutChange,
@@ -131,8 +133,8 @@ export function UnifiedCanvas({
         cols={COL}
         rowHeight={dynamicRowHeight}
         width={containerWidth}
-        isDraggable={editMode}
-        isResizable={editMode}
+        isDraggable={editMode && !layoutLocked}
+        isResizable={editMode && !layoutLocked}
         onLayoutChange={onLayoutChange}
         margin={[8, 8]}
         containerPadding={[8, 8]}
@@ -144,7 +146,7 @@ export function UnifiedCanvas({
           return (
             <div
               key={widget.id}
-              onClick={() => editMode && onSelect?.(isSelected ? null : widget.id)}
+              onClick={() => editMode && layoutLocked && onSelect?.(isSelected ? null : widget.id)}
               style={{
                 background: 'var(--k-bg-card)',
                 border: isSelected
@@ -153,7 +155,7 @@ export function UnifiedCanvas({
                 borderRadius: 4,
                 overflow: 'hidden',
                 position: 'relative',
-                cursor: editMode ? 'pointer' : 'default',
+                cursor: editMode && layoutLocked ? 'pointer' : 'default',
                 boxShadow: isSelected ? '0 0 14px rgba(0,176,80,0.25)' : 'none',
                 transition: 'border-color 0.15s, box-shadow 0.15s',
                 display: 'flex',

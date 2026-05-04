@@ -134,7 +134,7 @@ export function MqttGatewayModal({
             placeholder="Gateway name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full px-3 py-2 border rounded text-sm dark:bg-gray-800 dark:border-gray-600"
+            className="w-full px-3 py-2 border rounded text-sm dark:bg-slate-800 dark:border-gray-600"
           />
           {errors.name && <p className="text-xs text-red-500">{errors.name}</p>}
 
@@ -143,7 +143,7 @@ export function MqttGatewayModal({
             placeholder="Description (optional)"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="w-full px-3 py-2 border rounded text-sm dark:bg-gray-800 dark:border-gray-600"
+            className="w-full px-3 py-2 border rounded text-sm dark:bg-slate-800 dark:border-gray-600"
           />
 
           <input
@@ -151,7 +151,7 @@ export function MqttGatewayModal({
             placeholder="Broker URL (e.g., mqtt://localhost:1883)"
             value={brokerUrl}
             onChange={(e) => setBrokerUrl(e.target.value)}
-            className="w-full px-3 py-2 border rounded text-sm dark:bg-gray-800 dark:border-gray-600"
+            className="w-full px-3 py-2 border rounded text-sm dark:bg-slate-800 dark:border-gray-600"
           />
           {errors.brokerUrl && <p className="text-xs text-red-500">{errors.brokerUrl}</p>}
 
@@ -160,7 +160,7 @@ export function MqttGatewayModal({
             placeholder="Client ID (optional)"
             value={clientId}
             onChange={(e) => setClientId(e.target.value)}
-            className="w-full px-3 py-2 border rounded text-sm dark:bg-gray-800 dark:border-gray-600"
+            className="w-full px-3 py-2 border rounded text-sm dark:bg-slate-800 dark:border-gray-600"
           />
         </div>
 
@@ -173,21 +173,21 @@ export function MqttGatewayModal({
               placeholder="Keepalive (s)"
               value={keepalive}
               onChange={(e) => setKeepalive(e.target.value)}
-              className="px-3 py-2 border rounded text-sm dark:bg-gray-800 dark:border-gray-600"
+              className="px-3 py-2 border rounded text-sm dark:bg-slate-800 dark:border-gray-600"
             />
             <input
               type="number"
               placeholder="Connect timeout (ms)"
               value={connectTimeout}
               onChange={(e) => setConnectTimeout(e.target.value)}
-              className="px-3 py-2 border rounded text-sm dark:bg-gray-800 dark:border-gray-600"
+              className="px-3 py-2 border rounded text-sm dark:bg-slate-800 dark:border-gray-600"
             />
             <input
               type="number"
               placeholder="Reconnect period (ms)"
               value={reconnectPeriod}
               onChange={(e) => setReconnectPeriod(e.target.value)}
-              className="px-3 py-2 border rounded text-sm dark:bg-gray-800 dark:border-gray-600"
+              className="px-3 py-2 border rounded text-sm dark:bg-slate-800 dark:border-gray-600"
             />
           </div>
         </div>
@@ -200,14 +200,14 @@ export function MqttGatewayModal({
             placeholder="Username (optional)"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            className="w-full px-3 py-2 border rounded text-sm dark:bg-gray-800 dark:border-gray-600"
+            className="w-full px-3 py-2 border rounded text-sm dark:bg-slate-800 dark:border-gray-600"
           />
           <input
             type="password"
             placeholder="Password (optional)"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-3 py-2 border rounded text-sm dark:bg-gray-800 dark:border-gray-600"
+            className="w-full px-3 py-2 border rounded text-sm dark:bg-slate-800 dark:border-gray-600"
           />
           <label className="flex items-center gap-2 text-sm">
             <input
@@ -227,7 +227,7 @@ export function MqttGatewayModal({
             <button
               type="button"
               onClick={addTopicMapping}
-              className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+              className="text-xs px-2 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700"
             >
               + Add
             </button>
@@ -235,7 +235,7 @@ export function MqttGatewayModal({
 
           <div className="space-y-1 max-h-96 overflow-y-auto">
             {topicMappings.map((mapping) => (
-              <div key={mapping._tempId} className="border rounded p-2 dark:bg-gray-800 dark:border-gray-600 space-y-2">
+              <div key={mapping._tempId} className="border rounded p-2 dark:bg-slate-800 dark:border-gray-600 space-y-2">
                 {/* Main row */}
                 <div className="flex gap-2 text-xs">
                   <input
@@ -275,7 +275,7 @@ export function MqttGatewayModal({
                         expandedMappingId === mapping._tempId ? null : mapping._tempId!
                       )
                     }
-                    className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 p-1 transition-transform"
+                    className="text-gray-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-gray-200 p-1 transition-transform"
                     style={{
                       transform:
                         expandedMappingId === mapping._tempId
@@ -289,7 +289,7 @@ export function MqttGatewayModal({
                   <button
                     type="button"
                     onClick={() => removeTopicMapping(mapping._tempId!)}
-                    className="text-red-600 hover:text-red-700 p-1"
+                    className="text-rose-600 hover:text-red-700 p-1"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -298,12 +298,12 @@ export function MqttGatewayModal({
                 {/* Overrides section (collapsible) */}
                 {expandedMappingId === mapping._tempId && (
                   <div className="border-t pt-2 pl-2 space-y-2 text-xs">
-                    <div className="text-gray-600 dark:text-gray-400 font-semibold mb-1">
+                    <div className="text-gray-600 dark:text-slate-400 font-semibold mb-1">
                       Processing Overrides
                     </div>
                     <div className="flex gap-2">
                       <div className="flex-1">
-                        <label className="block text-gray-600 dark:text-gray-400 mb-1">
+                        <label className="block text-gray-600 dark:text-slate-400 mb-1">
                           Noise Threshold
                         </label>
                         <input
@@ -326,7 +326,7 @@ export function MqttGatewayModal({
                         />
                       </div>
                       <div className="flex-1">
-                        <label className="block text-gray-600 dark:text-gray-400 mb-1">
+                        <label className="block text-gray-600 dark:text-slate-400 mb-1">
                           Delta %
                         </label>
                         <input
@@ -361,14 +361,14 @@ export function MqttGatewayModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 border rounded text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+            className="px-4 py-2 border rounded text-sm hover:bg-slate-100 dark:hover:bg-gray-800"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={isLoading}
-            className="px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 disabled:opacity-50"
+            className="px-4 py-2 bg-indigo-600 text-white rounded text-sm hover:bg-indigo-700 disabled:opacity-50"
           >
             {isLoading ? 'Saving...' : isEditMode ? 'Update' : 'Create'}
           </button>

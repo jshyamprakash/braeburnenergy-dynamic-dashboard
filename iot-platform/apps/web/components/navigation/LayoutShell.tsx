@@ -51,9 +51,9 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
   return (
     <>
       <TopBar />
-      <div className="flex h-[calc(100vh-64px)]">
+      <div className="flex h-[calc(100vh-56px)]">
         <Sidebar />
-        <main className="flex-1 overflow-auto px-4 sm:px-6 lg:px-8 py-8">
+        <main className="flex-1 overflow-auto px-4 sm:px-6 lg:px-8 py-6">
           {children}
         </main>
       </div>

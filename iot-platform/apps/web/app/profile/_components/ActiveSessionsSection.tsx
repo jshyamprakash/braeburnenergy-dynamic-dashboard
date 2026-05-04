@@ -100,7 +100,7 @@ export function ActiveSessionsSection() {
                     key={session.jti}
                     className={`border-b border-gray-200 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800 ${
                       mostRecentAccessToken?.jti === session.jti
-                        ? 'bg-blue-50 dark:bg-blue-900/20'
+                        ? 'bg-indigo-50 dark:bg-indigo-900/20'
                         : ''
                     }`}
                   >
@@ -108,7 +108,7 @@ export function ActiveSessionsSection() {
                       <span
                         className={`inline-block px-2 py-1 rounded text-xs font-semibold ${
                           session.type === 'access'
-                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                            ? 'bg-indigo-100 text-blue-800 dark:bg-indigo-900 dark:text-blue-200'
                             : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
                         }`}
                       >

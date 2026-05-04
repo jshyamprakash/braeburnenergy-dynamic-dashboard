@@ -148,7 +148,7 @@ export default function SettingsPanel({
             onChange={handleNameChange}
             placeholder="Workflow name"
             maxLength={100}
-            className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
             {formData.name.length}/100
@@ -163,7 +163,7 @@ export default function SettingsPanel({
           <select
             value={formData.type}
             onChange={handleTypeChange}
-            className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
             <option value="Application">Application</option>
             <option value="Experience">Experience</option>
@@ -183,7 +183,7 @@ export default function SettingsPanel({
             placeholder="Workflow description"
             maxLength={500}
             rows={3}
-            className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
           />
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
             {formData.description.length}/500
@@ -198,7 +198,7 @@ export default function SettingsPanel({
           <select
             value={formData.priority}
             onChange={handlePriorityChange}
-            className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
             <option value="LOW">Low</option>
             <option value="MEDIUM">Medium</option>
@@ -213,7 +213,7 @@ export default function SettingsPanel({
             id="enabled"
             checked={formData.isEnabled}
             onChange={handleEnabledChange}
-            className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer"
+            className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
           />
           <label
             htmlFor="enabled"
@@ -229,7 +229,7 @@ export default function SettingsPanel({
         <button
           onClick={handleSubmit}
           disabled={!hasChanges || isSaving}
-          className="w-full px-3 py-2 rounded font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
+          className="w-full px-3 py-2 rounded font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
         >
           {isSaving ? (
             <>

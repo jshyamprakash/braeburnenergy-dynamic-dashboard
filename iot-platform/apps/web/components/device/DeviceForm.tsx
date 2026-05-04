@@ -157,7 +157,7 @@ export function DeviceForm({ isOpen, onClose, device, onSuccess, applicationId }
               <option key={value} value={value}>{label} — {description}</option>
             ))}
           </select>
-          <p className="mt-1 text-xs text-gray-400">
+          <p className="mt-1 text-xs text-slate-400">
             Determines how data arrives for this device. Cannot be changed after creation without data implications.
           </p>
         </div>
@@ -166,19 +166,19 @@ export function DeviceForm({ isOpen, onClose, device, onSuccess, applicationId }
         <div>
           <div className="flex items-center justify-between mb-2">
             <label className="block text-sm font-medium text-gray-700">
-              Tags <span className="text-xs text-gray-500 font-normal">(static metadata key-value pairs)</span>
+              Tags <span className="text-xs text-slate-500 font-normal">(static metadata key-value pairs)</span>
             </label>
             <button
               type="button"
               onClick={addTagRow}
-              className="text-xs px-2 py-1 bg-blue-50 text-blue-700 rounded hover:bg-blue-100"
+              className="text-xs px-2 py-1 bg-indigo-50 text-indigo-700 rounded hover:bg-indigo-100"
             >
               + Add Tag
             </button>
           </div>
           <div className="space-y-2">
             {tagRows.length === 0 && (
-              <p className="text-xs text-gray-400 italic">No tags — click "+ Add Tag" to add one.</p>
+              <p className="text-xs text-slate-400 italic">No tags — click "+ Add Tag" to add one.</p>
             )}
             {tagRows.map((row, i) => (
               <div key={i} className="flex gap-2 items-center">
@@ -189,7 +189,7 @@ export function DeviceForm({ isOpen, onClose, device, onSuccess, applicationId }
                   placeholder="Key (e.g., model)"
                   className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
                 />
-                <span className="text-gray-400 text-sm">:</span>
+                <span className="text-slate-400 text-sm">:</span>
                 <input
                   type="text"
                   value={row.value}
@@ -214,7 +214,7 @@ export function DeviceForm({ isOpen, onClose, device, onSuccess, applicationId }
         <div>
           <div className="flex items-center justify-between mb-2">
             <label className="block text-sm font-medium text-gray-700">
-              Attributes <span className="text-xs text-gray-500 font-normal">(telemetry field → data type)</span>
+              Attributes <span className="text-xs text-slate-500 font-normal">(telemetry field → data type)</span>
             </label>
             <button
               type="button"
@@ -226,7 +226,7 @@ export function DeviceForm({ isOpen, onClose, device, onSuccess, applicationId }
           </div>
           <div className="space-y-2">
             {attrRows.length === 0 && (
-              <p className="text-xs text-gray-400 italic">No attributes — click "+ Add Field" to define the telemetry schema.</p>
+              <p className="text-xs text-slate-400 italic">No attributes — click "+ Add Field" to define the telemetry schema.</p>
             )}
             {attrRows.map((row, i) => (
               <div key={i} className="flex gap-2 items-center">
@@ -237,7 +237,7 @@ export function DeviceForm({ isOpen, onClose, device, onSuccess, applicationId }
                   placeholder="Field (e.g., temperature)"
                   className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
                 />
-                <span className="text-gray-400 text-sm">→</span>
+                <span className="text-slate-400 text-sm">→</span>
                 <select
                   value={row.type}
                   onChange={e => updateAttrRow(i, 'type', e.target.value)}
@@ -258,7 +258,7 @@ export function DeviceForm({ isOpen, onClose, device, onSuccess, applicationId }
               </div>
             ))}
           </div>
-          <p className="mt-1 text-xs text-gray-400">
+          <p className="mt-1 text-xs text-slate-400">
             These field definitions are used by the "Write Device State" workflow node for type casting.
           </p>
         </div>
@@ -269,14 +269,14 @@ export function DeviceForm({ isOpen, onClose, device, onSuccess, applicationId }
             type="button"
             onClick={onClose}
             disabled={isLoading}
-            className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50"
+            className="px-4 py-2 text-gray-700 bg-slate-100 rounded-md hover:bg-gray-200 disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={isLoading}
-            className="px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? 'Saving...' : isEditMode ? 'Update Device' : 'Create Device'}
           </button>

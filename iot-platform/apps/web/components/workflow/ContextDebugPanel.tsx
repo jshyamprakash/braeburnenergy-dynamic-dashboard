@@ -185,7 +185,7 @@ export default function ContextDebugPanel({
             >
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
               {tab === 'debug' && debugMessages.length > 0 && (
-                <span className="ml-1 px-1 py-0.5 rounded-full text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">
+                <span className="ml-1 px-1 py-0.5 rounded-full text-xs bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300">
                   {debugMessages.length}
                 </span>
               )}
@@ -235,7 +235,7 @@ export default function ContextDebugPanel({
                     <span className={`px-1.5 py-0.5 rounded text-xs font-bold ${
                       msg.level === 'ERROR' ? 'bg-red-200 text-red-800 dark:bg-red-800 dark:text-red-200' :
                       msg.level === 'WARN' ? 'bg-yellow-200 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-200' :
-                      'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
+                      'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300'
                     }`}>{msg.level}</span>
                     <span className="text-gray-500 dark:text-gray-400 text-xs">{new Date(msg.timestamp).toLocaleTimeString()}</span>
                     <span className="text-purple-600 dark:text-purple-400 font-semibold truncate">{msg.nodeLabel}</span>
@@ -267,9 +267,9 @@ export default function ContextDebugPanel({
                   {Object.entries(getContextVariables().variables).length > 0 ? (
                     <div className="space-y-1">
                       {Object.entries(getContextVariables().variables).map(([key, value]) => (
-                        <div key={key} className="flex items-start gap-2 p-1.5 bg-blue-50 dark:bg-blue-900/20 rounded text-xs">
-                          <div className="font-mono font-semibold text-blue-700 dark:text-blue-300 flex-shrink-0">{key}</div>
-                          <div className="text-blue-600 dark:text-blue-400 truncate flex-1">
+                        <div key={key} className="flex items-start gap-2 p-1.5 bg-indigo-50 dark:bg-indigo-900/20 rounded text-xs">
+                          <div className="font-mono font-semibold text-indigo-700 dark:text-indigo-300 flex-shrink-0">{key}</div>
+                          <div className="text-indigo-600 dark:text-indigo-400 truncate flex-1">
                             {typeof value === 'object' ? JSON.stringify(value) : String(value)}
                           </div>
                         </div>
@@ -406,8 +406,8 @@ export default function ContextDebugPanel({
 
             {/* Result or Error */}
             {testerLoading && (
-              <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-xs text-blue-600 dark:text-blue-400">
-                <div className="animate-spin h-3 w-3 border-2 border-blue-500 border-t-transparent rounded-full" />
+              <div className="flex items-center gap-2 p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded text-xs text-indigo-600 dark:text-indigo-400">
+                <div className="animate-spin h-3 w-3 border-2 border-indigo-500 border-t-transparent rounded-full" />
                 Evaluating...
               </div>
             )}

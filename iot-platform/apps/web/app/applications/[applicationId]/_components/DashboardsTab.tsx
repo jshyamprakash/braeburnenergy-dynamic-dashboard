@@ -66,7 +66,7 @@ function CreateDashboardModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="w-full max-w-md rounded-lg bg-white p-6 dark:bg-gray-900 dark:text-white shadow-xl">
+      <div className="w-full max-w-md rounded-lg bg-white p-6 dark:bg-slate-900 dark:text-white shadow-xl">
         <h2 className="mb-4 text-xl font-bold">Create Dashboard</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -75,7 +75,7 @@ function CreateDashboardModal({
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-700"
+              className="w-full px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
               placeholder="e.g., Production Metrics"
               required
             />
@@ -85,7 +85,7 @@ function CreateDashboardModal({
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-700"
+              className="w-full px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
               placeholder="Optional description"
               rows={3}
             />
@@ -94,14 +94,14 @@ function CreateDashboardModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800"
+              className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-slate-50 dark:border-gray-600 dark:hover:bg-gray-800"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+              className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
             >
               {loading ? 'Creating...' : 'Create'}
             </button>
@@ -167,7 +167,7 @@ export function DashboardsTab({
           className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
             !canCreateDashboard
               ? 'bg-gray-400 text-gray-200 cursor-not-allowed opacity-60'
-              : 'bg-blue-600 text-white hover:bg-blue-700'
+              : 'bg-indigo-600 text-white hover:bg-indigo-700'
           }`}
         >
           <Plus className="h-4 w-4" />
@@ -176,13 +176,13 @@ export function DashboardsTab({
       </div>
 
       {dashboards.length === 0 ? (
-        <div className="text-center py-12 border rounded-lg border-gray-200 dark:border-gray-700">
-          <p className="text-gray-600 dark:text-gray-400">No dashboards in this application</p>
+        <div className="text-center py-12 border rounded-lg border-slate-200 dark:border-slate-700">
+          <p className="text-gray-600 dark:text-slate-400">No dashboards in this application</p>
         </div>
       ) : (
-        <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden">
+        <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden">
           <table className="w-full">
-            <thead className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+            <thead className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
               <tr>
                 <th className="px-4 py-3 text-left text-sm font-semibold">Name</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold">Blocks</th>
@@ -194,34 +194,34 @@ export function DashboardsTab({
               {dashboards.map((dashboard) => (
                 <tr
                   key={dashboard.dashboardId}
-                  className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
+                  className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-gray-800"
                 >
                   <td className="px-4 py-3 font-medium">
                     <Link
                       href={`/dashboards/${dashboard.dashboardId}?applicationId=${applicationId}`}
-                      className="text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                      className="text-indigo-600 hover:text-blue-700 dark:text-blue-400"
                     >
                       {dashboard.name}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                  <td className="px-4 py-3 text-sm text-gray-600 dark:text-slate-400">
                     {dashboard.blocks?.length || 0} blocks
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                  <td className="px-4 py-3 text-sm text-gray-600 dark:text-slate-400">
                     {formatDate(dashboard.updatedAt)}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex justify-end gap-2">
                       <Link
                         href={`/dashboards/${dashboard.dashboardId}?applicationId=${applicationId}`}
-                        className="text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                        className="text-indigo-600 hover:text-blue-700 dark:text-blue-400"
                         title="Edit"
                       >
                         <Edit2 className="h-4 w-4" />
                       </Link>
                       <button
                         onClick={() => setDeletingDashboardId(dashboard.dashboardId)}
-                        className="text-red-600 hover:text-red-700 dark:text-red-400"
+                        className="text-rose-600 hover:text-red-700 dark:text-red-400"
                         title="Delete"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -247,21 +247,21 @@ export function DashboardsTab({
       {/* Delete Confirmation Modal */}
       {deletingDashboardId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="w-full max-w-sm rounded-lg bg-white p-6 dark:bg-gray-900 dark:text-white shadow-xl">
-            <h2 className="mb-2 text-xl font-bold text-red-600">Delete Dashboard</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+          <div className="w-full max-w-sm rounded-lg bg-white p-6 dark:bg-slate-900 dark:text-white shadow-xl">
+            <h2 className="mb-2 text-xl font-bold text-rose-600">Delete Dashboard</h2>
+            <p className="text-sm text-gray-600 dark:text-slate-400 mb-6">
               Are you sure? This cannot be undone.
             </p>
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setDeletingDashboardId(null)}
-                className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800"
+                className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-slate-50 dark:border-gray-600 dark:hover:bg-gray-800"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleDelete(deletingDashboardId)}
-                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700"
+                className="px-4 py-2 rounded-lg bg-rose-600 text-white hover:bg-rose-700"
               >
                 Delete
               </button>

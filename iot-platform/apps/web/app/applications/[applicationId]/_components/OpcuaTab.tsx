@@ -127,7 +127,7 @@ export function OpcuaTab({ applicationId }: OpcuaTabProps) {
       <div className="flex justify-end">
         <button
           onClick={handleCreateClick}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 font-medium"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 font-medium"
         >
           <Plus className="h-4 w-4" />
           Add Gateway
@@ -137,7 +137,7 @@ export function OpcuaTab({ applicationId }: OpcuaTabProps) {
       {/* Table */}
       {isLoading ? (
         <div className="text-center py-8">
-          <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
+          <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600" />
         </div>
       ) : (
         <OpcuaGatewayTable
@@ -183,24 +183,24 @@ export function OpcuaTab({ applicationId }: OpcuaTabProps) {
       {/* Delete Confirmation Modal */}
       {deletingGatewayId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="w-full max-w-sm rounded-lg bg-white p-6 dark:bg-gray-900 dark:text-white shadow-xl">
-            <h2 className="mb-2 text-xl font-bold text-red-600">
+          <div className="w-full max-w-sm rounded-lg bg-white p-6 dark:bg-slate-900 dark:text-white shadow-xl">
+            <h2 className="mb-2 text-xl font-bold text-rose-600">
               Delete Gateway
             </h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+            <p className="text-sm text-gray-600 dark:text-slate-400 mb-6">
               Are you sure? This will deactivate the gateway and remove its configuration.
             </p>
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setDeletingGatewayId(null)}
-                className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800 font-medium"
+                className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-slate-50 dark:border-gray-600 dark:hover:bg-gray-800 font-medium"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleDelete(deletingGatewayId)}
                 disabled={deleteGateway.isPending}
-                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 font-medium"
+                className="px-4 py-2 rounded-lg bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-50 font-medium"
               >
                 {deleteGateway.isPending ? 'Deleting...' : 'Delete'}
               </button>

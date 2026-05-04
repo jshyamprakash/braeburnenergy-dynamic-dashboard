@@ -25,25 +25,25 @@ function TempPasswordModal({ password, username, onClose }: TempPasswordModalPro
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-md rounded-xl bg-white dark:bg-gray-900 shadow-xl p-6 space-y-4">
+      <div className="w-full max-w-md rounded-xl bg-white dark:bg-slate-900 shadow-[var(--shadow-modal)] p-6 space-y-4">
         <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
           <AlertTriangle className="h-5 w-5 flex-shrink-0" />
           <p className="font-semibold">Save this password — it will not be shown again</p>
         </div>
 
         {username && (
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            Account: <span className="font-medium text-gray-900 dark:text-white">{username}</span>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Account: <span className="font-medium text-slate-900 dark:text-white">{username}</span>
           </p>
         )}
 
-        <div className="rounded-lg bg-gray-100 dark:bg-gray-800 px-4 py-3 font-mono text-base tracking-widest text-gray-900 dark:text-white break-all">
+        <div className="rounded-lg bg-slate-100 dark:bg-slate-800 px-4 py-3 font-mono text-base tracking-widest text-slate-900 dark:text-white break-all">
           {password}
         </div>
 
         <button
           onClick={handleCopy}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors"
         >
           {copied ? <CheckCircle className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
           {copied ? 'Copied!' : 'Copy to clipboard'}
@@ -51,7 +51,7 @@ function TempPasswordModal({ password, username, onClose }: TempPasswordModalPro
 
         <button
           onClick={onClose}
-          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          className="w-full rounded-lg border border-slate-300 dark:border-slate-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-gray-800 transition-colors"
         >
           Done — I have saved the password
         </button>
@@ -87,7 +87,7 @@ function CreateAdminForm({ onCreated }: { onCreated: (pw: string) => void }) {
           onChange={e => setUsername(e.target.value)}
           required
           minLength={3}
-          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           placeholder="e.g. admin"
         />
       </div>
@@ -98,14 +98,14 @@ function CreateAdminForm({ onCreated }: { onCreated: (pw: string) => void }) {
           value={email}
           onChange={e => setEmail(e.target.value)}
           required
-          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           placeholder="e.g. admin@company.com"
         />
       </div>
       <button
         type="submit"
         disabled={createMutation.isPending}
-        className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+        className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
       >
         <UserPlus className="h-4 w-4" />
         {createMutation.isPending ? 'Creating...' : 'Create Admin Account'}
@@ -176,15 +176,15 @@ export default function AdminManagementPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 px-4 py-8 sm:px-6 lg:px-8">
+    <div className="min-h-screen">
       <div className="mx-auto max-w-2xl space-y-8">
 
         {/* Header */}
         <div className="flex items-center gap-3">
           <ShieldCheck className="h-8 w-8 text-red-600" />
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Admin Account Management</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Admin Account Management</h1>
+            <p className="text-sm text-slate-400 dark:text-slate-500 mt-0.5">
               Create and manage the primary customer Admin account
             </p>
           </div>
@@ -194,34 +194,34 @@ export default function AdminManagementPage() {
           <div className="text-center py-12 text-gray-500">Loading...</div>
         ) : admin ? (
           /* ── Admin exists ── */
-          <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-6 space-y-4">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Current Admin Account</h2>
+          <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 space-y-4">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Current Admin Account</h2>
 
             <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
-              <dt className="text-gray-500 dark:text-gray-400">Username</dt>
-              <dd className="font-medium text-gray-900 dark:text-white">{admin.username}</dd>
+              <dt className="text-slate-400 dark:text-slate-500">Username</dt>
+              <dd className="font-medium text-slate-900 dark:text-white">{admin.username}</dd>
 
-              <dt className="text-gray-500 dark:text-gray-400">Email</dt>
-              <dd className="font-medium text-gray-900 dark:text-white">{admin.email}</dd>
+              <dt className="text-slate-400 dark:text-slate-500">Email</dt>
+              <dd className="font-medium text-slate-900 dark:text-white">{admin.email}</dd>
 
-              <dt className="text-gray-500 dark:text-gray-400">Status</dt>
+              <dt className="text-slate-400 dark:text-slate-500">Status</dt>
               <dd>
                 <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${admin.isActive ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
                   {admin.isActive ? 'Active' : 'Inactive'}
                 </span>
               </dd>
 
-              <dt className="text-gray-500 dark:text-gray-400">Password</dt>
+              <dt className="text-slate-400 dark:text-slate-500">Password</dt>
               <dd>
-                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${admin.mustChangePassword ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'}`}>
+                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${admin.mustChangePassword ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-slate-100 text-gray-600 dark:bg-slate-800 dark:text-gray-400'}`}>
                   {admin.mustChangePassword ? 'Temporary (not changed)' : 'Set by admin'}
                 </span>
               </dd>
 
               {admin.lastLogin && (
                 <>
-                  <dt className="text-gray-500 dark:text-gray-400">Last login</dt>
-                  <dd className="text-gray-900 dark:text-white">{new Date(admin.lastLogin).toLocaleString()}</dd>
+                  <dt className="text-slate-400 dark:text-slate-500">Last login</dt>
+                  <dd className="text-slate-900 dark:text-white">{new Date(admin.lastLogin).toLocaleString()}</dd>
                 </>
               )}
             </dl>
@@ -235,15 +235,15 @@ export default function AdminManagementPage() {
                 <RefreshCw className={`h-4 w-4 ${resetMutation.isPending ? 'animate-spin' : ''}`} />
                 {resetMutation.isPending ? 'Resetting...' : 'Reset Password'}
               </button>
-              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+              <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">
                 This generates a new temporary password. The admin will be required to change it on next login.
               </p>
             </div>
           </div>
         ) : (
           /* ── No admin yet ── */
-          <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-6 space-y-4">
-            <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+          <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 space-y-4">
+            <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500">
               <KeyRound className="h-5 w-5" />
               <p className="text-sm">No Admin account exists. Create one to get started.</p>
             </div>
@@ -252,23 +252,23 @@ export default function AdminManagementPage() {
         )}
 
         {/* ── BE Agent AI Configuration (ADR-058) ── */}
-        <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-900 p-6 space-y-4">
+        <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-900 p-6 space-y-4">
           <div className="flex items-center gap-3">
-            <Zap className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+            <Zap className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">BE Agent AI Configuration</h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">BE Agent AI Configuration</h2>
+              <p className="text-sm text-slate-400 dark:text-slate-500 mt-0.5">
                 Configure OpenAI-compatible LLM endpoint for chat streaming
               </p>
             </div>
           </div>
 
-          <div className="rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 p-4 text-sm space-y-1">
-            <p className="font-medium text-blue-800 dark:text-blue-300">Supported endpoints:</p>
-            <ul className="list-disc pl-4 space-y-0.5 text-blue-700 dark:text-blue-400 text-xs">
-              <li><code className="font-mono bg-blue-100 dark:bg-blue-900/50 px-1 rounded">http://localhost:11434/v1</code> (Ollama)</li>
-              <li><code className="font-mono bg-blue-100 dark:bg-blue-900/50 px-1 rounded">http://localhost:8000/v1</code> (vLLM)</li>
-              <li><code className="font-mono bg-blue-100 dark:bg-blue-900/50 px-1 rounded">https://api.openai.com/v1</code> (OpenAI)</li>
+          <div className="rounded-lg bg-indigo-50 dark:bg-indigo-950/30 border border-blue-200 dark:border-blue-800 p-4 text-sm space-y-1">
+            <p className="font-medium text-indigo-800 dark:text-indigo-300">Supported endpoints:</p>
+            <ul className="list-disc pl-4 space-y-0.5 text-indigo-700 dark:text-indigo-400 text-xs">
+              <li><code className="font-mono bg-indigo-100 dark:bg-indigo-900/50 px-1 rounded">http://localhost:11434/v1</code> (Ollama)</li>
+              <li><code className="font-mono bg-indigo-100 dark:bg-indigo-900/50 px-1 rounded">http://localhost:8000/v1</code> (vLLM)</li>
+              <li><code className="font-mono bg-indigo-100 dark:bg-indigo-900/50 px-1 rounded">https://api.openai.com/v1</code> (OpenAI)</li>
               <li>Groq, Azure OpenAI, or any OpenAI-compatible endpoint</li>
               <li>Leave empty for stub mode (no external calls)</li>
             </ul>
@@ -284,10 +284,10 @@ export default function AdminManagementPage() {
                 value={beAgentEndpoint}
                 onChange={(e) => setBeAgentEndpoint(e.target.value)}
                 placeholder="http://localhost:11434/v1"
-                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
               {beAgentConfig?.endpoint && (
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
                   Current: {beAgentConfig.endpoint}
                 </p>
               )}
@@ -302,7 +302,7 @@ export default function AdminManagementPage() {
                 value={beAgentApiKey}
                 onChange={(e) => setBeAgentApiKey(e.target.value)}
                 placeholder="Leave blank if not needed"
-                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
               {beAgentConfig?.apiKeySet && (
                 <p className="text-xs text-green-600 dark:text-green-400 mt-1">
@@ -320,10 +320,10 @@ export default function AdminManagementPage() {
                 value={beAgentModel}
                 onChange={(e) => setBeAgentModel(e.target.value)}
                 placeholder="gpt-4o-mini"
-                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
               {beAgentConfig?.model && (
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
                   Current: {beAgentConfig.model}
                 </p>
               )}
@@ -340,7 +340,7 @@ export default function AdminManagementPage() {
           <button
             onClick={handleBeAgentUpdate}
             disabled={updateBeAgentMutation.isPending}
-            className="flex items-center gap-2 rounded-lg border border-blue-500 bg-blue-50 dark:bg-blue-950/30 px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-950/50 disabled:opacity-50 transition-colors"
+            className="flex items-center gap-2 rounded-lg border border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30 px-4 py-2 text-sm font-medium text-indigo-700 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-blue-950/50 disabled:opacity-50 transition-colors"
           >
             <Zap className={`h-4 w-4 ${updateBeAgentMutation.isPending ? 'animate-spin' : ''}`} />
             {updateBeAgentMutation.isPending ? 'Saving...' : 'Save Configuration'}
@@ -348,12 +348,12 @@ export default function AdminManagementPage() {
         </div>
 
         {/* ── SuperAdmin Key Rotation (ADR-053) ── */}
-        <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-white dark:bg-gray-900 p-6 space-y-4">
+        <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-white dark:bg-slate-900 p-6 space-y-4">
           <div className="flex items-center gap-3">
             <RotateCcw className="h-6 w-6 text-amber-600 dark:text-amber-400" />
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">SuperAdmin Key Rotation</h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">SuperAdmin Key Rotation</h2>
+              <p className="text-sm text-slate-400 dark:text-slate-500 mt-0.5">
                 Replace the login public key stored on this system.
               </p>
             </div>
@@ -376,7 +376,7 @@ export default function AdminManagementPage() {
               value={newPublicKeyPem}
               onChange={(e) => { setNewPublicKeyPem(e.target.value); setRotateSuccess(false); }}
               rows={7}
-              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none"
+              className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none"
               placeholder={'-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----'}
               disabled={rotateMutation.isPending}
             />

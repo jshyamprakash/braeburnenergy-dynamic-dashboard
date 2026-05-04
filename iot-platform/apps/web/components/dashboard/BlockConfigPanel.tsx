@@ -257,7 +257,7 @@ export function BlockConfigPanel({ block, onUpdate, onClose, applicationId }: Bl
                   type="checkbox"
                   checked={config.showLegend !== false}
                   onChange={(e) => handleChange('showLegend', e.target.checked)}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-blue-500"
                 />
                 <span className="text-sm text-gray-700 dark:text-gray-300">Show Legend</span>
               </label>
@@ -267,7 +267,7 @@ export function BlockConfigPanel({ block, onUpdate, onClose, applicationId }: Bl
                   type="checkbox"
                   checked={config.showGrid !== false}
                   onChange={(e) => handleChange('showGrid', e.target.checked)}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-blue-500"
                 />
                 <span className="text-sm text-gray-700 dark:text-gray-300">Show Grid</span>
               </label>
@@ -277,7 +277,7 @@ export function BlockConfigPanel({ block, onUpdate, onClose, applicationId }: Bl
                   type="checkbox"
                   checked={config.smooth !== false}
                   onChange={(e) => handleChange('smooth', e.target.checked)}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-blue-500"
                 />
                 <span className="text-sm text-gray-700 dark:text-gray-300">Smooth Curves</span>
               </label>
@@ -369,8 +369,8 @@ export function BlockConfigPanel({ block, onUpdate, onClose, applicationId }: Bl
               </p>
             </div>
 
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-              <p className="text-xs text-blue-800 dark:text-blue-300">
+            <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg p-3">
+              <p className="text-xs text-blue-800 dark:text-indigo-300">
                 <strong>Tip:</strong> Leave empty to show data from all devices, or select a specific device to filter.
               </p>
             </div>
@@ -426,7 +426,7 @@ export function BlockConfigPanel({ block, onUpdate, onClose, applicationId }: Bl
                       type="checkbox"
                       checked={currentStates.includes(state)}
                       onChange={() => toggleArrayItem('filterByState', currentStates, state)}
-                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-blue-500"
                     />
                     <span className="text-sm text-gray-700 dark:text-gray-300">{state.replace(/_/g, ' ')}</span>
                   </label>
@@ -445,7 +445,7 @@ export function BlockConfigPanel({ block, onUpdate, onClose, applicationId }: Bl
                       type="checkbox"
                       checked={currentPriorities.includes(priority)}
                       onChange={() => toggleArrayItem('filterByPriority', currentPriorities, priority)}
-                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-blue-500"
                     />
                     <span className="text-sm text-gray-700 dark:text-gray-300">{priority}</span>
                   </label>

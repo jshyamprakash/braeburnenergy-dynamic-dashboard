@@ -55,7 +55,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
       // Default fallback UI
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+        <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
           <div className="max-w-md w-full bg-white rounded-lg shadow-lg border border-red-200 p-6">
             {/* Error Icon */}
             <div className="flex items-center justify-center w-12 h-12 bg-red-100 rounded-full mx-auto mb-4">
@@ -75,7 +75,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             </div>
 
             {/* Error Message */}
-            <h2 className="text-xl font-bold text-gray-900 text-center mb-2">
+            <h2 className="text-xl font-bold text-slate-900 text-center mb-2">
               Something went wrong
             </h2>
             <p className="text-sm text-gray-600 text-center mb-4">
@@ -86,13 +86,13 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             {/* Error Details (Development Only) */}
             {process.env.NODE_ENV === 'development' && (
               <details className="mb-4">
-                <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-700 mb-2">
+                <summary className="text-xs text-slate-500 cursor-pointer hover:text-gray-700 mb-2">
                   Error Details (Development)
                 </summary>
                 <div className="bg-gray-900 text-red-400 p-3 rounded text-xs overflow-x-auto">
                   <div className="font-bold mb-1">{this.state.error.name}</div>
                   <div className="mb-2">{this.state.error.message}</div>
-                  <pre className="text-gray-500 text-xs whitespace-pre-wrap">
+                  <pre className="text-slate-500 text-xs whitespace-pre-wrap">
                     {this.state.error.stack}
                   </pre>
                 </div>
@@ -103,13 +103,13 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             <div className="flex gap-3">
               <button
                 onClick={this.reset}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
               >
                 Try Again
               </button>
               <button
                 onClick={() => window.location.reload()}
-                className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
+                className="flex-1 px-4 py-2 bg-slate-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
               >
                 Reload Page
               </button>
@@ -119,7 +119,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             <div className="mt-4 text-center">
               <a
                 href="/"
-                className="text-xs text-blue-600 hover:text-blue-700 underline"
+                className="text-xs text-indigo-600 hover:text-blue-700 underline"
               >
                 Return to Home
               </a>

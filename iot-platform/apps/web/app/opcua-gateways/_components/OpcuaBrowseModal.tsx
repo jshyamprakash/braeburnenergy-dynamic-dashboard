@@ -131,7 +131,7 @@ export function OpcuaBrowseModal({
         <div className="border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900 overflow-y-auto max-h-96 p-2">
           {isInitialLoading ? (
             <div className="flex justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+              <Loader2 className="h-6 w-6 animate-spin text-indigo-600" />
             </div>
           ) : rootNodes.length === 0 ? (
             <p className="text-sm text-gray-500 dark:text-gray-400 py-4">
@@ -171,7 +171,7 @@ export function OpcuaBrowseModal({
           <button
             onClick={handleConfirm}
             disabled={selectedNodes.size === 0 || browseNodes.isPending}
-            className="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+            className="px-3 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
           >
             {browseNodes.isPending ? 'Loading...' : `Add ${selectedNodes.size} Mapping${selectedNodes.size !== 1 ? 's' : ''}`}
           </button>

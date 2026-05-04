@@ -169,7 +169,7 @@ export default function ExecutionInputModal({
                     placeholder="e.g., deviceId"
                     value={variable.key}
                     onChange={e => handleVariableChange(index, 'key', e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
 
@@ -183,7 +183,7 @@ export default function ExecutionInputModal({
                     placeholder='e.g., "device-123" or {"id": 1}'
                     value={variable.value}
                     onChange={e => handleVariableChange(index, 'value', e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
 
@@ -214,12 +214,12 @@ export default function ExecutionInputModal({
           </button>
 
           {/* Help text */}
-          <div className="mt-4 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-            <p className="text-xs text-blue-700 dark:text-blue-300">
+          <div className="mt-4 p-3 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800">
+            <p className="text-xs text-indigo-700 dark:text-indigo-300">
               <strong>Tip:</strong> Values are parsed as JSON first, then as strings. For{' '}
-              <code className="bg-blue-100 dark:bg-blue-800 px-1.5 py-0.5 rounded text-xs font-mono">writeDeviceState</code>{' '}
-              nodes, include <code className="bg-blue-100 dark:bg-blue-800 px-1.5 py-0.5 rounded text-xs font-mono">deviceId</code>{' '}
-              and <code className="bg-blue-100 dark:bg-blue-800 px-1.5 py-0.5 rounded text-xs font-mono">stateId</code> — or use{' '}
+              <code className="bg-indigo-100 dark:bg-blue-800 px-1.5 py-0.5 rounded text-xs font-mono">writeDeviceState</code>{' '}
+              nodes, include <code className="bg-indigo-100 dark:bg-blue-800 px-1.5 py-0.5 rounded text-xs font-mono">deviceId</code>{' '}
+              and <code className="bg-indigo-100 dark:bg-blue-800 px-1.5 py-0.5 rounded text-xs font-mono">stateId</code> — or use{' '}
               <strong>Load latest state</strong> above.
             </p>
           </div>

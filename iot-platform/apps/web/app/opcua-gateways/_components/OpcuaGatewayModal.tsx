@@ -222,7 +222,7 @@ export function OpcuaGatewayModal({
         {/* Basic Info */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
               Gateway Name <span className="text-red-500">*</span>
             </label>
             <input
@@ -230,18 +230,18 @@ export function OpcuaGatewayModal({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g., Factory PLC"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-blue-500 dark:bg-slate-800 dark:text-white"
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
               Application
             </label>
             <select
               value={selectedAppId}
               onChange={(e) => setSelectedAppId(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-blue-500 dark:bg-slate-800 dark:text-white"
             >
               <option value="">-- Select Application --</option>
               {applications.map((app: any, idx: number) => (
@@ -254,7 +254,7 @@ export function OpcuaGatewayModal({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
             Description
           </label>
           <textarea
@@ -262,19 +262,19 @@ export function OpcuaGatewayModal({
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Optional description"
             rows={2}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-blue-500 dark:bg-slate-800 dark:text-white"
           />
         </div>
 
         {/* Device Selection */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
             Device <span className="text-red-500">*</span>
           </label>
           <select
             value={deviceId}
             onChange={(e) => setDeviceId(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-blue-500 dark:bg-slate-800 dark:text-white"
             required
           >
             <option value="">-- Select Device --</option>
@@ -288,7 +288,7 @@ export function OpcuaGatewayModal({
 
         {/* Connection Settings */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
             Endpoint URL <span className="text-red-500">*</span>
           </label>
           <input
@@ -296,7 +296,7 @@ export function OpcuaGatewayModal({
             value={endpointUrl}
             onChange={(e) => setEndpointUrl(e.target.value)}
             placeholder="opc.tcp://hostname:4840"
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-blue-500 dark:bg-slate-800 dark:text-white"
             required
           />
         </div>
@@ -304,13 +304,13 @@ export function OpcuaGatewayModal({
         {/* Security Settings */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
               Security Mode
             </label>
             <select
               value={securityMode}
               onChange={(e) => setSecurityMode(e.target.value as any)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-blue-500 dark:bg-slate-800 dark:text-white"
             >
               {SECURITY_MODES.map((mode) => (
                 <option key={mode} value={mode}>
@@ -320,7 +320,7 @@ export function OpcuaGatewayModal({
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
               Security Policy
             </label>
             <input
@@ -328,7 +328,7 @@ export function OpcuaGatewayModal({
               value={securityPolicy}
               onChange={(e) => setSecurityPolicy(e.target.value)}
               placeholder="e.g., Basic256Sha256"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-blue-500 dark:bg-slate-800 dark:text-white"
             />
           </div>
         </div>
@@ -336,7 +336,7 @@ export function OpcuaGatewayModal({
         {/* Credentials (Optional) */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
               Username
             </label>
             <input
@@ -344,11 +344,11 @@ export function OpcuaGatewayModal({
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Optional"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-blue-500 dark:bg-slate-800 dark:text-white"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
               Password
             </label>
             <input
@@ -356,14 +356,14 @@ export function OpcuaGatewayModal({
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Optional"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-blue-500 dark:bg-slate-800 dark:text-white"
             />
           </div>
         </div>
 
         {/* Monitoring Mode */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
             Monitoring Mode
           </label>
           <div className="flex gap-4">
@@ -376,7 +376,7 @@ export function OpcuaGatewayModal({
                   onChange={(e) => setMonitoringMode(e.target.value as any)}
                   className="rounded"
                 />
-                <span className="text-sm text-gray-700 dark:text-gray-300">{mode}</span>
+                <span className="text-sm text-gray-700 dark:text-slate-300">{mode}</span>
               </label>
             ))}
           </div>
@@ -385,7 +385,7 @@ export function OpcuaGatewayModal({
         {/* Conditional Monitoring Settings */}
         {monitoringMode === 'Polling' ? (
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
               Polling Interval (ms)
             </label>
             <input
@@ -393,13 +393,13 @@ export function OpcuaGatewayModal({
               min="100"
               value={pollingInterval}
               onChange={(e) => setPollingInterval(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-blue-500 dark:bg-slate-800 dark:text-white"
             />
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                 Publishing Interval (ms)
               </label>
               <input
@@ -407,11 +407,11 @@ export function OpcuaGatewayModal({
                 min="100"
                 value={publishingInterval}
                 onChange={(e) => setPublishingInterval(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-blue-500 dark:bg-slate-800 dark:text-white"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                 Sampling Interval (ms)
               </label>
               <input
@@ -419,11 +419,11 @@ export function OpcuaGatewayModal({
                 min="100"
                 value={samplingInterval}
                 onChange={(e) => setSamplingInterval(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-blue-500 dark:bg-slate-800 dark:text-white"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                 Max Notifications Per Publish
               </label>
               <input
@@ -431,11 +431,11 @@ export function OpcuaGatewayModal({
                 min="0"
                 value={maxNotificationsPerPublish}
                 onChange={(e) => setMaxNotificationsPerPublish(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-blue-500 dark:bg-slate-800 dark:text-white"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                 Queue Size
               </label>
               <input
@@ -443,7 +443,7 @@ export function OpcuaGatewayModal({
                 min="1"
                 value={queueSize}
                 onChange={(e) => setQueueSize(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-blue-500 dark:bg-slate-800 dark:text-white"
               />
             </div>
           </div>
@@ -452,7 +452,7 @@ export function OpcuaGatewayModal({
         {/* Node Mappings */}
         <div>
           <div className="flex justify-between items-center mb-2">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300">
               Node Mappings
             </label>
             <div className="flex gap-2">
@@ -460,7 +460,7 @@ export function OpcuaGatewayModal({
                 <button
                   type="button"
                   onClick={() => setIsBrowseOpen(true)}
-                  className="text-xs px-2 py-1 bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-100 dark:hover:bg-blue-800 flex items-center gap-1"
+                  className="text-xs px-2 py-1 bg-indigo-50 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 rounded hover:bg-indigo-100 dark:hover:bg-blue-800 flex items-center gap-1"
                   title="Browse server nodes"
                 >
                   <Search className="h-3 w-3" />
@@ -478,7 +478,7 @@ export function OpcuaGatewayModal({
           </div>
           <div className="space-y-2 max-h-64 overflow-y-auto">
             {nodeMappings.length === 0 ? (
-              <p className="text-xs text-gray-400 italic">
+              <p className="text-xs text-slate-400 italic">
                 No node mappings — click "Add Node" to map OPC-UA nodes.
               </p>
             ) : (
@@ -491,7 +491,7 @@ export function OpcuaGatewayModal({
                       handleUpdateNodeMapping(node._tempId!, 'field', e.target.value)
                     }
                     placeholder="Field name"
-                    className="flex-1 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+                    className="flex-1 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs focus:ring-indigo-500 focus:border-blue-500 dark:bg-slate-800 dark:text-white"
                   />
                   <input
                     type="text"
@@ -500,14 +500,14 @@ export function OpcuaGatewayModal({
                       handleUpdateNodeMapping(node._tempId!, 'nodeId', e.target.value)
                     }
                     placeholder="ns=2;i=100"
-                    className="flex-1 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+                    className="flex-1 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs focus:ring-indigo-500 focus:border-blue-500 dark:bg-slate-800 dark:text-white"
                   />
                   <select
                     value={node.dataType || ''}
                     onChange={(e) =>
                       handleUpdateNodeMapping(node._tempId!, 'dataType', e.target.value || undefined)
                     }
-                    className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+                    className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs focus:ring-indigo-500 focus:border-blue-500 dark:bg-slate-800 dark:text-white"
                   >
                     <option value="">-- Type --</option>
                     {DATA_TYPES.map((t) => (
@@ -528,12 +528,12 @@ export function OpcuaGatewayModal({
                       )
                     }
                     placeholder="Scale"
-                    className="w-16 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+                    className="w-16 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs focus:ring-indigo-500 focus:border-blue-500 dark:bg-slate-800 dark:text-white"
                   />
                   <button
                     type="button"
                     onClick={() => handleRemoveNodeMapping(node._tempId!)}
-                    className="text-red-400 hover:text-red-600 text-lg leading-none px-1"
+                    className="text-red-400 hover:text-rose-600 text-lg leading-none px-1"
                     title="Remove"
                   >
                     ×
@@ -545,19 +545,19 @@ export function OpcuaGatewayModal({
         </div>
 
         {/* Actions */}
-        <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+        <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
           <button
             type="button"
             onClick={onClose}
             disabled={isLoading}
-            className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50"
+            className="px-4 py-2 text-gray-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={isLoading}
-            className="px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? 'Saving...' : isEditMode ? 'Update' : 'Create'}
           </button>

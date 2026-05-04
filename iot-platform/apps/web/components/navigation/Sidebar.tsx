@@ -5,306 +5,296 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Menu, X, Bell, Settings, ClipboardList, BookOpen,
-  Archive, Users, Wifi, LayoutGrid, ChevronRight, Cpu,
+  Archive, Users, Wifi, LayoutGrid, ChevronLeft, Cpu,
   GitBranch, LayoutDashboard, Radio, Network, User, Zap, Shield, ShieldCheck, Activity,
+  BarChart2, Building2, BellDot,
 } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/lib/store';
 import { toggleSidebar, selectSidebarOpen } from '@/lib/store/slices/uiSlice';
 import type { RootState } from '@/lib/store';
 import { apiClient } from '@/lib/api-client';
 
-const mainNavItems = [
-  { href: '/alarms', label: 'Alarms', icon: Bell },
-  { href: '/alarm-rules', label: 'Rules', icon: Settings },
-  { href: '/alarm-management', label: 'Alarm Mgmt', icon: Bell, adminOnly: true },
-  { href: '/audit-logs', label: 'Audit Logs', icon: ClipboardList },
-  { href: '/guide', label: 'Guide', icon: BookOpen },
-  { href: '/retention-policies', label: 'Retention', icon: Archive },
-  { href: '/users', label: 'Users', icon: User },
-  { href: '/organizations', label: 'Organizations', icon: Users },
-  { href: '/websocket-test', label: 'WebSocket', icon: Wifi },
-];
+// ── Section label helper ──────────────────────────────────────────────────
+function SectionLabel({ label, isExpanded }: { label: string; isExpanded: boolean }) {
+  if (!isExpanded) return <div className="h-px bg-slate-200 dark:bg-slate-700/60 mx-2 my-2" />;
+  return (
+    <p className="px-3 pt-4 pb-1 text-[10px] font-semibold tracking-widest uppercase text-slate-400 dark:text-slate-500 select-none">
+      {label}
+    </p>
+  );
+}
 
-const entityItems = [
-  { key: 'devices',    label: 'Devices',          icon: Cpu },
-  { key: 'workflows',  label: 'Workflows',         icon: GitBranch },
-  { key: 'dashboards', label: 'Dashboards',        icon: LayoutDashboard },
-  { key: 'modbus',     label: 'Modbus Gateway',    icon: Radio },
-  { key: 'opcua',      label: 'OPC-UA Gateway',    icon: Network },
-  { key: 'mqtt',       label: 'MQTT Gateway',      icon: Zap },
-  { key: 'bacnet',     label: 'BACnet Gateway',    icon: LayoutGrid },
-  { key: 'enip',       label: 'EtherNet/IP GW',    icon: Shield },
-];
-
-interface NavItem {
+// ── Nav item helper ───────────────────────────────────────────────────────
+function NavItem({
+  href,
+  label,
+  icon: Icon,
+  isExpanded,
+  isActive,
+}: {
   href: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
-  adminOnly?: boolean;
+  isExpanded: boolean;
+  isActive: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors duration-150 border-l-[3px] ${
+        isActive
+          ? 'border-l-indigo-500 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 font-medium'
+          : 'border-l-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200'
+      }`}
+      title={!isExpanded ? label : undefined}
+    >
+      <Icon className="w-[18px] h-[18px] flex-shrink-0" />
+      {isExpanded && <span className="text-sm">{label}</span>}
+    </Link>
+  );
 }
 
+// ── Application interface ─────────────────────────────────────────────────
 interface AppItem {
   applicationId: string;
   name: string;
   isActive: boolean;
 }
 
+// ── Platform nav (State 1 — not inside an application) ────────────────────
+const platformNavSections = [
+  {
+    label: 'Applications',
+    items: [
+      { href: '/applications', label: 'Applications', icon: LayoutGrid },
+    ],
+  },
+  {
+    label: 'Monitoring',
+    items: [
+      { href: '/alarms', label: 'Alarms', icon: Bell },
+      { href: '/alarm-rules', label: 'Alarm Rules', icon: Settings },
+      { href: '/alarm-management', label: 'Alarm Mgmt', icon: BellDot, adminOnly: true },
+    ],
+  },
+  {
+    label: 'System',
+    items: [
+      { href: '/audit-logs', label: 'Audit Logs', icon: ClipboardList },
+      { href: '/retention-policies', label: 'Retention', icon: Archive },
+      { href: '/users', label: 'Users', icon: User },
+    ],
+  },
+  {
+    label: 'Tools',
+    items: [
+      { href: '/guide', label: 'Guide', icon: BookOpen },
+      { href: '/websocket-test', label: 'WebSocket', icon: Wifi },
+    ],
+  },
+];
+
+// ── Application-context nav (State 2 — inside /applications/[id]/*) ───────
+const appNavItems = [
+  { key: 'overview', label: 'Overview', icon: LayoutDashboard },
+  { key: 'devices', label: 'Devices', icon: Cpu },
+  { key: 'workflows', label: 'Workflows', icon: GitBranch },
+  { key: 'dashboards', label: 'Dashboards', icon: BarChart2 },
+];
+
+const gatewayNavItems = [
+  { key: 'modbus', label: 'Modbus', icon: Radio },
+  { key: 'opcua', label: 'OPC-UA', icon: Network },
+  { key: 'mqtt', label: 'MQTT', icon: Zap },
+  { key: 'bacnet', label: 'BACnet', icon: LayoutGrid },
+  { key: 'enip', label: 'EtherNet/IP', icon: Shield },
+];
+
+
+// ── Main Sidebar component ────────────────────────────────────────────────
 export function Sidebar() {
   const pathname = usePathname();
   const dispatch = useAppDispatch();
   const isExpanded = useAppSelector(selectSidebarOpen);
   const user = useAppSelector((state: RootState) => state.auth.user);
   const [isMounted, setIsMounted] = useState(false);
-
-  // Applications accordion in main column
-  const [appsOpen, setAppsOpen] = useState(false);
-  const [apps, setApps] = useState<AppItem[]>([]);
-  const [appsLoading, setAppsLoading] = useState(false);
-
-  // Selected app → opens entity column beside main column
-  const [selectedApp, setSelectedApp] = useState<AppItem | null>(null);
+  const [appName, setAppName] = useState<string | null>(null);
 
   useEffect(() => { setIsMounted(true); }, []);
 
-  // Auto-open based on current URL
-  useEffect(() => {
-    const match = pathname.match(/^\/applications\/([^/]+)/);
-    if (!match) return;
-    const appId = match[1];
-    setAppsOpen(true);
-    apiClient.get<any>(`/applications/${appId}`)
-      .then(res => { if (res.data?.applicationId) setSelectedApp(res.data); })
-      .catch(() => {});
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Extract applicationId from URL if inside app context
+  const appContextMatch = pathname.match(/^\/applications\/([^/]+)/);
+  const currentAppId = appContextMatch?.[1] ?? null;
+  const isInAppContext = !!currentAppId && pathname.split('/').length > 3;
 
-  // Fetch app list when accordion opens
+  // Fetch app name when in app context
   useEffect(() => {
-    if (!appsOpen || apps.length > 0) return;
-    setAppsLoading(true);
-    apiClient.get<any>('/applications?limit=50&offset=0')
-      .then(res => setApps(res.data || []))
-      .catch(() => setApps([]))
-      .finally(() => setAppsLoading(false));
-  }, [appsOpen, apps.length]);
+    if (!currentAppId) { setAppName(null); return; }
+    apiClient.get<any>(`/applications/${currentAppId}`)
+      .then(res => setAppName(res.data?.name ?? currentAppId))
+      .catch(() => setAppName(currentAppId));
+  }, [currentAppId]);
+
+  // Detect current entity key in app context (e.g. 'devices', 'workflows')
+  const entityMatch = pathname.match(/^\/applications\/[^/]+\/([^/]+)/);
+  const currentEntity = entityMatch?.[1] ?? 'overview';
 
   if (!isMounted) return null;
 
-  // SuperAdmin: simplified sidebar — admin management + modules + system health
+  // ── SuperAdmin sidebar ─────────────────────────────────────────────────
   if (user?.role === 'SuperAdmin') {
     const saItems = [
+      { href: '/organizations', label: 'Organizations', icon: Building2 },
+      { href: '/applications', label: 'Applications', icon: LayoutGrid },
       { href: '/admin-management', label: 'Admin Mgmt', icon: ShieldCheck },
       { href: '/modules', label: 'Modules', icon: Shield },
       { href: '/system-health', label: 'System Health', icon: Activity },
     ];
     return (
       <div className="flex flex-row h-full flex-shrink-0">
-        <div className={`${isExpanded ? 'w-64' : 'w-20'} bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col transition-all duration-300 flex-shrink-0`}>
-          <div className="p-4 flex items-center justify-between border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-            {isExpanded && <h2 className="text-lg font-bold text-gray-900 dark:text-white">SuperAdmin</h2>}
-            <button onClick={() => dispatch(toggleSidebar())} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors" aria-label={isExpanded ? 'Collapse' : 'Expand'}>
-              {isExpanded ? <X className="w-5 h-5 text-gray-600 dark:text-gray-400" /> : <Menu className="w-5 h-5 text-gray-600 dark:text-gray-400" />}
+        <div className={`${isExpanded ? 'w-56' : 'w-[60px]'} bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700/60 flex flex-col transition-all duration-300 flex-shrink-0`}>
+          <div className="p-4 flex items-center justify-between border-b border-slate-200 dark:border-slate-700/60 flex-shrink-0">
+            {isExpanded && <span className="text-sm font-semibold text-slate-900 dark:text-white">SuperAdmin</span>}
+            <button onClick={() => dispatch(toggleSidebar())} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" aria-label={isExpanded ? 'Collapse' : 'Expand'}>
+              {isExpanded ? <X className="w-4 h-4 text-slate-500" /> : <Menu className="w-4 h-4 text-slate-500" />}
             </button>
           </div>
-          <nav className="flex-1 px-2 py-4 space-y-0.5">
-            {saItems.map(({ href, label, icon: Icon }) => {
-              const active = pathname.startsWith(href);
-              return (
-                <Link key={href} href={href} className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors border-l-2 ${active ? 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300 border-l-red-500' : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 border-l-transparent'}`} title={!isExpanded ? label : undefined}>
-                  <Icon className="w-5 h-5 flex-shrink-0" />
-                  {isExpanded && <span className="text-sm font-medium">{label}</span>}
-                </Link>
-              );
-            })}
+          <nav className="flex-1 px-2 py-3 space-y-0.5">
+            {saItems.map(({ href, label, icon: Icon }) => (
+              <NavItem key={href} href={href} label={label} icon={Icon} isExpanded={isExpanded} isActive={pathname.startsWith(href)} />
+            ))}
           </nav>
         </div>
       </div>
     );
   }
 
-  // Detect active entity from URL for highlight
-  const entityMatch = pathname.match(/^\/applications\/[^/]+\/([^/]+)/);
-  const currentEntity = entityMatch?.[1];
-
-  const isAppsActive = pathname.startsWith('/applications');
+  // ── Sidebar width ──────────────────────────────────────────────────────
+  const sidebarWidth = isExpanded ? 'w-56' : 'w-[60px]';
 
   return (
     <div className="flex flex-row h-full flex-shrink-0">
+      <div className={`${sidebarWidth} bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700/60 flex flex-col transition-all duration-300 flex-shrink-0`}>
 
-      {/* ── Main column ── */}
-      <div
-        className={`${
-          isExpanded ? 'w-64' : 'w-20'
-        } bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col transition-all duration-300 flex-shrink-0`}
-      >
         {/* Header */}
-        <div className="p-4 flex items-center justify-between border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+        <div className="px-3 py-3 flex items-center justify-between border-b border-slate-200 dark:border-slate-700/60 flex-shrink-0 gap-2">
           {isExpanded && (
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white">IoT</h2>
+            <span className="text-sm font-semibold text-slate-900 dark:text-white truncate">IoT Platform</span>
           )}
           <button
             onClick={() => dispatch(toggleSidebar())}
-            className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-            aria-label={isExpanded ? 'Collapse' : 'Expand'}
+            className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors flex-shrink-0 ml-auto"
+            aria-label={isExpanded ? 'Collapse sidebar' : 'Expand sidebar'}
           >
-            {isExpanded ? (
-              <X className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-            ) : (
-              <Menu className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-            )}
+            {isExpanded
+              ? <X className="w-4 h-4 text-slate-500" />
+              : <Menu className="w-4 h-4 text-slate-500" />
+            }
           </button>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-2 py-4 overflow-y-auto space-y-0.5">
+        <nav className="flex-1 px-2 py-2 overflow-y-auto">
 
-          {/* Applications toggle */}
-          <button
-            onClick={() => {
-              if (!isExpanded) return;
-              setAppsOpen(prev => !prev);
-              if (appsOpen) setSelectedApp(null);
-            }}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors border-l-2 ${
-              isAppsActive || appsOpen
-                ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border-l-blue-500'
-                : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 border-l-transparent'
-            }`}
-            title={!isExpanded ? 'Applications' : undefined}
-          >
-            <LayoutGrid className="w-5 h-5 flex-shrink-0" />
-            {isExpanded && (
-              <>
-                <span className="text-sm font-medium flex-1 text-left">Applications</span>
-                <ChevronRight
-                  className={`w-4 h-4 transition-transform duration-200 ${appsOpen ? 'rotate-90' : ''}`}
-                />
-              </>
-            )}
-          </button>
-
-          {/* App list — inline under Applications when expanded */}
-          {isExpanded && appsOpen && (
-            <div className="mb-1">
-              {appsLoading ? (
-                <p className="pl-8 py-1.5 text-xs text-gray-400 dark:text-gray-500">Loading…</p>
-              ) : apps.length === 0 ? (
-                <div className="pl-8 py-1.5 text-xs text-gray-400 dark:text-gray-500 space-y-1">
-                  <p>No applications yet</p>
-                  <Link href="/applications" className="text-blue-500 hover:underline">Create one</Link>
-                </div>
-              ) : (
-                apps.map((app) => (
-                  <button
-                    key={app.applicationId}
-                    onClick={() =>
-                      setSelectedApp(prev =>
-                        prev?.applicationId === app.applicationId ? null : app
-                      )
-                    }
-                    className={`w-full flex items-center gap-2 pl-8 pr-3 py-1.5 rounded-md transition-colors text-sm ${
-                      selectedApp?.applicationId === app.applicationId
-                        ? 'bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-300 font-medium'
-                        : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
-                    }`}
-                  >
-                    <span className="flex-1 truncate text-left">{app.name}</span>
-                    {selectedApp?.applicationId === app.applicationId && (
-                      <ChevronRight className="w-3.5 h-3.5 flex-shrink-0" />
-                    )}
-                  </button>
-                ))
-              )}
-
+          {/* ── State 2: Application context ── */}
+          {isInAppContext ? (
+            <>
+              {/* Back to Applications */}
               <Link
                 href="/applications"
-                className="flex pl-8 pr-3 py-1.5 text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                className="flex items-center gap-2 px-3 py-2 mb-1 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60 rounded-lg transition-colors duration-150"
+                title={!isExpanded ? 'Back to Applications' : undefined}
               >
-                Manage Applications
+                <ChevronLeft className="w-4 h-4 flex-shrink-0" />
+                {isExpanded && <span>All Applications</span>}
               </Link>
-            </div>
+
+              {/* App name header */}
+              {isExpanded && appName && (
+                <div className="px-3 py-2 mb-1 border-b border-slate-200 dark:border-slate-700/60">
+                  <p className="text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wider font-medium mb-0.5">Application</p>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">{appName}</p>
+                </div>
+              )}
+              {!isExpanded && <div className="h-px bg-slate-200 dark:bg-slate-700/60 mx-2 mb-2" />}
+
+              {/* App-specific items */}
+              <div className="space-y-0.5">
+                {/* Overview link */}
+                <NavItem
+                  href={`/applications/${currentAppId}`}
+                  label="Overview"
+                  icon={LayoutDashboard}
+                  isExpanded={isExpanded}
+                  isActive={currentEntity === 'overview' || pathname === `/applications/${currentAppId}`}
+                />
+                {appNavItems.filter(i => i.key !== 'overview').map(item => (
+                  <NavItem
+                    key={item.key}
+                    href={`/applications/${currentAppId}/${item.key}`}
+                    label={item.label}
+                    icon={item.icon}
+                    isExpanded={isExpanded}
+                    isActive={currentEntity === item.key}
+                  />
+                ))}
+              </div>
+
+              {/* Gateways section */}
+              <SectionLabel label="Gateways" isExpanded={isExpanded} />
+              <div className="space-y-0.5">
+                {gatewayNavItems.map(item => (
+                  <NavItem
+                    key={item.key}
+                    href={`/applications/${currentAppId}/${item.key}`}
+                    label={item.label}
+                    icon={item.icon}
+                    isExpanded={isExpanded}
+                    isActive={currentEntity === item.key}
+                  />
+                ))}
+              </div>
+
+            </>
+          ) : (
+            /* ── State 1: Platform context ── */
+            <>
+              {platformNavSections.map(section => {
+                const visibleItems = section.items.filter(item =>
+                  !('adminOnly' in item && item.adminOnly) ||
+                  user?.role === 'Admin' ||
+                  user?.role === 'SuperAdmin'
+                );
+                if (visibleItems.length === 0) return null;
+                return (
+                  <div key={section.label}>
+                    <SectionLabel label={section.label} isExpanded={isExpanded} />
+                    <div className="space-y-0.5">
+                      {visibleItems.map(item => (
+                        <NavItem
+                          key={item.href}
+                          href={item.href}
+                          label={item.label}
+                          icon={item.icon}
+                          isExpanded={isExpanded}
+                          isActive={pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href + '/'))}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </>
           )}
-
-          {/* Other nav items */}
-          {mainNavItems
-            .filter(item => !item.adminOnly || user?.role === 'Admin' || user?.role === 'SuperAdmin')
-            .map((item) => {
-              const Icon = item.icon;
-              const isActive = pathname === item.href;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors border-l-2 ${
-                    isActive
-                      ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border-l-blue-500'
-                      : 'text-gray-700 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 border-l-transparent'
-                  }`}
-                  title={!isExpanded ? item.label : undefined}
-                >
-                  <Icon className="w-5 h-5 flex-shrink-0" />
-                  {isExpanded && <span className="text-sm font-medium">{item.label}</span>}
-                </Link>
-              );
-            })}
-
         </nav>
 
         {/* Footer */}
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
+        <div className="px-3 py-3 border-t border-slate-200 dark:border-slate-700/60 flex-shrink-0">
           {isExpanded && (
-            <p className="text-xs text-gray-500 dark:text-gray-500">POC v1.0</p>
+            <p className="text-[11px] text-slate-400 dark:text-slate-500">POC v1.0</p>
           )}
         </div>
       </div>
-
-      {/* ── Entity submenu column (appears when an app is selected) ── */}
-      {selectedApp && (
-        <div className="w-48 bg-gray-50 dark:bg-gray-800/60 border-r border-gray-200 dark:border-gray-700 flex flex-col flex-shrink-0">
-          {/* Column header */}
-          <div className="px-3 py-2.5 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0">
-            <p
-              className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide truncate flex-1"
-              title={selectedApp.name}
-            >
-              {selectedApp.name}
-            </p>
-            <button
-              onClick={() => setSelectedApp(null)}
-              className="ml-2 p-0.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors flex-shrink-0"
-              aria-label="Close"
-            >
-              <X className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
-            </button>
-          </div>
-
-          {/* Entity links */}
-          <div className="flex-1 overflow-y-auto py-1">
-            {entityItems.map((entity) => {
-              const Icon = entity.icon;
-              const href = `/applications/${selectedApp.applicationId}/${entity.key}`;
-              const isActive =
-                pathname.startsWith(`/applications/${selectedApp.applicationId}`) &&
-                currentEntity === entity.key;
-
-              return (
-                <Link
-                  key={entity.key}
-                  href={href}
-                  className={`flex items-center gap-2.5 px-3 py-2 text-sm transition-colors ${
-                    isActive
-                      ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border-l-2 border-l-blue-500 font-medium'
-                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                  }`}
-                >
-                  <Icon className="w-4 h-4 flex-shrink-0" />
-                  <span>{entity.label}</span>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

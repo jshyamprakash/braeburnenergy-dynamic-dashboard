@@ -55,7 +55,7 @@ export function RecoverySetupSection() {
   return (
     <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6">
       <div className="flex items-center gap-3 mb-6">
-        <Shield className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+        <Shield className="w-6 h-6 text-indigo-600 dark:text-blue-400" />
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
           Recovery Key Setup
         </h2>
@@ -86,7 +86,7 @@ export function RecoverySetupSection() {
               value={passphrase}
               onChange={(e) => setPassphrase(e.target.value)}
               disabled={isSubmitting}
-              className="block w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="block w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-indigo-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               placeholder="Enter a strong passphrase"
               required
             />
@@ -106,7 +106,7 @@ export function RecoverySetupSection() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full py-2 px-4 rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="w-full py-2 px-4 rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {isSubmitting ? 'Saving...' : 'Save Recovery Key'}
         </button>

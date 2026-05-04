@@ -7,7 +7,7 @@ export default function Error({ error, reset }: { error: Error; reset: () => voi
       <p className="text-sm text-gray-600 dark:text-gray-400">{error.message}</p>
       <button
         onClick={reset}
-        className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700"
+        className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700"
       >
         Try again
       </button>

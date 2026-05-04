@@ -35,9 +35,9 @@ export function GatewayDetailPanel({
       case 'connected':
         return 'text-green-600 dark:text-green-400';
       case 'error':
-        return 'text-red-600 dark:text-red-400';
+        return 'text-rose-600 dark:text-red-400';
       default:
-        return 'text-gray-600 dark:text-gray-400';
+        return 'text-gray-600 dark:text-slate-400';
     }
   };
 
@@ -51,15 +51,15 @@ export function GatewayDetailPanel({
 
   return (
     <div className="fixed inset-0 z-40 bg-black bg-opacity-50">
-      <div className="absolute right-0 top-0 h-full w-96 bg-white dark:bg-gray-900 shadow-lg flex flex-col">
+      <div className="absolute right-0 top-0 h-full w-96 bg-white dark:bg-slate-900 shadow-lg flex flex-col">
         {/* Header */}
-        <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+        <div className="flex justify-between items-center p-4 border-b border-slate-200 dark:border-slate-700">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
             Gateway Details
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+            className="text-slate-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-300"
           >
             <X className="h-5 w-5" />
           </button>
@@ -69,40 +69,40 @@ export function GatewayDetailPanel({
         <div className="flex-1 overflow-y-auto p-4 space-y-6">
           {/* Gateway Info */}
           <div className="space-y-2">
-            <h3 className="font-semibold text-gray-900 dark:text-white">
+            <h3 className="font-semibold text-slate-900 dark:text-white">
               {gateway.name}
             </h3>
             {gateway.description && (
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+              <p className="text-sm text-gray-600 dark:text-slate-400">
                 {gateway.description}
               </p>
             )}
           </div>
 
           {/* Status Card */}
-          <div className="rounded-lg bg-gray-50 dark:bg-gray-800 p-4 space-y-3">
+          <div className="rounded-lg bg-slate-50 dark:bg-slate-800 p-4 space-y-3">
             <div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Status</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Status</p>
               <p className={`text-lg font-semibold ${getStatusColor(gateway.status)}`}>
                 {gateway.status}
               </p>
             </div>
             {gateway.lastConnected && (
               <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   Last Connected
                 </p>
-                <p className="text-sm text-gray-700 dark:text-gray-300">
+                <p className="text-sm text-gray-700 dark:text-slate-300">
                   {new Date(gateway.lastConnected).toLocaleString()}
                 </p>
               </div>
             )}
             {gateway.lastError && (
               <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   Last Error
                 </p>
-                <p className="text-sm text-red-600 dark:text-red-400">
+                <p className="text-sm text-rose-600 dark:text-red-400">
                   {gateway.lastError}
                 </p>
               </div>
@@ -111,20 +111,20 @@ export function GatewayDetailPanel({
 
           {/* Connection Config */}
           <div className="space-y-2 text-sm">
-            <p className="text-xs font-semibold text-gray-600 dark:text-gray-400">
+            <p className="text-xs font-semibold text-gray-600 dark:text-slate-400">
               CONNECTION
             </p>
-            <div className="space-y-1 text-gray-700 dark:text-gray-300">
+            <div className="space-y-1 text-gray-700 dark:text-slate-300">
               <p>
-                <span className="text-gray-500 dark:text-gray-400">Protocol:</span>{' '}
+                <span className="text-slate-500 dark:text-slate-400">Protocol:</span>{' '}
                 {gateway.protocol?.toUpperCase()}
               </p>
               <p>
-                <span className="text-gray-500 dark:text-gray-400">Address:</span>{' '}
+                <span className="text-slate-500 dark:text-slate-400">Address:</span>{' '}
                 {getConnectionString()}
               </p>
               <p>
-                <span className="text-gray-500 dark:text-gray-400">Slave ID:</span>{' '}
+                <span className="text-slate-500 dark:text-slate-400">Slave ID:</span>{' '}
                 {gateway.connection.unitId}
               </p>
             </div>
@@ -132,23 +132,23 @@ export function GatewayDetailPanel({
 
           {/* Polling Config */}
           <div className="space-y-2 text-sm">
-            <p className="text-xs font-semibold text-gray-600 dark:text-gray-400">
+            <p className="text-xs font-semibold text-gray-600 dark:text-slate-400">
               POLLING
             </p>
-            <div className="space-y-1 text-gray-700 dark:text-gray-300">
+            <div className="space-y-1 text-gray-700 dark:text-slate-300">
               <p>
-                <span className="text-gray-500 dark:text-gray-400">Status:</span>{' '}
+                <span className="text-slate-500 dark:text-slate-400">Status:</span>{' '}
                 {isPolling ? (
                   <span className="text-green-600 dark:text-green-400 font-semibold">
                     Enabled
                   </span>
                 ) : (
-                  <span className="text-gray-500">Disabled</span>
+                  <span className="text-slate-500">Disabled</span>
                 )}
               </p>
               {isPolling && (
                 <p>
-                  <span className="text-gray-500 dark:text-gray-400">
+                  <span className="text-slate-500 dark:text-slate-400">
                     Interval:
                   </span>{' '}
                   {gateway.polling.interval}ms
@@ -160,17 +160,17 @@ export function GatewayDetailPanel({
           {/* Registers */}
           {gateway.registers.length > 0 && (
             <div className="space-y-2">
-              <p className="text-xs font-semibold text-gray-600 dark:text-gray-400">
+              <p className="text-xs font-semibold text-gray-600 dark:text-slate-400">
                 REGISTERS ({gateway.registers.length})
               </p>
               <div className="space-y-1 max-h-40 overflow-y-auto">
                 {gateway.registers.map((reg, i) => (
                   <div
                     key={i}
-                    className="text-xs p-2 bg-gray-50 dark:bg-gray-800 rounded text-gray-700 dark:text-gray-300"
+                    className="text-xs p-2 bg-slate-50 dark:bg-slate-800 rounded text-gray-700 dark:text-slate-300"
                   >
                     <p className="font-medium">{reg.name}</p>
-                    <p className="text-gray-500 dark:text-gray-400">
+                    <p className="text-slate-500 dark:text-slate-400">
                       {reg.type} @ {reg.address} ({reg.dataType})
                     </p>
                   </div>
@@ -181,7 +181,7 @@ export function GatewayDetailPanel({
         </div>
 
         {/* Actions Footer */}
-        <div className="border-t border-gray-200 dark:border-gray-700 p-4 space-y-2">
+        <div className="border-t border-slate-200 dark:border-slate-700 p-4 space-y-2">
           <button
             onClick={() => onTest(gateway)}
             disabled={isTesting}

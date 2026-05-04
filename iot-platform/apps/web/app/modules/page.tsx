@@ -74,8 +74,8 @@ export default function ModulesPage() {
   // Loading state
   if (status === 'loading') {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 px-4 py-8 flex items-center justify-center">
-        <div className="text-gray-500 dark:text-gray-400">Loading modules...</div>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 px-4 py-8 flex items-center justify-center">
+        <div className="text-slate-400 dark:text-slate-500">Loading modules...</div>
       </div>
     );
   }
@@ -83,7 +83,7 @@ export default function ModulesPage() {
   // Non-SuperAdmin should never reach here (redirected above), but safety check
   if (!user || user.role !== 'SuperAdmin') {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 px-4 py-8 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 px-4 py-8 flex items-center justify-center">
         <div className="text-red-500 dark:text-red-400">
           Access denied. SuperAdmin role required.
         </div>
@@ -92,17 +92,11 @@ export default function ModulesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-4xl">
+    <div className="max-w-4xl">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <Shield className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Module Management
-            </h1>
-          </div>
-          <p className="text-gray-600 dark:text-gray-400">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Module Management</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             Enable or disable optional modules for this deployment
           </p>
         </div>
@@ -116,56 +110,44 @@ export default function ModulesPage() {
             return (
               <div
                 key={moduleKey}
-                className={`p-4 border rounded-lg transition-colors ${
+                className={`rounded-xl border p-5 transition-all duration-200 ${
                   isEnabled
-                    ? 'border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/30'
-                    : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900'
+                    ? 'border-indigo-300 dark:border-indigo-700 bg-white dark:bg-slate-900 ring-2 ring-indigo-500/20'
+                    : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 opacity-80'
                 }`}
               >
-                {/* Module header */}
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900 dark:text-white">
-                      {config.name}
-                    </h3>
+                {/* Icon strip */}
+                <div className="flex items-center justify-between mb-4">
+                  <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
+                    isEnabled ? 'bg-indigo-100 dark:bg-indigo-900/40' : 'bg-slate-100 dark:bg-slate-800'
+                  }`}>
+                    <Shield className={`w-5 h-5 ${isEnabled ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'}`} />
                   </div>
                   {/* Toggle switch */}
                   <button
                     onClick={() => handleToggle(moduleKey)}
-                    className={`relative ml-3 w-14 h-8 rounded-full transition-colors ${
-                      isEnabled
-                        ? 'bg-blue-600 dark:bg-blue-500'
-                        : 'bg-gray-300 dark:bg-gray-600'
+                    className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
+                      isEnabled ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-600'
                     }`}
                     aria-label={`Toggle ${config.name}`}
                   >
-                    <span
-                      className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow transition-transform ${
-                        isEnabled ? 'translate-x-6' : ''
-                      }`}
-                    />
+                    <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${isEnabled ? 'translate-x-5' : ''}`} />
                   </button>
                 </div>
 
-                {/* Module description */}
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                  {config.description}
-                </p>
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-1">{config.name}</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-3">{config.description}</p>
 
-                {/* Status badge */}
-                <div className="flex items-center gap-2 text-xs font-medium">
-                  {isEnabled ? (
-                    <>
-                      <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
-                      <span className="text-green-600 dark:text-green-400">Enabled</span>
-                    </>
-                  ) : (
-                    <>
-                      <X className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-                      <span className="text-gray-400 dark:text-gray-500">Disabled</span>
-                    </>
-                  )}
-                </div>
+                <span className={`inline-flex items-center gap-1 text-[11px] font-medium ${
+                  isEnabled
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : 'text-slate-400 dark:text-slate-500'
+                }`}>
+                  {isEnabled
+                    ? <><Check className="w-3.5 h-3.5" />Enabled</>
+                    : <><X className="w-3.5 h-3.5" />Disabled</>
+                  }
+                </span>
               </div>
             );
           })}
@@ -179,14 +161,14 @@ export default function ModulesPage() {
               setHasChanges(false);
             }}
             disabled={!hasChanges || mutation.isPending}
-            className="px-6 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="px-6 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
             disabled={!hasChanges || mutation.isPending}
-            className="px-6 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+            className="px-6 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
           >
             {mutation.isPending ? (
               <>
@@ -201,11 +183,10 @@ export default function ModulesPage() {
 
         {/* Error message */}
         {status === 'error' && (
-          <div className="mt-4 p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-400 text-sm">
+          <div className="mt-4 p-4 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/60 rounded-xl text-rose-700 dark:text-rose-400 text-sm">
             Failed to load module configuration. Please try again.
           </div>
         )}
-      </div>
     </div>
   );
 }

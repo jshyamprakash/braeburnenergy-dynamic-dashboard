@@ -35,21 +35,21 @@ export function MqttGatewayDetailPanel({
       case 'connected':
         return 'text-green-600 dark:text-green-400';
       case 'error':
-        return 'text-red-600 dark:text-red-400';
+        return 'text-rose-600 dark:text-red-400';
       default:
-        return 'text-gray-600 dark:text-gray-400';
+        return 'text-gray-600 dark:text-slate-400';
     }
   };
 
   return (
     <div className="fixed inset-0 z-40 bg-black bg-opacity-50">
-      <div className="absolute right-0 top-0 h-full w-96 bg-white dark:bg-gray-900 shadow-lg flex flex-col">
+      <div className="absolute right-0 top-0 h-full w-96 bg-white dark:bg-slate-900 shadow-lg flex flex-col">
         {/* Header */}
-        <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Gateway Details</h2>
+        <div className="flex justify-between items-center p-4 border-b border-slate-200 dark:border-slate-700">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Gateway Details</h2>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+            className="text-slate-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-300"
           >
             <X className="h-5 w-5" />
           </button>
@@ -59,45 +59,45 @@ export function MqttGatewayDetailPanel({
         <div className="flex-1 overflow-y-auto p-4 space-y-6">
           {/* Gateway Info */}
           <div className="space-y-2">
-            <h3 className="font-semibold text-gray-900 dark:text-white">{gateway.name}</h3>
+            <h3 className="font-semibold text-slate-900 dark:text-white">{gateway.name}</h3>
             {gateway.description && (
-              <p className="text-sm text-gray-600 dark:text-gray-400">{gateway.description}</p>
+              <p className="text-sm text-gray-600 dark:text-slate-400">{gateway.description}</p>
             )}
           </div>
 
           {/* Status Card */}
-          <div className="rounded-lg bg-gray-50 dark:bg-gray-800 p-4 space-y-3">
+          <div className="rounded-lg bg-slate-50 dark:bg-slate-800 p-4 space-y-3">
             <div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Status</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Status</p>
               <p className={`text-lg font-semibold ${getStatusColor(gateway.status)}`}>
                 {gateway.status}
               </p>
             </div>
             {gateway.lastConnected && (
               <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Last Connected</p>
-                <p className="text-sm text-gray-700 dark:text-gray-300">
+                <p className="text-xs text-slate-500 dark:text-slate-400">Last Connected</p>
+                <p className="text-sm text-gray-700 dark:text-slate-300">
                   {new Date(gateway.lastConnected).toLocaleString()}
                 </p>
               </div>
             )}
             {gateway.lastMessageAt && (
               <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Last Message</p>
-                <p className="text-sm text-gray-700 dark:text-gray-300">
+                <p className="text-xs text-slate-500 dark:text-slate-400">Last Message</p>
+                <p className="text-sm text-gray-700 dark:text-slate-300">
                   {new Date(gateway.lastMessageAt).toLocaleString()}
                 </p>
               </div>
             )}
             {gateway.lastError && (
               <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Last Error</p>
-                <p className="text-sm text-red-600 dark:text-red-400">{gateway.lastError}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Last Error</p>
+                <p className="text-sm text-rose-600 dark:text-red-400">{gateway.lastError}</p>
               </div>
             )}
             <div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Messages Received</p>
-              <p className="text-sm text-gray-700 dark:text-gray-300">
+              <p className="text-xs text-slate-500 dark:text-slate-400">Messages Received</p>
+              <p className="text-sm text-gray-700 dark:text-slate-300">
                 {gateway.totalMessagesReceived || 0}
               </p>
             </div>
@@ -105,21 +105,21 @@ export function MqttGatewayDetailPanel({
 
           {/* Broker Config */}
           <div className="space-y-2 text-sm">
-            <p className="text-xs font-semibold text-gray-600 dark:text-gray-400">BROKER CONFIG</p>
-            <div className="space-y-1 text-gray-700 dark:text-gray-300">
+            <p className="text-xs font-semibold text-gray-600 dark:text-slate-400">BROKER CONFIG</p>
+            <div className="space-y-1 text-gray-700 dark:text-slate-300">
               <p>
-                <span className="text-gray-500 dark:text-gray-400">URL:</span> {gateway.brokerUrl}
+                <span className="text-slate-500 dark:text-slate-400">URL:</span> {gateway.brokerUrl}
               </p>
               <p>
-                <span className="text-gray-500 dark:text-gray-400">Client ID:</span>{' '}
+                <span className="text-slate-500 dark:text-slate-400">Client ID:</span>{' '}
                 {gateway.clientId || '(auto-generated)'}
               </p>
               <p>
-                <span className="text-gray-500 dark:text-gray-400">Keepalive:</span>{' '}
+                <span className="text-slate-500 dark:text-slate-400">Keepalive:</span>{' '}
                 {gateway.keepalive}s
               </p>
               <p>
-                <span className="text-gray-500 dark:text-gray-400">Connect Timeout:</span>{' '}
+                <span className="text-slate-500 dark:text-slate-400">Connect Timeout:</span>{' '}
                 {gateway.connectTimeout}ms
               </p>
             </div>
@@ -127,28 +127,28 @@ export function MqttGatewayDetailPanel({
 
           {/* Topic Subscriptions */}
           <div className="space-y-2">
-            <p className="text-xs font-semibold text-gray-600 dark:text-gray-400">
+            <p className="text-xs font-semibold text-gray-600 dark:text-slate-400">
               SUBSCRIPTIONS ({gateway.topicMappings?.length || 0})
             </p>
             <div className="space-y-1 text-xs">
               {gateway.topicMappings && gateway.topicMappings.length > 0 ? (
                 gateway.topicMappings.map((m, i) => (
-                  <div key={i} className="bg-gray-100 dark:bg-gray-800 p-2 rounded">
-                    <p className="font-mono text-gray-700 dark:text-gray-300">{m.topic}</p>
-                    <p className="text-gray-600 dark:text-gray-400">
+                  <div key={i} className="bg-slate-100 dark:bg-slate-800 p-2 rounded">
+                    <p className="font-mono text-gray-700 dark:text-slate-300">{m.topic}</p>
+                    <p className="text-gray-600 dark:text-slate-400">
                       → {m.field} (QoS {m.qos})
                     </p>
                   </div>
                 ))
               ) : (
-                <p className="text-gray-500 dark:text-gray-400">No subscriptions</p>
+                <p className="text-slate-500 dark:text-slate-400">No subscriptions</p>
               )}
             </div>
           </div>
         </div>
 
         {/* Actions */}
-        <div className="border-t border-gray-200 dark:border-gray-700 p-4 space-y-2">
+        <div className="border-t border-slate-200 dark:border-slate-700 p-4 space-y-2">
           <button
             onClick={() => onTest(gateway)}
             disabled={isTesting}

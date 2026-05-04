@@ -153,7 +153,7 @@ export default function ValidationPanel({ isOpen, onToggle }: ValidationPanelPro
       </div>
 
       {/* Help text */}
-      <div className="px-4 py-2 bg-blue-50 dark:bg-blue-900/10 border-t border-gray-200 dark:border-gray-700 text-xs text-blue-700 dark:text-blue-300">
+      <div className="px-4 py-2 bg-indigo-50 dark:bg-indigo-900/10 border-t border-gray-200 dark:border-gray-700 text-xs text-indigo-700 dark:text-indigo-300">
         💡 Click any error to navigate to the problematic node
       </div>
     </div>

@@ -144,7 +144,7 @@ export default function WorkflowToolbar({
             px-4 py-2 rounded-lg font-medium transition-all duration-200
             ${
               isDirty && validationErrors.length === 0
-                ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
                 : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
             }
           `}

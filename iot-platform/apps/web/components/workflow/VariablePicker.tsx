@@ -118,13 +118,13 @@ export default function VariablePicker({
                   .map(([name, description]) => (
                     <button
                       key={name}
-                      className="w-full px-3 py-2 text-left text-sm hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors border-b border-gray-100 dark:border-gray-700 last:border-b-0"
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-indigo-50 dark:hover:bg-blue-900/20 transition-colors border-b border-gray-100 dark:border-gray-700 last:border-b-0"
                       onClick={() => {
                         onSelect(`{{${name}}}`);
                         onClose();
                       }}
                     >
-                      <div className="font-mono text-blue-600 dark:text-blue-400">{`{{${name}}}`}</div>
+                      <div className="font-mono text-indigo-600 dark:text-indigo-400">{`{{${name}}}`}</div>
                       <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{description}</div>
                     </button>
                   ))}

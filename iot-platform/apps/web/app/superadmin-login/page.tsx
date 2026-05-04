@@ -8,6 +8,7 @@ import { apiClient } from '@/lib/api-client';
 import { signChallenge } from '@/lib/crypto/derive-keypair';
 import forge from 'node-forge';
 import { toast } from 'sonner';
+import { ShieldAlert, CheckCircle2, XCircle, Key } from 'lucide-react';
 
 export default function SuperAdminLoginPage() {
   const router = useRouter();
@@ -41,100 +42,93 @@ export default function SuperAdminLoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!privateKey) {
-      toast.error('Please select a valid private key file');
-      return;
-    }
-
+    if (!privateKey) { toast.error('Please select a valid private key file'); return; }
     setIsSubmitting(true);
-
     try {
-      // Step 1: Get challenge
-      const challengeRes = await apiClient.get<{
-        challengeId: string;
-        challenge: string;
-        expiresAt: string;
-      }>('/auth/superadmin/challenge');
-
+      const challengeRes = await apiClient.get<{ challengeId: string; challenge: string; expiresAt: string }>('/auth/superadmin/challenge');
       const { challengeId, challenge } = challengeRes.data;
-
-      // Step 2: Sign challenge with uploaded private key
       const signature = signChallenge(privateKey, challenge);
-
-      // Step 3: Submit signature
-      const loginRes = await apiClient.post<{
-        accessToken: string;
-        refreshToken: string;
-        user: { id: string; username: string; email: string; role: string };
-      }>('/auth/superadmin/login', { challengeId, signature });
-
+      const loginRes = await apiClient.post<{ accessToken: string; refreshToken: string; user: { id: string; username: string; email: string; role: string } }>('/auth/superadmin/login', { challengeId, signature });
       const { accessToken, refreshToken, user: userData } = loginRes.data;
-
       dispatch(updateTokens({ accessToken, refreshToken }));
-      dispatch(
-        updateUser({
-          id: userData.id,
-          username: userData.username,
-          email: userData.email,
-          role: userData.role as 'SuperAdmin' | 'Admin' | 'Operator' | 'Viewer',
-        })
-      );
-
+      dispatch(updateUser({ id: userData.id, username: userData.username, email: userData.email, role: userData.role as any }));
       toast.success('SuperAdmin login successful!');
       router.push('/');
     } catch (err: any) {
-      const errorMessage =
-        err.response?.status === 401
-          ? 'Login failed — key file does not match the stored public key'
-          : err.message || 'Login failed';
-      toast.error(errorMessage);
+      toast.error(err.response?.status === 401 ? 'Login failed — key file does not match the stored public key' : err.message || 'Login failed');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        {/* Header */}
-        <div className="text-center">
-          <div className="mx-auto h-16 w-16 bg-red-600 rounded-xl flex items-center justify-center shadow-lg">
-            <svg
-              className="h-10 w-10 text-white"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-              />
-            </svg>
+    <div className="min-h-screen flex">
+      {/* ── Left panel — rose-tinted to signal elevated privilege ── */}
+      <div className="hidden lg:flex lg:w-[55%] xl:w-[60%] relative flex-col justify-between p-10 overflow-hidden"
+        style={{ background: 'linear-gradient(135deg, #1c0a0a 0%, #0f172a 100%)' }}>
+        {/* Grid pattern */}
+        <div className="absolute inset-0 opacity-15"
+          style={{ backgroundImage: 'linear-gradient(rgba(239,68,68,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(239,68,68,0.3) 1px, transparent 1px)', backgroundSize: '48px 48px' }} />
+        <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 30% 50%, rgba(239,68,68,0.12) 0%, transparent 60%)' }} />
+
+        {/* Brand */}
+        <div className="relative z-10 flex items-center gap-3">
+          <div className="h-9 w-9 rounded-lg bg-rose-600 flex items-center justify-center">
+            <ShieldAlert className="w-5 h-5 text-white" />
           </div>
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900 dark:text-white">
-            SuperAdmin Login
+          <span className="text-white font-semibold text-lg">IoT Platform</span>
+          <span className="text-[10px] uppercase tracking-widest text-rose-400 ml-1 border border-rose-800 rounded px-1.5 py-0.5">SuperAdmin</span>
+        </div>
+
+        {/* Hero text */}
+        <div className="relative z-10 space-y-4">
+          <h2 className="text-3xl font-bold text-white leading-tight">
+            Privileged access<br />
+            requires key authentication
           </h2>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-            Upload your private key file to continue
+          <p className="text-rose-300/70 text-sm leading-relaxed max-w-sm">
+            SuperAdmin login uses RSA private key challenge-response authentication. Upload your key file to proceed.
           </p>
         </div>
 
-        {/* Login Form */}
-        <div className="mt-8 bg-white dark:bg-gray-800 py-8 px-6 shadow-xl rounded-lg sm:px-10">
-          <form className="space-y-6" onSubmit={handleSubmit}>
+        {/* Warning card */}
+        <div className="relative z-10">
+          <div className="rounded-xl border border-rose-800/60 bg-rose-950/40 backdrop-blur p-4 max-w-xs">
+            <p className="text-[10px] uppercase tracking-widest text-rose-500 font-medium mb-2">Security Notice</p>
+            <p className="text-xs text-rose-300/80 leading-relaxed">
+              This session is audited. All actions taken as SuperAdmin are recorded in the immutable audit trail.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Right panel — form ── */}
+      <div className="flex-1 flex flex-col justify-center px-6 sm:px-10 lg:px-14 bg-white dark:bg-slate-950 min-h-screen">
+        {/* Mobile brand */}
+        <div className="lg:hidden flex items-center gap-2 mb-8">
+          <div className="h-8 w-8 rounded-lg bg-rose-600 flex items-center justify-center">
+            <ShieldAlert className="w-4 h-4 text-white" />
+          </div>
+          <span className="font-semibold text-slate-900 dark:text-white">SuperAdmin Login</span>
+        </div>
+
+        <div className="max-w-sm w-full mx-auto">
+          <div className="mb-8">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Privileged Sign-in</h1>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Upload your RSA private key file to authenticate</p>
+          </div>
+
+          <form className="space-y-5" onSubmit={handleSubmit}>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                 Private Key File
               </label>
-              <div className={`relative rounded-lg border-2 border-dashed transition-colors ${
+              <div className={`relative rounded-xl border-2 border-dashed transition-all duration-150 ${
                 privateKey
-                  ? 'border-green-400 dark:border-green-600 bg-green-50 dark:bg-green-950/20'
+                  ? 'border-emerald-400 dark:border-emerald-600 bg-emerald-50 dark:bg-emerald-950/20'
                   : fileError
-                  ? 'border-red-400 dark:border-red-600 bg-red-50 dark:bg-red-950/20'
-                  : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
+                  ? 'border-rose-400 dark:border-rose-600 bg-rose-50 dark:bg-rose-950/20'
+                  : 'border-slate-300 dark:border-slate-600 hover:border-slate-400 dark:hover:border-slate-500'
               } p-6 text-center`}>
                 <input
                   type="file"
@@ -144,31 +138,25 @@ export default function SuperAdminLoginPage() {
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
                 />
                 {privateKey ? (
-                  <div className="space-y-1">
-                    <svg className="mx-auto h-8 w-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <p className="text-sm font-medium text-green-700 dark:text-green-400">{fileName}</p>
-                    <p className="text-xs text-green-600 dark:text-green-500">Key loaded — click to change</p>
+                  <div className="space-y-1 pointer-events-none">
+                    <CheckCircle2 className="mx-auto h-8 w-8 text-emerald-500" />
+                    <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">{fileName}</p>
+                    <p className="text-xs text-emerald-600 dark:text-emerald-500">Key loaded · click to change</p>
                   </div>
                 ) : fileError ? (
-                  <div className="space-y-1">
-                    <svg className="mx-auto h-8 w-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                    <p className="text-sm text-red-600 dark:text-red-400">{fileError}</p>
-                    <p className="text-xs text-gray-500">Click to try another file</p>
+                  <div className="space-y-1 pointer-events-none">
+                    <XCircle className="mx-auto h-8 w-8 text-rose-500" />
+                    <p className="text-sm text-rose-600 dark:text-rose-400">{fileError}</p>
+                    <p className="text-xs text-slate-500">Click to try another file</p>
                   </div>
                 ) : (
-                  <div className="space-y-1">
-                    <svg className="mx-auto h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                    </svg>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Click or drag to upload <span className="font-medium">.pem</span> or <span className="font-medium">.key</span> file
+                  <div className="space-y-1 pointer-events-none">
+                    <Key className="mx-auto h-8 w-8 text-slate-400" />
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                      Click or drag to upload <span className="font-medium">.pem</span> or <span className="font-medium">.key</span>
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-500">
-                      Generate with: <code className="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">license-cli export-private-key</code>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">
+                      Generate with: <code className="font-mono bg-slate-100 dark:bg-slate-800 px-1 rounded">license-cli export-private-key</code>
                     </p>
                   </div>
                 )}
@@ -178,30 +166,25 @@ export default function SuperAdminLoginPage() {
             <button
               type="submit"
               disabled={isSubmitting || !privateKey}
-              className="w-full flex justify-center py-2 px-4 rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200"
             >
-              {isSubmitting ? (
-                <>
-                  <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                  Verifying...
-                </>
-              ) : (
-                'Login with Key File'
+              {isSubmitting && (
+                <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
               )}
+              {isSubmitting ? 'Verifying…' : 'Login with Key File'}
             </button>
           </form>
 
-          <div className="mt-6 text-center text-sm">
-            <span className="text-gray-600 dark:text-gray-400">
-              Not SuperAdmin?{' '}
-              <button
-                onClick={() => router.push('/login')}
-                className="text-blue-600 dark:text-blue-400 hover:underline"
-              >
-                Back to login
-              </button>
-            </span>
-          </div>
+          <p className="mt-8 text-center text-sm text-slate-500 dark:text-slate-400">
+            Not SuperAdmin?{' '}
+            <button onClick={() => router.push('/login')}
+              className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
+              Back to login →
+            </button>
+          </p>
         </div>
       </div>
     </div>

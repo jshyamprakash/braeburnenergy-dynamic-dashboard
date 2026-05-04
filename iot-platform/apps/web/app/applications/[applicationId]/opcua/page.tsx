@@ -25,21 +25,19 @@ export default function ApplicationOpcuaPage({ params }: Props) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
-        <p className="text-gray-500 dark:text-gray-400">Loading…</p>
+      <div className="flex items-center justify-center py-16">
+        <p className="text-slate-400 dark:text-slate-500">Loading…</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-7xl">
-        <div className="mb-6">
-          <p className="text-xs text-gray-500 dark:text-gray-400">{application?.name}</p>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">OPC-UA Gateway</h1>
-        </div>
-        <OpcuaTab applicationId={applicationId} />
+    <div className="space-y-5">
+      <div>
+        <p className="text-xs text-slate-400 dark:text-slate-500">{application?.name}</p>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">OPC-UA Gateway</h1>
       </div>
+      <OpcuaTab applicationId={applicationId} />
     </div>
   );
 }

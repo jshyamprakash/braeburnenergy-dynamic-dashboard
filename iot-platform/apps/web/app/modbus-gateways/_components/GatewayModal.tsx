@@ -192,7 +192,7 @@ export function GatewayModal({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g., Water Pump Sensors"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
               required
             />
           </div>
@@ -203,7 +203,7 @@ export function GatewayModal({
             <select
               value={selectedAppId}
               onChange={(e) => setSelectedAppId(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
             >
               <option value="">-- Select Application --</option>
               {applications.map((app: any, idx: number) => (
@@ -224,7 +224,7 @@ export function GatewayModal({
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Optional description"
             rows={2}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
           />
         </div>
 
@@ -261,7 +261,7 @@ export function GatewayModal({
                 value={host}
                 onChange={(e) => setHost(e.target.value)}
                 placeholder="localhost or IP"
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
               />
             </div>
             <div>
@@ -272,7 +272,7 @@ export function GatewayModal({
                 type="number"
                 value={port}
                 onChange={(e) => setPort(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
               />
             </div>
           </div>
@@ -287,7 +287,7 @@ export function GatewayModal({
                 value={serialPort}
                 onChange={(e) => setSerialPort(e.target.value)}
                 placeholder="/dev/ttyUSB0 or COM3"
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
               />
             </div>
             <div>
@@ -297,7 +297,7 @@ export function GatewayModal({
               <select
                 value={baudRate}
                 onChange={(e) => setBaudRate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
               >
                 {[9600, 19200, 38400, 57600, 115200].map((br) => (
                   <option key={br} value={br}>
@@ -320,7 +320,7 @@ export function GatewayModal({
             max="247"
             value={unitId}
             onChange={(e) => setUnitId(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
           />
         </div>
 
@@ -347,7 +347,7 @@ export function GatewayModal({
                 min="100"
                 value={pollingInterval}
                 onChange={(e) => setPollingInterval(e.target.value)}
-                className="w-32 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+                className="w-32 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-indigo-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
               />
             </div>
           )}
@@ -385,7 +385,7 @@ export function GatewayModal({
                       handleUpdateRegister(reg._tempId!, 'name', e.target.value)
                     }
                     placeholder="Name"
-                    className="flex-1 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+                    className="flex-1 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs focus:ring-indigo-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
                   />
                   <input
                     type="number"
@@ -394,14 +394,14 @@ export function GatewayModal({
                       handleUpdateRegister(reg._tempId!, 'address', parseInt(e.target.value, 10))
                     }
                     placeholder="Addr"
-                    className="w-16 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+                    className="w-16 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs focus:ring-indigo-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
                   />
                   <select
                     value={reg.type}
                     onChange={(e) =>
                       handleUpdateRegister(reg._tempId!, 'type', e.target.value)
                     }
-                    className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+                    className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs focus:ring-indigo-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
                   >
                     {REGISTER_TYPES.map((t) => (
                       <option key={t} value={t}>
@@ -414,7 +414,7 @@ export function GatewayModal({
                     onChange={(e) =>
                       handleUpdateRegister(reg._tempId!, 'dataType', e.target.value)
                     }
-                    className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+                    className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs focus:ring-indigo-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
                   >
                     {DATA_TYPES.map((t) => (
                       <option key={t} value={t}>
@@ -427,7 +427,7 @@ export function GatewayModal({
                     onChange={(e) =>
                       handleUpdateRegister(reg._tempId!, 'deviceId', e.target.value || undefined)
                     }
-                    className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+                    className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs focus:ring-indigo-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
                     title="Map to device (optional)"
                   >
                     <option value="">-- Device --</option>
@@ -464,7 +464,7 @@ export function GatewayModal({
           <button
             type="submit"
             disabled={isLoading}
-            className="px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? 'Saving...' : isEditMode ? 'Update' : 'Create'}
           </button>

@@ -118,7 +118,7 @@ export function EditUserModal({ isOpen, user, onClose, onSuccess, callerRole }: 
             </button>
             <button
               type="submit"
-              className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+              className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
               disabled={updateUserMutation.isPending}
             >
               {updateUserMutation.isPending ? 'Saving...' : 'Save'}
