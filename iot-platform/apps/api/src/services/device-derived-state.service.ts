@@ -18,7 +18,8 @@ export class DeviceDerivedStateService {
   async upsert(
     deviceId: string,
     patch: Record<string, any>,
-    sourceEventId?: string
+    sourceEventId?: string,
+    ttlMs?: number          // node-level TTL override; undefined = use global retention policy
   ): Promise<void> {
     const setFields: Record<string, any> = { lastSeen: new Date() };
     for (const [key, value] of Object.entries(patch)) {
@@ -39,9 +40,8 @@ export class DeviceDerivedStateService {
       { upsert: true, new: true }
     );
 
-    // Append to history collection for N-point dashboard seeding
-    // ADR-047: expiresAt set from active RetentionPolicy (falls back to 90-day default)
-    const expiryMs = await retentionPolicyService.getInsertExpiry('derived_state_history');
+    // History TTL: use explicit node-level ttlMs if provided, else fall back to global policy
+    const expiryMs = ttlMs ?? await retentionPolicyService.getInsertExpiry('derived_state_history');
     await DeviceDerivedStateHistory.create({
       deviceId,
       derived: patch,

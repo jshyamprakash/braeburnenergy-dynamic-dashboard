@@ -44,6 +44,8 @@ export const nodeTypeSchema = z.enum([
   'action:writeDeviceState',   // ADR-022
   'action:debug',              // Real-time debug output node
   'action:combustionCsvPlayer', // Combustion DL CSV playback — module: combustion_dl
+  'action:csvStreamPlayer',     // Generalized CSV stream player — any CSV, configurable interval
+  'action:setWorkspace',        // Map workflow fields to ephemeral workspace (broadcast only, no DB write)
   // Transformations
   'transform:mathOperation',
   'transform:stringOperation',

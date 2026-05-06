@@ -70,18 +70,17 @@ function buildNewWidget(
   mandatoryType?: 'overview' | 'combustionDl' | 'beAgent' | 'kosmosArchitecture'
 ): KosmosWidget {
   const entry = PALETTE_ENTRIES.find((p) => p.type === type);
-  const slot = widgets.length % 8;
-  const isPixelWidget =
+  const isTabWidget =
     (mandatoryType === 'combustionDl' && entry?.tabScope === 'combustionDl') ||
     (mandatoryType === 'overview' && entry?.tabScope === 'overview');
-  const y = isPixelWidget && entry ? entry.defaultLayout.y + slot * 20 : getNextRow(widgets);
+  const y = isTabWidget && entry ? entry.defaultLayout.y : getNextRow(widgets);
   const widget = {
     id: `w_${Math.random().toString(36).slice(2, 10)}`,
     type: type as any,
     config: entry ? { ...entry.defaultConfig } : {},
     layout: entry
-      ? isPixelWidget
-        ? { ...entry.defaultLayout, x: entry.defaultLayout.x + slot * 20, y }
+      ? isTabWidget
+        ? { ...entry.defaultLayout }
         : { ...entry.defaultLayout, x: 0, y }
       : { x: 0, y, w: 16, h: 16 },
   };
@@ -116,7 +115,6 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
   const { isModuleEnabled } = useLicense();
 
   const [editMode, setEditMode] = useState(false);
-  const [editSubMode, setEditSubMode] = useState<'layout' | 'config'>('layout');
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
@@ -313,7 +311,7 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
 
       {/* ── Header ── */}
       <header className="k-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <button
             className="k-btn k-btn-ghost"
             onClick={() =>
@@ -327,36 +325,61 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
           </button>
           <div
             style={{
-              width: 36, height: 36, background: 'var(--k-base)', borderRadius: '50%',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontFamily: 'var(--k-font-display)', fontSize: 15, fontWeight: 700,
-              color: 'white', border: '2px solid var(--k-soft)', flexShrink: 0,
+              width: 40,
+              height: 40,
+              borderRadius: '50%',
+              overflow: 'hidden',
+              flexShrink: 0,
+              border: '1.5px solid rgba(21, 96, 189, 0.5)',
+              filter: 'drop-shadow(0 0 8px rgba(21, 96, 189, 0.6))',
             }}
           >
-            3≡
+            <img
+              src="/be_logo.png"
+              alt="Braeburn Energy"
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            />
           </div>
-          <div>
-            <div style={{ fontFamily: 'var(--k-font-display)', fontSize: 18, fontWeight: 700, letterSpacing: 2, color: 'white', lineHeight: 1 }}>
-              BRAEBURN ENERGY
+          <div style={{ lineHeight: 1.2 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+              {'BRAEBURN'.split('').map((char, i) => (
+                <span
+                  key={i}
+                  style={{
+                    display: 'inline-block',
+                    fontFamily: "'elemental_endregular', var(--k-font-display)",
+                    fontSize: 20,
+                    fontWeight: 400,
+                    color: '#D6E6F9',
+                    letterSpacing: 1,
+                    animation: `k-char-in 0.35s ease ${i * 0.04}s both`,
+                  }}
+                >
+                  {char}
+                </span>
+              ))}
+              <span style={{ fontFamily: "'Corbel', sans-serif", fontSize: 14, fontWeight: 700, color: '#00B050', letterSpacing: 3, animation: 'k-char-in 0.35s ease 0.36s both' }}>
+                ENERGY
+              </span>
             </div>
-            <div style={{ fontFamily: 'var(--k-font-tech)', fontSize: 10, color: 'var(--k-green)', letterSpacing: 3, textTransform: 'uppercase' }}>
-              BE THE FUTURE
+            <div style={{ fontFamily: 'var(--k-font-tech)', fontSize: 10, color: 'var(--k-text-secondary)', letterSpacing: 1, marginTop: 2 }}>
+              Innovate towards a sustainable future
             </div>
           </div>
         </div>
 
-        <div style={{ fontFamily: 'var(--k-font-display)', fontSize: 22, fontWeight: 700, letterSpacing: 4, color: 'var(--k-ultra-light)', textShadow: '0 0 20px rgba(111,170,230,0.5)' }}>
+        <div style={{ fontFamily: 'var(--k-font-display)', fontSize: 19, fontWeight: 700, letterSpacing: 4, color: 'var(--k-ultra-light)', textShadow: '0 0 20px rgba(111,170,230,0.5)' }}>
           KOSMOS CORTEX<span style={{ color: 'var(--k-green)' }}>™</span> PLATFORM
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'var(--k-font-tech)', fontSize: 11, color: 'var(--k-text-secondary)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontFamily: 'var(--k-font-tech)', fontSize: 11, color: 'var(--k-text-secondary)' }}>
             <span>
-              <span className="k-blink" style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: 'var(--k-green)', boxShadow: '0 0 8px var(--k-green)', marginRight: 5 }} />
+              <span className="k-blink" style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: 'var(--k-green)', boxShadow: '0 0 8px var(--k-green)', marginRight: 6 }} />
               EDGE: ONLINE
             </span>
             <span style={{ color: 'var(--k-pale)' }}>{time}</span>
-            <span className="k-blink" style={{ background: 'rgba(0,176,80,0.15)', border: '1px solid var(--k-green)', color: 'var(--k-green)', padding: '2px 10px', borderRadius: 2, fontSize: 10, letterSpacing: 2 }}>
+            <span className="k-blink" style={{ background: 'rgba(0,176,80,0.15)', border: '1px solid var(--k-green)', color: 'var(--k-green)', padding: '3px 14px', borderRadius: 2, fontSize: 10, letterSpacing: 2 }}>
               ● LIVE
             </span>
           </div>
@@ -371,7 +394,6 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
                   if (wasEditing) {
                     setPaletteOpen(false);
                     setSelectedWidgetId(null);
-                    setEditSubMode('layout');
                     flushSave();
                   }
                 }}
@@ -380,31 +402,6 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
               </button>
 
               {editMode && (
-                <>
-                  <button
-                    className={editSubMode === 'layout' ? 'k-btn k-btn-primary' : 'k-btn k-btn-ghost'}
-                    title="Layout mode — drag and resize widgets"
-                    onClick={() => {
-                      setEditSubMode('layout');
-                      setSelectedWidgetId(null);
-                    }}
-                  >
-                    ⇄ LAYOUT
-                  </button>
-                  <button
-                    className={editSubMode === 'config' ? 'k-btn k-btn-primary' : 'k-btn k-btn-ghost'}
-                    title="Config mode — click a widget to configure it"
-                    onClick={() => {
-                      setEditSubMode('config');
-                      setPaletteOpen(false);
-                    }}
-                  >
-                    ⚙ CONFIG
-                  </button>
-                </>
-              )}
-
-              {editMode && editSubMode === 'layout' && (
                 <button className="k-btn k-btn-ghost" onClick={() => setPaletteOpen(!paletteOpen)}>
                   {paletteOpen ? 'HIDE PALETTE' : 'WIDGETS'}
                 </button>
@@ -426,7 +423,7 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
               )}
 
               <button className="k-btn k-btn-ghost" onClick={handleProject}>
-                ⬡ PROJECT
+                PROJECT
               </button>
 
               <button
@@ -434,7 +431,7 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
                 onClick={handleOpenShareModal}
                 disabled={shareLoading}
               >
-                👥 SHARE
+                SHARE
               </button>
             </div>
           )}
@@ -492,11 +489,13 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
           <button
             onClick={handleAddPage}
             style={{
-              padding: '6px 12px', background: 'none', border: '1px dashed var(--k-border)',
-              borderBottom: 'none', borderRadius: '4px 4px 0 0', color: 'var(--k-text-dim)',
-              cursor: 'pointer', fontFamily: 'var(--k-font-tech)', fontSize: 14, lineHeight: 1,
+              padding: '5px 14px', background: 'rgba(21,96,189,0.08)', border: '1px solid var(--k-border-bright)',
+              borderBottom: 'none', borderRadius: '4px 4px 0 0', color: 'var(--k-text-secondary)',
+              cursor: 'pointer', fontFamily: 'var(--k-font-display)', fontSize: 16, fontWeight: 400, lineHeight: 1,
               transition: 'all 0.2s', alignSelf: 'flex-end',
             }}
+            onMouseEnter={(e) => { (e.target as HTMLElement).style.color = 'var(--k-pale)'; (e.target as HTMLElement).style.background = 'rgba(21,96,189,0.18)'; }}
+            onMouseLeave={(e) => { (e.target as HTMLElement).style.color = 'var(--k-text-secondary)'; (e.target as HTMLElement).style.background = 'rgba(21,96,189,0.08)'; }}
           >
             +
           </button>
@@ -538,7 +537,7 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
                 <KosmosOverviewTabPanel
                   page={activePage}
                   editMode={editMode}
-                  layoutLocked={editMode && editSubMode === 'config'}
+                  layoutLocked={false}
                   onDrop={handleDrop}
                   onLayoutChange={(pageId, layouts) => {
                     layouts.forEach((layout) => {
@@ -563,7 +562,7 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
                 <KosmosCombustionDlTabPanel
                   page={activePage}
                   editMode={editMode}
-                  layoutLocked={editMode && editSubMode === 'config'}
+                  layoutLocked={false}
                   onDrop={handleDrop}
                   onLayoutChange={(pageId, layouts) => {
                     layouts.forEach((layout) => {
@@ -602,9 +601,8 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
                 <UnifiedCanvas
                   widgets={activePage.widgets}
                   editMode={editMode}
-                  layoutLocked={editMode && editSubMode === 'config'}
+                  layoutLocked={false}
                   onDrop={handleDrop}
-                  onRemove={handleRemoveWidget}
                   onLayoutChange={handleLayoutChange}
                   onSelect={handleSelect}
                   selectedWidgetId={selectedWidgetId}
@@ -612,14 +610,15 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
               </div>
             )}
 
-            {/* Config panel — only in CONFIG sub-mode when a widget is selected */}
-            {editMode && editSubMode === 'config' && selectedWidget && (
+            {/* Config panel — click any widget body while in edit mode to open */}
+            {editMode && selectedWidget && (
               <WidgetConfigPanel
                 pageId={activePage.id}
                 widget={selectedWidget}
                 applicationId={applicationId}
                 onClose={() => setSelectedWidgetId(null)}
                 onConfigChange={() => triggerSave()}
+                onRemove={() => { handleRemoveWidget(selectedWidget.id); setSelectedWidgetId(null); }}
               />
             )}
           </>
@@ -637,27 +636,6 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
         )}
       </div>
 
-      {/* ── Footer ── */}
-      <footer className="k-footer">
-        <span>
-          <span style={{ color: 'var(--k-green)', fontWeight: 700, letterSpacing: 1 }}>
-            KOSMOS CORTEX<span style={{ color: 'var(--k-base)' }}>™</span>
-          </span>
-          {' '}— Braeburn Energy Platform
-        </span>
-        <span style={{ display: 'flex', gap: 16 }}>
-          {editMode && <span style={{ color: 'var(--k-amber)' }}>● EDIT MODE</span>}
-          {sharedWithUsers.length > 0 && (
-            <span style={{ color: 'var(--k-green)' }}>
-              👥 SHARED ({sharedWithUsers.length})
-              {sharedPageIds.length > 0 && sharedPageIds.length < allowedPages.length
-                ? ` — ${sharedPageIds.length} tab${sharedPageIds.length !== 1 ? 's' : ''}`
-                : ''}
-            </span>
-          )}
-          <span>{allowedPages.length} PAGE{allowedPages.length !== 1 ? 'S' : ''}{pages.length > allowedPages.length ? ` (${pages.length - allowedPages.length} hidden)` : ''}</span>
-        </span>
-      </footer>
 
       {/* ── Widget palette overlay ── */}
       {paletteOpen && !readOnly && (

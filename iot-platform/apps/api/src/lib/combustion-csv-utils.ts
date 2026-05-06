@@ -12,7 +12,12 @@
  *   Row 5: "time" header row (column names repeated)
  *   Rows 6+: actual data — time, PD_REF, PD_PLENUM_1_1, ..., TC_XTALK_1_1
  *
- * Key channels: PD_CC_1_1 (combustion chamber dynamic pressure, col index 5)
+ * Key channels:
+ *   PD_CC_1_1 (combustion chamber dynamic pressure, col 5) — p'_CC in paper
+ *   PMT_1_1   (heat release rate / OH* chemiluminescence, col 7) — q' in paper
+ *
+ * Feature extraction follows GT2026-179161 (Karthik et al.):
+ *   300 ms window, 100 ms stride — RMS, STD, Kurtosis per signal (6 features)
  */
 
 import * as fs from 'fs';
@@ -46,6 +51,13 @@ export interface CsvPayload {
   shannon_entropy: number;
   dft_energy: number;
   feature_cells: FeatureCell[];
+  // GT2026-179161 §2.2 — 3 statistical features × 2 signals = 6 paper-aligned features
+  p_cc_rms: number;       // RMS of p'_CC window
+  p_cc_std: number;       // STD of p'_CC window
+  p_cc_kurtosis: number;  // kurtosis of p'_CC (>3 = intermittent bursts)
+  pmt_rms: number;        // RMS of q' (PMT/heat release) window
+  pmt_std: number;        // STD of q' window
+  pmt_kurtosis: number;   // kurtosis of q' window
   _scan: number;
   _cursor: number;
   _ts: string;
@@ -66,74 +78,25 @@ const FEATURE_LABELS = [
   'MI-P/T',   'MI-T/N',   'MI-N/P',   'MI-cross',  'MI-auto',
 ];
 
-// Column index for PD_CC_1_1 in the data rows (0=time, 1=PD_REF, 2=PD_PLENUM_1_1,
-// 3=PD_PLENUM_1_2, 4=PD_PLENUM_1_3, 5=PD_CC_1_1)
-const PD_CC_COL = 5;
+// Column indices in data rows (0=time, 1=PD_REF, 2=PD_PLENUM_1_1, 3=_1_2, 4=_1_3,
+// 5=PD_CC_1_1, 6=PD_FUEL_1_1, 7=PMT_1_1)
+const PD_CC_COL = 5; // p'_CC — combustion chamber dynamic pressure
+const PMT_COL   = 7; // q'   — heat release rate (OH* chemiluminescence)
 
-// Scan metadata — fuel composition, dynamic state, classifier mapping
-const SCAN_META: Record<ScanNumber, {
-  fuel: string;
-  state: string;
-  precursor_class: string;
-  normal_prob: () => number;
-  lean_blowout_prob: () => number;
-  flashback_prob: () => number;
-  thermo_acoustic_prob: () => number;
-  anomaly_base: number;
-}> = {
-  5: {
-    fuel: '100% CH₄',
-    state: 'Stable',
-    precursor_class: 'NORMAL OPERATION',
-    normal_prob: () => 0.82 + Math.random() * 0.10,
-    lean_blowout_prob: () => Math.random() * 0.06,
-    flashback_prob: () => Math.random() * 0.06,
-    thermo_acoustic_prob: () => Math.random() * 0.06,
-    anomaly_base: 0.05,
-  },
-  2: {
-    fuel: '90% CH₄ / 10% H₂',
-    state: 'Transient dynamics',
-    precursor_class: 'LEAN BLOWOUT PRECURSOR',
-    normal_prob: () => Math.random() * 0.18,
-    lean_blowout_prob: () => 0.60 + Math.random() * 0.22,
-    flashback_prob: () => Math.random() * 0.10,
-    thermo_acoustic_prob: () => Math.random() * 0.10,
-    anomaly_base: 0.35,
-  },
-  3: {
-    fuel: '80% CH₄ / 20% H₂',
-    state: 'Transient dynamics',
-    precursor_class: 'LEAN BLOWOUT PRECURSOR',
-    normal_prob: () => Math.random() * 0.12,
-    lean_blowout_prob: () => 0.68 + Math.random() * 0.20,
-    flashback_prob: () => Math.random() * 0.12,
-    thermo_acoustic_prob: () => Math.random() * 0.08,
-    anomaly_base: 0.45,
-  },
-  4: {
-    fuel: '70% CH₄ / 30% H₂',
-    state: 'Limit cycle oscillations',
-    precursor_class: 'THERMO-ACOUSTIC INSTABILITY',
-    normal_prob: () => Math.random() * 0.08,
-    lean_blowout_prob: () => Math.random() * 0.12,
-    flashback_prob: () => Math.random() * 0.10,
-    thermo_acoustic_prob: () => 0.65 + Math.random() * 0.22,
-    anomaly_base: 0.68,
-  },
-};
 
 // ─── CSV cache (module-level singleton) ──────────────────────────────────────
 
-/** Cached parsed CSV rows — only the PD_CC_1_1 column (float array per row) */
-const csvCache = new Map<ScanNumber, number[]>();
+interface DualChannel { pcc: number[]; pmt: number[] }
+
+/** Cached parsed CSV rows — both PD_CC_1_1 (p'_CC) and PMT_1_1 (q') columns */
+const csvCache = new Map<ScanNumber, DualChannel>();
 
 /**
- * Load and cache the CSV for a given scan number.
- * Returns array of PD_CC_1_1 values (one float per data row).
- * First call parses the file; subsequent calls return cached array.
+ * Load and cache both signal channels for a given scan number.
+ * Returns { pcc: number[], pmt: number[] } — one float per data row each.
+ * First call parses the file; subsequent calls return cached arrays.
  */
-export function loadAndCacheCSV(scanNumber: ScanNumber): number[] {
+export function loadAndCacheCSV(scanNumber: ScanNumber): DualChannel {
   if (csvCache.has(scanNumber)) return csvCache.get(scanNumber)!;
 
   const csvPath = path.join(demo.csvDir, `Scan${scanNumber}_converted.csv`);
@@ -146,7 +109,8 @@ export function loadAndCacheCSV(scanNumber: ScanNumber): number[] {
 
   // Find the data start — first line after the "time" header row (row index 4 = line 5)
   // Format: line 0=waveform, 1=t0, 2=delta_t, 3=blank, 4="time" header, 5+=data
-  const dataLines: number[] = [];
+  const pcc: number[] = [];
+  const pmt: number[] = [];
   let dataStarted = false;
 
   for (const line of lines) {
@@ -156,13 +120,17 @@ export function loadAndCacheCSV(scanNumber: ScanNumber): number[] {
     if (!dataStarted) continue;
 
     const cells = line.split(',');
-    // PD_CC_1_1 is column index 5 (0=time, 1=PD_REF, 2=PD_PLENUM_1_1, 3=_1_2, 4=_1_3, 5=PD_CC_1_1)
-    const val = parseFloat(cells[PD_CC_COL] ?? '');
-    if (!isNaN(val)) dataLines.push(val);
+    const pccVal = parseFloat(cells[PD_CC_COL] ?? '');
+    const pmtVal = parseFloat(cells[PMT_COL] ?? '');
+    if (!isNaN(pccVal) && !isNaN(pmtVal)) {
+      pcc.push(pccVal);
+      pmt.push(pmtVal);
+    }
   }
 
-  csvCache.set(scanNumber, dataLines);
-  return dataLines;
+  const channels: DualChannel = { pcc, pmt };
+  csvCache.set(scanNumber, channels);
+  return channels;
 }
 
 // ─── Physics computation ──────────────────────────────────────────────────────
@@ -191,6 +159,92 @@ export function computeDFT(signal: number[], sampleRate = SAMPLE_RATE): { freqs:
 function rms(signal: number[]): number {
   const sumSq = signal.reduce((acc, v) => acc + v * v, 0);
   return Math.sqrt(sumSq / signal.length);
+}
+
+/** Standard deviation of signal (population, not sample) */
+function computeStd(signal: number[]): number {
+  const mu = signal.reduce((a, v) => a + v, 0) / signal.length;
+  const variance = signal.reduce((a, v) => a + (v - mu) ** 2, 0) / signal.length;
+  return Math.sqrt(variance);
+}
+
+/**
+ * Kurtosis (4th standardised moment) — measures tailedness / intermittency.
+ * Gaussian baseline = 3. Values >3 indicate impulsive/burst behaviour (TAI precursor).
+ */
+function computeKurtosis(signal: number[]): number {
+  const mu = signal.reduce((a, v) => a + v, 0) / signal.length;
+  const sigma = computeStd(signal);
+  if (sigma === 0) return 0;
+  return signal.reduce((a, v) => a + ((v - mu) / sigma) ** 4, 0) / signal.length;
+}
+
+/**
+ * Zero-mean / unit-variance normalisation per segment.
+ * Applied before DFT, Hurst, Entropy so those features are amplitude-agnostic
+ * and comparable across operating conditions (paper §2.2 preprocessing).
+ * NOT applied before p_cc_rms / p_cc_std — those are intentional amplitude descriptors.
+ */
+function normalise(signal: number[]): number[] {
+  const mu = signal.reduce((a, v) => a + v, 0) / signal.length;
+  const sigma = computeStd(signal);
+  if (sigma === 0) return signal.map(() => 0);
+  return signal.map((v) => (v - mu) / sigma);
+}
+
+// ─── Kurtosis-driven state classification ────────────────────────────────────
+// Thresholds based on paper characterisation (Fig 2):
+//   Stable      : near-Gaussian pressure noise,  kurtosis ≈ 3
+//   Intermittent: alternating bursts + quiet,     kurtosis > INTERMITTENT_K (elevated tails)
+//   LCO         : sustained large oscillations,   kurtosis ≈ 3 again but high RMS
+// RMS_LCO_THRESHOLD is expressed in the original signal units (kPa);
+// may need calibration if sensor range differs from demo CSV (~±0.14 kPa peak).
+const INTERMITTENT_K  = 3.5;   // kurtosis above Gaussian baseline
+const LCO_RMS_MIN     = 0.025; // kPa — sustained oscillation amplitude
+
+type DynamicalState = 'STABLE' | 'INTERMITTENT' | 'LIMIT CYCLE OSCILLATION';
+
+function classifyDynamicalState(kurtosis: number, signalRms: number): DynamicalState {
+  if (kurtosis > INTERMITTENT_K) return 'INTERMITTENT';
+  if (signalRms >= LCO_RMS_MIN)  return 'LIMIT CYCLE OSCILLATION';
+  return 'STABLE';
+}
+
+/** Probability distribution over the 3 paper states, derived from classified state. */
+function deriveClassProbabilities(state: DynamicalState): {
+  normal_prob: number;
+  lean_blowout_prob: number;
+  flashback_prob: number;
+  thermo_acoustic_prob: number;
+} {
+  // normal_prob       → P(Stable)
+  // lean_blowout_prob → P(Intermittent)  [field retained for dashboard compat]
+  // thermo_acoustic_prob → P(LCO)
+  // flashback_prob    → residual (not a paper class; kept for field compat)
+  const noise = () => Math.random() * 0.04;
+  if (state === 'STABLE') {
+    const s = 0.88 + noise();
+    const i = noise();
+    const l = noise();
+    const f = noise();
+    const t = s + i + l + f;
+    return { normal_prob: s / t, lean_blowout_prob: i / t, flashback_prob: f / t, thermo_acoustic_prob: l / t };
+  }
+  if (state === 'INTERMITTENT') {
+    const s = noise();
+    const i = 0.72 + noise();
+    const l = noise();
+    const f = noise();
+    const t = s + i + l + f;
+    return { normal_prob: s / t, lean_blowout_prob: i / t, flashback_prob: f / t, thermo_acoustic_prob: l / t };
+  }
+  // LCO
+  const s = noise();
+  const i = noise();
+  const l = 0.80 + noise();
+  const f = noise();
+  const t = s + i + l + f;
+  return { normal_prob: s / t, lean_blowout_prob: i / t, flashback_prob: f / t, thermo_acoustic_prob: l / t };
 }
 
 /** SPL in dB — 20*log10(rms / 2e-5) reference pressure */
@@ -305,50 +359,148 @@ export function buildFeatureCells(signal: number[], dftAmps: number[], spl: numb
 }
 
 /**
- * Build the full MQTT-compatible payload from a signal window and scan number.
+ * Build the full MQTT-compatible payload from dual signal windows and scan number.
  * Matches the field shape published by combustion-mqtt-sim.ts.
+ *
+ * pccWindow — PD_CC_1_1 (p'_CC) samples for this tick (raw, kPa)
+ * pmtWindow — PMT_1_1 (q') samples for this tick (raw)
  */
-export function buildCsvPayload(window: number[], scanNumber: ScanNumber, cursor: number): CsvPayload {
-  const meta = SCAN_META[scanNumber];
-  const { freqs, amps } = computeDFT(window);
-  const spl = computeSPL(window);
-  const hurst = computeHurst(window);
-  const entropy = computeEntropy(window);
-  const cells = buildFeatureCells(window, amps, spl, hurst, entropy);
+export function buildCsvPayload(pccWindow: number[], pmtWindow: number[], scanNumber: ScanNumber, cursor: number): CsvPayload {
+  // ── Step 1: Raw amplitude statistics (on un-normalised signal) ──────────────
+  // RMS and STD must use raw signal — they ARE the amplitude descriptors.
+  // Kurtosis is scale/mean invariant, but computed here for consistency.
+  const p_cc_rms      = parseFloat(rms(pccWindow).toFixed(6));
+  const p_cc_std      = parseFloat(computeStd(pccWindow).toFixed(6));
+  const p_cc_kurtosis = parseFloat(computeKurtosis(pccWindow).toFixed(4));
+  const pmt_rms       = parseFloat(rms(pmtWindow).toFixed(6));
+  const pmt_std       = parseFloat(computeStd(pmtWindow).toFixed(6));
+  const pmt_kurtosis  = parseFloat(computeKurtosis(pmtWindow).toFixed(4));
 
-  // Anomaly score: blend signal RMS with scan-specific base
-  const r = rms(window);
-  // PD_CC_1_1 values are in kPa (range ~±0.14). Normalize to 0-1 using max observed.
-  const rmsNormalized = Math.min(r / 0.1, 1.0);
-  const anomaly = parseFloat(Math.min(meta.anomaly_base + rmsNormalized * 0.3, 1.0).toFixed(4));
+  // ── Step 2: Normalise windows for amplitude-agnostic feature analysis ───────
+  // Zero-mean / unit-variance per segment (paper §2.2 preprocessing).
+  // Used for DFT, Hurst, Entropy, feature_cells — NOT for RMS/STD/SPL.
+  const pccNorm = normalise(pccWindow);
 
-  // Classifier probabilities
-  const np = meta.normal_prob();
-  const lbp = meta.lean_blowout_prob();
-  const fp = meta.flashback_prob();
-  const tap = meta.thermo_acoustic_prob();
-  const total = np + lbp + fp + tap;
-
+  // ── Step 3: Physics features on normalised p'_CC window ─────────────────────
+  const { freqs, amps } = computeDFT(pccNorm);
+  const spl     = computeSPL(pccWindow);   // SPL uses raw signal (absolute dB measure)
+  const hurst   = computeHurst(pccNorm);
+  const entropy = computeEntropy(pccNorm);
+  const cells   = buildFeatureCells(pccNorm, amps, spl, hurst, entropy);
   const dftEnergy = parseFloat(amps.reduce((a, v) => a + v * v, 0).toFixed(6));
 
+  // ── Step 4: Kurtosis-driven dynamical state classification ───────────────────
+  // Derives precursor_class from live p_cc_kurtosis + p_cc_rms — not scan metadata.
+  const dynamicalState = classifyDynamicalState(p_cc_kurtosis, p_cc_rms);
+  const precursor_class = dynamicalState;
+  const probs = deriveClassProbabilities(dynamicalState);
+
+  // ── Step 5: Anomaly score from kurtosis excess + RMS ─────────────────────────
+  // kurtosisExcess: how far above Gaussian baseline (3); clamped 0→1 over range 3–8
+  // rmsNorm: RMS relative to max expected LCO amplitude (~0.1 kPa)
+  const kurtosisExcess = Math.min(Math.max(p_cc_kurtosis - 3.0, 0) / 5.0, 1.0);
+  const rmsNorm        = Math.min(p_cc_rms / 0.1, 1.0);
+  const anomaly        = parseFloat((kurtosisExcess * 0.5 + rmsNorm * 0.5).toFixed(4));
+
   return {
-    cd_pressure: parseFloat((101.3 + window[window.length - 1] * 10).toFixed(4)), // map ±0.14kPa → kPa absolute
+    cd_pressure: parseFloat(pccWindow[pccWindow.length - 1].toFixed(6)),
     fft_freqs: freqs,
     fft_amps: amps.map((v) => parseFloat(v.toFixed(6))),
     anomaly_score: anomaly,
     confidence: parseFloat(Math.min(75 + (1 - anomaly) * 20, 99).toFixed(1)),
-    precursor_class: meta.precursor_class,
-    normal_prob: parseFloat((np / total).toFixed(4)),
-    lean_blowout_prob: parseFloat((lbp / total).toFixed(4)),
-    flashback_prob: parseFloat((fp / total).toFixed(4)),
-    thermo_acoustic_prob: parseFloat((tap / total).toFixed(4)),
+    precursor_class,
+    normal_prob:          parseFloat(probs.normal_prob.toFixed(4)),
+    lean_blowout_prob:    parseFloat(probs.lean_blowout_prob.toFixed(4)),
+    flashback_prob:       parseFloat(probs.flashback_prob.toFixed(4)),
+    thermo_acoustic_prob: parseFloat(probs.thermo_acoustic_prob.toFixed(4)),
     spl,
     hurst_exponent: hurst,
     shannon_entropy: entropy,
     dft_energy: dftEnergy,
     feature_cells: cells,
+    p_cc_rms,
+    p_cc_std,
+    p_cc_kurtosis,
+    pmt_rms,
+    pmt_std,
+    pmt_kurtosis,
     _scan: scanNumber,
     _cursor: cursor,
     _ts: new Date().toISOString(),
   };
+}
+
+// ─── Generic CSV Parser ───────────────────────────────────────────────────────
+
+export interface GenericCsvData {
+  columns: string[];             // Auto-detected numeric column names
+  data: Map<string, number[]>;   // column name → all sample values
+  rowCount: number;
+}
+
+const genericCsvCache = new Map<string, GenericCsvData>();
+
+/**
+ * Parse any CSV file, auto-detecting numeric columns from the header row.
+ * Results are cached in memory by absolute file path.
+ */
+export function parseGenericCsv(filePath: string): GenericCsvData {
+  if (genericCsvCache.has(filePath)) return genericCsvCache.get(filePath)!;
+
+  const raw = fs.readFileSync(filePath, 'utf-8');
+  const lines = raw.split('\n').filter((l) => l.trim().length > 0);
+
+  // Find header row: the LAST line where the first cell is non-numeric text.
+  // Some CSVs have multiple metadata rows before the real column-name header
+  // (e.g. waveform info rows followed by a "time, col1, col2..." header).
+  let headerIdx = -1;
+  for (let i = 0; i < lines.length; i++) {
+    const firstCell = lines[i].split(',')[0]?.trim() ?? '';
+    if (isNaN(parseFloat(firstCell)) || firstCell === '') headerIdx = i;
+    else break; // first fully-numeric first-cell row ends the header search
+  }
+  // If all rows are text-first, still pick the last one; if none found, fail.
+  if (headerIdx === -1) throw new Error(`No header row found in CSV: ${filePath}`);
+
+  const headers = lines[headerIdx].split(',').map((h) => h.trim());
+  const dataLines = lines.slice(headerIdx + 1);
+
+  // Detect numeric columns by checking first 10 data rows
+  const probe = dataLines.slice(0, 10);
+  const numericCols = headers.filter((_, ci) =>
+    probe.length > 0 &&
+    probe.every((l) => {
+      const cell = l.split(',')[ci]?.trim() ?? '';
+      return cell !== '' && !isNaN(parseFloat(cell));
+    })
+  );
+
+  if (numericCols.length === 0) throw new Error(`No numeric columns detected in CSV: ${filePath}`);
+
+  const colIndices = numericCols.map((col) => headers.indexOf(col));
+  const data = new Map<string, number[]>();
+  numericCols.forEach((col) => data.set(col, []));
+
+  for (const line of dataLines) {
+    const cells = line.split(',');
+    let rowValid = true;
+    const parsed = colIndices.map((ci) => {
+      const v = parseFloat(cells[ci]?.trim() ?? '');
+      if (isNaN(v)) rowValid = false;
+      return v;
+    });
+    if (rowValid) {
+      numericCols.forEach((col, i) => data.get(col)!.push(parsed[i]));
+    }
+  }
+
+  const rowCount = data.get(numericCols[0])?.length ?? 0;
+  const result: GenericCsvData = { columns: numericCols, data, rowCount };
+  genericCsvCache.set(filePath, result);
+  return result;
+}
+
+export function clearGenericCsvCache(filePath?: string): void {
+  if (filePath) genericCsvCache.delete(filePath);
+  else genericCsvCache.clear();
 }

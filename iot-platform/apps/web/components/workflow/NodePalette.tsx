@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState, useMemo } from 'react';
+import { useCallback, useState, useMemo, useEffect } from 'react';
 import { ulid } from 'ulid';
 import { useReactFlow } from 'reactflow';
 import { useAppDispatch } from '@/lib/store';
@@ -187,7 +187,7 @@ const NODE_TYPES: NodeTypeConfig[] = [
     label: 'Write Device State',
     description: 'Write structured data back to the triggering DeviceState',
     icon: '💾',
-    defaultConfig: { mappings: [] },
+    defaultConfig: { mappings: [], ttlValue: 7, ttlUnit: 'days' },
   },
 
   // IBM Maximo — CORE (no module tag)
@@ -242,6 +242,27 @@ const NODE_TYPES: NodeTypeConfig[] = [
     description: 'Replay real combustion lab CSV data (Scan 2–5) into device state',
     icon: '◑',
     defaultConfig: { scanNumber: 4, windowSize: 2000, stepSize: 200 },
+    module: 'combustion_dl' as const,
+  },
+
+  {
+    type: 'action:csvStreamPlayer',
+    category: 'action',
+    visualType: 'action',
+    label: 'CSV Stream Player',
+    description: 'Stream any CSV file at configurable intervals (10ms–1hr) with auto-detected columns',
+    icon: '▶',
+    defaultConfig: { intervalMs: 1000, windowSize: 3000, stepSize: 1000 },
+    module: 'combustion_dl' as const,
+  },
+  {
+    type: 'action:setWorkspace',
+    category: 'action',
+    visualType: 'action',
+    label: 'Set Workspace',
+    description: 'Map workflow fields to named workspace keys (broadcast only, no DB write)',
+    icon: '📤',
+    defaultConfig: { label: '', mappings: [] },
     module: 'combustion_dl' as const,
   },
 
@@ -401,6 +422,8 @@ export default function NodePalette() {
   const { getViewport } = useReactFlow();
   const { isModuleEnabled } = useLicense();
   const [searchTerm, setSearchTerm] = useState('');
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const filteredNodeTypes = useMemo(() => {
     if (!searchTerm.trim()) return NODE_TYPES;
@@ -445,7 +468,7 @@ export default function NodePalette() {
   );
 
   const renderCategory = (category: string, nodes: NodeTypeConfig[]) => {
-    const categoryNodes = nodes.filter(n => n.category === category && (!n.module || isModuleEnabled(n.module)));
+    const categoryNodes = nodes.filter(n => n.category === category && (!n.module || (mounted && isModuleEnabled(n.module))));
     if (categoryNodes.length === 0) return null;
 
     const categoryColors: Record<string, string> = {

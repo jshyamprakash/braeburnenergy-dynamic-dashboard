@@ -189,6 +189,20 @@ class ApiClient {
     return { data };
   }
 
+  async postForm<T>(endpoint: string, formData: FormData): Promise<{ data: T }> {
+    const url = `${this.baseURL}${endpoint}`;
+    const accessToken = this.getAccessToken();
+    const headers: Record<string, string> = {};
+    if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
+    const response = await fetch(url, { method: 'POST', headers, body: formData });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({})) as any;
+      throw createApiError(response.status, errorData.error || 'Upload failed', errorData);
+    }
+    const result = await response.json() as any;
+    return { data: result };
+  }
+
   async patch<T>(endpoint: string, body: unknown): Promise<{ data: T }> {
     const data = await this.request<T>(endpoint, {
       method: 'PATCH',

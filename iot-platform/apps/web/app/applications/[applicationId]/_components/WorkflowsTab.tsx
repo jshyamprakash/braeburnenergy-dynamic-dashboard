@@ -115,11 +115,29 @@ export function WorkflowsTab({
                     </span>
                   </td>
                   <td className="px-4 py-3 text-sm">
-                    {workflow.isEnabled ? (
-                      <span className="text-green-600 dark:text-green-400 font-medium">Enabled</span>
-                    ) : (
-                      <span className="text-slate-500 dark:text-slate-400">Disabled</span>
-                    )}
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        try {
+                          const endpoint = workflow.isEnabled
+                            ? `/workflows/${workflow.workflowId}/disable`
+                            : `/workflows/${workflow.workflowId}/enable`;
+                          await apiClient.post(endpoint, {});
+                          await onRefresh();
+                        } catch {
+                          // silent — the list will show stale state until next load
+                        }
+                      }}
+                      className="px-3 py-1 text-xs font-semibold rounded transition-colors"
+                      style={{
+                        background: workflow.isEnabled ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)',
+                        border: workflow.isEnabled ? '1px solid rgb(239,68,68)' : '1px solid rgb(34,197,94)',
+                        color: workflow.isEnabled ? 'rgb(239,68,68)' : 'rgb(34,197,94)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {workflow.isEnabled ? 'DISABLE' : 'ENABLE'}
+                    </button>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600 dark:text-slate-400">
                     {workflow.createdAt ? formatDate(workflow.createdAt) : '—'}

@@ -46,8 +46,8 @@ export function parseCron(expression: string): CronParseResult {
     // Get human-readable description
     const description = cronstrue.toString(expression);
 
-    // Parse and get next 3 runs
-    const interval = new (parser as any)({ expression });
+    // cron-parser v5: default export is CronExpressionParser with static .parse()
+    const interval = parser.parse(expression);
     const nextRuns: Date[] = [];
     for (let i = 0; i < 3; i++) {
       nextRuns.push(interval.next().toDate());

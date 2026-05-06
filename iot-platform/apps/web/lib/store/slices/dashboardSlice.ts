@@ -86,7 +86,7 @@ export interface DashboardState {
 /* ── Kosmos helpers ── */
 
 /** Bump this when seeded layouts change — forces re-seed of any DB page with an older version */
-const CURRENT_LAYOUT_SCHEMA = 3;
+const CURRENT_LAYOUT_SCHEMA = 5;
 
 function makeDefaultPage(name: string, order: number): KosmosPage {
   return {
@@ -105,43 +105,43 @@ function makeOverviewPage(): KosmosPage {
       id: `w_ov_${shortId()}`,
       type: 'overviewBeSense',
       config: {},
-      layout: { x: 16, y: 16, w: 300, h: 760 },
+      layout: { x: 1, y: 1, w: 10, h: 38 },
     },
     {
       id: `w_ov_${shortId()}`,
       type: 'overviewAnomalyMetric',
       config: {},
-      layout: { x: 332, y: 16, w: 248, h: 150 },
+      layout: { x: 11, y: 1, w: 8, h: 8 },
     },
     {
       id: `w_ov_${shortId()}`,
       type: 'overviewLoadMetric',
       config: {},
-      layout: { x: 596, y: 16, w: 248, h: 150 },
+      layout: { x: 20, y: 1, w: 8, h: 8 },
     },
     {
       id: `w_ov_${shortId()}`,
       type: 'overviewEgtMetric',
       config: {},
-      layout: { x: 860, y: 16, w: 248, h: 150 },
+      layout: { x: 29, y: 1, w: 8, h: 8 },
     },
     {
       id: `w_ov_${shortId()}`,
       type: 'overviewRealtimeChart',
       config: {},
-      layout: { x: 332, y: 182, w: 776, h: 248 },
+      layout: { x: 11, y: 9, w: 26, h: 12 },
     },
     {
       id: `w_ov_${shortId()}`,
       type: 'overviewDataFlow',
       config: DATAFLOW_DEFAULT_CONFIG,
-      layout: { x: 332, y: 446, w: 776, h: 330 },
+      layout: { x: 11, y: 22, w: 26, h: 17 },
     },
     {
       id: `w_ov_${shortId()}`,
       type: 'overviewBeAgentStatus',
       config: {},
-      layout: { x: 1124, y: 16, w: 320, h: 760 },
+      layout: { x: 37, y: 1, w: 11, h: 38 },
     },
   ];
 
@@ -164,61 +164,61 @@ function makeCombustionDlPage(): KosmosPage {
       id: `w_cdl_${shortId()}`,
       type: 'combustionDlHeader',
       config: {},
-      layout: { x: 16, y: 16, w: 1168, h: 120 },
+      layout: { x: 0, y: 0, w: 48, h: 6 },
     },
     {
       id: `w_cdl_${shortId()}`,
       type: 'combustionDlPressureSignal',
       config: {},
-      layout: { x: 16, y: 152, w: 360, h: 220 },
+      layout: { x: 0, y: 7, w: 15, h: 12 },
     },
     {
       id: `w_cdl_${shortId()}`,
       type: 'combustionDlFrequencySpectrum',
       config: {},
-      layout: { x: 16, y: 388, w: 360, h: 220 },
+      layout: { x: 0, y: 19, w: 15, h: 12 },
     },
     {
       id: `w_cdl_${shortId()}`,
       type: 'combustionDlFeatureMatrix',
       config: {},
-      layout: { x: 16, y: 624, w: 360, h: 360 },
+      layout: { x: 0, y: 31, w: 15, h: 18 },
     },
     {
       id: `w_cdl_${shortId()}`,
       type: 'combustionDlFrameworkPipeline',
       config: {},
-      layout: { x: 392, y: 152, w: 390, h: 330 },
+      layout: { x: 15, y: 7, w: 18, h: 18 },
     },
     {
       id: `w_cdl_${shortId()}`,
       type: 'combustionDlAnomalyTrend',
       config: {},
-      layout: { x: 392, y: 498, w: 390, h: 190 },
+      layout: { x: 15, y: 25, w: 18, h: 12 },
     },
     {
       id: `w_cdl_${shortId()}`,
       type: 'combustionDlPhysicsMetrics',
       config: {},
-      layout: { x: 392, y: 704, w: 390, h: 200 },
+      layout: { x: 15, y: 37, w: 18, h: 12 },
     },
     {
       id: `w_cdl_${shortId()}`,
       type: 'combustionDlPrecursorClassification',
       config: {},
-      layout: { x: 798, y: 152, w: 320, h: 220 },
+      layout: { x: 33, y: 7, w: 15, h: 12 },
     },
     {
       id: `w_cdl_${shortId()}`,
       type: 'combustionDlClassifierOutputs',
       config: {},
-      layout: { x: 798, y: 388, w: 320, h: 180 },
+      layout: { x: 33, y: 19, w: 15, h: 10 },
     },
     {
       id: `w_cdl_${shortId()}`,
       type: 'combustionDlTrainingPerformance',
       config: {},
-      layout: { x: 798, y: 584, w: 320, h: 170 },
+      layout: { x: 33, y: 29, w: 15, h: 9 },
     },
     {
       id: `w_cdl_${shortId()}`,
@@ -229,7 +229,7 @@ function makeCombustionDlPage(): KosmosPage {
         combustor: 'DLE / Lean Pre-mix',
         fuel: 'NG + H2 blend',
       },
-      layout: { x: 798, y: 770, w: 320, h: 160 },
+      layout: { x: 33, y: 38, w: 15, h: 11 },
     },
   ];
 
@@ -472,10 +472,29 @@ function scaleUpPageIfNeeded(page: KosmosPage): KosmosPage {
  * This corrects any corrupted y values written to the DB by old compaction cascades.
  * Secondary guard: h > 55 or y > 100 overflow check retained as a safety net.
  */
+const REF_PX_PER_COL = 31;
+const GRID_ROW_H = 20;
+
 function resetMandatoryPageIfCorrupted(page: KosmosPage): KosmosPage {
   if (!page.mandatoryType) return page;
-  // Non-mandatory combustionDl pages (user-created extra tabs) are never re-seeded
-  if (!page.isMandatory) return page;
+  // Non-mandatory combustionDl pages (user-created extra tabs): migrate pixel→grid if needed
+  if (!page.isMandatory) {
+    if (page.mandatoryType === 'combustionDl' && page.widgets.some((w) => w.layout.w > 48)) {
+      return {
+        ...page,
+        widgets: page.widgets.map((w) => ({
+          ...w,
+          layout: {
+            x: Math.round(w.layout.x / REF_PX_PER_COL),
+            y: Math.round(w.layout.y / GRID_ROW_H),
+            w: Math.max(1, Math.round(w.layout.w / REF_PX_PER_COL)),
+            h: Math.max(1, Math.round(w.layout.h / GRID_ROW_H)),
+          },
+        })),
+      };
+    }
+    return page;
+  }
 
   // Force re-seed if schema version is missing or outdated — but preserve user-edited configs
   if ((page.layoutSchemaVersion ?? 0) < CURRENT_LAYOUT_SCHEMA) {

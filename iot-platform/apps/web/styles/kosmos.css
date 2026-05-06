@@ -1,3 +1,26 @@
+@font-face {
+  font-family: 'Corbel';
+  src: url('/fonts/corbelb.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'elemental_endregular';
+  src: url('/fonts/elemental_end-webfont.woff2') format('woff2'),
+       url('/fonts/elemental_end-webfont.woff') format('woff'),
+       url('/fonts/ElementalEnd.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@keyframes k-char-in {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 /* Kosmos Platform Theme
  * Extracted from docs/architecture/kosmos_showcase.html
  * Used by KosmosShell and all Kosmos widget components.
@@ -6,7 +29,7 @@
 .kosmos-root {
   --k-ultra-light: #D6E6F9;
   --k-pale: #A3C8F0;
-  --k-soft: #6FAAE6;
+  --k-soft: #FFFFFF;
   --k-mid: #3C8CD3;
   --k-base: #1560BD;
   --k-deep: #0D3C7A;
@@ -16,7 +39,7 @@
   --k-bg-dark: #060F1E;
   --k-bg-card: #0A1A30;
   --k-bg-panel: #0D2244;
-  --k-border: rgba(21, 96, 189, 0.35);
+  --k-border: rgba(21, 96, 189, 0.5);
   --k-border-bright: rgba(21, 96, 189, 0.7);
   --k-text-primary: #E8F3FF;
   --k-text-secondary: #8BB8E0;

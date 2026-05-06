@@ -22,7 +22,7 @@ import { apiConfig } from '@/lib/config';
 interface FieldConfig {
   key: string;
   label: string;
-  type: 'text' | 'number' | 'select' | 'textarea' | 'checkbox' | 'device-field' | 'device-select' | 'mapping-list' | 'cron-expression' | 'timezone-select' | 'webhook-url';
+  type: 'text' | 'number' | 'select' | 'textarea' | 'checkbox' | 'device-field' | 'device-select' | 'mapping-list' | 'workspace-mapping' | 'cron-expression' | 'timezone-select' | 'webhook-url' | 'csv-file-picker';
   placeholder?: string;
   options?: Array<{ value: string | number; label: string }>;
   required?: boolean;
@@ -172,29 +172,46 @@ const NODE_CONFIG_SCHEMAS: Record<string, FieldConfig[]> = {
     ], required: true },
   ],
   'action:writeDeviceState': [
-    { key: 'label', label: 'Node Label', type: 'text', placeholder: 'e.g., Structure Telemetry', required: true },
-    { key: 'description', label: 'Description', type: 'textarea' },
-    { key: 'deviceId', label: 'Target Device', type: 'device-select', required: true },
-    { key: 'mappings', label: 'Field Mappings', type: 'mapping-list', required: true },
+    { key: 'label',       label: 'Node Label',     type: 'text',         placeholder: 'e.g., Structure Telemetry', required: true },
+    { key: 'description', label: 'Description',    type: 'textarea' },
+    { key: 'deviceId',    label: 'Target Device',  type: 'device-select', required: true },
+    { key: 'mappings',    label: 'Field Mappings', type: 'mapping-list',  required: true },
+    { key: 'ttlValue',    label: 'History TTL',    type: 'number',        placeholder: '7', note: 'How long history records are kept (default: 7 days).' },
+    { key: 'ttlUnit',     label: 'TTL Unit',       type: 'select',        options: [{ value: 'minutes', label: 'Minutes' }, { value: 'hours', label: 'Hours' }, { value: 'days', label: 'Days' }] },
   ],
   'action:combustionCsvPlayer': [
     { key: 'label', label: 'Node Label', type: 'text', placeholder: 'e.g., Combustion CSV Player', required: true },
     { key: 'description', label: 'Description', type: 'textarea' },
-    {
-      key: 'scanNumber',
-      label: 'Scan / Fuel Mix',
-      type: 'select',
-      required: true,
-      options: [
-        { value: 5, label: 'Scan 5 — 100% CH₄ (Stable)' },
-        { value: 2, label: 'Scan 2 — 90/10 CH₄/H₂ (Lean Blowout Precursor)' },
-        { value: 3, label: 'Scan 3 — 80/20 CH₄/H₂ (Lean Blowout, stronger)' },
-        { value: 4, label: 'Scan 4 — 70/30 CH₄/H₂ (Thermo-Acoustic Instability)' },
-      ],
-    },
-    { key: 'windowSize', label: 'Window Size (samples)', type: 'number', placeholder: '2000', note: '100–5000 samples at 10 kHz (0.01–0.5 s per tick)' },
-    { key: 'stepSize',   label: 'Step Size (samples)',   type: 'number', placeholder: '200',  note: '10–1000 samples advanced per workflow execution' },
+    { key: 'filePath', label: 'CSV File', type: 'csv-file-picker', required: true,
+      note: 'Select a Combustion DL CSV file. PCC (PD_CC*) and PMT columns are auto-detected.' },
+    { key: 'intervalMs', label: 'Interval (ms)', type: 'number', placeholder: '1000',
+      note: 'Emission interval per window. Minimum 10ms.' },
+    { key: 'pccColumn', label: 'PCC Column (optional)', type: 'text', placeholder: 'auto-detect PD_CC*',
+      note: 'Override auto-detection. Leave blank to use first column matching PD_CC.' },
+    { key: 'pmtColumn', label: 'PMT Column (optional)', type: 'text', placeholder: 'auto-detect PMT*',
+      note: 'Override auto-detection. Leave blank to use first column matching PMT.' },
+    { key: 'windowSize', label: 'Window Size (samples)', type: 'number', placeholder: '3000', note: 'Samples per window — paper default: 3000 (300 ms at 10 kHz)' },
+    { key: 'stepSize',   label: 'Step Size (samples)',   type: 'number', placeholder: '1000', note: 'Samples per stride — paper default: 1000 (100 ms at 10 kHz)' },
     { key: 'deviceId',   label: 'Target Device (optional)', type: 'device-select', note: 'When set, broadcasts output directly to WebSocket — no Write Device State node needed.' },
+  ],
+  'action:csvStreamPlayer': [
+    { key: 'label', label: 'Node Label', type: 'text', placeholder: 'e.g., CSV Stream Player', required: true },
+    { key: 'description', label: 'Description', type: 'textarea' },
+    { key: 'filePath', label: 'CSV File', type: 'csv-file-picker', required: true,
+      note: 'Select a CSV file from the demo directory. Numeric columns are auto-detected.' },
+    { key: 'intervalMs', label: 'Interval (ms)', type: 'number', placeholder: '1000',
+      note: 'Emission interval. Minimum 10ms.' },
+    { key: 'windowSize', label: 'Window Size (samples)', type: 'number', placeholder: '3000' },
+    { key: 'stepSize', label: 'Step Size (samples)', type: 'number', placeholder: '1000' },
+    { key: 'deviceId', label: 'Target Device ID', type: 'device-select',
+      note: 'Device ID to broadcast state to via WebSocket.' },
+  ],
+  'action:setWorkspace': [
+    { key: 'label', label: 'Node Label', type: 'text', placeholder: 'e.g., Pressure Channel', required: true,
+      note: 'This label appears in the dashboard widget output node picker.' },
+    { key: 'description', label: 'Description', type: 'textarea' },
+    { key: 'mappings', label: 'Workspace Mappings', type: 'workspace-mapping', required: true,
+      note: 'From: expression (e.g. {{nodeId.col_rms}})  →  To: workspace key (e.g. cd_pressure_rms)' },
   ],
   'transform:mapData': [
     { key: 'label', label: 'Node Label', type: 'text', placeholder: 'e.g., Transform Data', required: true },
@@ -392,6 +409,49 @@ const NODE_CONFIG_SCHEMAS: Record<string, FieldConfig[]> = {
   ],
 };
 
+/**
+ * CsvFilePicker - browser file picker that uploads the selected CSV to the server
+ * and stores the returned server-side path in the node config.
+ */
+function CsvFilePicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [uploading, setUploading] = useState(false);
+  const [fileName, setFileName] = useState<string>('');
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const res: any = await apiClient.postForm('/workflows/csv-upload', formData);
+      const serverPath = res.data?.data?.path ?? res.data?.path ?? '';
+      setFileName(file.name);
+      onChange(serverPath);
+    } catch {
+      // leave current value unchanged on error
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const displayName = fileName || (value ? value.split('/').pop() : '');
+
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="flex items-center gap-2 cursor-pointer px-3 py-2 text-sm border border-dashed border-gray-400 dark:border-gray-600 rounded-lg hover:border-indigo-500 dark:hover:border-indigo-400 transition-colors">
+        <input type="file" accept=".csv" onChange={handleFile} className="hidden" disabled={uploading} />
+        <span className="truncate">
+          {uploading ? 'Uploading…' : displayName ? `📄 ${displayName}` : '+ Choose CSV file'}
+        </span>
+      </label>
+      {value && !uploading && (
+        <div className="text-xs text-gray-400 dark:text-gray-500 truncate px-1" title={value}>{value}</div>
+      )}
+    </div>
+  );
+}
+
 export default function NodeConfigPanel() {
   const dispatch = useAppDispatch();
   const { nodes, edges, selectedNodeId, applicationId, workflowId } = useAppSelector(state => state.workflow);
@@ -407,6 +467,10 @@ export default function NodeConfigPanel() {
 
   type MappingRow = { key: string; expression: string };
   const [mappingRows, setMappingRows] = useState<MappingRow[]>([]);
+
+  // Workspace mapping rows for action:setWorkspace
+  type WorkspaceMappingRow = { from: string; to: string };
+  const [workspaceMappingRows, setWorkspaceMappingRows] = useState<WorkspaceMappingRow[]>([]);
 
   // Extract devices array from useDevices response
   const devices = devicesData?.devices || [];
@@ -436,6 +500,8 @@ export default function NodeConfigPanel() {
   useEffect(() => {
     const rows: MappingRow[] = selectedNode?.data?.config?.mappings || [];
     setMappingRows(rows);
+    const wsRows: WorkspaceMappingRow[] = selectedNode?.data?.config?.mappings || [];
+    setWorkspaceMappingRows(wsRows);
   }, [selectedNode?.id]);
 
   // Fetch device attributes from linked application (ADR-023)
@@ -562,6 +628,25 @@ export default function NodeConfigPanel() {
     handleFieldChange('config', { ...formData.config, mappings: rows });
   };
 
+  // Workspace mapping handlers (action:setWorkspace)
+  const addWorkspaceMappingRow = () => {
+    const rows = [...workspaceMappingRows, { from: '', to: '' }];
+    setWorkspaceMappingRows(rows);
+    handleFieldChange('config', { ...formData.config, mappings: rows });
+  };
+
+  const removeWorkspaceMappingRow = (i: number) => {
+    const rows = workspaceMappingRows.filter((_, idx) => idx !== i);
+    setWorkspaceMappingRows(rows);
+    handleFieldChange('config', { ...formData.config, mappings: rows });
+  };
+
+  const updateWorkspaceMappingRow = (i: number, field: 'from' | 'to', val: string) => {
+    const rows = workspaceMappingRows.map((row, idx) => idx === i ? { ...row, [field]: val } : row);
+    setWorkspaceMappingRows(rows);
+    handleFieldChange('config', { ...formData.config, mappings: rows });
+  };
+
   return (
     <div className="w-80 border-l border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex flex-col h-screen">
       {/* Header */}
@@ -598,10 +683,10 @@ export default function NodeConfigPanel() {
         </button>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto">
+      {/* Content — stopPropagation prevents React Flow canvas from stealing wheel events */}
+      <div className="flex-1 overflow-y-auto" onWheel={e => e.stopPropagation()}>
         {activeTab === 'config' ? (
-          <div className="p-6 space-y-4">
+          <div className="p-6 pb-16 space-y-4">
             {schema && schema.length > 0 ? (
               schema.map(field => (
                 <div key={field.key}>
@@ -796,6 +881,54 @@ export default function NodeConfigPanel() {
                         </option>
                       ))}
                     </select>
+                  )}
+
+                  {field.type === 'csv-file-picker' && (
+                    <CsvFilePicker
+                      value={getFieldValue(field.key)}
+                      onChange={(val) => handleFieldChange(field.key, val)}
+                    />
+                  )}
+
+                  {field.type === 'workspace-mapping' && (
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-[1fr_auto_1fr_auto] gap-1 text-xs font-medium text-gray-500 dark:text-gray-400 px-1">
+                        <span>From <span className="font-normal text-gray-400">(expression)</span></span>
+                        <span />
+                        <span>To <span className="font-normal text-gray-400">(workspace key)</span></span>
+                        <span />
+                      </div>
+                      {workspaceMappingRows.map((row, i) => (
+                        <div key={i} className="grid grid-cols-[1fr_auto_1fr_auto] gap-1 items-center">
+                          <input
+                            type="text"
+                            value={row.from}
+                            onChange={e => updateWorkspaceMappingRow(i, 'from', e.target.value)}
+                            placeholder="{{nodeId.col_rms}}"
+                            className="px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          />
+                          <span className="text-gray-400 text-xs px-0.5">→</span>
+                          <input
+                            type="text"
+                            value={row.to}
+                            onChange={e => updateWorkspaceMappingRow(i, 'to', e.target.value)}
+                            placeholder="cd_pressure_rms"
+                            className="px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          />
+                          <button
+                            onClick={() => removeWorkspaceMappingRow(i)}
+                            className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                            title="Remove"
+                          >✕</button>
+                        </div>
+                      ))}
+                      <button
+                        onClick={addWorkspaceMappingRow}
+                        className="mt-1 w-full px-2 py-1.5 text-xs border border-dashed border-gray-300 dark:border-gray-600 rounded text-gray-500 dark:text-gray-400 hover:border-blue-400 hover:text-blue-500 transition-colors"
+                      >
+                        + Add Mapping
+                      </button>
+                    </div>
                   )}
 
                   {field.type === 'webhook-url' && (

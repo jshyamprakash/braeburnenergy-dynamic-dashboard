@@ -41,13 +41,13 @@ export function EChartsBar({
       },
       axisLabel: {
         fontSize: 9,
-        color: 'var(--k-text-dim)',
+        color: '#FFFFFF',
         fontFamily: 'var(--k-font-tech)',
         rotate: categories.length > 10 ? 45 : 0,
       },
       axisLine: {
         lineStyle: {
-          color: 'var(--k-border)',
+          color: 'rgba(21,96,189,0.35)',
         },
       },
     },
@@ -60,12 +60,12 @@ export function EChartsBar({
       },
       axisLabel: {
         fontSize: 9,
-        color: 'var(--k-text-dim)',
+        color: '#FFFFFF',
         fontFamily: 'var(--k-font-tech)',
       },
       axisLine: {
         lineStyle: {
-          color: 'var(--k-border)',
+          color: 'rgba(21,96,189,0.35)',
         },
       },
     },
@@ -110,7 +110,7 @@ export function EChartsBar({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: 'var(--k-text-dim)',
+          color: '#FFFFFF',
           fontSize: 12,
           fontFamily: 'var(--k-font-tech)',
         }}

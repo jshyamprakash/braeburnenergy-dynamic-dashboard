@@ -348,9 +348,12 @@ export class WorkflowService {
 
     // 1. Must have at least one trigger node.
     // Skipped when nodes array is empty — an empty canvas is a valid draft state.
-    // Enforced when at least one node is present (structural correctness).
+    // Self-streaming nodes (csvStreamPlayer, combustionCsvPlayer) own their execution loop
+    // and do not require a separate trigger node.
+    const selfStreamingTypes = new Set(['action:csvStreamPlayer', 'action:combustionCsvPlayer']);
+    const hasSelfStreaming = nodes.some(n => selfStreamingTypes.has(n.type));
     const triggerNodes = nodes.filter(n => n.type.startsWith('trigger:'));
-    if (nodes.length > 0 && triggerNodes.length === 0) {
+    if (nodes.length > 0 && triggerNodes.length === 0 && !hasSelfStreaming) {
       errors.push('Workflow must have at least one trigger node');
     }
 

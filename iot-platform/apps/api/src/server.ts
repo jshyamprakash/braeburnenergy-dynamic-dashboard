@@ -1,5 +1,6 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
+import multipart from '@fastify/multipart';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import { config } from './config/config';
@@ -70,6 +71,7 @@ export async function createServer() {
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'x-request-id'],
   });
+  await fastify.register(multipart, { limits: { fileSize: 50 * 1024 * 1024 } });
 
   // Register audit middleware (EPA compliance)
   registerAuditMiddleware(fastify);

@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAppDispatch } from '@/lib/store';
 import { updateKosmosWidgetConfig } from '@/lib/store/slices/dashboardSlice';
 import type { KosmosWidget, DataFlowLayerConfig, DataFlowBlockConfig } from './types';
 import { PALETTE_ENTRIES } from './types';
 import { useDevices, useDevice } from '@/lib/hooks/useDevices';
+import { apiClient } from '@/lib/api-client';
 
 interface WidgetConfigPanelProps {
   pageId: string;
@@ -13,19 +14,29 @@ interface WidgetConfigPanelProps {
   applicationId?: string;
   onClose: () => void;
   onConfigChange?: () => void;
+  onRemove?: () => void;
 }
 
+// Widget types: device selector + single field selector (fieldName)
 const CHART_WIDGET_TYPES = new Set([
   'overviewRealtimeChart',
   'combustionDlPressureSignal',
   'combustionDlAnomalyTrend',
-  'combustionDlFrequencySpectrum',
   'combustionDlFeatureMatrix',
 ]);
 
-// Widget types that need a device selector for deviceId but NOT a fieldName selector
+// Widget types: device selector + TWO field selectors (freqField, ampField)
+const FFT_WIDGET_TYPES = new Set([
+  'combustionDlFrequencySpectrum',
+]);
+
+// Widget types: device selector only (field names are fixed / multiple)
 const BE_AGENT_DEVICE_WIDGETS = new Set([
   'overviewBeAgentStatus',
+  'combustionDlPhysicsMetrics',
+  'combustionDlPrecursorClassification',
+  'combustionDlClassifierOutputs',
+  'combustionDlFrameworkPipeline',
 ]);
 
 // Metric widgets with deviceId + fieldName config
@@ -39,6 +50,17 @@ const METRIC_WIDGET_TYPES = new Set([
 const BESENSE_WIDGET_TYPES = new Set([
   'overviewBeSense',
 ]);
+
+// Default field names per widget type — auto-saved when a device is first selected
+const WIDGET_DEFAULT_FIELDS: Record<string, { fieldName?: string; freqField?: string; ampField?: string }> = {
+  combustionDlPressureSignal:  { fieldName: 'cd_pressure' },
+  combustionDlAnomalyTrend:    { fieldName: 'anomaly_score' },
+  combustionDlFeatureMatrix:   { fieldName: 'feature_cells' },
+  combustionDlFrequencySpectrum: { freqField: 'fft_freqs', ampField: 'fft_amps' },
+  overviewAnomalyMetric:       { fieldName: 'anomaly_score' },
+  overviewLoadMetric:          { fieldName: 'load' },
+  overviewEgtMetric:           { fieldName: 'egt' },
+};
 
 /** Data Flow widget nested layers/blocks editor */
 function DataFlowConfigEditor({
@@ -309,7 +331,7 @@ function DataFlowConfigEditor({
  * WidgetConfigPanel — key-value config editor for widget configuration (ADR-044).
  * Keys are read-only labels; only values are editable.
  */
-export function WidgetConfigPanel({ pageId, widget, applicationId, onClose, onConfigChange }: WidgetConfigPanelProps) {
+export function WidgetConfigPanel({ pageId, widget, applicationId, onClose, onConfigChange, onRemove }: WidgetConfigPanelProps) {
   const dispatch = useAppDispatch();
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [localArrayState, setLocalArrayState] = useState<Record<string, string | boolean>>({});
@@ -323,10 +345,56 @@ export function WidgetConfigPanel({ pageId, widget, applicationId, onClose, onCo
 
   // Fetch selected device to get its attributes for field selector
   const selectedDeviceId = (widget.config?.deviceId as string) || '';
-  const { data: selectedDevice } = useDevice(
-    selectedDeviceId && (CHART_WIDGET_TYPES.has(type) || BE_AGENT_DEVICE_WIDGETS.has(type) || METRIC_WIDGET_TYPES.has(type) || BESENSE_WIDGET_TYPES.has(type)) ? selectedDeviceId : ''
-  );
+  const needsDevice = CHART_WIDGET_TYPES.has(type) || FFT_WIDGET_TYPES.has(type) || BE_AGENT_DEVICE_WIDGETS.has(type) || METRIC_WIDGET_TYPES.has(type) || BESENSE_WIDGET_TYPES.has(type);
+  const { data: selectedDevice } = useDevice(selectedDeviceId && needsDevice ? selectedDeviceId : '');
   const deviceAttributes = selectedDevice?.attributes ? Object.keys(selectedDevice.attributes) : [];
+
+  // Workspace data source state
+  const dataSource = (widget.config?.dataSource as 'device' | 'workspace') || 'device';
+  const [workflows, setWorkflows] = useState<Array<{ workflowId: string; name: string }>>([]);
+  const [workspaceNodes, setWorkspaceNodes] = useState<Array<{ id: string; label: string; mappings: Array<{ to: string }> }>>([]);
+
+  // Fetch workflows when workspace mode is active
+  useEffect(() => {
+    if (dataSource !== 'workspace') return;
+    apiClient.get<any>('/workflows?limit=100').then(res => {
+      // API returns { success, data: { workflows: [...] } }
+      const body = res.data as any;
+      const list = body?.data?.workflows ?? body?.workflows ?? [];
+      setWorkflows(Array.isArray(list) ? list : []);
+    }).catch(() => setWorkflows([]));
+  }, [dataSource]);
+
+  // Fetch setWorkspace nodes when a workflow is selected in workspace mode
+  useEffect(() => {
+    const wfId = widget.config?.workflowId as string | undefined;
+    if (dataSource !== 'workspace' || !wfId) {
+      setWorkspaceNodes([]);
+      return;
+    }
+    apiClient.get<any>(`/workflows/${wfId}`).then(res => {
+      // API returns { success, data: { workflowId, name, nodes, ... } }
+      const body = res.data as any;
+      const wf = body?.data ?? body ?? {};
+      const nodes: any[] = wf.nodes ?? [];
+      const outputNodes = nodes
+        .filter((n: any) => n.type === 'action:setWorkspace')
+        .map((n: any) => ({
+          id: n.id,
+          label: n.data?.config?.label || n.data?.label || n.id,
+          mappings: n.data?.config?.mappings ?? [],
+        }));
+      setWorkspaceNodes(outputNodes);
+    }).catch(() => setWorkspaceNodes([]));
+  }, [dataSource, widget.config?.workflowId]);
+
+  // Derive field options from selected output node's mappings
+  const selectedOutputNodeId = widget.config?.outputNodeId as string | undefined;
+  const workspaceFieldOptions: string[] = (() => {
+    if (dataSource !== 'workspace' || !selectedOutputNodeId) return [];
+    const node = workspaceNodes.find(n => n.id === selectedOutputNodeId);
+    return (node?.mappings ?? []).map(m => m.to).filter(Boolean);
+  })();
 
   // Merge palette defaults + stored config so new fields appear for existing widgets
   const paletteEntry = PALETTE_ENTRIES.find(p => p.type === widget.type);
@@ -459,13 +527,16 @@ export function WidgetConfigPanel({ pageId, widget, applicationId, onClose, onCo
     <div
       key={widget.id}
       style={{
+        position: 'absolute',
+        right: 0,
+        top: 0,
+        bottom: 0,
         width: 320,
-        height: '100%',
+        zIndex: 20,
         background: 'var(--k-bg-panel)',
         borderLeft: '1px solid var(--k-border-bright)',
         display: 'flex',
         flexDirection: 'column',
-        flexShrink: 0,
         overflow: 'hidden',
       }}
     >
@@ -566,7 +637,7 @@ export function WidgetConfigPanel({ pageId, widget, applicationId, onClose, onCo
         ) : (
           <>
           {/* ── DATA SOURCE section — shown for all device-binding widget types ── */}
-          {(CHART_WIDGET_TYPES.has(type) || BE_AGENT_DEVICE_WIDGETS.has(type) || METRIC_WIDGET_TYPES.has(type) || BESENSE_WIDGET_TYPES.has(type)) && (
+          {(CHART_WIDGET_TYPES.has(type) || FFT_WIDGET_TYPES.has(type) || BE_AGENT_DEVICE_WIDGETS.has(type) || METRIC_WIDGET_TYPES.has(type) || BESENSE_WIDGET_TYPES.has(type)) && (
             <div style={{ marginBottom: 10 }}>
               {/* Section header */}
               <div style={{
@@ -582,12 +653,48 @@ export function WidgetConfigPanel({ pageId, widget, applicationId, onClose, onCo
                 ◈ Data Source
               </div>
 
-              {/* Device selector */}
+              {/* Data mode toggle: Device | Workspace */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                <div style={keyLabelStyle}>Mode</div>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {(['device', 'workspace'] as const).map(mode => (
+                    <button
+                      key={mode}
+                      onClick={() => saveField('dataSource', mode)}
+                      style={{
+                        padding: '2px 8px',
+                        fontSize: 9,
+                        fontFamily: 'var(--k-font-tech)',
+                        textTransform: 'uppercase',
+                        letterSpacing: 1,
+                        border: '1px solid var(--k-green)',
+                        borderRadius: 2,
+                        background: dataSource === mode ? 'var(--k-green)' : 'transparent',
+                        color: dataSource === mode ? 'var(--k-bg)' : 'var(--k-green)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {mode}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Device mode: device selector + field pickers */}
+              {dataSource === 'device' && (
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
                 <div style={keyLabelStyle}>Device</div>
                 <select
                   value={(widget.config?.deviceId as string) || ''}
-                  onChange={(e) => saveField('deviceId', e.target.value)}
+                  onChange={(e) => {
+                    const newDeviceId = e.target.value;
+                    const defaults = WIDGET_DEFAULT_FIELDS[type] ?? {};
+                    const patch: Record<string, unknown> = { ...widget.config, deviceId: newDeviceId };
+                    for (const [k, v] of Object.entries(defaults)) {
+                      if (!patch[k]) patch[k] = v;
+                    }
+                    dispatch(updateKosmosWidgetConfig({ pageId, widgetId: widget.id, config: patch }));
+                  }}
                   style={{ ...inputStyle as React.CSSProperties, flex: 1 }}
                 >
                   <option value="">— select device —</option>
@@ -601,9 +708,77 @@ export function WidgetConfigPanel({ pageId, widget, applicationId, onClose, onCo
                   ))}
                 </select>
               </div>
+              )}
 
-              {/* Field selector — only for types that need a field name */}
-              {(CHART_WIDGET_TYPES.has(type) || METRIC_WIDGET_TYPES.has(type)) && (
+              {/* Workspace mode: workflow → output node → field */}
+              {dataSource === 'workspace' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {/* Workflow selector */}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                    <div style={keyLabelStyle}>Workflow</div>
+                    <select
+                      value={(widget.config?.workflowId as string) || ''}
+                      onChange={(e) => {
+                        dispatch(updateKosmosWidgetConfig({ pageId, widgetId: widget.id, config: { ...widget.config, workflowId: e.target.value, outputNodeId: '', fieldName: '' } }));
+                      }}
+                      style={{ ...inputStyle as React.CSSProperties, flex: 1 }}
+                    >
+                      <option value="">— select workflow —</option>
+                      {workflows.map(wf => (
+                        <option key={wf.workflowId} value={wf.workflowId}>{wf.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {/* Output node selector */}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                    <div style={keyLabelStyle}>Output</div>
+                    <select
+                      value={(widget.config?.outputNodeId as string) || ''}
+                      onChange={(e) => {
+                        dispatch(updateKosmosWidgetConfig({ pageId, widgetId: widget.id, config: { ...widget.config, outputNodeId: e.target.value, fieldName: '' } }));
+                      }}
+                      style={{ ...inputStyle as React.CSSProperties, flex: 1 }}
+                      disabled={!widget.config?.workflowId}
+                    >
+                      <option value="">— select output node —</option>
+                      {workspaceNodes.length === 0 && widget.config?.workflowId && (
+                        <option disabled value="">No Set Workspace nodes found</option>
+                      )}
+                      {workspaceNodes.map(n => (
+                        <option key={n.id} value={n.id}>{n.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {/* Field selector */}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                    <div style={keyLabelStyle}>Field</div>
+                    {workspaceFieldOptions.length > 0 ? (
+                      <select
+                        value={(widget.config?.fieldName as string) || ''}
+                        onChange={(e) => saveField('fieldName', e.target.value)}
+                        style={{ ...inputStyle as React.CSSProperties, flex: 1 }}
+                      >
+                        <option value="">— select field —</option>
+                        {workspaceFieldOptions.map(f => (
+                          <option key={f} value={f}>{f}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        placeholder={selectedOutputNodeId ? 'Type field name' : 'Select output node first'}
+                        value={(widget.config?.fieldName as string) || ''}
+                        onChange={(e) => saveField('fieldName', e.target.value)}
+                        style={{ ...inputStyle, flex: 1 }}
+                        disabled={!selectedOutputNodeId}
+                      />
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Single field selector — chart / metric widgets (device mode only) */}
+              {dataSource === 'device' && (CHART_WIDGET_TYPES.has(type) || METRIC_WIDGET_TYPES.has(type)) && (
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                   <div style={keyLabelStyle}>Field</div>
                   {deviceAttributes.length > 0 ? (
@@ -629,15 +804,52 @@ export function WidgetConfigPanel({ pageId, widget, applicationId, onClose, onCo
                   )}
                 </div>
               )}
+
+              {/* Two-field selector — FFT / XY chart widgets (device mode only) */}
+              {dataSource === 'device' && FFT_WIDGET_TYPES.has(type) && (() => {
+                const attrOptions = deviceAttributes.length > 0 ? deviceAttributes : [];
+                const mkSelect = (configKey: string, label: string, placeholder: string) => (
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 4 }}>
+                    <div style={keyLabelStyle}>{label}</div>
+                    {attrOptions.length > 0 ? (
+                      <select
+                        value={(widget.config?.[configKey] as string) || ''}
+                        onChange={(e) => saveField(configKey, e.target.value)}
+                        style={{ ...inputStyle as React.CSSProperties, flex: 1 }}
+                      >
+                        <option value="">— select field —</option>
+                        {attrOptions.map((attr) => (
+                          <option key={attr} value={attr}>{attr}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        placeholder={selectedDeviceId ? placeholder : 'Select device first'}
+                        value={(widget.config?.[configKey] as string) || ''}
+                        onChange={(e) => saveField(configKey, e.target.value)}
+                        style={{ ...inputStyle, flex: 1 }}
+                        disabled={!selectedDeviceId}
+                      />
+                    )}
+                  </div>
+                );
+                return (
+                  <>
+                    {mkSelect('freqField', 'X (freq)', 'No attributes defined')}
+                    {mkSelect('ampField', 'Y (amp)', 'No attributes defined')}
+                  </>
+                );
+              })()}
             </div>
           )}
 
-          {/* ── Generic config fields (skip deviceId / fieldName — handled above) ── */}
+          {/* ── Generic config fields (skip deviceId / fieldName / freqField / ampField — handled above) ── */}
           {Object.entries(displayConfig).map(([key, value]) => {
-            if (
-              (key === 'deviceId' || key === 'fieldName') &&
-              (CHART_WIDGET_TYPES.has(type) || BE_AGENT_DEVICE_WIDGETS.has(type) || METRIC_WIDGET_TYPES.has(type) || BESENSE_WIDGET_TYPES.has(type))
-            ) return null;
+            const isDeviceField = key === 'deviceId' || key === 'fieldName';
+            const isFftField = (key === 'freqField' || key === 'ampField') && FFT_WIDGET_TYPES.has(type);
+            const isHandled = CHART_WIDGET_TYPES.has(type) || FFT_WIDGET_TYPES.has(type) || BE_AGENT_DEVICE_WIDGETS.has(type) || METRIC_WIDGET_TYPES.has(type) || BESENSE_WIDGET_TYPES.has(type);
+            if ((isDeviceField || isFftField) && isHandled) return null;
             // ── Structured array field branch ────────────────────────────────
             const arraySpec = ARRAY_FIELD_SPECS[widget.type]?.[key];
             if (arraySpec && Array.isArray(value)) {
@@ -876,6 +1088,29 @@ export function WidgetConfigPanel({ pageId, widget, applicationId, onClose, onCo
           </>
         )}
       </div>
+
+      {/* Remove widget */}
+      {onRemove && (
+        <div style={{ padding: '8px 14px', borderTop: '1px solid var(--k-border)' }}>
+          <button
+            onClick={() => { onRemove(); onClose(); }}
+            style={{
+              width: '100%',
+              padding: '6px 0',
+              background: 'rgba(255,58,58,0.08)',
+              border: '1px solid rgba(255,58,58,0.35)',
+              borderRadius: 2,
+              color: 'var(--k-red)',
+              cursor: 'pointer',
+              fontFamily: 'var(--k-font-tech)',
+              fontSize: 10,
+              letterSpacing: 1,
+            }}
+          >
+            REMOVE WIDGET
+          </button>
+        </div>
+      )}
 
       {/* Footer */}
       <div

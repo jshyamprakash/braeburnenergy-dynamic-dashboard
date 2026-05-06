@@ -26,9 +26,9 @@ export const ulidSchema = z
  * Defines the expected telemetry schema for this device
  */
 export const deviceAttributesSchema = z
-  .record(z.enum(['number', 'string', 'boolean', 'timestamp']))
+  .record(z.enum(['number', 'string', 'boolean', 'timestamp', 'json']))
   .optional()
-  .describe('Device data schema: field name → data type (number|string|boolean|timestamp)');
+  .describe('Device data schema: field name → data type (number|string|boolean|timestamp|json)');
 
 /**
  * Device tags schema (ADR-021)

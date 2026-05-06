@@ -87,19 +87,19 @@ export function OverviewBeSenseWidget({
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontFamily: 'var(--k-font-tech)', fontSize: 10, color: 'var(--k-text-dim)' }}>SAMPLE RATE</span>
+            <span style={{ fontFamily: 'var(--k-font-tech)', fontSize: 10, color: 'var(--k-text-secondary)' }}>SAMPLE RATE</span>
             <span style={{ fontFamily: 'var(--k-font-tech)', fontSize: 11, color: 'var(--k-soft)' }}>{sampleRate}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontFamily: 'var(--k-font-tech)', fontSize: 10, color: 'var(--k-text-dim)' }}>CHANNELS</span>
+            <span style={{ fontFamily: 'var(--k-font-tech)', fontSize: 10, color: 'var(--k-text-secondary)' }}>CHANNELS</span>
             <span style={{ fontFamily: 'var(--k-font-tech)', fontSize: 11, color: 'var(--k-soft)' }}>{channels}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontFamily: 'var(--k-font-tech)', fontSize: 10, color: 'var(--k-text-dim)' }}>LATENCY</span>
+            <span style={{ fontFamily: 'var(--k-font-tech)', fontSize: 10, color: 'var(--k-text-secondary)' }}>LATENCY</span>
             <span style={{ fontFamily: 'var(--k-font-tech)', fontSize: 11, color: 'var(--k-green)' }}>{latency}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontFamily: 'var(--k-font-tech)', fontSize: 10, color: 'var(--k-text-dim)' }}>EDGE NODE</span>
+            <span style={{ fontFamily: 'var(--k-font-tech)', fontSize: 10, color: 'var(--k-text-secondary)' }}>EDGE NODE</span>
             <span className="tag tag-green">ACTIVE</span>
           </div>
         </div>
@@ -107,7 +107,7 @@ export function OverviewBeSenseWidget({
         <div className="divider" style={{ margin: '12px 0' }} />
         <div className="section-heading">CalorieSense™ Link</div>
         <div style={{ background: 'rgba(21,96,189,0.1)', border: '1px solid var(--k-border)', borderRadius: 3, padding: 8 }}>
-          <div style={{ fontFamily: 'var(--k-font-tech)', fontSize: 10, color: 'var(--k-text-dim)', marginBottom: 4 }}>CALORIFIC VALUE</div>
+          <div style={{ fontFamily: 'var(--k-font-tech)', fontSize: 10, color: 'var(--k-text-secondary)', marginBottom: 4 }}>CALORIFIC VALUE</div>
           <div style={{ fontFamily: 'var(--k-font-display)', fontSize: 22, fontWeight: 700, color: 'var(--k-soft)' }}>
             {cvValueLive}
             <span style={{ fontSize: 13, color: 'var(--k-text-secondary)' }}> MJ/m³</span>
@@ -356,7 +356,7 @@ export function OverviewRealtimeChartWidget({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: 'var(--k-text-dim)',
+                color: 'var(--k-text-secondary)',
                 fontSize: 12,
                 fontFamily: 'var(--k-font-tech)',
               }}
@@ -534,7 +534,7 @@ export function OverviewBeAgentStatusWidget({
               <div className="score-val" style={{ color: 'var(--k-green)' }}>
                 {healthScore}
               </div>
-              <div style={{ fontFamily: 'var(--k-font-tech)', fontSize: 9, color: 'var(--k-text-dim)' }}>HEALTH</div>
+              <div style={{ fontFamily: 'var(--k-font-tech)', fontSize: 9, color: 'var(--k-text-secondary)' }}>HEALTH</div>
             </div>
           </div>
           <div className="score-label">TURBINE HEALTH INDEX</div>

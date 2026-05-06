@@ -114,7 +114,7 @@ export const config = {
 
   // Demo CSV data directory (combustion DL CSV playback node)
   demo: {
-    csvDir: process.env.DEMO_DATA_DIR ?? require('path').resolve(__dirname, '../../../../../docs/demo'),
+    csvDir: process.env.DEMO_DATA_DIR ?? resolve(__dirname, '../../../../../docs/demo'),
   },
 
   // SMTP Configuration (ADR-059 — Alarm Notification Channels)

@@ -110,7 +110,7 @@ export function ChartPanel({
 export function MetricBar({ label, value, width, color }: { label: string; value: string; width: number; color: string }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--k-font-tech)', fontSize: 10, color: 'var(--k-text-secondary)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--k-font-tech)', fontSize: 11, color: 'var(--k-text-secondary)' }}>
         <span>{label}</span>
         <span>{value}</span>
       </div>
@@ -150,7 +150,7 @@ export function MetricCard({
         boxShadow: `0 0 24px color-mix(in srgb, ${color} 14%, transparent)`,
       }}
     >
-      <div style={{ fontFamily: 'var(--k-font-tech)', fontSize: 10, color: 'var(--k-text-dim)', letterSpacing: 1.5 }}>{label}</div>
+      <div style={{ fontFamily: 'var(--k-font-tech)', fontSize: 10, color: 'var(--k-text-secondary)', letterSpacing: 1.5 }}>{label}</div>
       <div style={{ fontFamily: 'var(--k-font-display)', fontSize: 34, fontWeight: 700, color, lineHeight: 1 }}>{value}</div>
       <div style={{ fontFamily: 'var(--k-font-tech)', fontSize: 10, color: 'var(--k-text-secondary)', letterSpacing: 1.2 }}>{unit}</div>
       <div style={{ fontFamily: 'var(--k-font-tech)', fontSize: 11, color: trendColor, letterSpacing: 1.2 }}>{trend}</div>
@@ -160,7 +160,7 @@ export function MetricCard({
 
 export function SectionHeading({ children }: { children: ReactNode }) {
   return (
-    <div style={{ fontFamily: 'var(--k-font-tech)', fontSize: 10, color: 'var(--k-text-dim)', letterSpacing: 1.5, marginBottom: 8 }}>
+    <div style={{ fontFamily: 'var(--k-font-tech)', fontSize: 10, color: 'var(--k-text-secondary)', letterSpacing: 1.5, marginBottom: 8 }}>
       {children}
     </div>
   );

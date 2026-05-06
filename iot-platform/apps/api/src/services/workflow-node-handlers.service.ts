@@ -9,6 +9,19 @@ import { deviceDerivedStateService } from './device-derived-state.service';
 import { modbusGatewayManager } from './modbus-gateway-manager.service';
 import { notificationService } from './notification.service';
 import { DEFAULT_ORG_ID } from '../lib/request-context';
+import { parseGenericCsv, GenericCsvData } from '../lib/combustion-csv-utils';
+import { broadcastDeviceState, broadcastWorkflowWorkspace } from '../websocket/server.js';
+
+// ─── Streaming abort registry ─────────────────────────────────────────────────
+const _streamAbortRegistry = new Map<string, AbortController>();
+
+export function abortWorkflowStreams(workflowId: string): void {
+  const ctrl = _streamAbortRegistry.get(workflowId);
+  if (ctrl) {
+    ctrl.abort();
+    _streamAbortRegistry.delete(workflowId);
+  }
+}
 
 /**
  * Node execution result
@@ -32,6 +45,8 @@ export interface NodeExecutionResult {
     derived: Record<string, any>;
     timestamp: Date | string;
   };
+  /** When true, engine skips downstream traversal (self-streaming nodes drive it per-tick) */
+  skipDownstream?: boolean;
 }
 
 /**
@@ -44,21 +59,30 @@ export interface NodeExecutionResult {
  * @returns Resolved value
  */
 export function resolveExpression(value: any, context: Record<string, any>): any {
-  // Non-strings pass through as-is
+  // Non-strings pass through as-is (preserves arrays, objects, numbers)
   if (typeof value !== 'string') return value;
 
-  // Replace all {{...}} expressions
-  return value.replace(/\{\{([^}]+)\}\}/g, (_match, path) => {
-    // Resolve dot-notation path (e.g., "trigger.temperature" → context.trigger.temperature)
-    const parts = path.trim().split('.');
+  // Single {{path}} token with no surrounding text — return the raw value.
+  // This preserves arrays and objects so WriteDeviceState can store json-typed attributes.
+  const exactMatch = value.match(/^\{\{([^}]+)\}\}$/);
+  if (exactMatch) {
+    const parts = exactMatch[1].trim().split('.');
     let resolved: any = context;
-
     for (const part of parts) {
-      if (resolved == null) return _match; // Return original if path breaks
+      if (resolved == null) return value;
       resolved = resolved[part];
     }
+    return resolved !== undefined ? resolved : value;
+  }
 
-    // Convert to string if resolved, else return original match
+  // Template string with surrounding text — string interpolation as before
+  return value.replace(/\{\{([^}]+)\}\}/g, (_match, path) => {
+    const parts = path.trim().split('.');
+    let resolved: any = context;
+    for (const part of parts) {
+      if (resolved == null) return _match;
+      resolved = resolved[part];
+    }
     return resolved != null ? String(resolved) : _match;
   });
 }
@@ -72,7 +96,12 @@ function castValue(value: any, type?: string): any {
   if (type === 'boolean') return Boolean(value);
   if (type === 'timestamp') return new Date(value).toISOString();
   if (type === 'string') return String(value);
-  // No explicit type: preserve the native JS type (number stays number, etc.)
+  if (type === 'json') {
+    // Parse if already stringified (edge case), otherwise pass array/object through
+    if (typeof value === 'string') { try { return JSON.parse(value); } catch { return value; } }
+    return value;
+  }
+  // No explicit type: preserve the native JS type
   return value;
 }
 
@@ -193,6 +222,14 @@ export class WorkflowNodeHandlers {
       // Combustion DL CSV playback (module: combustion_dl)
       case 'action:combustionCsvPlayer':
         return this.executeActionCombustionCsvPlayer(config, context);
+
+      // Generic CSV Stream Player (module: combustion_dl)
+      case 'action:csvStreamPlayer':
+        return this.executeCsvStreamPlayer(config, context);
+
+      // Ephemeral workspace broadcast — maps workflow fields to named keys, no DB write
+      case 'action:setWorkspace':
+        return this.executeSetWorkspace(node, context);
 
       default:
         throw new Error(`Unknown node type: ${node.type}`);
@@ -1127,7 +1164,11 @@ export class WorkflowNodeHandlers {
    * Writes to DeviceDerivedStateService, NOT to DeviceStateService.
    */
   private async executeActionWriteDeviceState(config: any, context: any): Promise<NodeExecutionResult> {
-    const { mappings = [] } = config;
+    const { mappings = [], ttlValue = 7, ttlUnit = 'days' } = config;
+
+    // Convert node-level TTL to milliseconds
+    const TTL_UNIT_MS: Record<string, number> = { minutes: 60_000, hours: 3_600_000, days: 86_400_000 };
+    const ttlMs = (Number(ttlValue) || 7) * (TTL_UNIT_MS[ttlUnit] ?? TTL_UNIT_MS.days);
 
     const deviceId = context.trigger?.deviceId ?? context.currentData?.deviceId;
     const stateId = context.trigger?.stateId ?? context.currentData?.stateId;
@@ -1195,7 +1236,7 @@ export class WorkflowNodeHandlers {
     let patched = false;
     let patchError: string | undefined;
     try {
-      await deviceDerivedStateService.upsert(deviceId, patch, stateId);
+      await deviceDerivedStateService.upsert(deviceId, patch, stateId, ttlMs);
       patched = true;
     } catch (err: any) {
       patchError = err?.message || String(err);
@@ -1441,37 +1482,112 @@ export class WorkflowNodeHandlers {
   /**
    * action:combustionCsvPlayer
    * Replays real combustion lab CSV data through the workflow pipeline.
-   * Reads a sliding window of PD_CC_1_1 values, derives physics features,
-   * and writes all dashboard fields into context.workspace.
+   * Reads dual-channel sliding windows (p'_CC + q') and derives physics features.
    *
    * Config:
    *   scanNumber: 2 | 3 | 4 | 5   — which CSV file (default: 4)
-   *   windowSize: number           — samples per window (default: 2000, = 0.2s at 10kHz)
-   *   stepSize:   number           — samples to advance per call (default: 200)
+   *   windowSize: number           — samples per window (default: 3000 = 300ms at 10kHz, per GT2026-179161)
+   *   stepSize:   number           — samples to advance per call (default: 1000 = 100ms stride)
    *   storageKey: string           — WorkflowStorage cursor key (default: 'csv_cursor')
    *
-   * Outputs into context.workspace: cd_pressure, fft_freqs, fft_amps,
-   *   anomaly_score, confidence, precursor_class, normal_prob,
-   *   lean_blowout_prob, flashback_prob, thermo_acoustic_prob,
-   *   spl, hurst_exponent, shannon_entropy, dft_energy, feature_cells
+   * Outputs: cd_pressure, fft_freqs, fft_amps, anomaly_score, confidence, precursor_class,
+   *   normal_prob, lean_blowout_prob, flashback_prob, thermo_acoustic_prob,
+   *   spl, hurst_exponent, shannon_entropy, dft_energy, feature_cells,
+   *   p_cc_rms, p_cc_std, p_cc_kurtosis, pmt_rms, pmt_std, pmt_kurtosis
    */
   private async executeActionCombustionCsvPlayer(config: any, context: any): Promise<NodeExecutionResult> {
     const {
       loadAndCacheCSV,
       buildCsvPayload,
+      parseGenericCsv,
     } = await import('../lib/combustion-csv-utils');
-    const { WorkflowStorage } = await import('../models/workflow-storage.model');
 
-    const scanNumber = (config.scanNumber ?? 4) as 2 | 3 | 4 | 5;
-    const windowSize = Math.max(100, Math.min(5000, config.windowSize ?? 2000));
-    const stepSize   = Math.max(10,  Math.min(1000, config.stepSize   ?? 200));
-    const storageKey = config.storageKey ?? 'csv_cursor';
+    const filePath: string | undefined = config.filePath;
+    const windowSize   = Math.max(100, Math.min(5000, config.windowSize ?? 3000));
+    const stepSize     = Math.max(10,  Math.min(1000, config.stepSize   ?? 1000));
     const targetDeviceId: string | undefined = config.deviceId;
+    const workflowId   = (context['workflowId'] as string | undefined) ?? '';
 
-    // Load (and cache) CSV
-    let signal: number[];
+    // ── File-upload mode: self-streaming (same pattern as csvStreamPlayer) ──────
+    if (filePath) {
+      const intervalMs = Math.max(10, Number(config.intervalMs) || 1000);
+
+      let pccSignal: number[];
+      let pmtSignal: number[];
+      try {
+        const csvData = parseGenericCsv(filePath);
+        // Auto-detect PCC and PMT columns; config overrides take precedence
+        const pccCol = (config.pccColumn as string | undefined)?.trim() || csvData.columns.find(c => c.includes('PD_CC')) || csvData.columns[0];
+        const pmtCol = (config.pmtColumn as string | undefined)?.trim() || csvData.columns.find(c => c.includes('PMT'))  || csvData.columns[1] || csvData.columns[0];
+        pccSignal = csvData.data.get(pccCol) ?? [];
+        pmtSignal = csvData.data.get(pmtCol) ?? [];
+        if (pccSignal.length === 0) throw new Error(`Column '${pccCol}' has no data`);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return { output: { error: `CSV load failed: ${msg}` } };
+      }
+
+      // Abort any existing stream for this workflowId before starting a new one.
+      // Without this, re-executing accumulates multiple tick loops that can never be stopped.
+      if (workflowId) {
+        const existing = _streamAbortRegistry.get(workflowId);
+        if (existing) existing.abort();
+      }
+      const abortCtrl = new AbortController();
+      if (workflowId) _streamAbortRegistry.set(workflowId, abortCtrl);
+
+      let cursor = 0;
+      let lastOutput: Record<string, unknown> = { _status: 'started' };
+
+      const extractWindow = (signal: number[]): number[] => {
+        const len = signal.length;
+        if (cursor + windowSize <= len) return signal.slice(cursor, cursor + windowSize);
+        const tail = signal.slice(cursor);
+        return [...tail, ...signal.slice(0, Math.min(windowSize - tail.length, len))];
+      };
+
+      return new Promise<NodeExecutionResult>((resolve) => {
+        const tick = () => {
+          if (abortCtrl.signal.aborted) {
+            resolve({ output: { ...lastOutput, _status: 'aborted' } });
+            return;
+          }
+
+          const pccWindow = extractWindow(pccSignal);
+          const pmtWindow = extractWindow(pmtSignal);
+          cursor = (cursor + stepSize) % Math.max(pccSignal.length, 1);
+
+          const payload = buildCsvPayload(pccWindow, pmtWindow, 5, cursor);
+          const fullPayload = { ...payload, _ts: new Date().toISOString(), _cursor: cursor };
+          lastOutput = fullPayload as Record<string, unknown>;
+
+          if (targetDeviceId && this.io) {
+            broadcastDeviceState(this.io, {
+              deviceId: targetDeviceId,
+              data: fullPayload as Record<string, unknown>,
+              derived: {},
+              timestamp: new Date(),
+            });
+          }
+
+          const tickExecutor = context['_tickExecutor'] as ((p: Record<string, unknown>) => Promise<void>) | undefined;
+          if (tickExecutor) tickExecutor(fullPayload as Record<string, unknown>).catch(() => {});
+
+          setTimeout(tick, intervalMs);
+        };
+
+        setTimeout(tick, 0);
+      }).then((result) => ({ ...result, skipDownstream: true }));
+    }
+
+    // ── Scan-number mode: one-shot per trigger (backward compatible) ──────────
+    const { WorkflowStorage } = await import('../models/workflow-storage.model');
+    const scanNumber = (config.scanNumber ?? 4) as 2 | 3 | 4 | 5;
+    const storageKey = config.storageKey ?? 'csv_cursor';
+
+    let channels: { pcc: number[]; pmt: number[] };
     try {
-      signal = loadAndCacheCSV(scanNumber);
+      channels = loadAndCacheCSV(scanNumber);
     } catch (err: any) {
       return {
         output: { ...context.currentData },
@@ -1479,30 +1595,26 @@ export class WorkflowNodeHandlers {
       };
     }
 
-    const maxCursor = Math.max(signal.length - windowSize, 0);
+    const { pcc: pccSignal, pmt: pmtSignal } = channels;
+    const maxCursor = Math.max(pccSignal.length - windowSize, 0);
 
-    // Read cursor from WorkflowStorage
     const orgId = DEFAULT_ORG_ID;
     const scopeQuery = { orgId, workflowId: context.workflowId, key: storageKey };
     const stored = await WorkflowStorage.findOne(scopeQuery).lean();
     let cursor: number = (stored?.value as number) ?? 0;
     if (cursor > maxCursor) cursor = 0;
 
-    // Extract window
-    const window = signal.slice(cursor, cursor + windowSize);
-    if (window.length < windowSize) {
-      // Wrap: pad by looping from start
-      const pad = signal.slice(0, windowSize - window.length);
-      window.push(...pad);
-    }
+    const extractWindow = (signal: number[]): number[] => {
+      const w = signal.slice(cursor, cursor + windowSize);
+      if (w.length < windowSize) w.push(...signal.slice(0, windowSize - w.length));
+      return w;
+    };
 
-    // Compute physics + build payload
-    const payload = buildCsvPayload(window, scanNumber, cursor);
+    const pccWindow = extractWindow(pccSignal);
+    const pmtWindow = extractWindow(pmtSignal);
+    const payload = buildCsvPayload(pccWindow, pmtWindow, scanNumber, cursor);
 
-    // Advance cursor (with wrap-around)
     const nextCursor = (cursor + stepSize) > maxCursor ? 0 : cursor + stepSize;
-
-    // Persist cursor back to WorkflowStorage
     await WorkflowStorage.findOneAndUpdate(
       scopeQuery,
       { $set: { value: nextCursor, updatedAt: new Date() } },
@@ -1510,22 +1622,158 @@ export class WorkflowNodeHandlers {
     ).lean();
 
     return {
-      output: {
-        ...context.currentData,
-        ...payload,
-      },
+      output: { ...context.currentData, ...payload },
       variables: { ...payload },
       notes: `✅ combustionCsvPlayer: scan=${scanNumber} cursor=${cursor}→${nextCursor} window=${windowSize}`,
-      ...(targetDeviceId
-        ? {
-            broadcastState: {
-              deviceId: targetDeviceId,
-              data: payload as Record<string, any>,
-              derived: {},
-              timestamp: new Date(),
-            },
-          }
-        : {}),
+      ...(targetDeviceId ? {
+        broadcastState: {
+          deviceId: targetDeviceId,
+          data: payload as Record<string, any>,
+          derived: {},
+          timestamp: new Date(),
+        },
+      } : {}),
     };
+  }
+
+  private async executeCsvStreamPlayer(
+    config: Record<string, unknown>,
+    context: Record<string, unknown>
+  ): Promise<NodeExecutionResult> {
+    const filePath = (config['filePath'] as string | undefined) ?? '';
+    const windowSize = Math.max(1, Number(config['windowSize']) || 3000);
+    const stepSize = Math.max(1, Number(config['stepSize']) || 1000);
+    const intervalMs = Math.max(10, Number(config['intervalMs']) || 1000);
+    const deviceId = (config['deviceId'] as string | undefined) ?? '';
+    const workflowId = (context['workflowId'] as string | undefined) ?? '';
+
+    if (!filePath) {
+      return { output: { error: 'filePath not configured' } };
+    }
+
+    let csvData: GenericCsvData;
+    try {
+      csvData = parseGenericCsv(filePath);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { output: { error: `CSV load failed: ${msg}` } };
+    }
+
+    if (csvData.rowCount === 0) {
+      return { output: { error: 'CSV has no data rows' } };
+    }
+
+    // Abort any existing stream for this workflowId before starting a new one.
+    // Without this, re-executing accumulates multiple tick loops that can never be stopped.
+    if (workflowId) {
+      const existing = _streamAbortRegistry.get(workflowId);
+      if (existing) existing.abort();
+    }
+    const abortCtrl = new AbortController();
+    if (workflowId) _streamAbortRegistry.set(workflowId, abortCtrl);
+
+    let cursor = 0;
+    let lastOutput: Record<string, unknown> = { _status: 'started' };
+
+    return new Promise<NodeExecutionResult>((resolve) => {
+      const tick = () => {
+        if (abortCtrl.signal.aborted) {
+          resolve({ output: { ...lastOutput, _status: 'aborted' } });
+          return;
+        }
+
+        // Extract sliding window for each column with wraparound
+        const windows: Record<string, number[]> = {};
+        for (const col of csvData.columns) {
+          const arr = csvData.data.get(col)!;
+          const len = arr.length;
+          if (cursor + windowSize <= len) {
+            windows[col] = arr.slice(cursor, cursor + windowSize);
+          } else {
+            // Wrap: take tail + head
+            const tail = arr.slice(cursor);
+            const need = windowSize - tail.length;
+            windows[col] = [...tail, ...arr.slice(0, Math.min(need, len))];
+          }
+        }
+
+        // Advance cursor with wraparound
+        cursor = (cursor + stepSize) % csvData.rowCount;
+
+        // Compute per-column basic statistics
+        const payload: Record<string, unknown> = {
+          _ts: new Date().toISOString(),
+          _cursor: cursor,
+        };
+
+        for (const col of csvData.columns) {
+          const w = windows[col];
+          const n = w.length;
+          const mean = w.reduce((a, b) => a + b, 0) / n;
+          const rms = Math.sqrt(w.reduce((a, b) => a + b * b, 0) / n);
+          const variance = w.reduce((a, b) => a + (b - mean) ** 2, 0) / n;
+          const std = Math.sqrt(variance);
+          const kurtosis = std > 0
+            ? w.reduce((a, b) => a + ((b - mean) / std) ** 4, 0) / n
+            : 0;
+          payload[col] = w;
+          payload[`${col}_rms`] = +rms.toFixed(6);
+          payload[`${col}_mean`] = +mean.toFixed(6);
+          payload[`${col}_std`] = +std.toFixed(6);
+          payload[`${col}_kurtosis`] = +kurtosis.toFixed(6);
+        }
+
+        lastOutput = payload;
+
+        // Broadcast directly via Socket.IO (engine's broadcastState path adds too much latency)
+        if (deviceId && this.io) {
+          broadcastDeviceState(this.io, {
+            deviceId,
+            data: payload as Record<string, unknown>,
+            derived: {},
+            timestamp: new Date(),
+          });
+        }
+
+        // Drive downstream nodes (Write Device State, Debug, etc.) on each tick
+        const tickExecutor = context['_tickExecutor'] as ((p: Record<string, unknown>) => Promise<void>) | undefined;
+        if (tickExecutor) {
+          tickExecutor(payload).catch(() => {});
+        }
+
+        setTimeout(tick, intervalMs);
+      };
+
+      // Start first tick immediately
+      setTimeout(tick, 0);
+    }).then((result) => ({ ...result, skipDownstream: true }));
+  }
+
+  // ==========================================================================
+  // Action: setWorkspace — ephemeral workspace broadcast (no DB write)
+  // ==========================================================================
+
+  private async executeSetWorkspace(node: WorkflowNode, context: Record<string, unknown>): Promise<NodeExecutionResult> {
+    const config = (node.data as any).config ?? {};
+    const mappings: Array<{ from: string; to: string }> = config.mappings ?? [];
+    const workflowId = (context['workflowId'] as string | undefined) ?? '';
+
+    // Resolve each mapping expression against the current context
+    const fields: Record<string, unknown> = {};
+    for (const { from, to } of mappings) {
+      if (to) {
+        fields[to] = resolveExpression(from, context as any);
+      }
+    }
+
+    // Broadcast namespaced by nodeId so multiple setWorkspace nodes don't collide
+    if (this.io && workflowId) {
+      broadcastWorkflowWorkspace(this.io, {
+        workflowId,
+        workspace: { [node.id]: fields },
+      });
+    }
+
+    return { output: fields };
   }
 }

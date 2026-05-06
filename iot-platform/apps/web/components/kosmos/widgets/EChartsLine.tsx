@@ -50,12 +50,12 @@ export function EChartsLine({
       },
       axisLabel: {
         fontSize: 9,
-        color: 'var(--k-text-dim)',
+        color: '#FFFFFF',
         fontFamily: 'var(--k-font-tech)',
       },
       axisLine: {
         lineStyle: {
-          color: 'var(--k-border)',
+          color: 'rgba(21,96,189,0.35)',
         },
       },
     },
@@ -70,12 +70,12 @@ export function EChartsLine({
       },
       axisLabel: {
         fontSize: 9,
-        color: 'var(--k-text-dim)',
+        color: '#FFFFFF',
         fontFamily: 'var(--k-font-tech)',
       },
       axisLine: {
         lineStyle: {
-          color: 'var(--k-border)',
+          color: 'rgba(21,96,189,0.35)',
         },
       },
     },
@@ -139,7 +139,7 @@ export function EChartsLine({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: 'var(--k-text-dim)',
+          color: '#FFFFFF',
           fontSize: 12,
           fontFamily: 'var(--k-font-tech)',
         }}

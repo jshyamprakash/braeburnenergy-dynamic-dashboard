@@ -228,6 +228,24 @@ export class WorkflowEngineService {
     });
 
     try {
+      // Add workflowId to context for streaming nodes
+      context.workflowId = execution.workflowId?.toString() ?? '';
+
+      // Self-streaming nodes (csvStreamPlayer) run an internal loop and call downstream
+      // nodes on each tick via _tickExecutor, so the engine must not re-traverse afterwards.
+      if (node.type === 'action:csvStreamPlayer' || node.type === 'action:combustionCsvPlayer') {
+        context._tickExecutor = async (tickPayload: Record<string, unknown>) => {
+          const tickContext = { ...context, currentData: tickPayload };
+          const outgoing = allEdges.filter((e: any) => e.source === node.id);
+          for (const edge of outgoing) {
+            const nextNode = allNodes.find((n: any) => n.id === edge.target);
+            if (nextNode) {
+              await this.executeNode(nextNode, allNodes, allEdges, tickContext, execution).catch(() => {});
+            }
+          }
+        };
+      }
+
       // Resolve expressions in node config before execution
       const resolvedNode = {
         ...node,
@@ -313,7 +331,7 @@ export class WorkflowEngineService {
         });
       }
 
-      // Broadcast device state update if writeDeviceState wrote derived values
+      // Broadcast device state update via WebSocket (writeDeviceState sets this after DB write)
       if (result.broadcastState && this.io) {
         broadcastDeviceState(this.io, {
           deviceId: result.broadcastState.deviceId,
@@ -322,6 +340,9 @@ export class WorkflowEngineService {
           timestamp: new Date(result.broadcastState.timestamp),
         });
       }
+
+      // Self-streaming nodes handle downstream execution per-tick via _tickExecutor
+      if (result.skipDownstream) return;
 
       // Find next nodes (follow edges)
       const outgoingEdges = allEdges.filter(e => e.source === node.id);
@@ -398,6 +419,7 @@ export class WorkflowEngineService {
    * Recursively resolves {{expressions}} in all config fields
    */
   private resolveNodeConfig(config: Record<string, any>, context: any): Record<string, any> {
+    if (!config) return {};
     const resolved: Record<string, any> = {};
 
     for (const [key, value] of Object.entries(config)) {

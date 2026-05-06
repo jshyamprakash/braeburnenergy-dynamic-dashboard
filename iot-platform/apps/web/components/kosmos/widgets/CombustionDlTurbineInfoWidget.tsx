@@ -21,7 +21,7 @@ interface CombustionDlTurbineInfoWidgetProps {
 const rowLabelStyle: CSSProperties = {
   fontFamily: 'var(--k-font-tech)',
   fontSize: 10,
-  color: 'var(--k-text-dim)',
+  color: 'var(--k-text-secondary)',
 };
 
 const rowValueStyle: CSSProperties = {

@@ -1,6 +1,12 @@
 import type { FastifyInstance } from 'fastify';
 import { WorkflowController } from '../controllers/workflow.controller';
 import { workflowSchedulerService } from '../services/workflow-scheduler.service';
+import { abortWorkflowStreams } from '../services/workflow-node-handlers.service';
+import { WorkflowExecution } from '../models/workflow-execution.model';
+import * as fs from 'fs';
+import * as path from 'path';
+import { pipeline } from 'stream/promises';
+import { config } from '../config/config';
 import {
   createWorkflowSchema,
   updateWorkflowSchema,
@@ -30,6 +36,71 @@ export async function workflowRoutes(fastify: FastifyInstance) {
   let workflowController: WorkflowController;
   fastify.addHook('onReady', async () => {
     workflowController = new WorkflowController((fastify as any).io);
+  });
+
+  // Get available CSV files for stream player node
+  fastify.get('/workflows/csv-files', {
+    schema: {
+      tags: ['Workflows'],
+      summary: 'List available CSV files',
+      description: 'Get all available CSV files from the demo directory for the stream player node',
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: successResponse(
+          {
+            type: 'object',
+            properties: {
+              files: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    name: { type: 'string' },
+                    path: { type: 'string' },
+                  },
+                },
+              },
+            },
+          },
+          'CSV files retrieved successfully'
+        ),
+      },
+    },
+    preHandler: [requireAuth],
+    handler: async (_req, reply) => {
+      const dir = (config as any).demo?.csvDir ?? '';
+      const files: Array<{ name: string; path: string }> = [];
+      if (dir && fs.existsSync(dir)) {
+        const entries = fs.readdirSync(dir).filter((f) => f.toLowerCase().endsWith('.csv'));
+        for (const name of entries) {
+          files.push({ name, path: path.join(dir, name) });
+        }
+      }
+      return reply.send({ success: true, data: { files } });
+    },
+  });
+
+  // Upload a CSV file for use with the csvStreamPlayer node
+  fastify.post('/workflows/csv-upload', {
+    schema: {
+      tags: ['Workflows'],
+      summary: 'Upload CSV file',
+      description: 'Upload a CSV file to the demo directory for use with the CSV Stream Player node',
+      security: [{ bearerAuth: [] }],
+      consumes: ['multipart/form-data'],
+    },
+    preHandler: [requireAuth],
+    handler: async (req, reply) => {
+      const data = await (req as any).file();
+      if (!data || !data.filename.toLowerCase().endsWith('.csv')) {
+        return reply.status(400).send({ success: false, error: 'A .csv file is required' });
+      }
+      const dir = (config as any).demo?.csvDir ?? path.join(process.cwd(), 'data', 'demo');
+      fs.mkdirSync(dir, { recursive: true });
+      const dest = path.join(dir, data.filename);
+      await pipeline(data.file, fs.createWriteStream(dest));
+      return reply.send({ success: true, data: { path: dest, name: data.filename } });
+    },
   });
 
   // Get workflow templates
@@ -279,7 +350,12 @@ export async function workflowRoutes(fastify: FastifyInstance) {
       },
     },
     preHandler: [requireAuth, requirePermission('workflow:update')],
-  }, (req: any, reply: any) => workflowController.enable(req, reply));
+  }, async (req: any, reply: any) => {
+    const result = await workflowController.enable(req, reply);
+    workflowSchedulerService.rescheduleWorkflow(req.params.workflowId)
+      .catch(err => fastify.log.warn({ err }, 'Scheduler reschedule failed on enable'));
+    return result;
+  });
 
   // Disable workflow
   fastify.post('/workflows/:workflowId/disable', {
@@ -298,7 +374,21 @@ export async function workflowRoutes(fastify: FastifyInstance) {
       },
     },
     preHandler: [requireAuth, requirePermission('workflow:update')],
-  }, (req: any, reply: any) => workflowController.disable(req, reply));
+  }, async (req: any, reply: any) => {
+    const result = await workflowController.disable(req, reply);
+    workflowSchedulerService.unscheduleWorkflow(req.params.workflowId);
+
+    // Abort any running stream player for this workflow
+    abortWorkflowStreams(req.params.workflowId);
+
+    // Cancel any running executions in DB
+    await WorkflowExecution.updateMany(
+      { workflowId: req.params.workflowId, status: 'running' },
+      { $set: { status: 'cancelled' } }
+    );
+
+    return result;
+  });
 
   // Cancel workflow execution
   fastify.post('/workflows/:workflowId/executions/:executionId/cancel', {

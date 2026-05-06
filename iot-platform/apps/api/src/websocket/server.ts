@@ -236,6 +236,21 @@ export function broadcastWorkflowExecutionCompleted(
 }
 
 /**
+ * Broadcast workflow workspace update from action:setWorkspace node
+ * Namespaced by nodeId so multiple output nodes don't collide
+ */
+export function broadcastWorkflowWorkspace(
+  io: SocketIOServer,
+  data: {
+    workflowId: string;
+    workspace: Record<string, Record<string, unknown>>;
+  }
+) {
+  io.to(`workflow:${data.workflowId}`).emit('workflow:workspace:update', data);
+  console.log(`[WS] Workspace update: ${data.workflowId}`);
+}
+
+/**
  * Broadcast real-time debug message from action:debug node
  */
 export function broadcastWorkflowDebugMessage(

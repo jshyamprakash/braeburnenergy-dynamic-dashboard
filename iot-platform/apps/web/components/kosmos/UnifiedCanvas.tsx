@@ -4,6 +4,9 @@ import { useState } from 'react';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const _rgl = require('react-grid-layout');
 const GridLayout = (_rgl.default ?? _rgl) as any;
+const getCompactor = _rgl.getCompactor as Function;
+// noCompactor (free positioning) + preventCollision (cap resize/drag at neighbour)
+const COMPACTOR = getCompactor(null, false, true);
 import type { KosmosWidget } from './types';
 import { RenderWidget } from './widgets/index';
 
@@ -12,14 +15,13 @@ interface UnifiedCanvasProps {
   editMode: boolean;
   layoutLocked?: boolean;
   onDrop: (widgetType: string) => void;
-  onRemove: (widgetId: string) => void;
   onLayoutChange: (layouts: Array<{ i: string; x: number; y: number; w: number; h: number }>) => void;
   onSelect?: (widgetId: string | null) => void;
   selectedWidgetId?: string | null;
 }
 
 const COL = 48;
-const ROW_H = 10;
+const ROW_H = 20; // fixed row height — predictable sizing (h=10 → 200px, h=15 → 300px)
 
 /**
  * UnifiedCanvas — full-width free-canvas for all widgets on a page (ADR-044).
@@ -31,25 +33,17 @@ export function UnifiedCanvas({
   editMode,
   layoutLocked,
   onDrop,
-  onRemove,
   onLayoutChange,
   onSelect,
   selectedWidgetId,
 }: UnifiedCanvasProps) {
   const [isOver, setIsOver] = useState(false);
   const [containerWidth, setContainerWidth] = useState(1200);
-  const [containerHeight, setContainerHeight] = useState(0);
-
-  const TOTAL_ROWS = 35;
-  const dynamicRowHeight = containerHeight > 0
-    ? Math.max(6, Math.floor((containerHeight - 16 - (TOTAL_ROWS - 1) * 8) / TOTAL_ROWS))
-    : ROW_H;
 
   const measureRef = (el: HTMLDivElement | null) => {
     if (el) {
       const obs = new ResizeObserver(([entry]) => {
         setContainerWidth(entry.contentRect.width);
-        setContainerHeight(entry.contentRect.height);
       });
       obs.observe(el);
       setContainerWidth(el.clientWidth);
@@ -130,23 +124,19 @@ export function UnifiedCanvas({
       <GridLayout
         className="layout"
         layout={layouts}
-        cols={COL}
-        rowHeight={dynamicRowHeight}
         width={containerWidth}
-        isDraggable={editMode && !layoutLocked}
-        isResizable={editMode && !layoutLocked}
+        gridConfig={{ cols: COL, rowHeight: ROW_H, margin: [8, 8], containerPadding: [8, 8] }}
+        dragConfig={{ enabled: editMode && !layoutLocked, handle: '.k-drag-handle' }}
+        resizeConfig={{ enabled: editMode && !layoutLocked }}
+        compactor={COMPACTOR}
         onLayoutChange={onLayoutChange}
-        margin={[8, 8]}
-        containerPadding={[8, 8]}
         style={{ minHeight: '100%', height: '100%' }}
-        draggableHandle=".k-drag-handle"
       >
         {widgets.map((widget) => {
           const isSelected = selectedWidgetId === widget.id;
           return (
             <div
               key={widget.id}
-              onClick={() => editMode && layoutLocked && onSelect?.(isSelected ? null : widget.id)}
               style={{
                 background: 'var(--k-bg-card)',
                 border: isSelected
@@ -155,7 +145,7 @@ export function UnifiedCanvas({
                 borderRadius: 4,
                 overflow: 'hidden',
                 position: 'relative',
-                cursor: editMode && layoutLocked ? 'pointer' : 'default',
+                cursor: 'default',
                 boxShadow: isSelected ? '0 0 14px rgba(0,176,80,0.25)' : 'none',
                 transition: 'border-color 0.15s, box-shadow 0.15s',
                 display: 'flex',
@@ -192,30 +182,30 @@ export function UnifiedCanvas({
                 />
               )}
 
-              {/* Remove button */}
+              {/* Config button — opens config panel */}
               {editMode && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    onRemove(widget.id);
-                    onSelect?.(null);
+                    onSelect?.(isSelected ? null : widget.id);
                   }}
+                  title="Configure widget"
                   style={{
                     position: 'absolute',
                     top: 6,
                     right: 6,
                     zIndex: 10,
-                    background: 'rgba(255,58,58,0.15)',
-                    border: '1px solid rgba(255,58,58,0.4)',
+                    background: isSelected ? 'rgba(0,176,80,0.18)' : 'rgba(255,255,255,0.06)',
+                    border: isSelected ? '1px solid var(--k-green)' : '1px solid var(--k-border)',
                     borderRadius: 2,
-                    color: 'var(--k-red)',
+                    color: isSelected ? 'var(--k-green)' : 'var(--k-text-dim)',
                     cursor: 'pointer',
-                    fontSize: 10,
+                    fontSize: 12,
                     padding: '2px 5px',
-                    fontFamily: 'var(--k-font-tech)',
+                    lineHeight: 1,
                   }}
                 >
-                  ✕
+                  ⚙
                 </button>
               )}
 

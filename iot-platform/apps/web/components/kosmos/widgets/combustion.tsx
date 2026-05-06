@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 import type { KosmosWidget } from '../types';
 import { useCombustionSimulator } from './combustion-simulator';
@@ -9,6 +9,7 @@ import { EChartsLine } from './EChartsLine';
 import { EChartsBar } from './EChartsBar';
 import { useDeviceTimeSeries } from '@/lib/hooks/useDeviceTimeSeries';
 import { useDeviceSnapshot } from '@/lib/hooks/useDeviceSnapshot';
+import { useWorkflowWorkspace } from '@/lib/hooks/useWorkflowWorkspace';
 
 export function CombustionDlHeaderWidget({
   widget,
@@ -34,7 +35,7 @@ Features: DFT amplitude spectra, SPL, Hurst exponent, Shannon entropy, mutual in
     { text: 'THERMO-ACOUSTIC', color: 'amber' },
   ];
 
-  const title = widget?.config?.title ?? 'FEATURE-DRIVEN DEEP LEARNING — GT2026 PAPER DEMO';
+  const title = widget?.config?.title ?? 'FEATURE-DRIVEN DEEP LEARNING';
   const cfg = widget?.config ?? {};
   const description = (cfg.description as string) ?? DEFAULT_DESC;
   const tags = (cfg.tags as TagItem[]) ?? DEFAULT_TAGS;
@@ -42,12 +43,7 @@ Features: DFT amplitude spectra, SPL, Hurst exponent, Shannon entropy, mutual in
   return (
     <WidgetCard
       title={title}
-      right={
-        <div style={{ display: 'flex', gap: 8 }}>
-          <Tag>GT2026-179161</Tag>
-          <Tag color="green">LIVE INFERENCE</Tag>
-        </div>
-      }
+      right={<Tag color="green">LIVE INFERENCE</Tag>}
     >
       <div style={{ display: 'flex', gap: 20, alignItems: 'center', justifyContent: 'space-between', height: '100%' }}>
         <div style={{ fontFamily: 'var(--k-font-main)', fontSize: 12, color: 'var(--k-text-secondary)', maxWidth: 620, lineHeight: 1.6 }}>
@@ -77,19 +73,44 @@ export function CombustionDlPressureSignalWidget({
   const title = widget?.config?.title ?? 'CD PRESSURE SIGNAL';
   const deviceId = widget?.config?.deviceId as string | undefined;
   const fieldName = (widget?.config?.fieldName as string) ?? 'cd_pressure';
+  const dataSource = (widget?.config?.dataSource as string) || 'device';
+  const workflowId = (widget?.config?.workflowId as string) || null;
+  const outputNodeId = (widget?.config?.outputNodeId as string) || null;
 
-  const { points } = useDeviceTimeSeries(deviceId || '', {
+  // Device mode: time series from device
+  const { points: devicePoints } = useDeviceTimeSeries(dataSource === 'device' ? (deviceId || '') : '', {
     field: fieldName,
     maxPoints: 200,
     seedCount: 50,
   });
 
+  // Workspace mode: accumulate scalar values into rolling buffer (TimeSeriesPoint = [timestamp, value])
+  const { workspace } = useWorkflowWorkspace(dataSource === 'workspace' ? workflowId : null);
+  const wsBufferRef = useRef<[number, number][]>([]);
+  const [wsPoints, setWsPoints] = useState<[number, number][]>([]);
+
+  useEffect(() => {
+    if (dataSource !== 'workspace' || !outputNodeId) return;
+    const val = outputNodeId ? (workspace[outputNodeId]?.[fieldName] as number | undefined) : undefined;
+    if (val == null) return;
+    const next = [...wsBufferRef.current, [Date.now(), val] as [number, number]].slice(-200);
+    wsBufferRef.current = next;
+    setWsPoints(next);
+  }, [workspace, dataSource, outputNodeId, fieldName]);
+
+  const points = dataSource === 'workspace' ? wsPoints : devicePoints;
+  const isConfigured = dataSource === 'device' ? !!deviceId : !!(workflowId && outputNodeId);
+
   return (
     <WidgetCard title={title} right={<Tag>50 kHz</Tag>}>
       <div style={{ height: '100%', padding: 4 }}>
-        {!deviceId ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--k-text-dim)', fontSize: 11, fontFamily: 'var(--k-font-tech)' }}>
-            Configure deviceId
+        {!isConfigured ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--k-text-secondary)', fontSize: 12, fontFamily: 'var(--k-font-tech)' }}>
+            {dataSource === 'workspace' ? 'Configure workflow output' : 'Configure deviceId'}
+          </div>
+        ) : points.length === 0 ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--k-text-secondary)', fontSize: 12, fontFamily: 'var(--k-font-tech)' }}>
+            No data available
           </div>
         ) : (
           <EChartsLine
@@ -98,8 +119,8 @@ export function CombustionDlPressureSignalWidget({
             fill={true}
             label={fieldName}
             height={200}
-            min={-3}
-            max={3}
+            min={-0.8}
+            max={0.8}
           />
         )}
       </div>
@@ -120,20 +141,37 @@ export function CombustionDlFrequencySpectrumWidget({
 } = {}) {
   const title = widget?.config?.title ?? 'FREQUENCY SPECTRUM (DFT)';
   const deviceId = widget?.config?.deviceId as string | undefined;
-  const fftFreqsField = (widget?.config?.fieldName as string) ?? 'fft_freqs';
-  const fftAmpsField = 'fft_amplitudes'; // Assumed companion field for amplitudes
+  const freqField = (widget?.config?.freqField as string) || 'fft_freqs';
+  const ampField = (widget?.config?.ampField as string) || 'fft_amps';
+  const dataSource = (widget?.config?.dataSource as string) || 'device';
+  const workflowId = (widget?.config?.workflowId as string) || null;
+  const outputNodeId = (widget?.config?.outputNodeId as string) || null;
 
-  // For FFT, fetch snapshot data (not time-series)
-  const { snapshot } = useDeviceSnapshot(deviceId || '');
-  const fftFreqs = (snapshot?.fields?.[fftFreqsField] as string[]) ?? [];
-  const fftAmps = (snapshot?.fields?.[fftAmpsField] as number[]) ?? [];
+  // Device mode: snapshot
+  const { snapshot } = useDeviceSnapshot(dataSource === 'device' ? (deviceId || '') : '');
+  // Workspace mode
+  const { workspace } = useWorkflowWorkspace(dataSource === 'workspace' ? workflowId : null);
+
+  const freqsRaw: number[] = dataSource === 'workspace'
+    ? ((outputNodeId ? workspace[outputNodeId]?.[freqField] : undefined) as number[] | undefined) ?? []
+    : (snapshot?.fields?.[freqField] as number[] | undefined) ?? [];
+  const fftFreqs = freqsRaw.map(String);
+  const fftAmps: number[] = dataSource === 'workspace'
+    ? ((outputNodeId ? workspace[outputNodeId]?.[ampField] : undefined) as number[] | undefined) ?? []
+    : (snapshot?.fields?.[ampField] as number[] | undefined) ?? [];
+
+  const isConfigured = dataSource === 'device' ? !!deviceId : !!(workflowId && outputNodeId);
 
   return (
     <WidgetCard title={title} right={<Tag color="green">FFT LIVE</Tag>}>
       <div style={{ height: '100%', padding: 8 }}>
-        {!deviceId ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--k-text-dim)', fontSize: 11, fontFamily: 'var(--k-font-tech)' }}>
-            Configure deviceId
+        {!isConfigured ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--k-text-secondary)', fontSize: 12, fontFamily: 'var(--k-font-tech)' }}>
+            {dataSource === 'workspace' ? 'Configure workflow output' : 'Configure deviceId'}
+          </div>
+        ) : fftAmps.length === 0 ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--k-text-secondary)', fontSize: 12, fontFamily: 'var(--k-font-tech)' }}>
+            No data available
           </div>
         ) : (
           <EChartsBar
@@ -162,18 +200,26 @@ export function CombustionDlFeatureMatrixWidget({
 } = {}) {
   const deviceId = widget?.config?.deviceId as string | undefined;
   const fieldName = (widget?.config?.fieldName as string) ?? 'feature_cells';
+  const dataSource = (widget?.config?.dataSource as string) || 'device';
+  const workflowId = (widget?.config?.workflowId as string) || null;
+  const outputNodeId = (widget?.config?.outputNodeId as string) || null;
 
-  // Try live device snapshot when deviceId is configured
-  const { snapshot } = useDeviceSnapshot(deviceId ?? '');
+  // Device mode: snapshot
+  const { snapshot } = useDeviceSnapshot(dataSource === 'device' ? (deviceId ?? '') : '');
+  // Workspace mode
+  const { workspace } = useWorkflowWorkspace(dataSource === 'workspace' ? workflowId : null);
   const { featureCells: simCells } = useCombustionSimulator();
 
-  // Parse live feature_cells from snapshot; fall back to simulator
+  // Parse live feature_cells from snapshot or workspace; fall back to simulator
   type LiveCell = { label: string; value: number; hue: number; alpha: number };
   const liveCells: LiveCell[] | null = (() => {
-    if (!deviceId || !snapshot) return null;
-    const raw = snapshot.fields?.[fieldName];
+    let raw: unknown;
+    if (dataSource === 'workspace' && outputNodeId) {
+      raw = workspace[outputNodeId]?.[fieldName];
+    } else if (dataSource === 'device' && deviceId && snapshot) {
+      raw = snapshot.fields?.[fieldName];
+    }
     if (!raw) return null;
-    // Handle both parsed array and JSON string
     const parsed = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return null; } })() : raw;
     if (!Array.isArray(parsed) || parsed.length === 0) return null;
     return parsed as LiveCell[];
@@ -198,7 +244,7 @@ export function CombustionDlFeatureMatrixWidget({
   return (
     <WidgetCard title={title}>
       <div
-        style={{ position: 'relative', display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 3, marginTop: 8, alignContent: 'start' }}
+        style={{ position: 'relative', display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 4, marginTop: 8, alignContent: 'start' }}
         onMouseLeave={() => setHovered(null)}
       >
         {cells.map((cell) => {
@@ -229,13 +275,14 @@ export function CombustionDlFeatureMatrixWidget({
                 aspectRatio: '1',
                 borderRadius: 2,
                 fontFamily: 'var(--k-font-tech)',
-                fontSize: 9,
+                fontSize: 10,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                background: `hsla(${cell.hue}, 70%, 50%, ${cell.alpha})`,
-                border: `1px solid hsla(${cell.hue}, 70%, 60%, 0.3)`,
-                color: `hsla(${cell.hue}, 70%, 80%, 0.9)`,
+                background: `hsla(${cell.hue}, 65%, 22%, 0.95)`,
+                border: `1px solid hsla(${cell.hue}, 65%, 50%, 0.45)`,
+                color: 'rgba(255, 255, 255, 0.95)',
+                textShadow: '0 1px 3px rgba(0,0,0,0.7)',
               }}
             >
               {cell.value.toFixed(2)}
@@ -252,7 +299,7 @@ export function CombustionDlFeatureMatrixWidget({
               background: 'var(--k-deep)',
               border: '1px solid var(--k-border-bright)',
               color: 'var(--k-text-primary)',
-              fontSize: 9,
+              fontSize: 10,
               fontFamily: 'var(--k-font-tech)',
               padding: '2px 6px',
               borderRadius: 2,
@@ -282,8 +329,12 @@ export function CombustionDlFrameworkPipelineWidget({
 } = {}) {
   type PipelineLayer = { label: string; name: string; value: string; background: string; border: string; color: string };
 
-  const { reconErrorDisplay } = useCombustionSimulator();
   const title = widget?.config?.title ?? 'DL FRAMEWORK PIPELINE';
+  const deviceId = widget?.config?.deviceId as string | undefined;
+
+  const { snapshot } = useDeviceSnapshot(deviceId ?? '');
+  const anomalyScore = snapshot?.fields?.['anomaly_score'] as number | undefined;
+  const reconErrorDisplay = anomalyScore != null ? anomalyScore.toFixed(4) : '—';
 
   const DEFAULT_PIPELINE_LAYERS: PipelineLayer[] = [
     { label: 'INPUT', name: 'Raw CD Signal [N×1]', value: '50 kHz', background: 'rgba(13,60,122,0.5)', border: 'var(--k-mid)', color: 'var(--k-pale)' },
@@ -297,11 +348,11 @@ export function CombustionDlFrameworkPipelineWidget({
   const pipelineLayers = (cfg.pipelineLayers as PipelineLayer[]) ?? DEFAULT_PIPELINE_LAYERS;
 
   return (
-    <WidgetCard title={`⬡ ${title}`} right={<Tag color="green">ACTIVE</Tag>}>
+    <WidgetCard title={title} right={<Tag color="green">ACTIVE</Tag>}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {pipelineLayers.map((layer, i) => (
           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ fontFamily: 'var(--k-font-tech)', fontSize: 10, color: 'var(--k-text-dim)', width: 100, textAlign: 'right', flexShrink: 0 }}>
+            <div style={{ fontFamily: 'var(--k-font-tech)', fontSize: 11, color: 'var(--k-text-secondary)', width: 100, textAlign: 'right', flexShrink: 0 }}>
               {layer.label}
             </div>
             <div
@@ -341,7 +392,7 @@ export function CombustionDlFrameworkPipelineWidget({
         ))}
         {/* ANOMALY — always pinned last, live data */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ fontFamily: 'var(--k-font-tech)', fontSize: 10, color: 'var(--k-text-dim)', width: 100, textAlign: 'right', flexShrink: 0 }}>
+          <div style={{ fontFamily: 'var(--k-font-tech)', fontSize: 11, color: 'var(--k-text-secondary)', width: 100, textAlign: 'right', flexShrink: 0 }}>
             ANOMALY
           </div>
           <div style={{ flex: 1, height: 28, borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -374,19 +425,44 @@ export function CombustionDlAnomalyTrendWidget({
   const title = widget?.config?.title ?? 'ANOMALY SCORE TREND';
   const deviceId = widget?.config?.deviceId as string | undefined;
   const fieldName = (widget?.config?.fieldName as string) ?? 'anomaly_score';
+  const dataSource = (widget?.config?.dataSource as string) || 'device';
+  const workflowId = (widget?.config?.workflowId as string) || null;
+  const outputNodeId = (widget?.config?.outputNodeId as string) || null;
 
-  const { points } = useDeviceTimeSeries(deviceId || '', {
+  // Device mode: time series
+  const { points: devicePoints } = useDeviceTimeSeries(dataSource === 'device' ? (deviceId || '') : '', {
     field: fieldName,
     maxPoints: 200,
     seedCount: 50,
   });
 
+  // Workspace mode: accumulate scalar values (TimeSeriesPoint = [timestamp, value])
+  const { workspace } = useWorkflowWorkspace(dataSource === 'workspace' ? workflowId : null);
+  const wsAnomalyBufferRef = useRef<[number, number][]>([]);
+  const [wsAnomalyPoints, setWsAnomalyPoints] = useState<[number, number][]>([]);
+
+  useEffect(() => {
+    if (dataSource !== 'workspace' || !outputNodeId) return;
+    const val = workspace[outputNodeId]?.[fieldName] as number | undefined;
+    if (val == null) return;
+    const next = [...wsAnomalyBufferRef.current, [Date.now(), val] as [number, number]].slice(-200);
+    wsAnomalyBufferRef.current = next;
+    setWsAnomalyPoints(next);
+  }, [workspace, dataSource, outputNodeId, fieldName]);
+
+  const points = dataSource === 'workspace' ? wsAnomalyPoints : devicePoints;
+  const isConfigured = dataSource === 'device' ? !!deviceId : !!(workflowId && outputNodeId);
+
   return (
     <WidgetCard title={title} right={<Tag color="green">{points.length > 0 ? 'LIVE' : 'IDLE'}</Tag>}>
       <div style={{ height: '100%', padding: 4 }}>
-        {!deviceId ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--k-text-dim)', fontSize: 11, fontFamily: 'var(--k-font-tech)' }}>
-            Configure deviceId
+        {!isConfigured ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--k-text-secondary)', fontSize: 12, fontFamily: 'var(--k-font-tech)' }}>
+            {dataSource === 'workspace' ? 'Configure workflow output' : 'Configure deviceId'}
+          </div>
+        ) : points.length === 0 ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--k-text-secondary)', fontSize: 12, fontFamily: 'var(--k-font-tech)' }}>
+            No data available
           </div>
         ) : (
           <EChartsLine
@@ -396,7 +472,7 @@ export function CombustionDlAnomalyTrendWidget({
             label={fieldName}
             height={200}
             min={0}
-            max={0.8}
+            max={1.0}
             threshold={0.5}
           />
         )}
@@ -418,22 +494,35 @@ export function CombustionDlPhysicsMetricsWidget({
 } = {}) {
   type MetricRow = { label: string; value: string; width: number };
 
-  const DEFAULT_METRICS: MetricRow[] = [
-    { label: 'SPL (Overall)', value: '142.3 dB', width: 72 },
-    { label: 'Hurst Exponent', value: '0.63', width: 63 },
-    { label: 'Shannon Entropy', value: '4.21 nats', width: 55 },
-    { label: 'Mutual Info (P·T)', value: '0.38', width: 38 },
-    { label: 'DFT Dominant Freq.', value: '186 Hz', width: 45 },
-  ];
-
   const METRIC_COLORS = ['var(--k-soft)', 'var(--k-mid)', 'var(--k-green)', 'var(--k-amber)', 'var(--k-base)'];
 
   const title = widget?.config?.title ?? 'PHYSICS FEATURE METRICS';
-  const cfg = widget?.config ?? {};
-  const metrics = (cfg.metrics as MetricRow[]) ?? DEFAULT_METRICS;
+  const deviceId = widget?.config?.deviceId as string | undefined;
+
+  const { snapshot } = useDeviceSnapshot(deviceId ?? '');
+  const fields = snapshot?.fields ?? {};
+
+  const spl = fields['spl'] as number | undefined;
+  const hurst = fields['hurst_exponent'] as number | undefined;
+  const shannon = fields['shannon_entropy'] as number | undefined;
+  const dftEnergy = fields['dft_energy'] as number | undefined;
+
+  const metrics: MetricRow[] = deviceId && snapshot
+    ? [
+        { label: 'SPL (Overall)', value: spl != null ? `${spl.toFixed(1)} dB` : '—', width: spl != null ? Math.round((spl / 200) * 100) : 0 },
+        { label: 'Hurst Exponent', value: hurst != null ? hurst.toFixed(3) : '—', width: hurst != null ? Math.round(hurst * 100) : 0 },
+        { label: 'Shannon Entropy', value: shannon != null ? `${shannon.toFixed(2)} nats` : '—', width: shannon != null ? Math.round((shannon / 8) * 100) : 0 },
+        { label: 'DFT Energy', value: dftEnergy != null ? dftEnergy.toFixed(4) : '—', width: dftEnergy != null ? Math.min(100, Math.round(dftEnergy * 100)) : 0 },
+      ]
+    : [
+        { label: 'SPL (Overall)', value: '—', width: 0 },
+        { label: 'Hurst Exponent', value: '—', width: 0 },
+        { label: 'Shannon Entropy', value: '—', width: 0 },
+        { label: 'DFT Energy', value: '—', width: 0 },
+      ];
 
   return (
-    <WidgetCard title={title}>
+    <WidgetCard title={title} right={!deviceId ? <Tag>NO DEVICE</Tag> : undefined}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
         {metrics.map((m, i) => (
           <MetricBar key={i} label={m.label} value={m.value} width={m.width} color={METRIC_COLORS[i % METRIC_COLORS.length]} />
@@ -455,28 +544,43 @@ export function CombustionDlPrecursorClassificationWidget({
   onConfigChange?: () => void;
 } = {}) {
   const title = widget?.config?.title ?? 'PRECURSOR CLASSIFICATION';
-  const cfg = widget?.config ?? {};
-  const confidence = (cfg.confidence as number) ?? 86;
-  const classLabel = (cfg.classLabel as string) ?? 'NORMAL OPERATION';
-  const subText = (cfg.subText as string) ?? 'No precursor signature detected';
+  const deviceId = widget?.config?.deviceId as string | undefined;
+
+  const { snapshot } = useDeviceSnapshot(deviceId ?? '');
+  const fields = snapshot?.fields ?? {};
+
+  const liveConfidence = fields['confidence'] as number | undefined;
+  const livePrecursorClass = fields['precursor_class'] as string | undefined;
+
+  const confidence = liveConfidence != null ? Math.round(liveConfidence) : (deviceId ? 0 : 86);
+  const classLabel = livePrecursorClass ?? (deviceId ? 'WAITING...' : 'NORMAL OPERATION');
+  const subText = deviceId && !snapshot
+    ? 'Waiting for device data...'
+    : classLabel === 'NORMAL OPERATION'
+      ? 'No precursor signature detected'
+      : 'Precursor signature detected';
   const dashOffset = Math.round(251 - (confidence / 100) * 216);
 
+  const isNormal = classLabel === 'NORMAL OPERATION' || classLabel === 'WAITING...';
+  const accentColor = isNormal ? 'var(--k-green)' : 'var(--k-amber)';
+  const accentAlpha = isNormal ? 'rgba(0,176,80,0.1)' : 'rgba(255,184,0,0.1)';
+
   return (
-    <WidgetCard title={title} accentGreen>
+    <WidgetCard title={title} accentGreen={isNormal}>
       <div style={{ textAlign: 'center', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
         <div style={{ width: 100, height: 100, margin: '0 auto 8px', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg viewBox="0 0 100 100" width="100" height="100" style={{ position: 'absolute', inset: 0, transform: 'rotate(-90deg)' }}>
-            <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(0,176,80,0.1)" strokeWidth="9" />
-            <circle cx="50" cy="50" r="40" fill="none" stroke="var(--k-green)" strokeWidth="9" strokeDasharray="251" strokeDashoffset={dashOffset} strokeLinecap="round" />
+            <circle cx="50" cy="50" r="40" fill="none" stroke={accentAlpha} strokeWidth="9" />
+            <circle cx="50" cy="50" r="40" fill="none" stroke={accentColor} strokeWidth="9" strokeDasharray="251" strokeDashoffset={dashOffset} strokeLinecap="round" />
           </svg>
           <div>
-            <div style={{ fontFamily: 'var(--k-font-display)', fontSize: 26, fontWeight: 700, color: 'var(--k-green)', lineHeight: 1 }}>
+            <div style={{ fontFamily: 'var(--k-font-display)', fontSize: 26, fontWeight: 700, color: accentColor, lineHeight: 1 }}>
               {`${confidence}%`}
             </div>
-            <div style={{ fontFamily: 'var(--k-font-tech)', fontSize: 9, color: 'var(--k-text-dim)' }}>CONFIDENCE</div>
+            <div style={{ fontFamily: 'var(--k-font-tech)', fontSize: 9, color: 'var(--k-text-secondary)' }}>CONFIDENCE</div>
           </div>
         </div>
-        <div style={{ fontFamily: 'var(--k-font-display)', fontSize: 18, fontWeight: 700, color: 'var(--k-green)', letterSpacing: 2, marginBottom: 4 }}>
+        <div style={{ fontFamily: 'var(--k-font-display)', fontSize: 18, fontWeight: 700, color: accentColor, letterSpacing: 2, marginBottom: 4 }}>
           {classLabel}
         </div>
         <div style={{ fontFamily: 'var(--k-font-tech)', fontSize: 10, color: 'var(--k-text-secondary)' }}>
@@ -500,21 +604,38 @@ export function CombustionDlClassifierOutputsWidget({
 } = {}) {
   type OutputRow = { label: string; value: string; width: number };
 
-  const DEFAULT_OUTPUTS: OutputRow[] = [
-    { label: 'Normal Operation', value: '86%', width: 86 },
-    { label: 'Lean Blowout Risk', value: '9%', width: 9 },
-    { label: 'Flashback Risk', value: '3%', width: 3 },
-    { label: 'Thermo-acoustic Instb.', value: '2%', width: 2 },
-  ];
-
   const OUTPUT_COLORS = ['var(--k-green)', 'var(--k-amber)', 'var(--k-mid)', 'var(--k-red)'];
 
   const title = widget?.config?.title ?? 'CLASSIFIER OUTPUTS';
-  const cfg = widget?.config ?? {};
-  const outputs = (cfg.outputs as OutputRow[]) ?? DEFAULT_OUTPUTS;
+  const deviceId = widget?.config?.deviceId as string | undefined;
+
+  const { snapshot } = useDeviceSnapshot(deviceId ?? '');
+  const fields = snapshot?.fields ?? {};
+
+  const pct = (v: number | undefined) => v != null ? `${Math.round(v * 100)}%` : '—';
+  const w = (v: number | undefined) => v != null ? Math.round(v * 100) : 0;
+
+  const normalProb = fields['normal_prob'] as number | undefined;
+  const lbProb = fields['lean_blowout_prob'] as number | undefined;
+  const fbProb = fields['flashback_prob'] as number | undefined;
+  const taProb = fields['thermo_acoustic_prob'] as number | undefined;
+
+  const outputs: OutputRow[] = deviceId && snapshot
+    ? [
+        { label: 'Normal Operation', value: pct(normalProb), width: w(normalProb) },
+        { label: 'Lean Blowout Risk', value: pct(lbProb), width: w(lbProb) },
+        { label: 'Flashback Risk', value: pct(fbProb), width: w(fbProb) },
+        { label: 'Thermo-acoustic Instb.', value: pct(taProb), width: w(taProb) },
+      ]
+    : [
+        { label: 'Normal Operation', value: '—', width: 0 },
+        { label: 'Lean Blowout Risk', value: '—', width: 0 },
+        { label: 'Flashback Risk', value: '—', width: 0 },
+        { label: 'Thermo-acoustic Instb.', value: '—', width: 0 },
+      ];
 
   return (
-    <WidgetCard title={title}>
+    <WidgetCard title={title} right={!deviceId ? <Tag>NO DEVICE</Tag> : undefined}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {outputs.map((o, i) => (
           <MetricBar key={i} label={o.label} value={o.value} width={o.width} color={OUTPUT_COLORS[i % OUTPUT_COLORS.length]} />
@@ -556,7 +677,7 @@ export function CombustionDlTrainingPerformanceWidget({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {rows.map(({ label, value }, i) => (
           <div key={i} style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ fontFamily: 'var(--k-font-tech)', fontSize: 10, color: 'var(--k-text-dim)' }}>{label}</span>
+            <span style={{ fontFamily: 'var(--k-font-tech)', fontSize: 10, color: 'var(--k-text-secondary)' }}>{label}</span>
             <span style={{ fontFamily: 'var(--k-font-tech)', fontSize: 11, color: ROW_COLORS[i % ROW_COLORS.length] }}>{value}</span>
           </div>
         ))}

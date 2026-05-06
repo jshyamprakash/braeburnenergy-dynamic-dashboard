@@ -69,8 +69,24 @@ export async function startStorageWorker(): Promise<void> {
   const nc = natsClient.getNatsConnection();
   const js = natsClient.getJetStream();
 
-  // Ensure durable consumer exists on sensor_raw stream
   const jsm = await nc.jetstreamManager();
+
+  // Ensure sensor_raw stream exists (created fresh on first boot)
+  try {
+    await jsm.streams.info(STREAM_NAME);
+    console.log(`📋 NATS stream "${STREAM_NAME}" already exists`);
+  } catch {
+    await jsm.streams.add({
+      name: STREAM_NAME,
+      subjects: ['sensor.raw.>'],
+      storage: 'file' as any,
+      num_replicas: 1,
+      discard: 'old' as any,
+    });
+    console.log(`✅ NATS stream "${STREAM_NAME}" created`);
+  }
+
+  // Ensure durable consumer exists on sensor_raw stream
   try {
     await jsm.consumers.info(STREAM_NAME, CONSUMER_NAME);
     console.log(`📋 NATS consumer "${CONSUMER_NAME}" already exists`);

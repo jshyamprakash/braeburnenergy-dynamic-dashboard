@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { WebSocketEvent, DeviceState } from '../types';
 import { useWebSocketContext } from '../providers/WebSocketProvider';
 
@@ -109,37 +109,37 @@ export function useWorkflowExecutionUpdates(
 ) {
   const { socket, isConnected } = useWebSocket();
 
+  // Use refs so callbacks never become stale deps — avoids subscribe/unsubscribe loop
+  const onStepUpdateRef = useRef(onStepUpdate);
+  const onCompleteRef = useRef(onComplete);
+  const onDebugMessageRef = useRef(onDebugMessage);
+  useEffect(() => { onStepUpdateRef.current = onStepUpdate; });
+  useEffect(() => { onCompleteRef.current = onComplete; });
+  useEffect(() => { onDebugMessageRef.current = onDebugMessage; });
+
   useEffect(() => {
     if (!socket || !isConnected || !workflowId) return;
 
     console.log(`[WebSocket] Subscribing to workflow execution: ${workflowId}`);
-
-    // Subscribe to workflow room
     socket.emit('subscribe:workflow', workflowId);
 
-    // Listen for step updates
     const handleStepUpdate = (step: unknown) => {
       console.log('[WebSocket] Received workflow step:', step);
-      onStepUpdate(step);
+      onStepUpdateRef.current(step);
     };
-
-    // Listen for completion
     const handleCompletion = (completion: unknown) => {
       console.log('[WebSocket] Workflow execution completed:', completion);
-      onComplete(completion);
+      onCompleteRef.current(completion);
     };
-
-    // Listen for debug messages
     const handleDebugMessage = (msg: unknown) => {
       console.log('[WebSocket] Received debug message:', msg);
-      onDebugMessage?.(msg);
+      onDebugMessageRef.current?.(msg);
     };
 
     socket.on('workflow:execution:step', handleStepUpdate);
     socket.on('workflow:execution:completed', handleCompletion);
     socket.on('workflow:debug:message', handleDebugMessage);
 
-    // Cleanup
     return () => {
       console.log(`[WebSocket] Unsubscribing from workflow: ${workflowId}`);
       socket.emit('unsubscribe:workflow', workflowId);
@@ -147,5 +147,5 @@ export function useWorkflowExecutionUpdates(
       socket.off('workflow:execution:completed', handleCompletion);
       socket.off('workflow:debug:message', handleDebugMessage);
     };
-  }, [socket, isConnected, workflowId, onStepUpdate, onComplete, onDebugMessage]);
+  }, [socket, isConnected, workflowId]); // callbacks excluded — stable via refs
 }

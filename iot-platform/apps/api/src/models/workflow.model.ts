@@ -59,7 +59,9 @@ export type NodeType =
   | 'data:fleetQuery'
   | 'data:assetLifeCalc'
   // Combustion DL CSV playback — module: combustion_dl
-  | 'action:combustionCsvPlayer';
+  | 'action:combustionCsvPlayer'
+  | 'action:csvStreamPlayer'
+  | 'action:setWorkspace';
 
 export interface WorkflowNode {
   id: string;                      // ULID
@@ -188,6 +190,8 @@ const workflowNodeSchema = new Schema<WorkflowNode>({
       'data:assetLifeCalc',
       // Combustion DL CSV playback — module: combustion_dl
       'action:combustionCsvPlayer',
+      'action:csvStreamPlayer',
+      'action:setWorkspace',
     ],
   },
   position: {
