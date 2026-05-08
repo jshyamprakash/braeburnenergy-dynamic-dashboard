@@ -250,6 +250,18 @@ export const cancelExecution = createAsyncThunk<
   }
 );
 
+// Restore execution state after navigation — finds any still-running execution for this workflow
+export const checkRunningExecution = createAsyncThunk<
+  { executionId: string } | null,
+  string
+>('workflow/checkRunningExecution', async (workflowId) => {
+  const response = await apiClient.get<{ data: any[] }>(
+    `/workflows/${workflowId}/executions?status=running&limit=1`
+  );
+  const executions = response.data?.data ?? [];
+  return executions.length > 0 ? { executionId: executions[0].executionId } : null;
+});
+
 // Auto-save workflow (1-second debounce)
 let autoSaveTimeout: NodeJS.Timeout | null = null;
 
@@ -620,6 +632,15 @@ export const workflowSlice = createSlice({
     builder.addCase(autoSaveWorkflow.rejected, state => {
       // Don't fail auto-save - just mark as idle so next save can retry
       state.syncStatus = 'idle';
+    });
+
+    // Restore execution state after page navigation
+    builder.addCase(checkRunningExecution.fulfilled, (state, action) => {
+      if (action.payload) {
+        state.currentExecutionId = action.payload.executionId;
+        state.executionStatus = 'running';
+        state.isStreaming = true;
+      }
     });
   },
 });

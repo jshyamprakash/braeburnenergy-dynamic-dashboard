@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/lib/store';
-import { loadWorkflow, saveWorkflow, resetWorkflow, executeWorkflow, removeNode, addExecutionLogEntry, completeExecutionStream, clearExecutionLog, setNodes, setEdges, updateMetadata, addNode, selectNode, toggleDebugPanel, addDebugMessage, cancelExecution, clearDebugMessages, openExecutionModal, closeExecutionModal, autoOpenDebugOnExecute } from '@/lib/store/slices/workflowSlice';
+import { loadWorkflow, saveWorkflow, resetWorkflow, executeWorkflow, removeNode, addExecutionLogEntry, completeExecutionStream, clearExecutionLog, setNodes, setEdges, updateMetadata, addNode, selectNode, toggleDebugPanel, addDebugMessage, cancelExecution, clearDebugMessages, openExecutionModal, closeExecutionModal, autoOpenDebugOnExecute, checkRunningExecution } from '@/lib/store/slices/workflowSlice';
 import { useWorkflowExecutionUpdates } from '@/lib/hooks/useWebSocket';
 import WorkflowCanvas from '@/components/workflow/WorkflowCanvas';
 import NodePalette from '@/components/workflow/NodePalette';
@@ -81,6 +81,14 @@ function WorkflowBuilderPage() {
       dispatch(resetWorkflow());
     };
   }, [dispatch, params.workflowId, isNewWorkflow]);
+
+  // Restore running execution state when returning to an in-progress stream after navigation.
+  // workflowId starts null, becomes defined after loadWorkflow.fulfilled → fires once.
+  useEffect(() => {
+    if (workflowId && executionStatus === 'idle') {
+      dispatch(checkRunningExecution(workflowId));
+    }
+  }, [workflowId, dispatch]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load pending template on mount
   // Use setTimeout(0) to defer past React 18 StrictMode's synchronous cleanup/remount cycle.

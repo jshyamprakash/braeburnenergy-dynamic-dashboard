@@ -414,7 +414,13 @@ export async function workflowRoutes(fastify: FastifyInstance) {
       },
     },
     preHandler: [requireAuth, requirePermission('workflow:execute')],
-  }, (req: any, reply: any) => workflowController.cancelExecution(req, reply));
+  }, async (req: any, reply: any) => {
+    // Abort the streaming loop (AbortController) before updating DB status.
+    // cancelExecution() only sets execution.status='cancelled' in DB; the CSV player
+    // loop runs independently via AbortController and must be explicitly aborted.
+    abortWorkflowStreams(req.params.workflowId);
+    return workflowController.cancelExecution(req, reply);
+  });
 
   // List workflow executions
   fastify.get('/workflows/:workflowId/executions', {
