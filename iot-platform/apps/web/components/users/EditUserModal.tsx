@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import type { User, UserRole } from '@repo/types';
 import { useUpdateUser } from '@/lib/hooks/useUsers';
@@ -15,15 +15,11 @@ interface EditUserModalProps {
 
 export function EditUserModal({ isOpen, user, onClose, onSuccess, callerRole }: EditUserModalProps) {
   const updateUserMutation = useUpdateUser();
-  const [formData, setFormData] = useState({
-    role: user?.role || ('Operator' as UserRole),
-    isActive: user?.isActive ?? true,
-  });
+  const [formData, setFormData] = useState({ role: 'Operator' as UserRole, isActive: true });
 
-  // Update form when user changes
-  if (user && (formData.role !== user.role || formData.isActive !== user.isActive)) {
-    setFormData({ role: user.role, isActive: user.isActive });
-  }
+  useEffect(() => {
+    if (user) setFormData({ role: user.role, isActive: user.isActive });
+  }, [user?.id]);
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
     const { name, value, type } = e.target;
@@ -56,10 +52,9 @@ export function EditUserModal({ isOpen, user, onClose, onSuccess, callerRole }: 
 
   if (!isOpen || !user) return null;
 
-  // Determine available roles
-  const availableRoles = callerRole === 'SuperAdmin'
-    ? (['SuperAdmin', 'Admin', 'Operator', 'Viewer'] as UserRole[])
-    : (['Admin', 'Operator', 'Viewer'] as UserRole[]);
+  const availableRoles: UserRole[] = callerRole === 'SuperAdmin'
+    ? ['Admin', 'Operator', 'Viewer']
+    : ['Operator', 'Viewer'];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">

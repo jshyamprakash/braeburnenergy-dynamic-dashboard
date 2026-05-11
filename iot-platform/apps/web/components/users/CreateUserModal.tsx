@@ -51,9 +51,9 @@ export function CreateUserModal({
   if (!isOpen) return null;
 
   // Determine available roles (Admin cannot assign SuperAdmin)
-  const availableRoles = callerRole === 'SuperAdmin'
-    ? (['SuperAdmin', 'Admin', 'Operator', 'Viewer'] as UserRole[])
-    : (['Admin', 'Operator', 'Viewer'] as UserRole[]);
+  const availableRoles: UserRole[] = callerRole === 'SuperAdmin'
+    ? ['Admin', 'Operator', 'Viewer']
+    : ['Operator', 'Viewer'];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">

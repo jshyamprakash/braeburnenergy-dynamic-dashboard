@@ -7,7 +7,6 @@ import {
   selectKosmosPages,
   selectKosmosActivePage,
   selectKosmosSharedWithUsers,
-  addKosmosPage,
   addCombustionDlPage,
   removeKosmosPage,
   renameKosmosPage,
@@ -191,12 +190,23 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
     }
   }, [pages.length, skipInit, triggerSave]);
 
-  /* ── Tab management ── */
-  const handleAddPage = () => {
-    dispatch(addKosmosPage({ name: `Page ${pages.length + 1}` }));
-    triggerSave();
-  };
+  /* ── Tab drag-to-reorder ── */
+  const draggedTabId = useRef<string | null>(null);
+  const dragOverTabId = useRef<string | null>(null);
 
+  const handleTabReorder = useCallback((fromId: string, toId: string) => {
+    if (fromId === toId) return;
+    const ids = allowedPages.map((p) => p.id);
+    const fromIdx = ids.indexOf(fromId);
+    const toIdx = ids.indexOf(toId);
+    if (fromIdx === -1 || toIdx === -1) return;
+    ids.splice(fromIdx, 1);
+    ids.splice(toIdx, 0, fromId);
+    dispatch(reorderKosmosPages(ids));
+    triggerSave();
+  }, [allowedPages, dispatch, triggerSave]);
+
+  /* ── Tab management ── */
   const handleAddCombustionDlPage = () => {
     dispatch(addCombustionDlPage());
     triggerSave();
@@ -443,7 +453,16 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
             className={`k-nav-tab ${page.id === activePageId ? 'active' : ''}`}
             onClick={() => dispatch(setKosmosActivePage(page.id))}
             onDoubleClick={() => editMode && !readOnly && !page.isMandatory && handleStartRename(page.id, page.name)}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, paddingRight: editMode && !readOnly ? 8 : 18 }}
+            draggable={editMode && !readOnly}
+            onDragStart={() => { draggedTabId.current = page.id; }}
+            onDragOver={(e) => { e.preventDefault(); dragOverTabId.current = page.id; }}
+            onDrop={() => {
+              if (draggedTabId.current) handleTabReorder(draggedTabId.current, page.id);
+              draggedTabId.current = null;
+              dragOverTabId.current = null;
+            }}
+            onDragEnd={() => { draggedTabId.current = null; dragOverTabId.current = null; }}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, paddingRight: editMode && !readOnly ? 8 : 18, cursor: editMode && !readOnly ? 'grab' : 'pointer' }}
           >
             {renamingId === page.id && !readOnly && !page.isMandatory ? (
               <input
@@ -482,21 +501,6 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
           </div>
         )}
 
-        {editMode && !readOnly && (
-          <button
-            onClick={handleAddPage}
-            style={{
-              padding: '5px 14px', background: 'rgba(21,96,189,0.08)', border: '1px solid var(--k-border-bright)',
-              borderBottom: 'none', borderRadius: '4px 4px 0 0', color: 'var(--k-text-secondary)',
-              cursor: 'pointer', fontFamily: 'var(--k-font-display)', fontSize: 16, fontWeight: 400, lineHeight: 1,
-              transition: 'all 0.2s', alignSelf: 'flex-end',
-            }}
-            onMouseEnter={(e) => { (e.target as HTMLElement).style.color = 'var(--k-pale)'; (e.target as HTMLElement).style.background = 'rgba(21,96,189,0.18)'; }}
-            onMouseLeave={(e) => { (e.target as HTMLElement).style.color = 'var(--k-text-secondary)'; (e.target as HTMLElement).style.background = 'rgba(21,96,189,0.08)'; }}
-          >
-            +
-          </button>
-        )}
         {editMode && !readOnly && isModuleEnabled('combustion_dl') && (
           <button
             onClick={handleAddCombustionDlPage}
@@ -625,8 +629,8 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
               NO PAGES
             </div>
             {!viewOnly && (
-              <button className="k-btn k-btn-primary" onClick={handleAddPage}>
-                + ADD PAGE
+              <button className="k-btn k-btn-primary" onClick={handleAddCombustionDlPage}>
+                + ADD COMBUSTION DL PAGE
               </button>
             )}
           </div>

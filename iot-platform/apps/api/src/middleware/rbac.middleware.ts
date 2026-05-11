@@ -48,7 +48,7 @@ const PERMISSIONS: Record<string, UserRole[]> = {
   'user:create': ['SuperAdmin', 'Admin'],
   'user:read': ['SuperAdmin', 'Admin'],
   'user:update': ['SuperAdmin', 'Admin'],
-  'user:delete': ['SuperAdmin'],
+  'user:delete': ['SuperAdmin', 'Admin'],
 
   // Audit logs (read-only)
   'audit-log:read': ['SuperAdmin', 'Admin'],

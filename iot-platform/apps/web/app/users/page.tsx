@@ -15,6 +15,14 @@ export default function UsersPage() {
   const user = useSelector((state: RootState) => state.auth.user);
   const { data, isLoading } = useUsers();
   const users: User[] = data || [];
+  const visibleUsers = users.filter(u => {
+    if (user?.role === 'SuperAdmin') return u.role === 'Admin';
+    if (user?.role === 'Admin') return u.role === 'Operator' || u.role === 'Viewer';
+    return false;
+  });
+
+  const canManage = (actorRole: string | undefined, targetRole: string) =>
+    (actorRole === 'SuperAdmin' || actorRole === 'Admin') && targetRole !== 'SuperAdmin';
   const updateUserMutation = useUpdateUser();
   const deleteUserMutation = useDeleteUser();
 
@@ -101,7 +109,7 @@ export default function UsersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {users.map((u) => {
+                {visibleUsers.map((u) => {
                   const isLocked = !!(u.lockedUntil && new Date(u.lockedUntil) > new Date());
                   return (
                     <tr key={u.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
@@ -140,6 +148,7 @@ export default function UsersPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-1">
+                          {canManage(user?.role, u.role) && (
                           <button
                             onClick={() => { setEditingUser(u); setIsEditOpen(true); }}
                             title="Edit"
@@ -148,6 +157,7 @@ export default function UsersPage() {
                           >
                             <Edit2 className="h-4 w-4" />
                           </button>
+                          )}
                           {isLocked && (
                             <button
                               onClick={() => handleUnlock(u.id)}
@@ -158,7 +168,7 @@ export default function UsersPage() {
                               <Unlock className="h-4 w-4" />
                             </button>
                           )}
-                          {user?.role === 'SuperAdmin' && (
+                          {canManage(user?.role, u.role) && (
                             <button
                               onClick={() => setDeletingUserId(u.id)}
                               title="Delete user"

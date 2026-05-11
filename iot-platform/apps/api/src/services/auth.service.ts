@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import { User, type IUser, type UserRole } from '../models';
+import { Dashboard } from '../models/dashboard.model';
 import { TokenSession } from '../models/token-session.model';
 import { SystemConfig } from '../models/system-config.model';
 import { config } from '../config/config';
@@ -603,15 +604,27 @@ export class AuthService {
       throw new Error('Cannot delete your own account');
     }
 
-    const target = await User.findById(targetUserId);
-    if (!target) {
-      throw new Error('User not found');
+    const [actor, target] = await Promise.all([
+      User.findById(actorId),
+      User.findById(targetUserId),
+    ]);
+    if (!target) throw new Error('User not found');
+    if (!actor) throw new Error('Actor not found');
+
+    // SuperAdmin and Admin can delete any non-SuperAdmin user
+    const canDelete = actor.role === 'SuperAdmin' || actor.role === 'Admin';
+    if (!canDelete || target.role === 'SuperAdmin') {
+      throw new Error('Insufficient permissions to delete this user');
     }
 
-    // Revoke all tokens before deletion
     await this.logout(targetUserId);
-
     await User.findByIdAndDelete(targetUserId);
+
+    // Remove deleted user from all dashboard sharedWithUsers in the same org
+    await Dashboard.updateMany(
+      { orgId: target.organizationId },
+      { $pull: { sharedWithUsers: { userId: targetUserId.toString() } } }
+    );
   }
 
   // ── ADR-052: Passphrase-Derived Keypair Auth ──────────────────────────────
