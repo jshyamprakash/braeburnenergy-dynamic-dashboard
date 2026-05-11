@@ -6,7 +6,7 @@ import { updateKosmosWidgetConfig } from '@/lib/store/slices/dashboardSlice';
 import type { KosmosWidget, DataFlowLayerConfig, DataFlowBlockConfig } from './types';
 import { PALETTE_ENTRIES } from './types';
 import { useDevices, useDevice } from '@/lib/hooks/useDevices';
-import { apiClient } from '@/lib/api-client';
+import { useAllWorkflows, useWorkflowDetail } from '@/lib/hooks/useWorkflows';
 
 interface WidgetConfigPanelProps {
   pageId: string;
@@ -351,42 +351,27 @@ export function WidgetConfigPanel({ pageId, widget, applicationId, onClose, onCo
 
   // Workspace data source state
   const dataSource = (widget.config?.dataSource as 'device' | 'workspace') || 'device';
-  const [workflows, setWorkflows] = useState<Array<{ workflowId: string; name: string }>>([]);
   const [workspaceNodes, setWorkspaceNodes] = useState<Array<{ id: string; label: string; mappings: Array<{ to: string }> }>>([]);
 
-  // Fetch workflows when workspace mode is active
-  useEffect(() => {
-    if (dataSource !== 'workspace') return;
-    apiClient.get<any>('/workflows?limit=100').then(res => {
-      // API returns { success, data: { workflows: [...] } }
-      const body = res.data as any;
-      const list = body?.data?.workflows ?? body?.workflows ?? [];
-      setWorkflows(Array.isArray(list) ? list : []);
-    }).catch(() => setWorkflows([]));
-  }, [dataSource]);
+  const { data: workflows = [] } = useAllWorkflows({ enabled: dataSource === 'workspace' });
 
-  // Fetch setWorkspace nodes when a workflow is selected in workspace mode
+  const wfId = widget.config?.workflowId as string | undefined;
+  const { data: workflowDetail } = useWorkflowDetail(dataSource === 'workspace' ? wfId : undefined);
+
+  // Derive setWorkspace output nodes from fetched workflow detail
   useEffect(() => {
-    const wfId = widget.config?.workflowId as string | undefined;
-    if (dataSource !== 'workspace' || !wfId) {
-      setWorkspaceNodes([]);
-      return;
-    }
-    apiClient.get<any>(`/workflows/${wfId}`).then(res => {
-      // API returns { success, data: { workflowId, name, nodes, ... } }
-      const body = res.data as any;
-      const wf = body?.data ?? body ?? {};
-      const nodes: any[] = wf.nodes ?? [];
-      const outputNodes = nodes
+    if (!workflowDetail || dataSource !== 'workspace') { setWorkspaceNodes([]); return; }
+    const wfNodes: any[] = workflowDetail.nodes ?? [];
+    setWorkspaceNodes(
+      wfNodes
         .filter((n: any) => n.type === 'action:setWorkspace')
         .map((n: any) => ({
           id: n.id,
           label: n.data?.config?.label || n.data?.label || n.id,
           mappings: n.data?.config?.mappings ?? [],
-        }));
-      setWorkspaceNodes(outputNodes);
-    }).catch(() => setWorkspaceNodes([]));
-  }, [dataSource, widget.config?.workflowId]);
+        }))
+    );
+  }, [workflowDetail, dataSource]);
 
   // Derive field options from selected output node's mappings
   const selectedOutputNodeId = widget.config?.outputNodeId as string | undefined;

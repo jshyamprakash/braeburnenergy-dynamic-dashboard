@@ -3,9 +3,9 @@
 import { useMemo, useRef, useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '@/lib/store';
 import { updateNode, triggerAutoSave } from '@/lib/store/slices/workflowSlice';
-import { apiClient } from '@/lib/api-client';
 import { getAvailableVariables, getDeviceAttributeVariables } from '@/lib/utils/workflow-variables';
-import { useDevices } from '@/lib/hooks/useDevices';
+import { useDevices, useDevice } from '@/lib/hooks/useDevices';
+import { useCsvUpload } from '@/lib/hooks/useWorkflows';
 import VariablePicker from './VariablePicker';
 import { CronPreview } from './CronPreview';
 import { CRON_PRESETS, COMMON_TIMEZONES } from '@/lib/utils/cron';
@@ -414,26 +414,25 @@ const NODE_CONFIG_SCHEMAS: Record<string, FieldConfig[]> = {
  * and stores the returned server-side path in the node config.
  */
 function CsvFilePicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const [uploading, setUploading] = useState(false);
   const [fileName, setFileName] = useState<string>('');
+  const csvUpload = useCsvUpload();
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setUploading(true);
     const formData = new FormData();
     formData.append('file', file);
     try {
-      const res: any = await apiClient.postForm('/workflows/csv-upload', formData);
+      const res: any = await csvUpload.mutateAsync(formData);
       const serverPath = res.data?.data?.path ?? res.data?.path ?? '';
       setFileName(file.name);
       onChange(serverPath);
     } catch {
       // leave current value unchanged on error
-    } finally {
-      setUploading(false);
     }
   };
+
+  const uploading = csvUpload.isPending;
 
   const displayName = fileName || (value ? value.split('/').pop() : '');
 
@@ -475,6 +474,19 @@ export default function NodeConfigPanel() {
   // Extract devices array from useDevices response
   const devices = devicesData?.devices || [];
 
+  const semanticType = useMemo(() => {
+    if (!selectedNodeId) return null;
+    const n = nodes.find(nd => nd.id === selectedNodeId);
+    return n?.data?.nodeType ?? n?.type ?? null;
+  }, [nodes, selectedNodeId]);
+
+  const selectedDeviceId: string | undefined = useMemo(() => {
+    const n = nodes.find(nd => nd.id === selectedNodeId);
+    return n?.data?.config?.deviceId || undefined;
+  }, [nodes, selectedNodeId]);
+
+  const { data: singleDeviceData } = useDevice(selectedDeviceId ?? '');
+
   // Get selected node
   const selectedNode = useMemo(() => {
     return nodes.find(n => n.id === selectedNodeId);
@@ -504,55 +516,23 @@ export default function NodeConfigPanel() {
     setWorkspaceMappingRows(wsRows);
   }, [selectedNode?.id]);
 
-  // Fetch device attributes from linked application (ADR-023)
-  // For action:writeDeviceState, scope to the selected device only.
-  // For other nodes, fetch all devices and merge attributes.
+  // Derive device attributes from already-fetched query data (ADR-023)
   useEffect(() => {
-    if (!applicationId) {
+    if (!applicationId) { setDeviceAttributes(null); return; }
+
+    if (semanticType === 'action:writeDeviceState' && selectedDeviceId) {
+      const device = singleDeviceData as any;
+      setDeviceAttributes(device?.attributes ?? null);
+    } else if (semanticType === 'action:writeDeviceState') {
       setDeviceAttributes(null);
-      return;
+    } else {
+      const mergedAttrs: Record<string, string> = {};
+      devices.forEach((device: any) => {
+        if (device.attributes) Object.assign(mergedAttrs, device.attributes);
+      });
+      setDeviceAttributes(Object.keys(mergedAttrs).length > 0 ? mergedAttrs : null);
     }
-
-    const fetchDeviceAttributes = async () => {
-      try {
-        const semanticType = selectedNode?.data?.nodeType ?? selectedNode?.type;
-        const selectedDeviceId = selectedNode?.data?.config?.deviceId;
-
-        // If this is a writeDeviceState node with a device selected, fetch only that device
-        if (semanticType === 'action:writeDeviceState' && selectedDeviceId) {
-          const response = await apiClient.get<any>(`/devices/${selectedDeviceId}`);
-          const device = response.data;
-          if (device?.attributes) {
-            setDeviceAttributes(device.attributes);
-          } else {
-            setDeviceAttributes(null);
-          }
-        } else if (semanticType === 'action:writeDeviceState') {
-          // writeDeviceState with no device selected — show no suggestions
-          setDeviceAttributes(null);
-        } else {
-          // For other node types, fetch all devices and merge attributes (fallback behavior)
-          const response = await apiClient.get<any>(`/devices?limit=100&offset=0&applicationId=${applicationId}`);
-          const devices = response.data || [];
-
-          // Merge attributes from all devices in the application
-          const mergedAttrs: Record<string, string> = {};
-          devices.forEach((device: any) => {
-            if (device.attributes) {
-              Object.assign(mergedAttrs, device.attributes);
-            }
-          });
-
-          setDeviceAttributes(Object.keys(mergedAttrs).length > 0 ? mergedAttrs : null);
-        }
-      } catch (error) {
-        // Silently fail - devices may not be available
-        setDeviceAttributes(null);
-      }
-    };
-
-    fetchDeviceAttributes();
-  }, [applicationId, selectedNode?.id, selectedNode?.data?.config?.deviceId, selectedNode?.data?.nodeType, selectedNode?.type]);
+  }, [applicationId, semanticType, selectedDeviceId, singleDeviceData, devices]);
 
   if (!selectedNode) {
     return null;

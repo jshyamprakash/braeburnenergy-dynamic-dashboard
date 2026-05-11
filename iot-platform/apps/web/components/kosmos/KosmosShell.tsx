@@ -7,7 +7,6 @@ import {
   selectKosmosPages,
   selectKosmosActivePage,
   selectKosmosSharedWithUsers,
-  selectKosmosSharedPageIds,
   addKosmosPage,
   addCombustionDlPage,
   removeKosmosPage,
@@ -19,11 +18,11 @@ import {
   updateKosmosWidgetLayout,
   updateKosmosWidgetConfig,
   setKosmosSharedWithUsers,
-  setKosmosSharedPageIds,
   initKosmosFromBackend,
   saveKosmosToBackend,
   resetActiveMandatoryPage,
 } from '@/lib/store/slices/dashboardSlice';
+import type { DashboardShareAssignment } from '@repo/types';
 import type { KosmosWidget } from './types';
 import { PALETTE_ENTRIES } from './types';
 import { useLicense } from '@/lib/hooks/useLicense';
@@ -111,7 +110,6 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
   const pages = useAppSelector(selectKosmosPages);
   const activePageId = useAppSelector(selectKosmosActivePage);
   const sharedWithUsers = useAppSelector(selectKosmosSharedWithUsers);
-  const sharedPageIds = useAppSelector(selectKosmosSharedPageIds);
   const { isModuleEnabled } = useLicense();
 
   const [editMode, setEditMode] = useState(false);
@@ -283,9 +281,8 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
     setShareModalOpen(true);
   };
 
-  const handleSaveSharedUsers = (userIds: string[], pageIds: string[]) => {
-    dispatch(setKosmosSharedWithUsers(userIds));
-    dispatch(setKosmosSharedPageIds(pageIds));
+  const handleSaveSharedUsers = (assignments: DashboardShareAssignment[]) => {
+    dispatch(setKosmosSharedWithUsers(assignments));
   };
 
   /* ── Project (kiosk view) ── */
@@ -407,7 +404,7 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
                 </button>
               )}
 
-              {editMode && activePage?.isMandatory && (
+              {editMode && (activePage?.isMandatory || activePage?.mandatoryType === 'combustionDl') && (
                 <button
                   className="k-btn k-btn-ghost"
                   onClick={() => {
@@ -650,7 +647,6 @@ export function KosmosShell({ dashboardId, applicationId, viewOnly = false, read
         <ShareUsersModal
           dashboardId={dashboardId}
           currentSharedUsers={sharedWithUsers}
-          currentSharedPageIds={sharedPageIds}
           availablePages={allowedPages}
           onClose={() => setShareModalOpen(false)}
           onSaved={handleSaveSharedUsers}

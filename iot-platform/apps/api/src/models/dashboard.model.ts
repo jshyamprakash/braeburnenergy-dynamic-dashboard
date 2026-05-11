@@ -73,6 +73,15 @@ export interface IKosmosPage {
 }
 
 /**
+ * Per-user sharing assignment (ADR-045 v2): each user gets their own page visibility list.
+ * pageIds: [] means all pages visible; non-empty means only those pages.
+ */
+export interface IShareAssignment {
+  userId: mongoose.Types.ObjectId;
+  pageIds: string[];
+}
+
+/**
  * Dashboard Document Interface
  *
  * ADR-038: Dashboards are scoped to orgId + applicationId (same as Device/Workflow).
@@ -88,10 +97,8 @@ export interface IDashboard extends Document {
   layouts: Record<string, any>;
   /** Kosmos multi-page layout */
   pages: IKosmosPage[];
-  /** User-based sharing (ADR-045): list of User ObjectIds with viewer access */
-  sharedWithUsers: mongoose.Types.ObjectId[];
-  /** Selective tab sharing: page IDs visible to viewers. Empty = all pages. */
-  sharedPageIds: string[];
+  /** Per-user sharing (ADR-045 v2): each user gets their own page visibility list */
+  sharedWithUsers: IShareAssignment[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -128,8 +135,11 @@ const DashboardSchema = new Schema<IDashboard>(
     blocks: [Schema.Types.Mixed],
     layouts: Schema.Types.Mixed,
     pages: [Schema.Types.Mixed],
-    sharedWithUsers: [{ type: Schema.Types.ObjectId, ref: 'User', default: [] }],
-    sharedPageIds: [{ type: String, default: [] }],
+    sharedWithUsers: [{
+      userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+      pageIds: [{ type: String }],
+      _id: false,
+    }],
   },
   {
     timestamps: true,
@@ -140,8 +150,8 @@ const DashboardSchema = new Schema<IDashboard>(
 // Unique dashboard per org (matches Device/Workflow pattern)
 DashboardSchema.index({ orgId: 1, dashboardId: 1 }, { unique: true });
 DashboardSchema.index({ orgId: 1, applicationId: 1 });
-// ADR-045: index for viewer dashboard lookup
-DashboardSchema.index({ sharedWithUsers: 1 });
+// ADR-045 v2: index for per-user viewer dashboard lookup
+DashboardSchema.index({ 'sharedWithUsers.userId': 1 });
 
 /**
  * Dashboard Model

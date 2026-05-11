@@ -12,7 +12,7 @@ import {
 import { useAppDispatch, useAppSelector } from '@/lib/store';
 import { toggleSidebar, selectSidebarOpen } from '@/lib/store/slices/uiSlice';
 import type { RootState } from '@/lib/store';
-import { apiClient } from '@/lib/api-client';
+import { useApplication } from '@/lib/hooks/useApplications';
 
 // ── Section label helper ──────────────────────────────────────────────────
 function SectionLabel({ label, isExpanded }: { label: string; isExpanded: boolean }) {
@@ -124,7 +124,6 @@ export function Sidebar() {
   const isExpanded = useAppSelector(selectSidebarOpen);
   const user = useAppSelector((state: RootState) => state.auth.user);
   const [isMounted, setIsMounted] = useState(false);
-  const [appName, setAppName] = useState<string | null>(null);
 
   useEffect(() => { setIsMounted(true); }, []);
 
@@ -133,13 +132,8 @@ export function Sidebar() {
   const currentAppId = appContextMatch?.[1] ?? null;
   const isInAppContext = !!currentAppId && pathname.split('/').length > 3;
 
-  // Fetch app name when in app context
-  useEffect(() => {
-    if (!currentAppId) { setAppName(null); return; }
-    apiClient.get<any>(`/applications/${currentAppId}`)
-      .then(res => setAppName(res.data?.name ?? currentAppId))
-      .catch(() => setAppName(currentAppId));
-  }, [currentAppId]);
+  const { data: appData } = useApplication(currentAppId ?? '');
+  const appName = appData?.name ?? currentAppId;
 
   // Detect current entity key in app context (e.g. 'devices', 'workflows')
   const entityMatch = pathname.match(/^\/applications\/[^/]+\/([^/]+)/);

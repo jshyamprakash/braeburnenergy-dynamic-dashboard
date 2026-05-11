@@ -1,8 +1,8 @@
 'use client';
 
 import { useAuth } from '@/lib/hooks/useAuth';
-import { apiClient } from '@/lib/api-client';
 import { useState, useEffect } from 'react';
+import { useCreateRetentionPolicy, useUpdateRetentionPolicy, useDeleteRetentionPolicy } from '@/lib/hooks/useRetentionPolicies';
 import { toast } from 'sonner';
 import { Archive, Trash2, Edit2, Plus } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/lib/store';
@@ -131,44 +131,40 @@ function CreateEditModal({
   const [compressionThreshold, setCompressionThreshold] = useState(
     policy?.compressionThreshold || 30
   );
-  const [loading, setLoading] = useState(false);
+  const create = useCreateRetentionPolicy();
+  const update = useUpdateRetentionPolicy();
+  const loading = create.isPending || update.isPending;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+
+    const payload = {
+      name,
+      category,
+      hotStorageDuration: daysToSeconds(hotDays),
+      warmStorageDuration: daysToSeconds(warmDays),
+      coldStorageDuration: daysToSeconds(coldDays),
+      totalRetentionDuration: daysToSeconds(hotDays + warmDays + coldDays),
+      regulatoryRequirement: regulatory,
+      archiveEnabled,
+      archiveDestination: archiveEnabled ? archiveDestination : undefined,
+      compressionEnabled,
+      compressionThreshold: compressionEnabled ? compressionThreshold : undefined,
+      isActive: true,
+    };
 
     try {
-      const payload = {
-        name,
-        category,
-        hotStorageDuration: daysToSeconds(hotDays),
-        warmStorageDuration: daysToSeconds(warmDays),
-        coldStorageDuration: daysToSeconds(coldDays),
-        totalRetentionDuration: daysToSeconds(hotDays + warmDays + coldDays),
-        regulatoryRequirement: regulatory,
-        archiveEnabled,
-        archiveDestination: archiveEnabled ? archiveDestination : undefined,
-        compressionEnabled,
-        compressionThreshold: compressionEnabled ? compressionThreshold : undefined,
-        isActive: true,
-      };
-
       if (policy) {
-        await apiClient.patch(`/retention-policies/${policy._id}`, payload);
+        await update.mutateAsync({ id: policy._id, payload });
         toast.success('Policy updated successfully');
       } else {
-        await apiClient.post('/retention-policies', payload);
+        await create.mutateAsync(payload);
         toast.success('Policy created successfully');
       }
-
       onSave();
       onClose();
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : 'Failed to save policy'
-      );
-    } finally {
-      setLoading(false);
+      toast.error(error instanceof Error ? error.message : 'Failed to save policy');
     }
   };
 
@@ -328,7 +324,9 @@ function DeleteConfirmModal({
   onDelete: () => void;
 }) {
   const [confirmText, setConfirmText] = useState('');
-  const [loading, setLoading] = useState(false);
+
+  const del = useDeleteRetentionPolicy();
+  const loading = del.isPending;
 
   const handleDelete = async () => {
     if (confirmText !== policy.name) {
@@ -336,16 +334,13 @@ function DeleteConfirmModal({
       return;
     }
 
-    setLoading(true);
     try {
-      await apiClient.delete(`/retention-policies/${policy._id}`);
+      await del.mutateAsync(policy._id);
       toast.success('Policy deleted successfully');
       onDelete();
       onClose();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to delete policy');
-    } finally {
-      setLoading(false);
     }
   };
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { apiClient } from '@/lib/api-client';
+import { useLatestDeviceState } from '@/lib/hooks/useDevices';
 
 export interface ExecutionInputModalProps {
   isOpen: boolean;
@@ -24,13 +24,13 @@ export default function ExecutionInputModal({
   const [variables, setVariables] = useState<Array<{ key: string; value: string }>>([
     { key: '', value: '' },
   ]);
-  const [isFetchingState, setIsFetchingState] = useState(false);
   const [prefillBanner, setPrefillBanner] = useState<string | null>(null);
 
-  // Find deviceStateChange trigger node if present
   const triggerNode = nodes.find(n => n.type === 'trigger:deviceStateChange');
   const triggerDeviceId: string | null = triggerNode?.data?.config?.deviceId ?? null;
   const triggerField: string | null = triggerNode?.data?.config?.field ?? null;
+
+  const { refetch: fetchLatestState, isFetching: isFetchingState } = useLatestDeviceState(triggerDeviceId ?? undefined);
 
   // Reset form when modal opens
   useEffect(() => {
@@ -56,10 +56,9 @@ export default function ExecutionInputModal({
 
   const handlePrefillFromLatestState = async () => {
     if (!triggerDeviceId) return;
-    setIsFetchingState(true);
     try {
-      const res = await apiClient.get<{ success: boolean; data: any }>(`/devices/${triggerDeviceId}/states/latest`);
-      const state = res.data?.data;
+      const result = await fetchLatestState();
+      const state = result.data;
       if (!state) {
         toast.error('No states found for this device yet');
         return;
@@ -80,8 +79,6 @@ export default function ExecutionInputModal({
       toast.success('Form pre-filled from latest device state');
     } catch (err: any) {
       toast.error(err.message || 'Failed to fetch latest state');
-    } finally {
-      setIsFetchingState(false);
     }
   };
 

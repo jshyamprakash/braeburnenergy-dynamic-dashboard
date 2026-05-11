@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useWebSocket, useDeviceStateUpdates } from '@/lib/hooks/useWebSocket';
+import { apiClient } from '@/lib/api-client';
 import type { DeviceState } from '@/lib/types';
 
 export default function WebSocketTestPage() {
@@ -81,22 +82,11 @@ export default function WebSocketTestPage() {
     try {
       const data = JSON.parse(testData);
 
-      // Send data to backend API
-      const response = await fetch(`http://localhost:3001/devices/${deviceId}/states`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data }),
-      });
-
-      if (response.ok) {
-        addMessage(`✅ Sent test data to device ${deviceId}`);
-        addMessage(`Data: ${testData}`);
-      } else {
-        const error = await response.json();
-        addMessage(`❌ Error: ${error.error?.message || 'Failed to send data'}`);
-      }
-    } catch (error) {
-      addMessage(`❌ Invalid JSON or network error: ${error}`);
+      await apiClient.post(`/devices/${deviceId}/states`, { data });
+      addMessage(`✅ Sent test data to device ${deviceId}`);
+      addMessage(`Data: ${testData}`);
+    } catch (error: any) {
+      addMessage(`❌ Error: ${error.message || 'Failed to send data'}`);
     }
   };
 

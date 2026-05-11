@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { importWorkflowFromFile, formatFileSize } from '@/lib/utils/workflow-export';
-import { apiClient } from '@/lib/api-client';
+import { useCreateWorkflow } from '@/lib/hooks/useWorkflows';
 import { toast } from 'sonner';
 
 interface ImportWorkflowButtonProps {
@@ -17,7 +17,8 @@ export default function ImportWorkflowButton({
 }: ImportWorkflowButtonProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
+  const createWorkflow = useCreateWorkflow();
+  const isLoading = createWorkflow.isPending;
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -38,27 +39,20 @@ export default function ImportWorkflowButton({
       return;
     }
 
-    setIsLoading(true);
     try {
-      // Import and validate workflow from file
       const workflowData = await importWorkflowFromFile(file);
 
-      // Create workflow via API
-      const response = await apiClient.post<{ workflowId: string }>(
-        '/workflows',
-        {
-          name: workflowData.name,
-          description: workflowData.description,
-          tags: workflowData.tags || [],
-          nodes: workflowData.nodes,
-          edges: workflowData.edges,
-          isEnabled: workflowData.isEnabled ?? false,
-          priority: workflowData.priority || 'MEDIUM',
-        }
-      );
+      const response = await createWorkflow.mutateAsync({
+        name: workflowData.name,
+        description: workflowData.description,
+        tags: workflowData.tags || [],
+        nodes: workflowData.nodes,
+        edges: workflowData.edges,
+        isEnabled: workflowData.isEnabled ?? false,
+        priority: workflowData.priority || 'MEDIUM',
+      });
 
-      // Load the newly created workflow into editor
-      const createdWorkflowId = response.data?.workflowId;
+      const createdWorkflowId = (response.data as any)?.workflowId ?? (response as any)?.data?.workflowId;
       if (createdWorkflowId) {
         toast.success('Workflow imported successfully');
         router.push(`/workflows/${createdWorkflowId}`);
@@ -71,7 +65,6 @@ export default function ImportWorkflowButton({
       toast.error(errorMessage);
       console.error('Import error:', error);
     } finally {
-      setIsLoading(false);
       resetFileInput();
     }
   };

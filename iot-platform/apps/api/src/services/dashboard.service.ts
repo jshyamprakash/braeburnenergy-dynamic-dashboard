@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { Dashboard, type IDashboard, type IDashboardBlock, type IKosmosPage } from '../models/dashboard.model';
+import { Dashboard, type IDashboard, type IDashboardBlock, type IKosmosPage, type IShareAssignment } from '../models/dashboard.model';
 import { Device } from '../models/device.model';
 import { Workflow } from '../models/workflow.model';
 import { User } from '../models/user.model';
@@ -28,7 +28,7 @@ export class DashboardService {
     if (options?.role === 'Viewer' && options?.userId) {
       const userId = new mongoose.Types.ObjectId(options.userId);
       const hasAccess = (dashboard.sharedWithUsers ?? []).some(
-        (id) => id.toString() === userId.toString()
+        (a: IShareAssignment) => a.userId.toString() === userId.toString()
       );
       if (!hasAccess) throw new ForbiddenError('You do not have access to this dashboard');
     }
@@ -103,46 +103,51 @@ export class DashboardService {
   }
 
   /**
-   * ADR-045: Share dashboard with specific org users (Viewer role).
-   * Replaces the old public shareToken approach.
-   * userIds: array of User ObjectId strings to grant access.
+   * ADR-045 v2: Share dashboard with per-user page assignments.
+   * assignments: [{ userId, pageIds }] — pageIds empty = all pages visible.
    */
   async shareWithUsers(
     orgId: string,
     dashboardId: string,
-    userIds: string[],
-    pageIds?: string[]
-  ): Promise<{ sharedWithUsers: string[]; sharedPageIds: string[] }> {
+    assignments: { userId: string; pageIds: string[] }[]
+  ): Promise<{ sharedWithUsers: { userId: string; pageIds: string[] }[] }> {
     const orgIdObj = new mongoose.Types.ObjectId(orgId);
 
-    // Validate that all userIds belong to the same org
+    const userIds = assignments.map((a) => a.userId);
     const userObjectIds = userIds.map((id) => new mongoose.Types.ObjectId(id));
     const validCount = await User.countDocuments({ _id: { $in: userObjectIds }, organizationId: orgIdObj });
     if (validCount !== userIds.length) {
       throw new BadRequestError('One or more users not found in this organization');
     }
 
+    const newSharedWithUsers: IShareAssignment[] = assignments.map((a) => ({
+      userId: new mongoose.Types.ObjectId(a.userId),
+      pageIds: a.pageIds,
+    }));
+
     const dashboard = await Dashboard.findOneAndUpdate(
       { orgId: orgIdObj, dashboardId },
-      { $set: { sharedWithUsers: userObjectIds, sharedPageIds: pageIds ?? [] } },
+      { $set: { sharedWithUsers: newSharedWithUsers } },
       { new: true }
     );
 
     if (!dashboard) throw new NotFoundError('Dashboard');
 
     return {
-      sharedWithUsers: dashboard.sharedWithUsers.map((id) => id.toString()),
-      sharedPageIds: (dashboard.sharedPageIds ?? []) as string[],
+      sharedWithUsers: dashboard.sharedWithUsers.map((a: IShareAssignment) => ({
+        userId: a.userId.toString(),
+        pageIds: a.pageIds,
+      })),
     };
   }
 
   /**
-   * ADR-045: Get all dashboards assigned to a Viewer user.
+   * ADR-045 v2: Get all dashboards assigned to a user (per-user sharing).
    */
   async getDashboardsForViewer(orgId: string, userId: string): Promise<IDashboard[]> {
     const orgIdObj = new mongoose.Types.ObjectId(orgId);
     const userIdObj = new mongoose.Types.ObjectId(userId);
-    return Dashboard.find({ orgId: orgIdObj, sharedWithUsers: userIdObj })
+    return Dashboard.find({ orgId: orgIdObj, 'sharedWithUsers.userId': userIdObj })
       .sort({ updatedAt: -1 })
       .lean() as unknown as Promise<IDashboard[]>;
   }

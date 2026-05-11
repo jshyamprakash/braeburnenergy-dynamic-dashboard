@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAppSelector } from '@/lib/store';
 import { selectUser } from '@/lib/store/slices/authSlice';
@@ -21,6 +21,11 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
   const user = useAppSelector(selectUser);
   const isViewerRoute = pathname.startsWith('/viewer');
   const isAuthRoute = pathname === '/login' || pathname === '/superadmin-login' || pathname === '/recovery';
+  const isSharedDashboardsRoute = pathname === '/shared-dashboards';
+
+  // Defer role-based layout decisions to client to avoid SSR/CSR hydration mismatch
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -31,9 +36,9 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
       if (!allowed) { router.replace('/admin-management'); return; }
     }
 
-    // Viewer: redirect to kiosk
-    if (user.role === 'Viewer' && !isViewerRoute && !isAuthRoute) {
-      router.replace('/viewer');
+    // Viewer: allow /shared-dashboards (dashboard picker + logout via TopBar); redirect all others to it
+    if (user.role === 'Viewer' && !isViewerRoute && !isAuthRoute && !isSharedDashboardsRoute) {
+      router.replace('/shared-dashboards');
       return;
     }
 
@@ -43,7 +48,9 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
     }
   }, [user, pathname, isViewerRoute, isAuthRoute, router]);
 
-  if (isViewerRoute || isAuthRoute) {
+  // Viewer on /shared-dashboards owns the full viewport (own header + logout)
+  const isViewerKiosk = mounted && (isViewerRoute || (isSharedDashboardsRoute && user?.role === 'Viewer'));
+  if (isViewerKiosk || isAuthRoute) {
     return <>{children}</>;
   }
 

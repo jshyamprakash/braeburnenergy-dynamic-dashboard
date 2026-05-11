@@ -2,6 +2,7 @@ import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { dashboardConfig } from '@/lib/config';
 import { apiClient } from '@/lib/api-client';
 import type { KosmosPage, KosmosWidget, Dashboard, BeAgentModule } from '@/components/kosmos/types';
+import type { DashboardShareAssignment } from '@repo/types';
 import { DATAFLOW_DEFAULT_CONFIG } from '@/components/kosmos/types';
 
 function shortId(): string {
@@ -77,8 +78,7 @@ export interface DashboardState {
   // Kosmos multi-page state
   kosmosPages: KosmosPage[];
   kosmosActivePage: string | null;
-  kosmosSharedWithUsers: string[]; // List of User ObjectIds (ADR-045)
-  kosmosSharedPageIds: string[];   // Page IDs visible to viewers; empty = all pages
+  kosmosSharedWithUsers: DashboardShareAssignment[]; // Per-user sharing (ADR-045 v2)
   // Viewer dashboards (dashboards shared with current user)
   viewerDashboards: Dashboard[];
 }
@@ -806,7 +806,6 @@ const initialState: DashboardState = {
   kosmosPages: [],
   kosmosActivePage: null,
   kosmosSharedWithUsers: [],
-  kosmosSharedPageIds: [],
   viewerDashboards: [],
 };
 
@@ -1082,18 +1081,14 @@ const dashboardSlice = createSlice({
       if (widget) widget.config = { ...widget.config, ...config };
     },
 
-    setKosmosSharedWithUsers: (state, action: PayloadAction<string[]>) => {
+    setKosmosSharedWithUsers: (state, action: PayloadAction<DashboardShareAssignment[]>) => {
       state.kosmosSharedWithUsers = action.payload;
     },
 
-    setKosmosSharedPageIds: (state, action: PayloadAction<string[]>) => {
-      state.kosmosSharedPageIds = action.payload;
-    },
-
-    /** Load pages directly (skip API call) — used by Viewer kiosk (ADR-045) */
+    /** Load pages directly (skip API call) — used by shared-dashboards / viewer kiosk (ADR-045 v2) */
     setKosmosFromDashboard: (
       state,
-      action: PayloadAction<{ pages: any[]; sharedWithUsers?: string[]; sharedPageIds?: string[] }>
+      action: PayloadAction<{ pages: any[]; sharedWithUsers?: DashboardShareAssignment[] }>
     ) => {
       const migrated = action.payload.pages
         .map(migratePageFormat)
@@ -1104,15 +1099,14 @@ const dashboardSlice = createSlice({
       if (action.payload.sharedWithUsers) {
         state.kosmosSharedWithUsers = action.payload.sharedWithUsers;
       }
-      if (action.payload.sharedPageIds !== undefined) {
-        state.kosmosSharedPageIds = action.payload.sharedPageIds;
-      }
     },
 
     /** Reset active mandatory page to factory defaults */
     resetActiveMandatoryPage: (state) => {
       const page = state.kosmosPages.find((p) => p.id === state.kosmosActivePage);
-      if (!page?.isMandatory) return;
+      if (!page) return;
+      // Allow mandatory pages AND non-mandatory additional combustion DL pages
+      if (!page.isMandatory && page.mandatoryType !== 'combustionDl') return;
 
       let fresh: KosmosPage | null = null;
       if (page.mandatoryType === 'overview') {
@@ -1126,6 +1120,14 @@ const dashboardSlice = createSlice({
       }
 
       if (!fresh) return;
+
+      // For additional (non-mandatory) pages, strip device bindings so each tab is data-independent
+      if (!page.isMandatory) {
+        fresh.widgets = fresh.widgets.map((w) => ({
+          ...w,
+          config: { ...w.config, deviceId: '', fieldName: '' },
+        }));
+      }
 
       // Replace widgets only, keep page id/name/order
       page.widgets = fresh.widgets;
@@ -1334,7 +1336,6 @@ export const {
   updateKosmosWidgetLayout,
   updateKosmosWidgetConfig,
   setKosmosSharedWithUsers,
-  setKosmosSharedPageIds,
   setKosmosFromDashboard,
   resetActiveMandatoryPage,
 } = dashboardSlice.actions;
@@ -1382,7 +1383,5 @@ export const selectKosmosActivePage = (state: { dashboard: DashboardState }) =>
   state.dashboard.kosmosActivePage;
 export const selectKosmosSharedWithUsers = (state: { dashboard: DashboardState }) =>
   state.dashboard.kosmosSharedWithUsers;
-export const selectKosmosSharedPageIds = (state: { dashboard: DashboardState }) =>
-  state.dashboard.kosmosSharedPageIds;
 export const selectViewerDashboards = (state: { dashboard: DashboardState }) =>
   state.dashboard.viewerDashboards;

@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import { Plus, Upload, Edit2, Trash2 } from 'lucide-react';
 import Link from 'next/link';
-import { apiClient } from '@/lib/api-client';
+import { useDeleteWorkflow, useEnableWorkflow, useDisableWorkflow } from '@/lib/hooks/useWorkflows';
 import CreateWorkflowModal from '@/components/workflow/CreateWorkflowModal';
 import { BulkImportModal } from '@/components/workflow/BulkImportModal';
 import { toast } from 'sonner';
@@ -26,11 +26,14 @@ export function WorkflowsTab({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [deletingWorkflowId, setDeletingWorkflowId] = useState<string | null>(null);
+  const deleteWorkflow = useDeleteWorkflow();
+  const enableWorkflow = useEnableWorkflow();
+  const disableWorkflow = useDisableWorkflow();
 
   const handleDelete = useCallback(
     async (workflowId: string) => {
       try {
-        await apiClient.delete(`/workflows/${workflowId}`);
+        await deleteWorkflow.mutateAsync(workflowId);
         toast.success('Workflow deleted');
         setDeletingWorkflowId(null);
         await onRefresh();
@@ -38,7 +41,7 @@ export function WorkflowsTab({
         toast.error(error.message || 'Failed to delete workflow');
       }
     },
-    [onRefresh]
+    [deleteWorkflow, onRefresh]
   );
 
   const handleSuccess = useCallback(async () => {
@@ -119,10 +122,11 @@ export function WorkflowsTab({
                       onClick={async (e) => {
                         e.stopPropagation();
                         try {
-                          const endpoint = workflow.isEnabled
-                            ? `/workflows/${workflow.workflowId}/disable`
-                            : `/workflows/${workflow.workflowId}/enable`;
-                          await apiClient.post(endpoint, {});
+                          if (workflow.isEnabled) {
+                            await disableWorkflow.mutateAsync(workflow.workflowId);
+                          } else {
+                            await enableWorkflow.mutateAsync(workflow.workflowId);
+                          }
                           await onRefresh();
                         } catch {
                           // silent — the list will show stale state until next load

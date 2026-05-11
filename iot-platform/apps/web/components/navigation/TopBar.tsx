@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Bell, ChevronRight, Building2 } from 'lucide-react';
@@ -8,8 +9,7 @@ import { NotificationDropdown } from './NotificationDropdown';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useNotifications, useNotificationSocket } from '@/lib/hooks/useNotifications';
 import { useOrganization } from '@/lib/hooks/useOrganizations';
-import { useState, useEffect } from 'react';
-import { apiClient } from '@/lib/api-client';
+import { useApplication } from '@/lib/hooks/useApplications';
 
 // ── Breadcrumb segment type ───────────────────────────────────────────────
 interface BreadcrumbSegment {
@@ -20,17 +20,12 @@ interface BreadcrumbSegment {
 // ── Build breadcrumb segments from pathname ───────────────────────────────
 function useBreadcrumbs(): BreadcrumbSegment[] {
   const pathname = usePathname();
-  const [appName, setAppName] = useState<string | null>(null);
 
   const appMatch = pathname.match(/^\/applications\/([^/]+)/);
   const appId = appMatch?.[1] ?? null;
 
-  useEffect(() => {
-    if (!appId) { setAppName(null); return; }
-    apiClient.get<any>(`/applications/${appId}`)
-      .then(res => setAppName(res.data?.name ?? null))
-      .catch(() => setAppName(null));
-  }, [appId]);
+  const { data: appData } = useApplication(appId ?? '');
+  const appName = appData?.name ?? null;
 
   const segments: BreadcrumbSegment[] = [{ label: 'Platform', href: '/applications' }];
 

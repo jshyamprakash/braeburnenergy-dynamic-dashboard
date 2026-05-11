@@ -6,6 +6,7 @@ import { useAppSelector, useAppDispatch } from '@/lib/store';
 import { selectUser } from '@/lib/store/slices/authSlice';
 import { setKosmosFromDashboard } from '@/lib/store/slices/dashboardSlice';
 import { useViewerDashboards } from '@/lib/hooks/useViewerDashboards';
+import { useAuth } from '@/lib/hooks/useAuth';
 import { KosmosShell } from '@/components/kosmos/KosmosShell';
 
 /**
@@ -19,6 +20,7 @@ export default function ViewerPage() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const user = useAppSelector(selectUser);
+  const { logout } = useAuth();
   const { data: dashboards, isLoading, error } = useViewerDashboards();
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -35,21 +37,23 @@ export default function ViewerPage() {
 
   const activeDashboard = dashboards?.[activeIndex];
 
-  // Populate Kosmos pages from already-fetched dashboard data (skip second API call)
-  // Filter pages by sharedPageIds so viewer only sees the tabs the admin selected
+  // Populate Kosmos pages — per-user tab filtering (ADR-045 v2)
   useEffect(() => {
     if (!activeDashboard?.pages) return;
     const rawPages = activeDashboard.pages ?? [];
-    const sharedPageIds = activeDashboard.sharedPageIds ?? [];
-    const pagesToShow = sharedPageIds.length > 0
-      ? rawPages.filter((p: any) => sharedPageIds.includes(p.id))
+    const sharedWithUsers: any[] = activeDashboard.sharedWithUsers ?? [];
+    const myAssignment = sharedWithUsers.find(
+      (a: any) => a.userId === user?.id || a.userId?.toString() === user?.id
+    );
+    const myPageIds: string[] = myAssignment?.pageIds ?? [];
+    const pagesToShow = myPageIds.length > 0
+      ? rawPages.filter((p: any) => myPageIds.includes(p.id ?? p.pageId))
       : rawPages;
     dispatch(setKosmosFromDashboard({
       pages: pagesToShow,
-      sharedWithUsers: activeDashboard.sharedWithUsers ?? [],
-      sharedPageIds,
+      sharedWithUsers,
     }));
-  }, [activeDashboard, dispatch]);
+  }, [activeDashboard, dispatch, user?.id]);
 
   if (isLoading) {
     return (
@@ -76,6 +80,17 @@ export default function ViewerPage() {
 
   return (
     <div className="flex h-screen flex-col bg-black">
+      {/* Minimal header with logout */}
+      <div className="flex shrink-0 items-center justify-between border-b border-gray-800 bg-gray-950 px-4 py-1">
+        <span className="font-mono text-xs tracking-widest text-cyan-700">KOSMOS CORTEX™</span>
+        <button
+          onClick={async () => { await logout(); router.replace('/login'); }}
+          className="font-mono text-xs tracking-wider text-gray-500 hover:text-gray-300"
+        >
+          LOGOUT
+        </button>
+      </div>
+
       {/* Tab strip for multiple dashboards */}
       {dashboards.length > 1 && (
         <div className="flex shrink-0 border-b border-gray-800 bg-gray-950 px-4">

@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import { Plus, Edit2, Trash2, X } from 'lucide-react';
 import Link from 'next/link';
-import { apiClient } from '@/lib/api-client';
+import { useCreateDashboard, useDeleteDashboard } from '@/lib/hooks/useDashboards';
 import { toast } from 'sonner';
 import { PREREQ_TOOLTIPS } from '@/lib/constants/ui-messages';
 import { ulid } from 'ulid';
@@ -36,7 +36,8 @@ function CreateDashboardModal({
 }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [loading, setLoading] = useState(false);
+  const createDashboard = useCreateDashboard();
+  const loading = createDashboard.isPending;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,9 +46,8 @@ function CreateDashboardModal({
       return;
     }
 
-    setLoading(true);
     try {
-      await apiClient.post('/dashboards', {
+      await createDashboard.mutateAsync({
         dashboardId: ulid(),
         name: name.trim(),
         description: description.trim() || undefined,
@@ -59,8 +59,6 @@ function CreateDashboardModal({
       onSuccess();
     } catch (error: any) {
       toast.error(error.message || 'Failed to create dashboard');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -121,11 +119,12 @@ export function DashboardsTab({
 }: DashboardsTabProps) {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [deletingDashboardId, setDeletingDashboardId] = useState<string | null>(null);
+  const deleteDashboard = useDeleteDashboard();
 
   const handleDelete = useCallback(
     async (dashboardId: string) => {
       try {
-        await apiClient.delete(`/dashboards/${dashboardId}`);
+        await deleteDashboard.mutateAsync(dashboardId);
         toast.success('Dashboard deleted');
         setDeletingDashboardId(null);
         await onRefresh();
@@ -133,7 +132,7 @@ export function DashboardsTab({
         toast.error(error.message || 'Failed to delete dashboard');
       }
     },
-    [onRefresh]
+    [deleteDashboard, onRefresh]
   );
 
   const handleSuccess = useCallback(async () => {

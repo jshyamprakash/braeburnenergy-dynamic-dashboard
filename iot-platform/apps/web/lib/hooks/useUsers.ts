@@ -2,6 +2,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
 import type { User, UserRole } from '@repo/types';
 
+interface CreateUserInput {
+  username: string;
+  email: string;
+  password: string;
+  role: UserRole;
+  organizationId: string;
+}
+
 interface UpdateUserInput {
   role?: UserRole;
   isActive?: boolean;
@@ -17,6 +25,23 @@ interface UpdateUserResponse {
   failedLoginAttempts: number;
   lockedUntil?: string | null;
   updatedAt: string;
+}
+
+/**
+ * Create a new user (requires user:create permission). Invalidates users list on success.
+ */
+export function useCreateUser() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: CreateUserInput) => {
+      const res = await apiClient.post<{ data: User }>('/auth/register', input);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+  });
 }
 
 /**

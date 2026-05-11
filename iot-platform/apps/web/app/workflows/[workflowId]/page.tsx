@@ -17,7 +17,7 @@ import KeyboardShortcutsHelp from '@/components/workflow/KeyboardShortcutsHelp';
 import ContextDebugPanel from '@/components/workflow/ContextDebugPanel';
 import { useWorkflowKeyboardShortcuts } from '@/hooks/useWorkflowKeyboardShortcuts';
 import { exportWorkflowToJSON } from '@/lib/utils/workflow-export';
-import { apiClient } from '@/lib/api-client';
+import { useEnableWorkflow } from '@/lib/hooks/useWorkflows';
 import { toast } from 'sonner';
 import NodeContextMenu from '@/components/workflow/NodeContextMenu';
 import { ReactFlowProvider } from 'reactflow';
@@ -61,6 +61,7 @@ function WorkflowBuilderPage() {
     applicationId,
   } = useAppSelector(state => state.workflow);
 
+  const enableWorkflow = useEnableWorkflow();
   const [isSaving, setIsSaving] = useState(false);
   const [isExecutionHistoryModalOpen, setIsExecutionHistoryModalOpen] = useState(false);
   const [isValidationPanelOpen, setIsValidationPanelOpen] = useState(false);
@@ -185,7 +186,7 @@ function WorkflowBuilderPage() {
       await handleSave();
     }
     try {
-      await apiClient.post(`/workflows/${workflowId}/enable`, {});
+      await enableWorkflow.mutateAsync(workflowId as string);
       toast.success('Workflow deployed and active');
       toast.info('Device State Trigger workflows activate automatically when the device sends data.');
     } catch (error: any) {

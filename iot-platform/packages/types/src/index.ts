@@ -838,7 +838,16 @@ export interface NotificationListResponse {
 }
 
 /**
- * Dashboard - Kosmos unified dashboard with user-based sharing (ADR-045)
+ * Per-user dashboard sharing assignment (ADR-045 v2)
+ * pageIds: [] = all pages; non-empty = only those pages
+ */
+export interface DashboardShareAssignment {
+  userId: string;
+  pageIds: string[];
+}
+
+/**
+ * Dashboard - Kosmos unified dashboard with per-user sharing (ADR-045 v2)
  */
 export interface Dashboard {
   id: string;
@@ -850,8 +859,7 @@ export interface Dashboard {
   blocks?: any[];           // Legacy react-grid-layout blocks
   layouts?: Record<string, any>;
   pages?: any[];            // Kosmos pages with unified widgets[]
-  sharedWithUsers: string[]; // List of User ObjectIds with viewer access (ADR-045)
-  sharedPageIds?: string[];  // Page IDs visible to viewers; empty = all pages
+  sharedWithUsers: DashboardShareAssignment[]; // Per-user sharing (ADR-045 v2)
   createdAt: string | Date;
   updatedAt: string | Date;
 }

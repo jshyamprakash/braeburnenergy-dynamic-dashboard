@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { AlertCircle, LogOut } from 'lucide-react';
 import { useAuth } from '@/lib/hooks/useAuth';
-import { apiClient } from '@/lib/api-client';
+import { useLogoutAll } from '@/lib/hooks/useProfile';
 import { useRouter } from 'next/navigation';
 import { useAppSelector } from '@/lib/store';
 import { selectSessions } from '@/lib/store/slices/userSlice';
@@ -51,19 +51,18 @@ export function ActiveSessionsSection() {
   const { logout } = useAuth();
   const sessions = useAppSelector(selectSessions);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [logoutLoading, setLogoutLoading] = useState(false);
+  const logoutAll = useLogoutAll();
+  const logoutLoading = logoutAll.isPending;
 
   const handleLogoutAll = async () => {
-    setLogoutLoading(true);
     try {
-      await apiClient.post('/auth/logout-all', {});
+      await logoutAll.mutateAsync();
       toast.success('Logged out from all devices');
       await logout();
       router.push('/login');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to logout');
     } finally {
-      setLogoutLoading(false);
       setShowLogoutConfirm(false);
     }
   };

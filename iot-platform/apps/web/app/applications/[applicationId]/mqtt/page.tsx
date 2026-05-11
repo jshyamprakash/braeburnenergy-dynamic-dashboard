@@ -1,10 +1,9 @@
 'use client';
 
-import { use, useState, useEffect } from 'react';
+import { use } from 'react';
 import { useRouter } from 'next/navigation';
-import { apiClient } from '@/lib/api-client';
+import { useApplication } from '@/lib/hooks/useApplications';
 import { MqttTab } from '../_components/MqttTab';
-import type { Application } from '@repo/types';
 
 interface Props {
   params: Promise<{ applicationId: string }>;
@@ -13,17 +12,11 @@ interface Props {
 export default function ApplicationMqttPage({ params }: Props) {
   const { applicationId } = use(params);
   const router = useRouter();
-  const [application, setApplication] = useState<Application | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: application, isLoading, isError } = useApplication(applicationId);
 
-  useEffect(() => {
-    apiClient.get<Application>(`/applications/${applicationId}`)
-      .then(res => setApplication(res.data))
-      .catch(() => router.push('/applications'))
-      .finally(() => setLoading(false));
-  }, [applicationId, router]);
+  if (isError) { router.push('/applications'); return null; }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center py-16">
         <p className="text-slate-400 dark:text-slate-500">Loading…</p>

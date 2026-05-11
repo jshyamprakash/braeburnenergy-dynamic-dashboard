@@ -14,6 +14,16 @@ interface EChartsLineProps {
   fill?: boolean;
 }
 
+function toAreaColor(color: string, alpha = 0.1): string {
+  if (color.startsWith('#')) {
+    const r = parseInt(color.slice(1, 3), 16);
+    const g = parseInt(color.slice(3, 5), 16);
+    const b = parseInt(color.slice(5, 7), 16);
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
+  return color.replace(/[\d.]+\)$/g, `${alpha})`);
+}
+
 /**
  * EChartsLine — Shared time-series line chart component
  * Renders [timestamp, value] points with ECharts time-axis
@@ -89,11 +99,7 @@ export function EChartsLine({
           color,
           width: 2,
         },
-        areaStyle: fill
-          ? {
-              color: color.replace(/[\d.]+\)$/g, '0.1)'), // e.g. rgba(0,176,80,1) → rgba(0,176,80,0.1)
-            }
-          : undefined,
+        areaStyle: fill ? { color: toAreaColor(color, 0.1) } : undefined,
         itemStyle: {
           color,
         },
@@ -102,7 +108,8 @@ export function EChartsLine({
         markLine:
           threshold !== undefined
             ? {
-                data: [{ yAxis: threshold, lineStyle: { color: '#FFB800', type: 'dashed' } }],
+                symbol: 'none',
+                data: [{ yAxis: threshold, lineStyle: { color: 'rgba(255,58,58,0.4)', type: 'dashed', width: 1 } }],
               }
             : undefined,
       },

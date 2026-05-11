@@ -1,8 +1,8 @@
 'use client';
 
-import { use, useState, useEffect } from 'react';
+import { use, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { apiClient } from '@/lib/api-client';
+import { useApplication } from '@/lib/hooks/useApplications';
 import { toast } from 'sonner';
 import { Plus } from 'lucide-react';
 import {
@@ -14,7 +14,7 @@ import {
   useStopEnipGateway,
   useTestEnipConnection,
 } from '@/lib/hooks/useEnipGateways';
-import type { Application, EnipGateway, CreateEnipGatewayInput } from '@repo/types';
+import type { EnipGateway, CreateEnipGatewayInput } from '@repo/types';
 import { EnipGatewayTable } from '@/app/enip-gateways/_components/EnipGatewayTable';
 import { EnipGatewayModal } from '@/app/enip-gateways/_components/EnipGatewayModal';
 import { EnipGatewayDetailPanel } from '@/app/enip-gateways/_components/EnipGatewayDetailPanel';
@@ -24,16 +24,7 @@ interface Props { params: Promise<{ applicationId: string }> }
 export default function ApplicationEnipPage({ params }: Props) {
   const { applicationId } = use(params);
   const router = useRouter();
-  const [application, setApplication] = useState<Application | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    apiClient.get<Application>(`/applications/${applicationId}`)
-      .then((res) => setApplication(res.data))
-      .catch(() => router.push('/applications'))
-      .finally(() => setLoading(false));
-  }, [applicationId, router]);
-
+  const { data: application, isLoading: appLoading, isError: appError } = useApplication(applicationId);
   const { data, isLoading } = useEnipGateways({ applicationId });
   const gateways = data?.gateways || [];
 
@@ -60,7 +51,8 @@ export default function ApplicationEnipPage({ params }: Props) {
     await del.mutateAsync(id); toast.success('Deleted'); setDeletingId(null);
   };
 
-  if (loading) return <div className="flex items-center justify-center py-16"><p className="text-slate-400 dark:text-slate-500">Loading…</p></div>;
+  if (appError) { router.push('/applications'); return null; }
+  if (appLoading) return <div className="flex items-center justify-center py-16"><p className="text-slate-400 dark:text-slate-500">Loading…</p></div>;
 
   return (
     <div className="space-y-5">

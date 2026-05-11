@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { apiClient } from '@/lib/api-client';
+import { useWorkflowTemplates } from '@/lib/hooks/useWorkflows';
 
 interface WorkflowTemplate {
   id: string;
@@ -20,29 +19,9 @@ interface TemplatePickerModalProps {
 }
 
 export default function TemplatePickerModal({ isOpen, onClose, onSelect }: TemplatePickerModalProps) {
-  const [templates, setTemplates] = useState<WorkflowTemplate[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const loadTemplates = async () => {
-      try {
-        setLoading(true);
-        const response = await apiClient.get<WorkflowTemplate[]>('/workflow-templates');
-        setTemplates(response.data || []);
-        setError(null);
-      } catch (err: any) {
-        console.error('Failed to load templates:', err);
-        setError(err.message || 'Failed to load templates');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadTemplates();
-  }, [isOpen]);
+  const { data: rawTemplates = [], isLoading: loading, isError, error: fetchError } = useWorkflowTemplates();
+  const templates = rawTemplates as WorkflowTemplate[];
+  const error = isError ? (fetchError instanceof Error ? fetchError.message : 'Failed to load templates') : null;
 
   if (!isOpen) return null;
 

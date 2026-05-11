@@ -384,13 +384,13 @@ export class AuthService {
     // Check if username already exists
     const existingUser = await User.findOne({ username });
     if (existingUser) {
-      throw new Error('Username already exists');
+      throw new ConflictError('Username already exists');
     }
 
     // Check if email already exists
     const existingEmail = await User.findOne({ email });
     if (existingEmail) {
-      throw new Error('Email already exists');
+      throw new ConflictError('Email already exists');
     }
 
     // Validate password strength (EPA compliance)
@@ -411,7 +411,18 @@ export class AuthService {
     // Set password (will be hashed via virtual)
     user.password = password;
 
-    await user.save();
+    try {
+      await user.save();
+    } catch (err: any) {
+      if (err.code === 11000) {
+        const field = Object.keys(err.keyPattern ?? {})[0] ?? 'field';
+        throw new ConflictError(`${field} already exists`);
+      }
+      if (err.name === 'CastError') {
+        throw new BadRequestError(`Invalid value for field: ${err.path}`);
+      }
+      throw err;
+    }
 
     return user;
   }

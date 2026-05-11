@@ -1,10 +1,10 @@
 'use client';
 
-import { use, useState, useEffect, useCallback } from 'react';
+import { use } from 'react';
 import { useRouter } from 'next/navigation';
-import { apiClient } from '@/lib/api-client';
+import { useApplication } from '@/lib/hooks/useApplications';
+import { useDevices } from '@/lib/hooks/useDevices';
 import { DevicesTab } from '../_components/DevicesTab';
-import type { Application, Device } from '@repo/types';
 
 interface Props {
   params: Promise<{ applicationId: string }>;
@@ -13,32 +13,12 @@ interface Props {
 export default function ApplicationDevicesPage({ params }: Props) {
   const { applicationId } = use(params);
   const router = useRouter();
-  const [application, setApplication] = useState<Application | null>(null);
-  const [devices, setDevices] = useState<Device[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: application, isLoading: appLoading, isError: appError } = useApplication(applicationId);
+  const { data: devicesData, isLoading: devLoading, refetch } = useDevices({ applicationId, limit: 100 });
 
-  const fetchDevices = useCallback(async () => {
-    const res = await apiClient.get<any>(`/devices?limit=100&offset=0&applicationId=${applicationId}`);
-    setDevices(res.data || []);
-  }, [applicationId]);
+  if (appError) { router.push('/applications'); return null; }
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const [appRes] = await Promise.all([
-          apiClient.get<Application>(`/applications/${applicationId}`),
-          fetchDevices(),
-        ]);
-        setApplication(appRes.data);
-      } catch {
-        router.push('/applications');
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [applicationId, router, fetchDevices]);
-
-  if (loading) {
+  if (appLoading || devLoading) {
     return (
       <div className="flex items-center justify-center py-16">
         <p className="text-slate-400 dark:text-slate-500">Loading…</p>
@@ -54,8 +34,8 @@ export default function ApplicationDevicesPage({ params }: Props) {
       </div>
       <DevicesTab
         applicationId={applicationId}
-        devices={devices}
-        onRefresh={fetchDevices}
+        devices={(devicesData?.devices ?? []) as any}
+        onRefresh={async () => { await refetch(); }}
       />
     </div>
   );

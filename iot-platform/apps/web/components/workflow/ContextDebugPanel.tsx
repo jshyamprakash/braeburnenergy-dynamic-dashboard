@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import type { WorkflowExecutionStepEvent, WorkflowDebugMessageEvent } from '@repo/types';
-import { apiClient } from '@/lib/api-client';
+import { useEvaluateExpression } from '@/lib/hooks/useWorkflows';
 
 interface ContextDebugPanelProps {
   isOpen: boolean;
@@ -36,8 +36,8 @@ export default function ContextDebugPanel({
   const [testerInput, setTesterInput] = useState('{{trigger}}');
   const [testerResult, setTesterResult] = useState<any>(null);
   const [testerError, setTesterError] = useState<string | null>(null);
-  const [testerLoading, setTesterLoading] = useState(false);
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+  const evaluateExprMutation = useEvaluateExpression(workflowId ?? '');
 
   // Extract variables from execution context snapshot
   const getContextVariables = () => {
@@ -67,15 +67,11 @@ export default function ContextDebugPanel({
         return;
       }
 
-      setTesterLoading(true);
       setTesterError(null);
       setTesterResult(null);
 
       try {
-        const response = await apiClient.post<any>(`/workflows/${workflowId}/evaluate-expression`, {
-          expression,
-        });
-
+        const response = await evaluateExprMutation.mutateAsync(expression);
         if (response.data && (response.data as any).data?.result !== undefined) {
           setTesterResult((response.data as any).data.result);
         } else {
@@ -83,8 +79,6 @@ export default function ContextDebugPanel({
         }
       } catch (err: any) {
         setTesterError(err.message || 'Error evaluating expression');
-      } finally {
-        setTesterLoading(false);
       }
     },
     [workflowId, executionLog.length]
@@ -405,21 +399,21 @@ export default function ContextDebugPanel({
             </div>
 
             {/* Result or Error */}
-            {testerLoading && (
+            {evaluateExprMutation.isPending && (
               <div className="flex items-center gap-2 p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded text-xs text-indigo-600 dark:text-indigo-400">
                 <div className="animate-spin h-3 w-3 border-2 border-indigo-500 border-t-transparent rounded-full" />
                 Evaluating...
               </div>
             )}
 
-            {testerError && !testerLoading && (
+            {testerError && !evaluateExprMutation.isPending && (
               <div className="p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded">
                 <p className="text-xs font-semibold text-red-700 dark:text-red-300 mb-1">Error</p>
                 <p className="text-xs text-red-600 dark:text-red-400 font-mono break-all">{testerError}</p>
               </div>
             )}
 
-            {testerResult !== null && !testerLoading && !testerError && (
+            {testerResult !== null && !evaluateExprMutation.isPending && !testerError && (
               <div className="p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded">
                 <p className="text-xs font-semibold text-green-700 dark:text-green-300 mb-1">Result</p>
                 <p className="text-xs text-green-600 dark:text-green-400 font-mono break-all">

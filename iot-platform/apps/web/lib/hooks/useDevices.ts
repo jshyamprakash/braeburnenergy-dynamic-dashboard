@@ -109,8 +109,18 @@ export function useDeleteDevice() {
       await apiClient.delete(`/devices/${deviceId}`);
     },
     onSuccess: () => {
-      // Invalidate device lists to refetch
       queryClient.invalidateQueries({ queryKey: DEVICE_KEYS.lists() });
     },
+  });
+}
+
+export function useLatestDeviceState(deviceId: string | undefined) {
+  return useQuery({
+    queryKey: ['devices', deviceId, 'state', 'latest'],
+    queryFn: async () => {
+      const res = await apiClient.get<{ success: boolean; data: any }>(`/devices/${deviceId}/states/latest`);
+      return res.data?.data ?? null;
+    },
+    enabled: false,
   });
 }

@@ -20,7 +20,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      router.push(user.role === 'Viewer' ? '/viewer' : '/');
+      router.push(user.role === 'Viewer' ? '/shared-dashboards' : '/');
     }
   }, [isAuthenticated, user, router]);
 
@@ -35,7 +35,7 @@ export default function LoginPage() {
     try {
       const result = await login(username.trim(), password);
       toast.success('Login successful!');
-      router.push(result.user.role === 'Viewer' ? '/viewer' : '/');
+      router.push(result.user.role === 'Viewer' ? '/shared-dashboards' : '/');
     } catch (err) {
       const msg = err instanceof Error ? err.message : (err as any)?.message || 'Login failed';
       toast.error(msg);

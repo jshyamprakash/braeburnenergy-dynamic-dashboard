@@ -1,11 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { apiClient } from '@/lib/api-client';
 import { toast } from 'sonner';
 import type { UserRole } from '@repo/types';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/lib/store';
+import { useCreateUser } from '@/lib/hooks/useUsers';
 
 interface CreateUserModalProps {
   isOpen: boolean;
@@ -22,7 +22,7 @@ export function CreateUserModal({
   organizationId,
   callerRole,
 }: CreateUserModalProps) {
-  const [loading, setLoading] = useState(false);
+  const createUserMutation = useCreateUser();
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -36,22 +36,15 @@ export function CreateUserModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
 
     try {
-      await apiClient.post('/auth/register', {
-        ...formData,
-        organizationId,
-      });
-
+      await createUserMutation.mutateAsync({ ...formData, organizationId });
       toast.success('User created successfully');
       setFormData({ username: '', email: '', password: '', role: 'Operator' });
       onSuccess();
       onClose();
     } catch (error: any) {
       toast.error(error.message || 'Failed to create user');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -139,16 +132,16 @@ export function CreateUserModal({
               type="button"
               onClick={onClose}
               className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800"
-              disabled={loading}
+              disabled={createUserMutation.isPending}
             >
               Cancel
             </button>
             <button
               type="submit"
               className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
-              disabled={loading}
+              disabled={createUserMutation.isPending}
             >
-              {loading ? 'Creating...' : 'Create'}
+              {createUserMutation.isPending ? 'Creating...' : 'Create'}
             </button>
           </div>
         </form>

@@ -96,18 +96,18 @@ export class DashboardController {
    * ADR-045: Share dashboard with specific org users (body: { userIds: string[] })
    */
   async shareWithUsers(
-    request: FastifyRequest<{ Params: { dashboardId: string }; Body: { userIds: string[]; pageIds?: string[] } }>,
+    request: FastifyRequest<{ Params: { dashboardId: string }; Body: { assignments: { userId: string; pageIds: string[] }[] } }>,
     reply: FastifyReply
   ) {
     const { orgId } = getRequestContext(request);
     const { dashboardId } = request.params;
-    const { userIds, pageIds } = request.body;
+    const { assignments } = request.body;
 
-    if (!Array.isArray(userIds)) {
-      throw new BadRequestError('userIds must be an array');
+    if (!Array.isArray(assignments)) {
+      throw new BadRequestError('assignments must be an array');
     }
 
-    const result = await dashboardService.shareWithUsers(orgId, dashboardId, userIds, pageIds);
+    const result = await dashboardService.shareWithUsers(orgId, dashboardId, assignments);
     return sendSuccess(reply, result);
   }
 

@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { apiClient } from '@/lib/api-client';
+import { useAlarms } from '@/lib/hooks/useAlarms';
 import type { DashboardBlock } from './DashboardBuilder';
 
 interface AlarmInstance {
@@ -47,32 +46,13 @@ function timeAgo(isoString: string): string {
 export function ActiveAlarmsBlock({ block, isEditMode }: ActiveAlarmsBlockProps) {
   const { title = 'Active Alarms', maxCount = 5, filterByState = ['ACTIVE_UNACKED', 'ACTIVE_ACKED'], filterByPriority = [] } = block.config;
 
-  const [alarms, setAlarms] = useState<AlarmInstance[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchAlarms = useCallback(async () => {
-    try {
-      const params = new URLSearchParams({ limit: String(maxCount) });
-      if (filterByState?.length) filterByState.forEach((s: string) => params.append('state', s));
-      if (filterByPriority?.length) filterByPriority.forEach((p: string) => params.append('priority', p));
-
-      const res = await apiClient.get<any>(`/alarms?${params.toString()}`);
-      setAlarms(res.data?.data ?? res.data ?? []);
-      setError(null);
-    } catch {
-      setError('Failed to load alarms');
-    } finally {
-      setLoading(false);
-    }
-  }, [maxCount, filterByState, filterByPriority]);
-
-  useEffect(() => {
-    if (isEditMode) return;
-    fetchAlarms();
-    const timer = setInterval(fetchAlarms, 30000);
-    return () => clearInterval(timer);
-  }, [fetchAlarms, isEditMode]);
+  const { data: alarms = [], isLoading: loading, isError } = useAlarms({
+    limit: maxCount,
+    state: filterByState,
+    priority: filterByPriority,
+    enabled: !isEditMode,
+  });
+  const error = isError ? 'Failed to load alarms' : null;
 
   return (
     <div className="w-full h-full flex flex-col bg-white dark:bg-gray-800 rounded-lg overflow-hidden">

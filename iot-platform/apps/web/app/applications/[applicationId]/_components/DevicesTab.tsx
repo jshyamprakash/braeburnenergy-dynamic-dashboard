@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import { Plus, Edit2, Trash2 } from 'lucide-react';
 import Link from 'next/link';
-import { apiClient } from '@/lib/api-client';
+import { useDeleteDevice } from '@/lib/hooks/useDevices';
 import { DeviceForm } from '@/components/device/DeviceForm';
 import { toast } from 'sonner';
 import type { Device } from '@repo/types';
@@ -18,11 +18,12 @@ export function DevicesTab({ applicationId, devices, onRefresh }: DevicesTabProp
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingDevice, setEditingDevice] = useState<Device | null>(null);
   const [deletingDeviceId, setDeletingDeviceId] = useState<string | null>(null);
+  const deleteDevice = useDeleteDevice();
 
   const handleDelete = useCallback(
     async (deviceId: string) => {
       try {
-        await apiClient.delete(`/devices/${deviceId}`);
+        await deleteDevice.mutateAsync(deviceId);
         toast.success('Device deleted');
         setDeletingDeviceId(null);
         await onRefresh();
@@ -30,7 +31,7 @@ export function DevicesTab({ applicationId, devices, onRefresh }: DevicesTabProp
         toast.error(error.message || 'Failed to delete device');
       }
     },
-    [onRefresh]
+    [deleteDevice, onRefresh]
   );
 
   const handleFormSuccess = useCallback(async () => {

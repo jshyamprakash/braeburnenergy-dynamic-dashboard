@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import { X, Upload, AlertCircle, CheckCircle, Clock } from 'lucide-react';
 import { toast } from 'sonner';
-import { apiClient } from '@/lib/api-client';
+import { useCreateWorkflow } from '@/lib/hooks/useWorkflows';
 import type { Workflow } from '@repo/types';
 
 interface BulkImportModalProps {
@@ -38,6 +38,7 @@ export function BulkImportModal({
 }: BulkImportModalProps) {
   const [files, setFiles] = useState<FilePreview[]>([]);
   const [importing, setImporting] = useState(false);
+  const createWorkflow = useCreateWorkflow();
   const [results, setResults] = useState<ImportResult[]>([]);
   const [stage, setStage] = useState<'select' | 'preview' | 'result'>('select');
 
@@ -124,7 +125,7 @@ export function BulkImportModal({
           applicationId,
         };
 
-        await apiClient.post('/workflows', payload);
+        await createWorkflow.mutateAsync(payload);
         importResults.push({
           name: preview.renameTo || data.name,
           status: 'imported',

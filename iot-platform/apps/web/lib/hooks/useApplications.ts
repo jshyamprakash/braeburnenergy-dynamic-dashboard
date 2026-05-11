@@ -11,6 +11,18 @@ export const applicationKeys = {
   detail: (id: string) => [...applicationKeys.all, 'detail', id] as const,
 };
 
+export function useApplication(applicationId: string) {
+  return useQuery({
+    queryKey: applicationKeys.detail(applicationId),
+    queryFn: async () => {
+      const { data } = await apiClient.get<Application>(`/applications/${applicationId}`);
+      return data;
+    },
+    enabled: !!applicationId,
+    staleTime: 30_000,
+  });
+}
+
 export function useApplications(params: { search?: string; limit: number; offset: number }) {
   return useQuery({
     queryKey: applicationKeys.list(params),

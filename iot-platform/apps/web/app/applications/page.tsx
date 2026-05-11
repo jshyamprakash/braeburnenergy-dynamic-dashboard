@@ -1,13 +1,11 @@
 'use client';
 
 import { useAuth } from '@/lib/hooks/useAuth';
-import { apiClient } from '@/lib/api-client';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Copy, Trash2, Edit2, Plus, ToggleLeft, ToggleRight, Search, LayoutGrid } from 'lucide-react';
 import Link from 'next/link';
-import { useQueryClient } from '@tanstack/react-query';
-import { useApplications, applicationKeys } from '@/lib/hooks/useApplications';
+import { useApplications, useCreateApplication, useUpdateApplication, useDeleteApplication } from '@/lib/hooks/useApplications';
 import { TableRowSkeleton } from '@/components/ui/Skeleton';
 import { useDebounce } from '@/lib/hooks/useDebounce';
 import type { Application } from '@repo/types';
@@ -41,7 +39,10 @@ function CreateEditModal({
   const [name, setName] = useState(application?.name || '');
   const [description, setDescription] = useState(application?.description || '');
   const [slug, setSlug] = useState(application?.slug || '');
-  const [loading, setLoading] = useState(false);
+
+  const create = useCreateApplication();
+  const update = useUpdateApplication();
+  const loading = create.isPending || update.isPending;
 
   useEffect(() => {
     if (application) {
@@ -57,31 +58,26 @@ function CreateEditModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+
+    if (!name.trim()) {
+      toast.error('Application name is required');
+      return;
+    }
+
+    const payload = { name: name.trim(), description: description.trim() || undefined };
 
     try {
-      if (!name.trim()) {
-        toast.error('Application name is required');
-        setLoading(false);
-        return;
-      }
-
-      const payload = { name: name.trim(), description: description.trim() || undefined };
-
       if (application) {
-        await apiClient.patch(`/applications/${application.applicationId}`, payload);
+        await update.mutateAsync({ id: application.applicationId, payload });
         toast.success('Application updated successfully');
       } else {
-        await apiClient.post('/applications', payload);
+        await create.mutateAsync(payload);
         toast.success('Application created successfully');
       }
-
       onSave();
       onClose();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to save application');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -151,9 +147,11 @@ function DeleteConfirmModal({
   onDelete: () => void;
 }) {
   const [confirmText, setConfirmText] = useState('');
-  const [loading, setLoading] = useState(false);
   const [deleteError, setDeleteError] = useState('');
   const [blockingEntities, setBlockingEntities] = useState<Record<string, number> | null>(null);
+
+  const del = useDeleteApplication();
+  const loading = del.isPending;
 
   const handleDelete = async () => {
     if (confirmText !== application.name) {
@@ -161,11 +159,10 @@ function DeleteConfirmModal({
       return;
     }
 
-    setLoading(true);
     setDeleteError('');
     setBlockingEntities(null);
     try {
-      await apiClient.delete(`/applications/${application.applicationId}`);
+      await del.mutateAsync(application.applicationId);
       toast.success('Application deleted successfully');
       onDelete();
       onClose();
@@ -177,8 +174,6 @@ function DeleteConfirmModal({
         setDeleteError(error?.message || 'Failed to delete application');
         toast.error(error?.message || 'Failed to delete application');
       }
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -226,13 +221,13 @@ function DeleteConfirmModal({
 
 function ApplicationsContent() {
   const { user } = useAuth();
-  const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [offset, setOffset] = useState(0);
   const [editingApp, setEditingApp] = useState<Application | null>(null);
   const [deletingApp, setDeletingApp] = useState<Application | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const updateApp = useUpdateApplication();
 
   useEffect(() => setMounted(true), []);
 
@@ -258,11 +253,8 @@ function ApplicationsContent() {
 
   const handleToggleActive = async (app: Application) => {
     try {
-      await apiClient.patch(`/applications/${app.applicationId}`, {
-        isActive: !app.isActive,
-      });
+      await updateApp.mutateAsync({ id: app.applicationId, payload: { isActive: !app.isActive } });
       toast.success(`Application ${!app.isActive ? 'enabled' : 'disabled'}`);
-      qc.invalidateQueries({ queryKey: applicationKeys.all });
     } catch (error) {
       toast.error('Failed to update application');
     }
@@ -429,7 +421,7 @@ function ApplicationsContent() {
             setShowCreateModal(false);
             setEditingApp(null);
           }}
-          onSave={() => qc.invalidateQueries({ queryKey: applicationKeys.all })}
+          onSave={() => {}}
         />
       ) : null}
 
@@ -437,7 +429,7 @@ function ApplicationsContent() {
         <DeleteConfirmModal
           application={deletingApp}
           onClose={() => setDeletingApp(null)}
-          onDelete={() => qc.invalidateQueries({ queryKey: applicationKeys.all })}
+          onDelete={() => setDeletingApp(null)}
         />
       )}
     </div>

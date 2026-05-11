@@ -39,7 +39,14 @@ const dashboardSchema = {
     },
     sharedWithUsers: {
       type: 'array',
-      items: { type: 'string' },
+      items: {
+        type: 'object',
+        properties: {
+          userId: { type: 'string' },
+          pageIds: { type: 'array', items: { type: 'string' } },
+        },
+        additionalProperties: false,
+      },
     },
     createdAt: { type: 'string', format: 'date-time' },
     updatedAt: { type: 'string', format: 'date-time' },
@@ -167,18 +174,36 @@ export async function dashboardRoutes(fastify: FastifyInstance) {
       body: {
         type: 'object',
         properties: {
-          userIds: { type: 'array', items: { type: 'string' }, description: 'User ObjectIds to grant access' },
-          pageIds: { type: 'array', items: { type: 'string' }, description: 'Page IDs visible to viewers (empty = all pages)' },
+          assignments: {
+            type: 'array',
+            description: 'Per-user sharing: each entry grants a user access to specific pages',
+            items: {
+              type: 'object',
+              properties: {
+                userId: { type: 'string' },
+                pageIds: { type: 'array', items: { type: 'string' }, description: 'Empty = all pages' },
+              },
+              required: ['userId', 'pageIds'],
+            },
+          },
         },
-        required: ['userIds'],
+        required: ['assignments'],
       },
       response: {
         200: successResponse(
           {
             type: 'object',
             properties: {
-              sharedWithUsers: { type: 'array', items: { type: 'string' } },
-              sharedPageIds: { type: 'array', items: { type: 'string' } },
+              sharedWithUsers: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    userId: { type: 'string' },
+                    pageIds: { type: 'array', items: { type: 'string' } },
+                  },
+                },
+              },
             },
             additionalProperties: false,
           },

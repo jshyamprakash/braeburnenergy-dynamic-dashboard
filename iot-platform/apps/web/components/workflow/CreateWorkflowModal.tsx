@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { apiClient } from '@/lib/api-client';
+import { useCreateWorkflow, useUpdateWorkflow } from '@/lib/hooks/useWorkflows';
 import type { Workflow } from '@repo/types';
 
 export type WorkflowType = 'Application' | 'Experience' | 'Embedded' | 'Edge';
@@ -36,7 +36,9 @@ export default function CreateWorkflowModal({
   onSuccess,
   applicationId,
 }: CreateWorkflowModalProps) {
-  const [isSaving, setIsSaving] = useState(false);
+  const createWorkflow = useCreateWorkflow();
+  const updateWorkflow = useUpdateWorkflow();
+  const isSaving = createWorkflow.isPending || updateWorkflow.isPending;
   const [hasChanges, setHasChanges] = useState(false);
   const [showUnsavedWarning, setShowUnsavedWarning] = useState(false);
   const [formData, setFormData] = useState<FormData>(INITIAL_FORM_STATE);
@@ -97,11 +99,9 @@ export default function CreateWorkflowModal({
       return;
     }
 
-    setIsSaving(true);
     try {
       let response;
       if (mode === 'create') {
-        // Create new workflow with minimal node (trigger)
         const createPayload: any = {
           name: formData.name,
           type: formData.type,
@@ -111,42 +111,33 @@ export default function CreateWorkflowModal({
               id: '1',
               type: 'trigger:manual',
               position: { x: 0, y: 0 },
-              data: {
-                label: 'Manual Trigger',
-                config: {},
-              },
+              data: { label: 'Manual Trigger', config: {} },
             },
           ],
           edges: [],
           isEnabled: false,
-          ...(applicationId && { applicationId }), // ADR-024: Application context from props
+          ...(applicationId && { applicationId }),
         };
-        response = await apiClient.post<Workflow>('/workflows', createPayload);
+        response = await createWorkflow.mutateAsync(createPayload);
         toast.success('Workflow created successfully');
       } else if (mode === 'edit' && workflowData?.workflowId) {
-        // Update existing workflow
         const updatePayload: any = {
           name: formData.name,
           type: formData.type,
           description: formData.description,
-          ...(applicationId && { applicationId }), // ADR-024: Application context from props
+          ...(applicationId && { applicationId }),
         };
-        response = await apiClient.patch<Workflow>(
-          `/workflows/${workflowData.workflowId}`,
-          updatePayload
-        );
+        response = await updateWorkflow.mutateAsync({ id: workflowData.workflowId, payload: updatePayload });
         toast.success('Workflow updated successfully');
       } else {
         throw new Error('Invalid mode or workflow ID');
       }
 
-      onSuccess(response.data);
+      onSuccess(response.data as Workflow);
       setHasChanges(false);
       onClose();
     } catch (error: any) {
       toast.error(error.message || `Failed to ${mode === 'create' ? 'create' : 'update'} workflow`);
-    } finally {
-      setIsSaving(false);
     }
   };
 

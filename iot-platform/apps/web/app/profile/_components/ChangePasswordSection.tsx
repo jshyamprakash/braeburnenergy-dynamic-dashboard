@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Lock } from 'lucide-react';
-import { apiClient } from '@/lib/api-client';
+import { useChangePassword } from '@/lib/hooks/useProfile';
 import { useAppDispatch, useAppSelector } from '@/lib/store';
 import { fetchSessions } from '@/lib/store/slices/userSlice';
 import { selectUser, updateUser } from '@/lib/store/slices/authSlice';
@@ -66,7 +66,8 @@ export function ChangePasswordSection() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [passwordLoading, setPasswordLoading] = useState(false);
+  const changePassword = useChangePassword();
+  const passwordLoading = changePassword.isPending;
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,10 +93,9 @@ export function ChangePasswordSection() {
       return;
     }
 
-    setPasswordLoading(true);
     try {
       const wasForced = user?.mustChangePassword;
-      await apiClient.post('/auth/change-password', { currentPassword, newPassword });
+      await changePassword.mutateAsync({ currentPassword, newPassword });
       toast.success('Password changed successfully');
       setCurrentPassword('');
       setNewPassword('');
@@ -105,8 +105,6 @@ export function ChangePasswordSection() {
       if (wasForced) router.push('/');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to change password');
-    } finally {
-      setPasswordLoading(false);
     }
   };
 

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useAppSelector } from '@/lib/store';
 import { selectUser } from '@/lib/store/slices/authSlice';
-import { apiClient } from '@/lib/api-client';
+import { useRecoverySetup } from '@/lib/hooks/useProfile';
 import { deriveKeyPair } from '@/lib/crypto/derive-keypair';
 import { toast } from 'sonner';
 import { Eye, EyeOff, Shield } from 'lucide-react';
@@ -18,6 +18,7 @@ export function RecoverySetupSection() {
   const [showPassphrase, setShowPassphrase] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isConfigured, setIsConfigured] = useState(false);
+  const recoverySetup = useRecoverySetup();
 
   // Only show for Admin role
   if (!user || user.role !== 'Admin') {
@@ -33,14 +34,9 @@ export function RecoverySetupSection() {
     }
 
     setIsSubmitting(true);
-
     try {
-      // Derive keypair from passphrase
       const { publicKeyPem } = await deriveKeyPair(passphrase.trim());
-
-      // Save public key to backend
-      await apiClient.post('/api/v1/auth/recovery/setup', { publicKey: publicKeyPem });
-
+      await recoverySetup.mutateAsync({ publicKey: publicKeyPem });
       toast.success('Recovery key saved successfully');
       setPassphrase('');
       setIsConfigured(true);

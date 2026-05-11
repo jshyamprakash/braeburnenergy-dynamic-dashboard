@@ -1,12 +1,10 @@
 'use client';
 
 import { useAuth } from '@/lib/hooks/useAuth';
-import { apiClient } from '@/lib/api-client';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Copy, Trash2, Edit2, Plus, Check } from 'lucide-react';
-import { useQueryClient } from '@tanstack/react-query';
-import { useOrganizations, organizationKeys, type Organization, type OrgStats } from '@/lib/hooks/useOrganizations';
+import { useOrganizations, useCreateOrganization, useUpdateOrganization, useDeleteOrganization, type Organization, type OrgStats } from '@/lib/hooks/useOrganizations';
 import { TableRowSkeleton } from '@/components/ui/Skeleton';
 import { useDebounce } from '@/lib/hooks/useDebounce';
 
@@ -41,7 +39,10 @@ function CreateEditModal({
   const [name, setName] = useState(organization?.name || '');
   const [slug, setSlug] = useState(organization?.slug || '');
   const [autoSlug, setAutoSlug] = useState(!organization);
-  const [loading, setLoading] = useState(false);
+
+  const create = useCreateOrganization();
+  const update = useUpdateOrganization();
+  const loading = create.isPending || update.isPending;
 
   const handleNameChange = (value: string) => {
     setName(value);
@@ -52,31 +53,26 @@ function CreateEditModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+
+    if (!slug.match(/^[a-z0-9-]+$/)) {
+      toast.error('Slug can only contain lowercase letters, numbers, and hyphens');
+      return;
+    }
+
+    const payload = { name, slug };
 
     try {
-      if (!slug.match(/^[a-z0-9-]+$/)) {
-        toast.error('Slug can only contain lowercase letters, numbers, and hyphens');
-        setLoading(false);
-        return;
-      }
-
-      const payload = { name, slug };
-
       if (organization) {
-        await apiClient.patch(`/organizations/${organization._id}`, payload);
+        await update.mutateAsync({ id: organization._id, payload });
         toast.success('Organization updated successfully');
       } else {
-        await apiClient.post('/organizations', payload);
+        await create.mutateAsync(payload);
         toast.success('Organization created successfully');
       }
-
       onSave();
       onClose();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to save organization');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -153,7 +149,9 @@ function DeleteConfirmModal({
   onDelete: () => void;
 }) {
   const [confirmText, setConfirmText] = useState('');
-  const [loading, setLoading] = useState(false);
+
+  const del = useDeleteOrganization();
+  const loading = del.isPending;
 
   const handleDelete = async () => {
     if (confirmText !== organization.name) {
@@ -161,16 +159,13 @@ function DeleteConfirmModal({
       return;
     }
 
-    setLoading(true);
     try {
-      await apiClient.delete(`/organizations/${organization._id}`);
+      await del.mutateAsync(organization._id);
       toast.success('Organization deleted successfully');
       onDelete();
       onClose();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to delete organization');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -206,7 +201,6 @@ function DeleteConfirmModal({
 
 function OrganizationsContent() {
   const { user } = useAuth();
-  const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [offset, setOffset] = useState(0);
   const [editingOrg, setEditingOrg] = useState<Organization | null>(null);
@@ -376,7 +370,7 @@ function OrganizationsContent() {
             setShowCreateModal(false);
             setEditingOrg(null);
           }}
-          onSave={() => qc.invalidateQueries({ queryKey: organizationKeys.all })}
+          onSave={() => {}}
         />
       ) : null}
 
@@ -384,7 +378,7 @@ function OrganizationsContent() {
         <DeleteConfirmModal
           organization={deletingOrg}
           onClose={() => setDeletingOrg(null)}
-          onDelete={() => qc.invalidateQueries({ queryKey: organizationKeys.all })}
+          onDelete={() => setDeletingOrg(null)}
         />
       )}
     </div>

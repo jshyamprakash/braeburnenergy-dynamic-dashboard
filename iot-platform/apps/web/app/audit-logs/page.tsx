@@ -1,31 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { apiClient } from '@/lib/api-client';
+import { useState, useEffect } from 'react';
+import { useAuditLogs, useAuditLogStats } from '@/lib/hooks/useAuditLogs';
+import type { AuditLog } from '@/lib/hooks/useAuditLogs';
 import { Download, X, ChevronLeft, ChevronRight, CheckCircle2, XCircle } from 'lucide-react';
 
-interface AuditLog {
-  _id: string;
-  username: string;
-  userId?: string;
-  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'LOGOUT' | 'VIEW' | 'EXPORT';
-  resource: string;
-  resourceId?: string;
-  timestamp: string;
-  success: boolean;
-  errorMessage?: string;
-  changes?: { before: any; after: any };
-  metadata?: { ipAddress?: string; userAgent?: string; sessionId?: string; reason?: string };
-}
-
-interface Statistics {
-  total: number;
-  byAction: Array<{ _id: string; count: number }>;
-  byResource: Array<{ _id: string; count: number }>;
-  bySuccess: Array<{ _id: boolean; count: number }>;
-}
-
-// ── Action badge colors ───────────────────────────────────────────────────────
+// ── Action badge colors ──────────────────────────────────────────────────────
 const actionBadge: Record<string, string> = {
   CREATE: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
   UPDATE: 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300',
@@ -37,55 +17,27 @@ const actionBadge: Record<string, string> = {
 };
 
 function AuditLogContent() {
-  const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [statistics, setStatistics] = useState<Statistics | null>(null);
-  const [loading, setLoading] = useState(true);
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
-
   const [action, setAction] = useState<string>('');
   const [resource, setResource] = useState<string>('');
   const [username, setUsername] = useState<string>('');
   const [successFilter, setSuccessFilter] = useState<string>('');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
-
   const [page, setPage] = useState(1);
-  const [limit] = useState(50);
-  const [total, setTotal] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
+  const limit = 50;
 
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (action) params.append('action', action);
-      if (resource) params.append('resource', resource);
-      if (username) params.append('username', username);
-      if (successFilter) params.append('success', successFilter);
-      if (startDate) params.append('startDate', startDate);
-      if (endDate) params.append('endDate', endDate);
-      params.append('page', String(page));
-      params.append('limit', String(limit));
-
-      const logsRes = await apiClient.get<any>(`/audit-logs?${params.toString()}`);
-      setLogs((logsRes as any).data || []);
-      setTotal(((logsRes as any).pagination as any)?.total || 0);
-      setTotalPages(((logsRes as any).pagination as any)?.totalPages || 0);
-
-      const statsParams = new URLSearchParams();
-      if (startDate) statsParams.append('startDate', startDate);
-      if (endDate) statsParams.append('endDate', endDate);
-      const statsRes = await apiClient.get<any>(`/audit-logs/statistics?${statsParams.toString()}`);
-      setStatistics(((statsRes as any).data as any) || null);
-    } catch (error) {
-      console.error('Failed to load audit logs:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Reset page to 1 when any filter changes (UI state, not server data)
   useEffect(() => { setPage(1); }, [action, resource, username, successFilter, startDate, endDate]);
-  useEffect(() => { loadData(); }, [page, action, resource, username, successFilter, startDate, endDate]);
+
+  const { data: logsData, isFetching: loading } = useAuditLogs({
+    action, resource, username, success: successFilter, startDate, endDate, page, limit,
+  });
+  const { data: statistics } = useAuditLogStats({ startDate, endDate });
+
+  const logs = logsData?.logs ?? [];
+  const total = logsData?.total ?? 0;
+  const totalPages = logsData?.totalPages ?? 0;
 
   const handleExport = async () => {
     try {
